@@ -52,6 +52,11 @@ export interface ResetPasswordDto {
   newPassword: string;
 }
 
+export interface ChangePasswordDto {
+  currentPassword: string;
+  newPassword: string;
+}
+
 @Injectable()
 export class AuthService {
   private supabase: SupabaseClient;
@@ -640,5 +645,51 @@ export class AuthService {
       email: user.email,
       message: 'Votre mot de passe a été réinitialisé avec succès.',
     };
+  }
+
+  async changePassword(userId: number, dto: ChangePasswordDto): Promise<{ message: string }> {
+    const { currentPassword, newPassword } = dto;
+    if (!currentPassword || !newPassword) {
+      throw new BadRequestException('Mot de passe actuel et nouveau mot de passe sont requis');
+    }
+    if (newPassword.length < 8) {
+      throw new BadRequestException('Le nouveau mot de passe doit contenir au moins 8 caractères');
+    }
+
+    const {
+      data: users,
+      error,
+    } = await this.supabase
+      .from('users')
+      .select('id, password_hash')
+      .eq('id', userId)
+      .limit(1);
+
+    if (error) {
+      throw new BadRequestException(error.message || "Erreur lors du chargement de l'utilisateur");
+    }
+    if (!users || users.length === 0) {
+      throw new BadRequestException("Utilisateur introuvable");
+    }
+
+    const user = users[0] as { id: number; password_hash: string };
+    const matches = await bcrypt.compare(currentPassword, user.password_hash);
+    if (!matches) {
+      throw new UnauthorizedException('Mot de passe actuel incorrect');
+    }
+
+    const newHash = await bcrypt.hash(newPassword, SALT_ROUNDS);
+    const { error: updateError } = await this.supabase
+      .from('users')
+      .update({ password_hash: newHash })
+      .eq('id', user.id);
+
+    if (updateError) {
+      throw new BadRequestException(
+        updateError.message || 'Erreur lors de la mise à jour du mot de passe',
+      );
+    }
+
+    return { message: 'Mot de passe mis à jour avec succès' };
   }
 }
