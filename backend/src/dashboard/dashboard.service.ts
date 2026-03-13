@@ -1607,6 +1607,34 @@ export class DashboardService {
     };
   }
 
+  async getCandidateScoreFromJsonByUser(
+    userId: number,
+  ): Promise<CandidateScoreFromJson> {
+    if (!userId || Number.isNaN(userId)) {
+      throw new BadRequestException('userId invalide');
+    }
+
+    const candidate = await this.getCandidateIdForUser(userId);
+
+    if (!candidate) {
+      return {
+        candidateId: null,
+        scoreGlobal: null,
+        decision: null,
+        familleDominante: null,
+        metadataTimestamp: null,
+        metadataSector: null,
+        metadataModule: null,
+        commentaire: null,
+        dimensions: [],
+        skills: [],
+        softSkills: [],
+      };
+    }
+
+    return this.getCandidateScoreFromJson(candidate.id);
+  }
+
   async deleteCandidateCvFile(userId: number, filePath: string): Promise<void> {
     if (!userId || Number.isNaN(userId)) {
       throw new BadRequestException('userId invalide');

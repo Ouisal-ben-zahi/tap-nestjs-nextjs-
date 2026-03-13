@@ -16,6 +16,12 @@ export class DashboardController {
     return this.dashboardService.getCandidateStats(req.user.sub);
   }
 
+  @Get('candidat/score-json')
+  @UseGuards(AuthGuard('jwt'))
+  async getCandidateScoreByJwt(@Req() req: any) {
+    return this.dashboardService.getCandidateScoreFromJsonByUser(req.user.sub);
+  }
+
   @Get('candidat/portfolio')
   @UseGuards(AuthGuard('jwt'))
   async getCandidatePortfolioByJwt(@Req() req: any) {
