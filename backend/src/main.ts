@@ -10,6 +10,7 @@ async function bootstrap() {
     methods: 'GET,HEAD,PUT,PATCH,POST,DELETE,OPTIONS',
     allowedHeaders: 'Content-Type, Accept, Authorization',
   });
-  await app.listen(process.env.PORT ?? 1102);
+  const port = parseInt(process.env.PORT ?? "3112", 10);
+  await app.listen(port, "0.0.0.0");
 }
 bootstrap();
