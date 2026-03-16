@@ -167,6 +167,18 @@
   box-shadow: 0 0 0 3px rgba(202, 27, 40, 0.1), 0 0 20px rgba(202, 27, 40, 0.05);
 }
 
+/* Garde le thème sombre même avec l'autofill du navigateur */
+input.input-premium:-webkit-autofill,
+input.input-premium:-webkit-autofill:hover,
+input.input-premium:-webkit-autofill:focus {
+  -webkit-box-shadow: 0 0 0px 1000px #111111 inset !important;
+  box-shadow: 0 0 0px 1000px #111111 inset !important;
+  -webkit-text-fill-color: #fff !important;
+  caret-color: #fff;
+  border: 1px solid rgba(255, 255, 255, 0.1) !important;
+  transition: background-color 9999s ease-out 0s, color 9999s ease-out 0s;
+}
+
 ::selection { background: rgba(202, 27, 40, 0.4); color: #fff; }
 ::-webkit-scrollbar { width: 4px; }
 ::-webkit-scrollbar-track { background: #000; }

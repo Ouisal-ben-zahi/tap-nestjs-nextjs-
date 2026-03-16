@@ -4,7 +4,7 @@ import { useState } from "react";
 import { useAuthStore } from "@/stores/auth";
 import { useRouter } from "next/navigation";
 import Link from "next/link";
-import { ArrowRight, Sparkles, LogIn } from "lucide-react";
+import { ArrowRight, LogIn, Eye, EyeOff, Mail, Lock } from "lucide-react";
 import axios from "axios";
 
 export default function LoginForm() {
@@ -14,6 +14,7 @@ export default function LoginForm() {
   const [password, setPassword] = useState("");
   const [error, setError] = useState("");
   const [loading, setLoading] = useState(false);
+  const [showPassword, setShowPassword] = useState(false);
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
@@ -65,32 +66,52 @@ export default function LoginForm() {
             <label htmlFor="email" className="block text-[10px] font-semibold uppercase tracking-[2px] text-white/40 mb-2.5">
               Email
             </label>
-            <input
-              id="email"
-              type="email"
-              value={email}
-              onChange={(e) => setEmail(e.target.value)}
-              className="input-premium"
-              placeholder="votre@email.com"
-              required
-              autoComplete="email"
-            />
+            <div className="relative">
+              <span className="pointer-events-none absolute inset-y-0 left-0 flex items-center pl-3 text-white/40">
+                <Mail size={16} />
+              </span>
+              <input
+                id="email"
+                type="email"
+                value={email}
+                onChange={(e) => setEmail(e.target.value)}
+                className="input-premium"
+                style={{ paddingLeft: "44px" }}
+                placeholder="votre@email.com"
+                required
+                autoComplete="email"
+              />
+            </div>
           </div>
 
           <div>
             <label htmlFor="password" className="block text-[10px] font-semibold uppercase tracking-[2px] text-white/40 mb-2.5">
               Mot de passe
             </label>
-            <input
-              id="password"
-              type="password"
-              value={password}
-              onChange={(e) => setPassword(e.target.value)}
-              className="input-premium"
-              placeholder="••••••••"
-              required
-              autoComplete="current-password"
-            />
+            <div className="relative">
+              <span className="pointer-events-none absolute inset-y-0 left-0 flex items-center pl-3 text-white/40">
+                <Lock size={16} />
+              </span>
+              <input
+                id="password"
+                type={showPassword ? "text" : "password"}
+                value={password}
+                onChange={(e) => setPassword(e.target.value)}
+                className="input-premium"
+                style={{ paddingLeft: "44px", paddingRight: "44px" }}
+                placeholder="••••••••"
+                required
+                autoComplete="current-password"
+              />
+              <button
+                type="button"
+                onClick={() => setShowPassword((prev) => !prev)}
+                className="absolute inset-y-0 right-0 flex items-center pr-3 text-white/50 hover:text-white/80 transition-colors"
+                aria-label={showPassword ? "Masquer le mot de passe" : "Afficher le mot de passe"}
+              >
+                {showPassword ? <EyeOff size={18} /> : <Eye size={18} />}
+              </button>
+            </div>
           </div>
 
           <div className="pt-2">

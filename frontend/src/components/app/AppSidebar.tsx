@@ -19,6 +19,7 @@ import {
   LayoutList,
   LogOut,
   Settings,
+  ClipboardList,
 } from "lucide-react";
 
 const candidatNavItems = [
@@ -29,6 +30,7 @@ const candidatNavItems = [
   { href: "/app/formation", label: "Formation", icon: GraduationCap },
   { href: "/app/entretien", label: "Entretien IA", icon: MessageSquare },
   { href: "/app/mes-fichiers", label: "Mes fichiers", icon: FolderOpen },
+  { href: "/app/mes-candidatures", label: "Mes candidatures", icon: ClipboardList },
   { href: "/app/parametres", label: "Paramètres", icon: Settings },
 ];
 

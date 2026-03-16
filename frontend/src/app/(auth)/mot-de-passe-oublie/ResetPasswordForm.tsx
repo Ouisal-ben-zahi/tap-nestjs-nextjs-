@@ -104,8 +104,25 @@ export default function ResetPasswordForm() {
         {step === "email" && (
           <form onSubmit={handleRequestCode} className="space-y-5">
             <div>
-              <label htmlFor="email" className="block text-[10px] font-semibold uppercase tracking-[2px] text-white/40 mb-2.5">Email</label>
-              <input id="email" type="email" value={email} onChange={(e) => setEmail(e.target.value)} className="input-premium" placeholder="votre@email.com" required autoComplete="email" />
+              <label htmlFor="email" className="block text-[10px] font-semibold uppercase tracking-[2px] text-white/40 mb-2.5">
+                Email
+              </label>
+              <div className="relative">
+                <span className="pointer-events-none absolute inset-y-0 left-0 flex items-center pl-3 text-white/40">
+                  <Mail size={16} />
+                </span>
+                <input
+                  id="email"
+                  type="email"
+                  value={email}
+                  onChange={(e) => setEmail(e.target.value)}
+                  className="input-premium"
+                  style={{ paddingLeft: "44px" }}
+                  placeholder="votre@email.com"
+                  required
+                  autoComplete="email"
+                />
+              </div>
             </div>
             <div className="pt-2">
               <button type="submit" disabled={loading} className="btn-primary w-full justify-center disabled:opacity-50 disabled:cursor-not-allowed group">
