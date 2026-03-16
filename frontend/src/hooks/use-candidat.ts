@@ -32,6 +32,13 @@ export function useCandidatApplications() {
   });
 }
 
+export function useCandidatPublicJobs() {
+  return useQuery({
+    queryKey: ['candidat', 'public-jobs'],
+    queryFn: candidatService.getPublicJobs,
+  });
+}
+
 export function useCandidatCvFiles() {
   return useQuery({
     queryKey: ['candidat', 'cv-files'],

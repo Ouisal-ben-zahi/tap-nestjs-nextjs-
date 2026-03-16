@@ -35,6 +35,9 @@ export const candidatService = {
       return { portfolioPdfFiles: [...short, ...long] };
     }),
 
+  getPublicJobs: () =>
+    api.get<{ jobs: { id: number; title: string | null; categorie_profil: string | null; created_at: string | null; urgent: boolean; location_type: string | null; }[] }>('/dashboard/jobs').then((r) => r.data),
+
   uploadCv: (file: File) => {
     const formData = new FormData();
     formData.append('file', file);

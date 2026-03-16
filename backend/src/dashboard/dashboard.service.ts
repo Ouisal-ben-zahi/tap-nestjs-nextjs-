@@ -1432,8 +1432,9 @@ export class DashboardService {
     const { data, error } = await this.supabase
       .from('jobs')
       .select(
-        'id, title, categorie_profil, created_at, urgent, location_type',
+        'id, title, categorie_profil, created_at, urgent, location_type, status',
       )
+      .eq('status', 'ACTIVE')
       .order('created_at', { ascending: false });
 
     if (error) {

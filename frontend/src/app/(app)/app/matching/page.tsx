@@ -1,7 +1,7 @@
 "use client";
 
 import { useAuth } from "@/hooks/use-auth";
-import { useCandidatApplications, useCandidatStats } from "@/hooks/use-candidat";
+import { useCandidatApplications, useCandidatStats, useCandidatPublicJobs } from "@/hooks/use-candidat";
 import EmptyState from "@/components/ui/EmptyState";
 import ErrorState from "@/components/ui/ErrorState";
 import { Skeleton } from "@/components/ui/Skeleton";
@@ -13,6 +13,7 @@ export default function MatchingPage() {
   const { isCandidat } = useAuth();
   const statsQuery = useCandidatStats();
   const appsQuery = useCandidatApplications();
+  const jobsQuery = useCandidatPublicJobs();
 
   if (!isCandidat) {
     return <EmptyState icon={<Users className="w-12 h-12" />} title="Espace candidat uniquement" description="Cette section est réservée aux candidats." />;
@@ -68,6 +69,77 @@ export default function MatchingPage() {
             </div>
           )}
 
+          {/* Offres publiques actives */}
+          <div className="mb-10">
+            <div className="flex items-center gap-3 mb-5">
+              <div className="w-1 h-5 rounded-full bg-emerald-500" />
+              <h2 className="text-[13px] uppercase tracking-[2px] text-white/50 font-semibold">
+                Offres disponibles
+              </h2>
+            </div>
+
+            {jobsQuery.isLoading ? (
+              <div className="space-y-3">
+                {Array.from({ length: 4 }).map((_, i) => (
+                  <Skeleton key={i} className="h-20 w-full" />
+                ))}
+              </div>
+            ) : jobsQuery.isError ? (
+              <ErrorState onRetry={() => jobsQuery.refetch()} />
+            ) : !jobsQuery.data?.jobs?.length ? (
+              <EmptyState
+                icon={<Briefcase className="w-10 h-10" />}
+                title="Aucune offre active"
+                description="Revenez bientôt, de nouvelles offres seront publiées."
+              />
+            ) : (
+              <div className="space-y-3">
+                {jobsQuery.data.jobs.map((job) => {
+                  const localisation =
+                    typeof job.location_type === "string" && job.location_type.trim()
+                      ? job.location_type
+                      : null;
+
+                  return (
+                    <div
+                      key={job.id}
+                      className="bg-zinc-900/50 border border-white/[0.06] rounded-xl p-5 hover:border-white/[0.1] transition group"
+                    >
+                      <div className="flex items-start justify-between gap-4">
+                        <div className="flex-1 min-w-0">
+                          <h3 className="text-[15px] font-semibold text-white truncate">
+                            {job.title ?? "Offre sans titre"}
+                          </h3>
+
+                          <div className="mt-2 flex items-center gap-3 text-[12px] text-white/50">
+                            {localisation && (
+                              <span className="flex items-center gap-1">
+                                <MapPin size={12} />
+                                {localisation}
+                              </span>
+                            )}
+                          </div>
+                        </div>
+
+                        <div className="text-right shrink-0 flex flex-col items-end gap-2 text-[11px] text-white/35">
+                          <span>{job.created_at && formatRelative(job.created_at)}</span>
+                          <button
+                            type="button"
+                            className="btn-primary !py-1.5 !px-3 text-[12px] gap-1"
+                          >
+                            <Briefcase size={12} />
+                            Postuler
+                          </button>
+                        </div>
+                      </div>
+                    </div>
+                  );
+                })}
+              </div>
+            )}
+          </div>
+
+          {/* Vos candidatures */}
           <div>
             <div className="flex items-center gap-3 mb-5">
               <div className="w-1 h-5 rounded-full bg-emerald-500" />
