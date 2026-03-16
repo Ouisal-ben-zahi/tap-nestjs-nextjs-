@@ -3,6 +3,7 @@
 import Link from "next/link";
 import { usePathname } from "next/navigation";
 import { useAuth } from "@/hooks/use-auth";
+import { useCandidatStats } from "@/hooks/use-candidat";
 import {
   LayoutDashboard,
   FileText,
@@ -52,6 +53,17 @@ interface AppSidebarProps {
 export default function AppSidebar({ open, onClose }: AppSidebarProps) {
   const pathname = usePathname();
   const { user, logout } = useAuth();
+  const isCandidat = user?.role === "candidat";
+
+  // Pour les candidats, on vérifie si un profil existe en base
+  const statsQuery = useCandidatStats({
+    enabled: isCandidat,
+  } as any);
+  const stats = statsQuery.data;
+  const hasProfile =
+    !isCandidat ||
+    (stats?.candidateId !== null && stats?.candidateId !== undefined);
+
   const navItems = user?.role === "recruteur" ? recruteurNavItems : candidatNavItems;
 
   const handleLogout = () => {
@@ -94,28 +106,61 @@ export default function AppSidebar({ open, onClose }: AppSidebarProps) {
           {navItems.map((item) => {
             const isActive = pathname === item.href;
             const Icon = item.icon;
+
+            // Si candidat sans profil : on ne laisse cliquer que sur Paramètres
+            const isCandidatParam = isCandidat && item.href === "/app/parametres";
+            const disabled = isCandidat && !hasProfile && !isCandidatParam;
+
+            const baseClasses =
+              "relative flex items-center gap-3 px-3 py-2.5 rounded-xl text-[13px] transition-all duration-300 group";
+            const activeClasses = isActive
+              ? "bg-tap-red/[0.08] text-tap-red font-medium"
+              : "text-white/45 hover:text-white/70 hover:bg-white/[0.04] font-normal";
+            const disabledClasses =
+              "opacity-40 cursor-not-allowed hover:bg-transparent hover:text-white/45";
+
+            const content = (
+              <>
+                {isActive && (
+                  <div className="absolute left-0 top-1/2 -translate-y-1/2 w-[3px] h-[18px] bg-tap-red rounded-r-full shadow-[0_0_8px_rgba(202,27,40,0.5)]" />
+                )}
+                <div
+                  className={`w-8 h-8 rounded-lg flex items-center justify-center transition-all duration-300 ${
+                    isActive
+                      ? "bg-tap-red/10"
+                      : "bg-white/[0.03] group-hover:bg-white/[0.06]"
+                  }`}
+                >
+                  <Icon size={16} strokeWidth={isActive ? 2 : 1.5} />
+                </div>
+                <span className="flex-1">{item.label}</span>
+                {disabled && (
+                  <span className="ml-2 text-[10px] uppercase tracking-[1px] text-white/30">
+                    Inactif
+                  </span>
+                )}
+              </>
+            );
+
+            if (disabled) {
+              return (
+                <div
+                  key={item.href}
+                  className={`${baseClasses} ${activeClasses} ${disabledClasses}`}
+                >
+                  {content}
+                </div>
+              );
+            }
+
             return (
               <Link
                 key={item.href}
                 href={item.href}
                 onClick={onClose}
-                className={`relative flex items-center gap-3 px-3 py-2.5 rounded-xl text-[13px] transition-all duration-300 group ${
-                  isActive
-                    ? "bg-tap-red/[0.08] text-tap-red font-medium"
-                    : "text-white/45 hover:text-white/70 hover:bg-white/[0.04] font-normal"
-                }`}
+                className={`${baseClasses} ${activeClasses}`}
               >
-                {isActive && (
-                  <div className="absolute left-0 top-1/2 -translate-y-1/2 w-[3px] h-[18px] bg-tap-red rounded-r-full shadow-[0_0_8px_rgba(202,27,40,0.5)]" />
-                )}
-                <div className={`w-8 h-8 rounded-lg flex items-center justify-center transition-all duration-300 ${
-                  isActive
-                    ? "bg-tap-red/10"
-                    : "bg-white/[0.03] group-hover:bg-white/[0.06]"
-                }`}>
-                  <Icon size={16} strokeWidth={isActive ? 2 : 1.5} />
-                </div>
-                {item.label}
+                {content}
               </Link>
             );
           })}
