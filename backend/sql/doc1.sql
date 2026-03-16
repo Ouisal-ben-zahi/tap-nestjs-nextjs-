@@ -1,6 +1,7 @@
 -- Types ENUM spécifiques à Postgres
 CREATE TYPE user_role_enum AS ENUM ('candidat', 'recruteur');
 CREATE TYPE score_decision_enum AS ENUM ('EXCELLENT', 'BON', 'MOYEN', 'FAIBLE');
+CREATE TYPE job_status_enum AS ENUM ('ACTIVE', 'INACTIVE');
 
 -- TABLES
 
@@ -93,7 +94,8 @@ CREATE TABLE jobs (
   salary_min       numeric(12,2),
   salary_max       numeric(12,2),
   urgent           boolean DEFAULT false,
-  location_type    jsonb,
+  location_type    varchar(50),
+  status           job_status_enum NOT NULL DEFAULT 'ACTIVE',
   tasks            jsonb,
   soft_skills      jsonb,
   skills           jsonb,

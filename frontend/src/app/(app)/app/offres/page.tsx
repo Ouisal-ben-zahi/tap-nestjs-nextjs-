@@ -2,7 +2,7 @@
 
 import { useState } from "react";
 import { useAuth } from "@/hooks/use-auth";
-import { useRecruteurJobs, useCreateJob } from "@/hooks/use-recruteur";
+import { useRecruteurJobs, useCreateJob, useToggleJobStatus } from "@/hooks/use-recruteur";
 import EmptyState from "@/components/ui/EmptyState";
 import ErrorState from "@/components/ui/ErrorState";
 import StatusBadge from "@/components/ui/StatusBadge";
@@ -14,6 +14,44 @@ import type { JobPayload } from "@/types/recruteur";
 const CATEGORIES = ["Développement", "Design", "Marketing", "Commercial", "Finance", "RH", "Ingénierie", "Autre"];
 const NIVEAUX = ["Junior", "Intermédiaire", "Senior", "Lead", "Manager"];
 const CONTRATS = ["CDI", "CDD", "Stage", "Freelance", "Alternance"];
+
+// Liste courte de pays principaux pour le recrutement
+const COUNTRIES = [
+  "Maroc",
+  "France",
+  "Belgique",
+  "Suisse",
+  "Canada",
+  "Espagne",
+  "Allemagne",
+  "Royaume-Uni",
+  "États-Unis",
+  "Pays-Bas",
+  "Italie",
+  "Portugal",
+  "Luxembourg",
+  "Émirats arabes unis",
+  "Autre",
+];
+
+// Villes principales seulement par pays
+const CITIES_BY_COUNTRY: Record<string, string[]> = {
+  Maroc: ["Casablanca", "Rabat", "Marrakech", "Tanger", "Fès", "Autre"],
+  France: ["Paris", "Lyon", "Marseille", "Toulouse", "Lille", "Autre"],
+  Belgique: ["Bruxelles", "Anvers", "Gand", "Autre"],
+  Suisse: ["Genève", "Lausanne", "Zurich", "Autre"],
+  Canada: ["Montréal", "Québec", "Toronto", "Vancouver", "Autre"],
+  Espagne: ["Madrid", "Barcelone", "Valence", "Autre"],
+  Allemagne: ["Berlin", "Munich", "Hambourg", "Autre"],
+  "Royaume-Uni": ["Londres", "Manchester", "Birmingham", "Autre"],
+  "États-Unis": ["New York", "San Francisco", "Los Angeles", "Autre"],
+  "Pays-Bas": ["Amsterdam", "Rotterdam", "Utrecht", "Autre"],
+  Italie: ["Rome", "Milan", "Turin", "Autre"],
+  Portugal: ["Lisbonne", "Porto", "Autre"],
+  Luxembourg: ["Luxembourg-ville", "Autre"],
+  "Émirats arabes unis": ["Dubaï", "Abou Dabi", "Autre"],
+  Autre: ["Remote", "Autre"],
+};
 
 const emptyForm: JobPayload = {
   title: "",
@@ -39,6 +77,7 @@ export default function OffresPage() {
   const { isRecruteur } = useAuth();
   const jobsQuery = useRecruteurJobs();
   const createJob = useCreateJob();
+  const toggleJobStatus = useToggleJobStatus();
   const [showForm, setShowForm] = useState(false);
   const [form, setForm] = useState<JobPayload>(emptyForm);
   const [categorieOpen, setCategorieOpen] = useState(false);
@@ -46,6 +85,10 @@ export default function OffresPage() {
   const [contratOpen, setContratOpen] = useState(false);
   const [presenceOpen, setPresenceOpen] = useState(false);
   const [dispoOpen, setDispoOpen] = useState(false);
+  const [country, setCountry] = useState<string>("");
+  const [city, setCity] = useState<string>("");
+  const [countryOpen, setCountryOpen] = useState(false);
+  const [cityOpen, setCityOpen] = useState(false);
 
   if (!isRecruteur) {
     return (
@@ -59,8 +102,19 @@ export default function OffresPage() {
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
-    await createJob.mutateAsync(form);
+
+    const localisationFromSelectors =
+      city && country ? `${city}, ${country}` : undefined;
+
+    const payload: JobPayload = {
+      ...form,
+      localisation: localisationFromSelectors ?? form.localisation ?? "",
+    };
+
+    await createJob.mutateAsync(payload);
     setForm(emptyForm);
+    setCountry("");
+    setCity("");
     setShowForm(false);
   };
 
@@ -139,17 +193,110 @@ export default function OffresPage() {
               />
             </div>
 
-            {/* Localisation */}
-            <div className="sm:col-span-2">
-              <label className="block text-[10px] font-semibold uppercase tracking-[2px] text-white/40 mb-2">
-                Localisation
-              </label>
-              <input
-                value={form.localisation ?? ""}
-                onChange={(e) => update("localisation", e.target.value)}
-                className="input-premium"
-                placeholder="ex: Casablanca, Rabat, Remote..."
-              />
+            {/* Localisation : pays + ville */}
+            <div className="sm:col-span-2 grid grid-cols-1 sm:grid-cols-2 gap-4">
+              {/* Pays */}
+              <div className="relative">
+                <label className="block text-[10px] font-semibold uppercase tracking-[2px] text-white/40 mb-2">
+                  Pays
+                </label>
+                <button
+                  type="button"
+                  onClick={() => {
+                    setCountryOpen((v) => !v);
+                    setCityOpen(false);
+                  }}
+                  className="input-premium w-full flex items-center justify-between cursor-pointer text-left bg-white/[0.03] hover:bg-white/[0.06] border border-white/[0.08] rounded-xl"
+                >
+                  <span className="text-[13px] text-white/80 truncate">
+                    {country || "Sélectionnez un pays"}
+                  </span>
+                  <ChevronDown size={14} className="text-white/45" />
+                </button>
+
+                {countryOpen && (
+                  <div className="absolute left-0 top-full mt-2 w-full bg-[#050505]/95 border border-white/[0.08] rounded-2xl shadow-lg backdrop-blur-xl overflow-hidden z-50">
+                    <div>
+                      {COUNTRIES.map((p) => {
+                        const active = country === p;
+                        return (
+                          <button
+                            key={p}
+                            type="button"
+                            onClick={() => {
+                              setCountry(p);
+                              setCity("");
+                              setCountryOpen(false);
+                            }}
+                            className={`w-full flex items-center gap-2.5 px-4 py-3 text-left text-[13px] transition-colors focus:outline-none focus-visible:outline-none ${
+                              active
+                                ? "text-white bg-red-500/15"
+                                : "text-white/80 hover:text-white hover:bg-red-500/8"
+                            }`}
+                          >
+                            <span className="flex-1 truncate">{p}</span>
+                          </button>
+                        );
+                      })}
+                    </div>
+                  </div>
+                )}
+              </div>
+
+              {/* Ville */}
+              <div className="relative">
+                <label className="block text-[10px] font-semibold uppercase tracking-[2px] text-white/40 mb-2">
+                  Ville
+                </label>
+                <button
+                  type="button"
+                  onClick={() => {
+                    if (!country) return;
+                    setCityOpen((v) => !v);
+                    setCountryOpen(false);
+                  }}
+                  className={`input-premium w-full flex items-center justify-between cursor-pointer text-left rounded-xl border ${
+                    country
+                      ? "bg-white/[0.03] hover:bg-white/[0.06] border-white/[0.08]"
+                      : "bg-white/[0.01] border-white/[0.04] text-white/30 cursor-not-allowed"
+                  }`}
+                  disabled={!country}
+                >
+                  <span className="text-[13px] truncate">
+                    {country
+                      ? city || "Sélectionnez une ville"
+                      : "Choisissez un pays d’abord"}
+                  </span>
+                  <ChevronDown size={14} className="text-white/45" />
+                </button>
+
+                {country && cityOpen && (
+                  <div className="absolute left-0 top-full mt-2 w-full bg-[#050505]/95 border border-white/[0.08] rounded-2xl shadow-lg backdrop-blur-xl overflow-hidden z-50">
+                    <div>
+                      {(CITIES_BY_COUNTRY[country] ?? []).map((v) => {
+                        const active = city === v;
+                        return (
+                          <button
+                            key={v}
+                            type="button"
+                            onClick={() => {
+                              setCity(v);
+                              setCityOpen(false);
+                            }}
+                            className={`w-full flex items-center gap-2.5 px-4 py-3 text-left text-[13px] transition-colors focus:outline-none focus-visible:outline-none ${
+                              active
+                                ? "text-white bg-red-500/15"
+                                : "text-white/80 hover:text-white hover:bg-red-500/8"
+                            }`}
+                          >
+                            <span className="flex-1 truncate">{v}</span>
+                          </button>
+                        );
+                      })}
+                    </div>
+                  </div>
+                )}
+              </div>
             </div>
 
             {/* Type de poste */}
@@ -533,6 +680,9 @@ export default function OffresPage() {
                 ? (job as any).location_type
                 : null);
 
+            const status = (job as any).status ?? 'ACTIVE';
+            const isInactive = status === 'INACTIVE';
+
             return (
               <div
                 key={job.id}
@@ -570,9 +720,37 @@ export default function OffresPage() {
                     </div>
                   </div>
 
-                  {/* Colonne droite : date + urgence */}
+                  {/* Colonne droite : statut + date + urgence */}
                   <div className="text-right shrink-0 flex flex-col items-end gap-1 text-[11px] text-white/35">
-                    <span>{formatDate(job.created_at as any)}</span>
+                    {/* Bouton statut ACTIVE / INACTIVE */}
+                    <button
+                      type="button"
+                      onClick={() => {
+                        toggleJobStatus.mutate({
+                          jobId: job.id,
+                          nextStatus: isInactive ? "ACTIVE" : "INACTIVE",
+                        });
+                      }}
+                      className={`flex items-center gap-1 px-2 py-1 rounded-full border text-[11px] ${
+                        isInactive
+                          ? "border-white/15 text-white/45 hover:border-white/30"
+                          : "border-emerald-400/40 text-emerald-300 hover:border-emerald-300"
+                      }`}
+                    >
+                      {isInactive ? (
+                        <>
+                          <CircleSlash2 size={12} />
+                          <span>Inactive</span>
+                        </>
+                      ) : (
+                        <>
+                          <CheckCircle2 size={12} />
+                          <span>Active</span>
+                        </>
+                      )}
+                    </button>
+
+                    <span className="mt-1">{formatDate(job.created_at as any)}</span>
                     {job.urgent && (
                       <div className="mt-1">
                         <StatusBadge status="urgent" label="Urgent" />

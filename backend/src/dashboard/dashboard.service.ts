@@ -1156,6 +1156,7 @@ export class DashboardService {
         contrat,
         created_at,
         location_type,
+        status,
         candidate_postule ( id )
       `)
       .eq('user_id', userId)
@@ -1174,12 +1175,40 @@ export class DashboardService {
           typeof row.location_type === 'string' && row.location_type.trim()
             ? (row.location_type as string)
             : null,
+        status: (row.status as string) ?? 'ACTIVE',
         applicationCount: Array.isArray(row.candidate_postule)
           ? row.candidate_postule.length
           : 0,
       })) ?? [];
 
     return { jobs };
+  }
+
+  async updateRecruiterJobStatus(
+    userId: number,
+    jobId: number,
+    status: 'ACTIVE' | 'INACTIVE',
+  ): Promise<{ success: true }> {
+    if (!userId || Number.isNaN(userId)) {
+      throw new BadRequestException('userId invalide');
+    }
+    if (!jobId || Number.isNaN(jobId)) {
+      throw new BadRequestException('jobId invalide');
+    }
+
+    const { error } = await this.supabase
+      .from('jobs')
+      .update({ status })
+      .eq('id', jobId)
+      .eq('user_id', userId);
+
+    if (error) {
+      throw new BadRequestException(
+        error.message || "Erreur lors de la mise à jour du statut de l'offre",
+      );
+    }
+
+    return { success: true };
   }
 
   async getRecruiterOverview(

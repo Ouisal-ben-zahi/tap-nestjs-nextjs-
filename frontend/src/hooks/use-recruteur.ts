@@ -35,3 +35,20 @@ export function useCreateJob() {
     },
   });
 }
+
+export function useToggleJobStatus() {
+  const queryClient = useQueryClient();
+  const addToast = useUiStore((s) => s.addToast);
+
+  return useMutation({
+    mutationFn: (params: { jobId: number; nextStatus: 'ACTIVE' | 'INACTIVE' }) =>
+      recruteurService.updateJobStatus(params.jobId, params.nextStatus),
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ['recruteur', 'jobs'] });
+      queryClient.invalidateQueries({ queryKey: ['recruteur', 'overview'] });
+    },
+    onError: () => {
+      addToast({ message: "Impossible de changer le statut de l'offre", type: 'error' });
+    },
+  });
+}

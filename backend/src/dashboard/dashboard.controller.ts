@@ -86,6 +86,21 @@ export class DashboardController {
     return this.dashboardService.getRecruiterOverview(req.user.sub);
   }
 
+  @Post('recruteur/jobs/:jobId/status')
+  @UseGuards(AuthGuard('jwt'))
+  async updateRecruiterJobStatusByJwt(
+    @Req() req: any,
+    @Param('jobId') jobId: string,
+    @Body() body: { status: 'ACTIVE' | 'INACTIVE' },
+  ) {
+    const id = Number.parseInt(jobId, 10);
+    return this.dashboardService.updateRecruiterJobStatus(
+      req.user.sub,
+      id,
+      body.status,
+    );
+  }
+
   // === Legacy routes with userId in URL ===
 
   @Get('candidat/:userId')

@@ -10,4 +10,11 @@ export const recruteurService = {
 
   createJob: (payload: JobPayload) =>
     api.post<Job>('/dashboard/recruteur/jobs', payload).then((r) => r.data),
+
+  updateJobStatus: (jobId: number, status: 'ACTIVE' | 'INACTIVE') =>
+    api
+      .post<{ success: true }>(`/dashboard/recruteur/jobs/${jobId}/status`, {
+        status,
+      })
+      .then((r) => r.data),
 };
