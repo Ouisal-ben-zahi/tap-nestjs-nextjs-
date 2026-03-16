@@ -58,6 +58,7 @@ export interface RecruiterJobPayload {
   contrat?: string | null;
   niveau_seniorite?: string | null;
   entreprise?: string | null;
+  phone?: string | null;
 }
 
 export interface CandidatePortfolioPdfFiles {
@@ -1106,6 +1107,9 @@ export class DashboardService {
       contrat: payload.contrat ?? 'stage',
       niveau_seniorite: payload.niveau_seniorite ?? null,
       entreprise: payload.entreprise ?? null,
+      phone: payload.phone ?? null,
+      // Champ obligatoire côté BDD (jsonb NOT NULL) : on met un objet vide par défaut
+      embedding: {},
       user_id: userId,
     };
 

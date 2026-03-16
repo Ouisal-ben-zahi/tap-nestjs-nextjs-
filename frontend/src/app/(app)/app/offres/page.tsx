@@ -7,7 +7,7 @@ import EmptyState from "@/components/ui/EmptyState";
 import ErrorState from "@/components/ui/ErrorState";
 import StatusBadge from "@/components/ui/StatusBadge";
 import { Skeleton } from "@/components/ui/Skeleton";
-import { Briefcase, Plus, X, Send, MapPin, Clock, DollarSign, Users } from "lucide-react";
+import { Briefcase, Plus, X, Send, MapPin, Clock, DollarSign, Users, ChevronDown } from "lucide-react";
 import { formatDate } from "@/lib/utils";
 import type { JobPayload } from "@/types/recruteur";
 
@@ -16,13 +16,22 @@ const NIVEAUX = ["Junior", "Intermédiaire", "Senior", "Lead", "Manager"];
 const CONTRATS = ["CDI", "CDD", "Stage", "Freelance", "Alternance"];
 
 const emptyForm: JobPayload = {
-  titre: "",
-  description: "",
-  categorie: "Développement",
-  niveau: "Junior",
-  type_contrat: "CDI",
-  localisation: "",
+  title: "",
+  categorie_profil: "Développement",
+  niveau_attendu: null,
+  experience_min: "",
+  presence_sur_site: "",
+  reason: "",
+  main_mission: "",
+  tasks_other: "",
+  disponibilite: "",
+  salary_min: null,
+  salary_max: null,
   urgent: false,
+  contrat: "CDI",
+  niveau_seniorite: "Junior",
+  entreprise: "",
+  phone: "",
 };
 
 export default function OffresPage() {
@@ -31,6 +40,11 @@ export default function OffresPage() {
   const createJob = useCreateJob();
   const [showForm, setShowForm] = useState(false);
   const [form, setForm] = useState<JobPayload>(emptyForm);
+  const [categorieOpen, setCategorieOpen] = useState(false);
+  const [niveauOpen, setNiveauOpen] = useState(false);
+  const [contratOpen, setContratOpen] = useState(false);
+  const [presenceOpen, setPresenceOpen] = useState(false);
+  const [dispoOpen, setDispoOpen] = useState(false);
 
   if (!isRecruteur) {
     return (
@@ -85,50 +99,358 @@ export default function OffresPage() {
       {showForm && (
         <form onSubmit={handleSubmit} className="bg-zinc-900/50 border border-white/[0.06] rounded-2xl p-6 sm:p-8 mb-8 space-y-5">
           <div className="grid grid-cols-1 sm:grid-cols-2 gap-5">
+            {/* Titre sur toute la largeur */}
             <div className="sm:col-span-2">
-              <label className="block text-[10px] font-semibold uppercase tracking-[2px] text-white/40 mb-2">Titre du poste</label>
-              <input value={form.titre} onChange={(e) => update("titre", e.target.value)} className="input-premium" placeholder="ex: Développeur Full Stack" required />
+              <label className="block text-[10px] font-semibold uppercase tracking-[2px] text-white/40 mb-2">
+                Titre du poste
+              </label>
+              <input
+                value={form.title}
+                onChange={(e) => update("title", e.target.value)}
+                className="input-premium"
+                placeholder="ex: Développeur Full Stack"
+                required
+              />
+            </div>
+            
+            {/* Identité entreprise */}
+            <div>
+              <label className="block text-[10px] font-semibold uppercase tracking-[2px] text-white/40 mb-2">
+                Entreprise
+              </label>
+              <input
+                value={form.entreprise ?? ""}
+                onChange={(e) => update("entreprise", e.target.value)}
+                className="input-premium"
+                placeholder="Nom de l'entreprise"
+              />
             </div>
 
             <div>
-              <label className="block text-[10px] font-semibold uppercase tracking-[2px] text-white/40 mb-2">Catégorie</label>
-              <select value={form.categorie} onChange={(e) => update("categorie", e.target.value)} className="input-premium">
-                {CATEGORIES.map((c) => <option key={c} value={c}>{c}</option>)}
-              </select>
+              <label className="block text-[10px] font-semibold uppercase tracking-[2px] text-white/40 mb-2">
+                Téléphone (optionnel)
+              </label>
+              <input
+                value={form.phone ?? ""}
+                onChange={(e) => update("phone", e.target.value)}
+                className="input-premium"
+                placeholder="+212 6 12 34 56 78"
+              />
+            </div>
+
+            {/* Type de poste */}
+            <div className="relative">
+              <label className="block text-[10px] font-semibold uppercase tracking-[2px] text-white/40 mb-2">
+                Contrat
+              </label>
+              <button
+                type="button"
+                onClick={() => {
+                  setContratOpen((v) => !v);
+                  setCategorieOpen(false);
+                  setNiveauOpen(false);
+                }}
+                className="input-premium w-full flex items-center justify-between cursor-pointer text-left bg-white/[0.03] hover:bg-white/[0.06] border border-white/[0.08] rounded-xl"
+              >
+                <span className="text-[13px] text-white/80 truncate">
+                  {form.contrat ?? ""}
+                </span>
+                <ChevronDown size={14} className="text-white/45" />
+              </button>
+
+              {contratOpen && (
+                <div className="absolute left-0 top-full mt-2 w-full bg-[#050505]/95 border border-white/[0.08] rounded-2xl shadow-lg backdrop-blur-xl overflow-hidden z-50">
+                  <div>
+                    {CONTRATS.map((c) => {
+                      const active = form.contrat === c;
+                      return (
+                        <button
+                          key={c}
+                          type="button"
+                          onClick={() => {
+                            update("contrat", c);
+                            setContratOpen(false);
+                          }}
+                          className={`w-full flex items-center gap-2.5 px-4 py-3 text-left text-[13px] transition-colors focus:outline-none focus-visible:outline-none ${
+                            active
+                              ? "text-white bg-red-500/15"
+                              : "text-white/80 hover:text-white hover:bg-red-500/8"
+                          }`}
+                        >
+                          <span className="flex-1 truncate">{c}</span>
+                        </button>
+                      );
+                    })}
+                  </div>
+                </div>
+              )}
+            </div>
+
+            <div className="relative">
+              <label className="block text-[10px] font-semibold uppercase tracking-[2px] text-white/40 mb-2">
+                Catégorie
+              </label>
+              <button
+                type="button"
+                onClick={() => {
+                  setCategorieOpen((v) => !v);
+                  setNiveauOpen(false);
+                  setContratOpen(false);
+                }}
+                className="input-premium w-full flex items-center justify-between cursor-pointer text-left bg-white/[0.03] hover:bg-white/[0.06] border border-white/[0.08] rounded-xl"
+              >
+                <span className="text-[13px] text-white/80 truncate">
+                  {form.categorie_profil}
+                </span>
+                <ChevronDown size={14} className="text-white/45" />
+              </button>
+
+              {categorieOpen && (
+                <div className="absolute left-0 top-full mt-2 w-full bg-[#050505]/95 border border-white/[0.08] rounded-2xl shadow-lg backdrop-blur-xl overflow-hidden z-50">
+                  <div>
+                    {CATEGORIES.map((c) => {
+                      const active = form.categorie_profil === c;
+                      return (
+                        <button
+                          key={c}
+                          type="button"
+                          onClick={() => {
+                            update("categorie_profil", c);
+                            setCategorieOpen(false);
+                          }}
+                          className={`w-full flex items-center gap-2.5 px-4 py-3 text-left text-[13px] transition-colors focus:outline-none focus-visible:outline-none ${
+                            active
+                              ? "text-white bg-red-500/15"
+                              : "text-white/80 hover:text-white hover:bg-red-500/8"
+                          }`}
+                        >
+                          <span className="flex-1 truncate">{c}</span>
+                        </button>
+                      );
+                    })}
+                  </div>
+                </div>
+              )}
+            </div>
+
+            {/* Niveau + Expérience minimum */}
+            <div className="relative">
+              <label className="block text-[10px] font-semibold uppercase tracking-[2px] text-white/40 mb-2">
+                Niveau
+              </label>
+              <button
+                type="button"
+                onClick={() => {
+                  setNiveauOpen((v) => !v);
+                  setCategorieOpen(false);
+                  setContratOpen(false);
+                }}
+                className="input-premium w-full flex items-center justify-between cursor-pointer text-left bg-white/[0.03] hover:bg-white/[0.06] border border-white/[0.08] rounded-xl"
+              >
+                <span className="text-[13px] text-white/80 truncate">
+                  {form.niveau_seniorite ?? ""}
+                </span>
+                <ChevronDown size={14} className="text-white/45" />
+              </button>
+
+              {niveauOpen && (
+                <div className="absolute left-0 top-full mt-2 w-full bg-[#050505]/95 border border-white/[0.08] rounded-2xl shadow-lg backdrop-blur-xl overflow-hidden z-50">
+                  <div>
+                    {NIVEAUX.map((n) => {
+                      const active = form.niveau_seniorite === n;
+                      return (
+                        <button
+                          key={n}
+                          type="button"
+                          onClick={() => {
+                            update("niveau_seniorite", n);
+                            setNiveauOpen(false);
+                          }}
+                          className={`w-full flex items-center gap-2.5 px-4 py-3 text-left text-[13px] transition-colors focus:outline-none focus-visible:outline-none ${
+                            active
+                              ? "text-white bg-red-500/15"
+                              : "text-white/80 hover:text-white hover:bg-red-500/8"
+                          }`}
+                        >
+                          <span className="flex-1 truncate">{n}</span>
+                        </button>
+                      );
+                    })}
+                  </div>
+                </div>
+              )}
             </div>
 
             <div>
-              <label className="block text-[10px] font-semibold uppercase tracking-[2px] text-white/40 mb-2">Niveau</label>
-              <select value={form.niveau} onChange={(e) => update("niveau", e.target.value)} className="input-premium">
-                {NIVEAUX.map((n) => <option key={n} value={n}>{n}</option>)}
-              </select>
+              <label className="block text-[10px] font-semibold uppercase tracking-[2px] text-white/40 mb-2">
+                Expérience minimum
+              </label>
+              <input
+                value={form.experience_min ?? ""}
+                onChange={(e) => update("experience_min", e.target.value)}
+                className="input-premium"
+                placeholder="ex: 2 ans"
+              />
+            </div>
+
+            {/* Présence sur site + Disponibilité */}
+            <div className="relative">
+              <label className="block text-[10px] font-semibold uppercase tracking-[2px] text-white/40 mb-2">
+                Présence sur site
+              </label>
+              <button
+                type="button"
+                onClick={() => {
+                  setPresenceOpen((v) => !v);
+                  setDispoOpen(false);
+                }}
+                className="input-premium w-full flex items-center justify-between cursor-pointer text-left bg-white/[0.03] hover:bg-white/[0.06] border border-white/[0.08] rounded-xl"
+              >
+                <span className="text-[13px] text-white/80 truncate">
+                  {form.presence_sur_site || "Sélectionnez une option"}
+                </span>
+                <ChevronDown size={14} className="text-white/45" />
+              </button>
+
+              {presenceOpen && (
+                <div className="absolute left-0 top-full mt-2 w-full bg-[#050505]/95 border border-white/[0.08] rounded-2xl shadow-lg backdrop-blur-xl overflow-hidden z-50">
+                  <div>
+                    {["Sur site", "Hybride", "Remote"].map((p) => {
+                      const active = form.presence_sur_site === p;
+                      return (
+                        <button
+                          key={p}
+                          type="button"
+                          onClick={() => {
+                            update("presence_sur_site", p);
+                            setPresenceOpen(false);
+                          }}
+                          className={`w-full flex items-center gap-2.5 px-4 py-3 text-left text-[13px] transition-colors focus:outline-none focus-visible:outline-none ${
+                            active
+                              ? "text-white bg-red-500/15"
+                              : "text-white/80 hover:text-white hover:bg-red-500/8"
+                          }`}
+                        >
+                          <span className="flex-1 truncate">{p}</span>
+                        </button>
+                      );
+                    })}
+                  </div>
+                </div>
+              )}
+            </div>
+
+            <div className="relative">
+              <label className="block text-[10px] font-semibold uppercase tracking-[2px] text-white/40 mb-2">
+                Disponibilité
+              </label>
+              <button
+                type="button"
+                onClick={() => {
+                  setDispoOpen((v) => !v);
+                  setPresenceOpen(false);
+                }}
+                className="input-premium w-full flex items-center justify-between cursor-pointer text-left bg-white/[0.03] hover:bg-white/[0.06] border border-white/[0.08] rounded-xl"
+              >
+                <span className="text-[13px] text-white/80 truncate">
+                  {form.disponibilite || "Sélectionnez une option"}
+                </span>
+                <ChevronDown size={14} className="text-white/45" />
+              </button>
+
+              {dispoOpen && (
+                <div className="absolute left-0 top-full mt-2 w-full bg-[#050505]/95 border border-white/[0.08] rounded-2xl shadow-lg backdrop-blur-xl overflow-hidden z-50">
+                  <div>
+                    {["Immédiate", "1 mois", "2 mois et plus", "Autre"].map((d) => {
+                      const active = form.disponibilite === d;
+                      return (
+                        <button
+                          key={d}
+                          type="button"
+                          onClick={() => {
+                            update("disponibilite", d);
+                            setDispoOpen(false);
+                          }}
+                          className={`w-full flex items-center gap-2.5 px-4 py-3 text-left text-[13px] transition-colors focus:outline-none focus-visible:outline-none ${
+                            active
+                              ? "text-white bg-red-500/15"
+                              : "text-white/80 hover:text-white hover:bg-red-500/8"
+                          }`}
+                        >
+                          <span className="flex-1 truncate">{d}</span>
+                        </button>
+                      );
+                    })}
+                  </div>
+                </div>
+              )}
+            </div>
+
+            {/* Salaire min | Salaire max */}
+            <div>
+              <label className="block text-[10px] font-semibold uppercase tracking-[2px] text-white/40 mb-2">
+                Salaire min (MAD)
+              </label>
+              <input
+                type="number"
+                value={form.salary_min ?? ""}
+                onChange={(e) =>
+                  update("salary_min", e.target.value ? Number(e.target.value) : null)
+                }
+                className="input-premium"
+                placeholder="5000"
+              />
             </div>
 
             <div>
-              <label className="block text-[10px] font-semibold uppercase tracking-[2px] text-white/40 mb-2">Contrat</label>
-              <select value={form.type_contrat} onChange={(e) => update("type_contrat", e.target.value)} className="input-premium">
-                {CONTRATS.map((c) => <option key={c} value={c}>{c}</option>)}
-              </select>
-            </div>
-
-            <div>
-              <label className="block text-[10px] font-semibold uppercase tracking-[2px] text-white/40 mb-2">Localisation</label>
-              <input value={form.localisation} onChange={(e) => update("localisation", e.target.value)} className="input-premium" placeholder="ex: Casablanca" required />
-            </div>
-
-            <div>
-              <label className="block text-[10px] font-semibold uppercase tracking-[2px] text-white/40 mb-2">Salaire min (MAD)</label>
-              <input type="number" value={form.salaire_min || ""} onChange={(e) => update("salaire_min", Number(e.target.value) || undefined)} className="input-premium" placeholder="5000" />
-            </div>
-
-            <div>
-              <label className="block text-[10px] font-semibold uppercase tracking-[2px] text-white/40 mb-2">Salaire max (MAD)</label>
-              <input type="number" value={form.salaire_max || ""} onChange={(e) => update("salaire_max", Number(e.target.value) || undefined)} className="input-premium" placeholder="15000" />
+              <label className="block text-[10px] font-semibold uppercase tracking-[2px] text-white/40 mb-2">
+                Salaire max (MAD)
+              </label>
+              <input
+                type="number"
+                value={form.salary_max ?? ""}
+                onChange={(e) =>
+                  update("salary_max", e.target.value ? Number(e.target.value) : null)
+                }
+                className="input-premium"
+                placeholder="15000"
+              />
             </div>
 
             <div className="sm:col-span-2">
-              <label className="block text-[10px] font-semibold uppercase tracking-[2px] text-white/40 mb-2">Description</label>
-              <textarea value={form.description} onChange={(e) => update("description", e.target.value)} className="input-premium min-h-[120px] resize-y" placeholder="Décrivez le poste, les missions et les compétences requises..." required />
+              <label className="block text-[10px] font-semibold uppercase tracking-[2px] text-white/40 mb-2">
+                Contexte / raison du poste
+              </label>
+              <textarea
+                value={form.reason ?? ""}
+                onChange={(e) => update("reason", e.target.value)}
+                className="input-premium min-h-[80px] resize-y"
+                placeholder="Pourquoi ce poste est ouvert ?"
+              />
+            </div>
+
+            <div className="sm:col-span-2">
+              <label className="block text-[10px] font-semibold uppercase tracking-[2px] text-white/40 mb-2">
+                Mission principale
+              </label>
+              <textarea
+                value={form.main_mission ?? ""}
+                onChange={(e) => update("main_mission", e.target.value)}
+                className="input-premium min-h-[100px] resize-y"
+                placeholder="Décrivez la mission principale et les responsabilités clés..."
+              />
+            </div>
+
+            <div className="sm:col-span-2">
+              <label className="block text-[10px] font-semibold uppercase tracking-[2px] text-white/40 mb-2">
+                Autres tâches
+              </label>
+              <textarea
+                value={form.tasks_other ?? ""}
+                onChange={(e) => update("tasks_other", e.target.value)}
+                className="input-premium min-h-[80px] resize-y"
+                placeholder="Listez les tâches complémentaires, outils, stack, etc."
+              />
             </div>
 
             <div className="flex items-center gap-3">

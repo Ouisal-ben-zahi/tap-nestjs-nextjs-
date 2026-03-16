@@ -102,6 +102,7 @@ CREATE TABLE jobs (
   niveau_seniorite varchar(20),
   created_at       timestamptz NOT NULL DEFAULT now(),
   entreprise       varchar(50),
+  phone            varchar(30),
   embedding        jsonb NOT NULL,
   user_id          integer
 );

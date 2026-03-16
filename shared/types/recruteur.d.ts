@@ -14,6 +14,7 @@ export interface RecruiterJobPayload {
     contrat?: string | null;
     niveau_seniorite?: string | null;
     entreprise?: string | null;
+    phone?: string | null;
 }
 export interface RecruiterOverviewStats {
     totalJobs: number;
