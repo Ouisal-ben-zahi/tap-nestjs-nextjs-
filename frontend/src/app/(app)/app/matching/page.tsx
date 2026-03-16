@@ -26,7 +26,7 @@ export default function MatchingPage() {
     if (!isCandidat) return;
     if (statsQuery.isLoading || statsQuery.isError) return;
     if (!hasProfile) {
-      router.push("/onboarding-candidat");
+      router.push("/app/onboarding-candidat");
     }
   }, [isCandidat, hasProfile, statsQuery.isLoading, statsQuery.isError, router]);
 

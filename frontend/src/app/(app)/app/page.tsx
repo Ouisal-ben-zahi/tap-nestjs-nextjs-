@@ -59,7 +59,7 @@ export default function DashboardPage() {
   const features = isRecruteur ? recruteurFeatures : candidatFeatures;
   const firstName = user?.email?.split("@")[0] || "";
 
-  // Si candidat connecté mais aucun profil candidat en base, rediriger vers la page publique d'onboarding
+  // Si candidat connecté mais aucun profil candidat en base, rediriger vers onboarding
   useEffect(() => {
     if (!isCandidat) return;
     if (statsQuery.isLoading || statsQuery.isError) return;
@@ -67,7 +67,7 @@ export default function DashboardPage() {
     const hasProfile =
       stats?.candidateId !== null && stats?.candidateId !== undefined;
     if (!hasProfile) {
-      router.push("/onboarding-candidat");
+      router.push("/app/onboarding-candidat");
     }
   }, [isCandidat, statsQuery.isLoading, statsQuery.isError, statsQuery.data, router]);
 

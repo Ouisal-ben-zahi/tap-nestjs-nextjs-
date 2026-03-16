@@ -13,44 +13,44 @@ const wizardSteps = [
     title: "Comprendre ton profil",
     subtitle: "Qui tu es",
     aiMessage:
-      "👋 Salut ! Avant de commencer, laisse-moi t'expliquer ce que je vais faire : je vais analyser ton profil pour comprendre ton contexte et adapter les opportunités qui te correspondent vraiment.",
+      " Salut ! Avant de commencer, laisse-moi t'expliquer ce que je vais faire : je vais analyser ton profil pour comprendre ton contexte et adapter les opportunités qui te correspondent vraiment.",
     aiExplanation:
-      "💡 Pourquoi je demande ça ? Ces informations m'aident à comprendre ton contexte et à filtrer les opportunités qui matchent vraiment avec ta situation.",
+      " Pourquoi je demande ça ? Ces informations m'aident à comprendre ton contexte et à filtrer les opportunités qui matchent vraiment avec ta situation.",
     whatAiDoes:
-      "🔍 Une fois que tu auras rempli ces informations, j'analyserai ton profil pour créer une carte d'identité professionnelle personnalisée.",
+      "Une fois que tu auras rempli ces informations, j'analyserai ton profil pour créer une carte d'identité professionnelle personnalisée.",
   },
   {
     id: 2,
     title: "Ton objectif professionnel",
     subtitle: "Ce que tu veux",
     aiMessage:
-      "🎯 Parfait ! Je vais structurer tes aspirations pour créer un profil qui attire les bonnes opportunités.",
+      "Parfait ! Je vais structurer tes aspirations pour créer un profil qui attire les bonnes opportunités.",
     aiExplanation:
-      "💡 Plus je comprends ce que tu veux, mieux je peux structurer ta candidature pour attirer les bonnes opportunités.",
+      "Plus je comprends ce que tu veux, mieux je peux structurer ta candidature pour attirer les bonnes opportunités.",
     whatAiDoes:
-      "🔍 Je transforme tes objectifs en un profil ciblé qui parle directement aux recruteurs.",
+      "Je transforme tes objectifs en un profil ciblé qui parle directement aux recruteurs.",
   },
   {
     id: 3,
     title: "Tes compétences",
     subtitle: "Ce que tu sais faire",
     aiMessage:
-      "💼 Super ! Je vais analyser ton CV ou ton LinkedIn pour extraire automatiquement tes compétences, expériences et réalisations.",
+      "Super ! Je vais analyser ton CV ou ton LinkedIn pour extraire automatiquement tes compétences, expériences et réalisations.",
     aiExplanation:
-      "💡 Au lieu de te faire remplir un long formulaire, je lis directement ton CV pour gagner du temps.",
+      "Au lieu de te faire remplir un long formulaire, je lis directement ton CV pour gagner du temps.",
     whatAiDoes:
-      "🔍 J'utilise l'IA pour extraire automatiquement tes compétences et expériences depuis ton CV ou LinkedIn.",
+      "J'utilise l'IA pour extraire automatiquement tes compétences et expériences depuis ton CV ou LinkedIn.",
   },
   {
     id: 4,
     title: "Validation & génération",
     subtitle: "Ton profil est prêt",
     aiMessage:
-      "✨ Excellent ! Ton profil est complet. Je vais générer une Talent Card et structurer ton profil pour les recruteurs.",
+      "Excellent ! Ton profil est complet. Je vais générer une Talent Card et structurer ton profil pour les recruteurs.",
     aiExplanation:
-      "💡 Tu obtiendras un profil structuré, prêt à être utilisé pour le matching et les candidatures.",
+      "Tu obtiendras un profil structuré, prêt à être utilisé pour le matching et les candidatures.",
     whatAiDoes:
-      "🔍 Je génère et sauvegarde ton profil pour qu'il puisse être utilisé par l'IA et les recruteurs.",
+      "Je génère et sauvegarde ton profil pour qu'il puisse être utilisé par l'IA et les recruteurs.",
   },
 ];
 
