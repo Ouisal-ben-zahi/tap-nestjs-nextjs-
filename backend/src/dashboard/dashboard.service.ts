@@ -48,6 +48,7 @@ export interface RecruiterJobPayload {
   niveau_attendu?: string | null;
   experience_min?: string | null;
   presence_sur_site?: string | null;
+  localisation?: string | null;
   reason?: string | null;
   main_mission?: string | null;
   tasks_other?: string | null;
@@ -90,7 +91,7 @@ export interface PublicJobItem {
   categorie_profil: string | null;
   created_at: string | null;
   urgent: boolean;
-  location_type: any | null;
+  location_type: string | null;
 }
 
 export interface CandidateScoreFromJson {
@@ -1108,6 +1109,11 @@ export class DashboardService {
       niveau_seniorite: payload.niveau_seniorite ?? null,
       entreprise: payload.entreprise ?? null,
       phone: payload.phone ?? null,
+      location_type:
+        typeof payload.localisation === 'string' &&
+        payload.localisation.trim()
+          ? payload.localisation.trim()
+          : null,
       // Champ obligatoire côté BDD (jsonb NOT NULL) : on met un objet vide par défaut
       embedding: {},
       user_id: userId,
@@ -1137,8 +1143,7 @@ export class DashboardService {
 
     const { data, error } = await this.supabase
       .from('jobs')
-      .select(
-        `
+      .select(`
         id,
         title,
         categorie_profil,
@@ -1150,9 +1155,9 @@ export class DashboardService {
         entreprise,
         contrat,
         created_at,
+        location_type,
         candidate_postule ( id )
-      `,
-      )
+      `)
       .eq('user_id', userId)
       .order('created_at', { ascending: false });
 
@@ -1165,7 +1170,11 @@ export class DashboardService {
     const jobs =
       (data ?? []).map((row: any) => ({
         ...row,
-        applications_count: Array.isArray(row.candidate_postule)
+        localisation:
+          typeof row.location_type === 'string' && row.location_type.trim()
+            ? (row.location_type as string)
+            : null,
+        applicationCount: Array.isArray(row.candidate_postule)
           ? row.candidate_postule.length
           : 0,
       })) ?? [];
@@ -1410,7 +1419,10 @@ export class DashboardService {
       categorie_profil: (row.categorie_profil as string) ?? null,
       created_at: (row.created_at as string) ?? null,
       urgent: Boolean(row.urgent),
-      location_type: row.location_type ?? null,
+      location_type:
+        typeof row.location_type === 'string' && row.location_type.trim()
+          ? (row.location_type as string)
+          : null,
     }));
 
     return { jobs };

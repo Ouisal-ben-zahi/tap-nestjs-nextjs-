@@ -4,6 +4,7 @@ export interface RecruiterJobPayload {
     niveau_attendu?: string | null;
     experience_min?: string | null;
     presence_sur_site?: string | null;
+    localisation?: string | null;
     reason?: string | null;
     main_mission?: string | null;
     tasks_other?: string | null;
@@ -49,5 +50,5 @@ export interface PublicJobItem {
     categorie_profil: string | null;
     created_at: string | null;
     urgent: boolean;
-    location_type: any | null;
+    location_type: string | null;
 }

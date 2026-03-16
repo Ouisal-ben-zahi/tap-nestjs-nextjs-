@@ -7,7 +7,7 @@ import EmptyState from "@/components/ui/EmptyState";
 import ErrorState from "@/components/ui/ErrorState";
 import StatusBadge from "@/components/ui/StatusBadge";
 import { Skeleton } from "@/components/ui/Skeleton";
-import { Briefcase, Plus, X, Send, MapPin, Clock, DollarSign, Users, ChevronDown } from "lucide-react";
+import { Briefcase, Plus, X, Send, MapPin, Clock, DollarSign, Users, ChevronDown, CheckCircle2, CircleSlash2 } from "lucide-react";
 import { formatDate } from "@/lib/utils";
 import type { JobPayload } from "@/types/recruteur";
 
@@ -21,6 +21,7 @@ const emptyForm: JobPayload = {
   niveau_attendu: null,
   experience_min: "",
   presence_sur_site: "",
+  localisation: "",
   reason: "",
   main_mission: "",
   tasks_other: "",
@@ -135,6 +136,19 @@ export default function OffresPage() {
                 onChange={(e) => update("phone", e.target.value)}
                 className="input-premium"
                 placeholder="+212 6 12 34 56 78"
+              />
+            </div>
+
+            {/* Localisation */}
+            <div className="sm:col-span-2">
+              <label className="block text-[10px] font-semibold uppercase tracking-[2px] text-white/40 mb-2">
+                Localisation
+              </label>
+              <input
+                value={form.localisation ?? ""}
+                onChange={(e) => update("localisation", e.target.value)}
+                className="input-premium"
+                placeholder="ex: Casablanca, Rabat, Remote..."
               />
             </div>
 
@@ -510,38 +524,65 @@ export default function OffresPage() {
         />
       ) : (
         <div className="space-y-3">
-          {jobsQuery.data.jobs.map((job) => (
-            <div key={job.id} className="bg-zinc-900/50 border border-white/[0.06] rounded-xl p-5 hover:border-white/[0.1] transition group">
-              <div className="flex items-start justify-between gap-4">
-                <div className="flex-1 min-w-0">
-                  <div className="flex items-center gap-3 mb-2">
-                    <h3 className="text-[15px] font-semibold text-white truncate">{job.titre}</h3>
-                    {job.urgent && <StatusBadge status="urgent" label="Urgent" />}
+          {jobsQuery.data.jobs.map((job) => {
+            const titre = (job as any).titre ?? job.title ?? "Offre sans titre";
+            const localisation =
+              (job as any).localisation ??
+              (typeof (job as any).location_type === "string" &&
+              (job as any).location_type.trim()
+                ? (job as any).location_type
+                : null);
+
+            return (
+              <div
+                key={job.id}
+                className="bg-zinc-900/50 border border-white/[0.06] rounded-xl p-5 hover:border-white/[0.1] transition group"
+              >
+                <div className="flex items-start justify-between gap-4">
+                  {/* Colonne gauche : titre + 2 icônes */}
+                  <div className="flex-1 min-w-0">
+                    <h3 className="text-[15px] font-semibold text-white truncate">
+                      {titre}
+                    </h3>
+
+                    {/* 2 icônes sous le titre : localisation + candidatures */}
+                    <div className="mt-2 flex flex-wrap items-center gap-3 text-[12px] text-white/50">
+                      {/* Localisation avec tooltip au hover */}
+                      <button
+                        type="button"
+                        className="relative group flex items-center gap-2"
+                      >
+                        <MapPin size={14} className="text-white/60 group-hover:text-white" />
+                        <span className="sr-only">Localisation</span>
+                        <span className="pointer-events-none absolute -bottom-7 left-1/2 -translate-x-1/2 whitespace-nowrap rounded-md bg-black px-2 py-1 text-[11px] text-white/90 opacity-0 group-hover:opacity-100 group-hover:translate-y-0 translate-y-1 transition-all">
+                          {localisation || "Localisation non renseignée"}
+                        </span>
+                      </button>
+
+                      {/* Icône + nombre de candidatures juste à côté */}
+                      <div className="flex items-center gap-2">
+                        <Users size={14} className="text-white/60" />
+                        <span className="text-white/70">
+                          {(job.applicationCount ?? 0)} candidature
+                          {(job.applicationCount ?? 0) !== 1 ? "s" : ""}
+                        </span>
+                      </div>
+                    </div>
                   </div>
-                  <div className="flex flex-wrap items-center gap-3 text-[12px] text-white/40">
-                    <span className="flex items-center gap-1"><MapPin size={12} />{job.localisation}</span>
-                    <span className="flex items-center gap-1"><Clock size={12} />{job.type_contrat}</span>
-                    <span className="flex items-center gap-1"><Users size={12} />{job.niveau}</span>
-                    {(job.salaire_min || job.salaire_max) && (
-                      <span className="flex items-center gap-1">
-                        <DollarSign size={12} />
-                        {job.salaire_min && job.salaire_max ? `${job.salaire_min}-${job.salaire_max} MAD` : job.salaire_min ? `À partir de ${job.salaire_min} MAD` : `Jusqu'à ${job.salaire_max} MAD`}
-                      </span>
+
+                  {/* Colonne droite : date + urgence */}
+                  <div className="text-right shrink-0 flex flex-col items-end gap-1 text-[11px] text-white/35">
+                    <span>{formatDate(job.created_at as any)}</span>
+                    {job.urgent && (
+                      <div className="mt-1">
+                        <StatusBadge status="urgent" label="Urgent" />
+                      </div>
                     )}
                   </div>
-                  <p className="text-white/30 text-[12px] mt-2 line-clamp-2">{job.description}</p>
-                </div>
-                <div className="text-right shrink-0">
-                  <div className="text-[11px] text-white/30">{formatDate(job.created_at)}</div>
-                  {job.applicationCount !== undefined && (
-                    <div className="mt-1 text-[12px] text-tap-red/70 font-medium">
-                      {job.applicationCount} candidature{job.applicationCount !== 1 ? "s" : ""}
-                    </div>
-                  )}
                 </div>
               </div>
-            </div>
-          ))}
+            );
+          })}
         </div>
       )}
     </div>
