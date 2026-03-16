@@ -1,6 +1,9 @@
 "use client";
 
+import { useEffect } from "react";
+import { useRouter } from "next/navigation";
 import { useAuth } from "@/hooks/use-auth";
+import { useCandidatStats } from "@/hooks/use-candidat";
 import CandidatDashboard from "@/components/app/dashboard/CandidatDashboard";
 import RecruteurDashboard from "@/components/app/dashboard/RecruteurDashboard";
 import Link from "next/link";
@@ -46,10 +49,27 @@ const recruteurFeatures: Feature[] = [
 ];
 
 export default function DashboardPage() {
+  const router = useRouter();
   const { user } = useAuth();
   const isRecruteur = user?.role === "recruteur";
+  const isCandidat = user?.role === "candidat";
+  const statsQuery = useCandidatStats({
+    enabled: isCandidat,
+  } as any);
   const features = isRecruteur ? recruteurFeatures : candidatFeatures;
   const firstName = user?.email?.split("@")[0] || "";
+
+  // Si candidat connecté mais aucun profil candidat en base, rediriger vers la page publique d'onboarding
+  useEffect(() => {
+    if (!isCandidat) return;
+    if (statsQuery.isLoading || statsQuery.isError) return;
+    const stats = statsQuery.data;
+    const hasProfile =
+      stats?.candidateId !== null && stats?.candidateId !== undefined;
+    if (!hasProfile) {
+      router.push("/onboarding-candidat");
+    }
+  }, [isCandidat, statsQuery.isLoading, statsQuery.isError, statsQuery.data, router]);
 
   return (
     <div className="max-w-[1100px] mx-auto">
