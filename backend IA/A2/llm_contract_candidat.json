@@ -1,0 +1,502 @@
+{
+  "contract_version": "LLM_PROFILE_EVAL_V2_DISCRETE",
+  "description": "Contrat d'interface entre le LLM et le moteur de scoring",
+  
+  "instructions_llm": {
+    "langue": "FR",
+    "format": "Retourner STRICTEMENT un JSON valide respectant exactement la structure de exemple_output_valide.",
+    "no_scores": "Ne JAMAIS produire de score numérique. Seulement des valeurs discrètes.",
+    "closed_lists_only": "TOUJOURS choisir une valeur parmi celles proposées pour chaque champ ENUM.",
+    "no_extra_fields": "Ne PAS ajouter de champs non définis dans ce contrat.",
+    "no_weighting": "Ne JAMAIS appliquer de pondération ou multiplicateur.",
+    "no_global_judgement": "Ne JAMAIS produire de score global ou de décision finale.",
+    "role": "Tu es un évaluateur expert de profils professionnels. Ta mission est d'analyser factuellement un profil et de retourner une évaluation structurée SANS calcul.",
+    "objectivity": "Base-toi UNIQUEMENT sur les faits présents dans le profil. Évite les suppositions.",
+    "communication_from_soft_skills": "Quand le prompt contient un bloc 'SOFT SKILLS DECLARES PAR LE CANDIDAT', la section 'communication' du JSON doit être remplie UNIQUEMENT à partir de ce texte (qualité des exemples du candidat : clarté, structure, précision du vocabulaire, densité de l'information). Ne pas déduire la communication du profil/TalentCard dans ce cas."
+  },
+  
+  "schema_output": {
+    "profil_contexte": {
+      "niveau_profil": {
+        "type": "ENUM",
+        "values": ["ETUDIANT", "JUNIOR", "INTERMEDIAIRE", "SENIOR", "LEAD"],
+        "description": "Niveau d'expérience global basé sur années et responsabilités",
+        "guidelines": {
+          "ETUDIANT": "0-1 an, stage, apprentissage",
+          "JUNIOR": "1-3 ans, exécution supervisée",
+          "INTERMEDIAIRE": "3-7 ans, autonomie technique",
+          "SENIOR": "7-12 ans, expertise reconnue, mentorat",
+          "LEAD": "12+ ans, direction technique/stratégique"
+        }
+      },
+      
+      "type_parcours": {
+        "type": "ENUM",
+        "values": ["ACADEMIQUE", "CORPORATE", "ENTREPRENEURIAL", "FREELANCE", "MIXTE"],
+        "description": "Nature dominante du parcours professionnel",
+        "guidelines": {
+          "ACADEMIQUE": "Recherche, enseignement, publications",
+          "CORPORATE": "Grandes entreprises, progression hiérarchique",
+          "ENTREPRENEURIAL": "Startup, création, innovation",
+          "FREELANCE": "Missions indépendantes, clients multiples",
+          "MIXTE": "Combinaison de 2+ types ci-dessus"
+        }
+      },
+      
+      "mobilite_geographique": {
+        "type": "ENUM",
+        "values": ["LOCALE", "NATIONALE", "INTERNATIONALE"],
+        "description": "Étendue géographique des expériences"
+      }
+    },
+    
+    "impact": {
+      "preuve_precision": {
+        "type": "ENUM",
+        "values": ["AUCUNE", "QUALITATIVE", "CHIFFREE"],
+        "description": "Niveau de preuve des impacts déclarés",
+        "guidelines": {
+          "AUCUNE": "Pas de métriques, descriptions vagues",
+          "QUALITATIVE": "Descriptions détaillées sans chiffres précis",
+          "CHIFFREE": "Métriques quantifiées (%, €, temps, users, etc.)"
+        }
+      },
+      
+      "ampleur": {
+        "type": "ENUM",
+        "values": ["FAIBLE", "MODEREE", "MAJEURE"],
+        "description": "Magnitude de l'impact relatif au contexte",
+        "guidelines": {
+          "FAIBLE": "Impact limité, incrémental",
+          "MODEREE": "Impact notable, amélioration significative",
+          "MAJEURE": "Impact structurant, transformation"
+        }
+      },
+      
+      "portee": {
+        "type": "ENUM",
+        "values": ["LOCALE", "EQUIPE", "ORGANISATION", "MARCHE"],
+        "description": "Étendue de l'impact",
+        "guidelines": {
+          "LOCALE": "Périmètre individuel ou projet isolé",
+          "EQUIPE": "Impact sur l'équipe/département",
+          "ORGANISATION": "Impact sur toute l'organisation",
+          "MARCHE": "Impact externe, clients, marché"
+        }
+      },
+      
+      "nature_impact": {
+        "type": "ENUM",
+        "values": ["TECHNIQUE", "BUSINESS", "ORGANISATIONNEL", "SCIENTIFIQUE", "REGLEMENTAIRE", "CREATIF", "OPERATIONNEL"],
+        "description": "Type dominant d'impact créé"
+      },
+      
+      "maturite_relative": {
+        "type": "ENUM",
+        "values": ["ATTENDU_NIVEAU", "AU_DESSUS_NIVEAU", "EXCEPTIONNEL"],
+        "description": "Impact par rapport au niveau d'expérience",
+        "guidelines": {
+          "ATTENDU_NIVEAU": "Impact cohérent avec le niveau",
+          "AU_DESSUS_NIVEAU": "Impact supérieur à la moyenne du niveau",
+          "EXCEPTIONNEL": "Impact rare pour ce niveau d'expérience"
+        }
+      },
+      
+      "repetition_impact": {
+        "type": "ENUM",
+        "values": ["ISOLE", "REPETE", "STRUCTUREL"],
+        "description": "Fréquence des impacts significatifs",
+        "guidelines": {
+          "ISOLE": "1-2 impacts mentionnés",
+          "REPETE": "3-5 impacts sur différents postes",
+          "STRUCTUREL": "Pattern cohérent d'impacts à chaque poste"
+        }
+      }
+    },
+    
+    "complexite": {
+      "niveau_max": {
+        "type": "ENUM",
+        "values": ["STANDARD", "AVANCE", "CRITIQUE"],
+        "description": "Complexité maximale rencontrée",
+        "guidelines": {
+          "STANDARD": "Problèmes classiques, solutions connues",
+          "AVANCE": "Problèmes complexes, solutions sophistiquées",
+          "CRITIQUE": "Problèmes stratégiques, enjeux majeurs"
+        }
+      },
+      
+      "type_problemes": {
+        "type": "ENUM",
+        "values": ["EXECUTION", "OPTIMISATION", "ARCHITECTURE", "RECHERCHE", "STRATEGIE"],
+        "description": "Type dominant de problèmes traités",
+        "guidelines": {
+          "EXECUTION": "Mise en œuvre de solutions définies",
+          "OPTIMISATION": "Amélioration de l'existant",
+          "ARCHITECTURE": "Conception de systèmes complexes",
+          "RECHERCHE": "Investigation, innovation, découverte",
+          "STRATEGIE": "Vision, orientation, décisions structurantes"
+        }
+      },
+      
+      "environnement": {
+        "type": "ENUM",
+        "values": ["ACADEMIQUE", "STARTUP", "ENTREPRISE", "REGLEMENTE", "INDUSTRIEL"],
+        "description": "Environnement de travail dominant"
+      }
+    },
+    
+    "hard_skills": {
+      "niveau_maitrise_global": {
+        "type": "ENUM",
+        "values": ["ACADEMIQUE", "OPERATIONNEL", "AVANCE", "EXPERTISE"],
+        "description": "Niveau de maîtrise technique global",
+        "guidelines": {
+          "ACADEMIQUE": "Connaissances théoriques, peu de pratique",
+          "OPERATIONNEL": "Utilisation courante, autonomie de base",
+          "AVANCE": "Maîtrise avancée, résolution problèmes complexes",
+          "EXPERTISE": "Expert reconnu, référent technique"
+        }
+      },
+      
+      "transversalite_competences": {
+        "type": "ENUM",
+        "values": ["FAIBLE", "MOYENNE", "FORTE"],
+        "description": "Diversité des compétences techniques",
+        "guidelines": {
+          "FAIBLE": "1-2 domaines techniques",
+          "MOYENNE": "3-4 domaines complémentaires",
+          "FORTE": "5+ domaines ou stack complet"
+        }
+      },
+      
+      "autonomie_technique": {
+        "type": "ENUM",
+        "values": ["ASSISTE", "SEMI_AUTONOME", "AUTONOME", "REFERENT"],
+        "description": "Degré d'autonomie technique",
+        "guidelines": {
+          "ASSISTE": "Besoin de supervision constante",
+          "SEMI_AUTONOME": "Autonomie sur tâches définies",
+          "AUTONOME": "Autonomie complète, initiative",
+          "REFERENT": "Autonomie + guide les autres"
+        }
+      }
+    },
+    
+    "progression": {
+    "technique": {
+      "type": "ENUM",
+      "values": ["AUCUNE", "MODEREE", "FORTE"],
+      "description": "Évolution mesurable du niveau technique au fil des expériences.",
+      "guidelines": {
+        "AUCUNE": "Postes similaires en complexité technique. Même type de missions. Pas d’augmentation visible du périmètre technique.",
+        "MODEREE": "Augmentation progressive de la complexité des projets, des technologies utilisées ou du niveau d’autonomie technique.",
+        "FORTE": "Passage clair vers des responsabilités techniques plus complexes (ex : développeur → lead → architecte), gestion d’architectures, standards ou projets critiques."
+      },
+      "evaluation_basis": [
+        "Comparaison de la complexité des missions entre les postes",
+        "Évolution des technologies utilisées",
+        "Élargissement du périmètre technique"
+      ]
+    },
+
+    "hierarchique": {
+      "type": "ENUM",
+      "values": ["AUCUNE", "MODEREE", "FORTE"],
+      "description": "Évolution du niveau de responsabilité managériale.",
+      "guidelines": {
+        "AUCUNE": "Absence de responsabilité d’équipe ou de coordination formelle.",
+        "MODEREE": "Encadrement ponctuel, mentoring, coordination de projets ou gestion d’une petite équipe.",
+        "FORTE": "Management structuré d’équipe(s), responsabilité budgétaire ou stratégique, rôle de direction."
+      },
+      "evaluation_basis": [
+        "Nombre de personnes encadrées",
+        "Responsabilité budgétaire",
+        "Participation aux décisions stratégiques"
+      ]
+    },
+
+    "vitesse_relative": {
+      "type": "ENUM",
+      "values": ["LENTE", "NORMALE", "RAPIDE"],
+      "description": "Rythme de progression par rapport aux standards du secteur.",
+      "guidelines": {
+        "LENTE": "Stagnation prolongée (>3-4 ans) sur un même niveau de responsabilité ou de complexité.",
+        "NORMALE": "Évolution cohérente tous les 2-4 ans avec augmentation graduelle des responsabilités.",
+        "RAPIDE": "Augmentation significative des responsabilités ou changement de niveau en moins de 2 ans à plusieurs reprises."
+      },
+      "evaluation_basis": [
+        "Durée moyenne par poste",
+        "Fréquence des promotions ou élargissements de périmètre",
+        "Comparaison avec standards du secteur (IT, data, industrie, etc.)"
+      ]
+    }
+  
+    },
+    
+    "coherence": {                                                             
+      "continuite_thematique": {
+        "type": "ENUM",
+        "values": ["FAIBLE", "MOYENNE", "FORTE"],
+        "description": "Cohérence thématique entre les postes",
+        "guidelines": {
+          "FAIBLE": "Domaines très différents, pas de fil conducteur",
+          "MOYENNE": "Changements avec points communs",
+          "FORTE": "Progression logique dans le même domaine"
+        }
+      },
+      
+      "logique_sectorielle": {
+        "type": "ENUM",
+        "values": ["RUPTURE_FORTE", "TRANSITION_PARTIELLE", "COHERENTE"],
+        "description": "Cohérence des secteurs/industries",
+        "guidelines": {
+          "RUPTURE_FORTE": "Changements de secteur sans lien",
+          "TRANSITION_PARTIELLE": "Secteurs adjacents ou transférables",
+          "COHERENTE": "Même secteur ou évolution logique"
+        }
+      },
+      
+      "narratif_professionnel": {
+        "type": "ENUM",
+        "values": ["CONFUS", "LOGIQUE", "TRES_STRUCTURE"],
+        "description": "Clarté du récit professionnel global"
+      }
+    },
+    
+    "rarete": {
+      "densite_competences_rares": {
+        "type": "ENUM",
+        "values": ["AUCUNE", "QUELQUES", "PLUSIEURS"],
+        "description": "Nombre de compétences rares/recherchées",
+        "guidelines": {
+          "AUCUNE": "Compétences courantes uniquement",
+          "QUELQUES": "1-2 compétences rares/spécialisées",
+          "PLUSIEURS": "3+ compétences rares ou stack rare"
+        }
+      },
+      
+      "combinaison_atypique": {
+        "type": "BOOLEAN",
+        "description": "Combinaison inhabituelle de compétences (ex: Tech + Finance + Design)"
+      },
+      
+      "exposition_internationale": {
+        "type": "BOOLEAN",
+        "description": "Expérience dans contexte international"
+      },
+      
+      "contribution_reconnue": {
+        "type": "ENUM",
+        "values": ["AUCUNE", "INTERNE", "EXTERNE", "PUBLIQUE"],
+        "description": "Niveau de reconnaissance des contributions",
+        "guidelines": {
+          "AUCUNE": "Pas de mention de reconnaissance",
+          "INTERNE": "Reconnaissance en interne (awards, promotions)",
+          "EXTERNE": "Reconnaissance professionnelle (conférences, certifications)",
+          "PUBLIQUE": "Publications, brevets, open-source reconnu"
+        }
+      }
+    },
+    
+    "stabilite": {
+      "coherence_parcours": {
+        "type": "ENUM",
+        "values": ["ERRATIQUE", "LOGIQUE", "TRES_LOGIQUE"],
+        "description": "Logique globale du parcours"
+      },
+      
+      "duree_typique_poste": {
+        "type": "ENUM",
+        "values": ["COURTE", "NORMALE", "LONGUE"],
+        "description": "Durée moyenne par poste",
+        "guidelines": {
+          "COURTE": "< 1 an en moyenne",
+          "NORMALE": "1-3 ans en moyenne",
+          "LONGUE": "> 3 ans en moyenne"
+        }
+      },
+      
+      "engagement_long_terme": {
+        "type": "ENUM",
+        "values": ["FAIBLE", "MOYEN", "ELEVE"],
+        "description": "Propension à s'engager durablement"
+      }
+    },
+    
+      "communication": {
+        "_source_note": "Si le prompt contient 'SOFT SKILLS DECLARES PAR LE CANDIDAT', évaluer UNIQUEMENT à partir de ce texte (réponse du candidat sur ses 8 soft skills et exemples). Sinon, utiliser le profil.",
+        "clarte": {
+          "type": "ENUM",
+          "values": ["FAIBLE", "CORRECTE", "EXCELLENTE"],
+          "description": "Clarté de l'expression écrite (du profil ou, si fourni, du texte soft skills du candidat)"
+        },
+        
+        "structure": {
+          "type": "ENUM",
+          "values": ["DESORGANISEE", "ORGANISEE", "TRES_STRUCTUREE"],
+          "description": "Organisation de l'information (du profil ou, si fourni, du texte soft skills du candidat)"
+        },
+        
+        "precision_vocabulaire": {
+          "type": "ENUM",
+          "values": ["VAGUE", "TECHNIQUE", "TRES_PRECISE"],
+          "description": "Précision du vocabulaire (du profil ou, si fourni, du texte soft skills du candidat). IMPORTANT: ne JAMAIS utiliser la valeur 'CORRECTE' pour ce champ. Si la précision te semble \"correcte\"/intermédiaire, choisis 'TECHNIQUE'.",
+          "guidelines": {
+            "VAGUE": "Vocabulaire générique, peu technique, formulations floues.",
+            "TECHNIQUE": "Vocabulaire précis ou correct techniquement mais sans niveau d'excellence exceptionnel.",
+            "TRES_PRECISE": "Vocabulaire très technique, précis, avec un haut niveau de rigueur terminologique.",
+            "_rule_no_correcte": "NE JAMAIS retourner 'CORRECTE' pour precision_vocabulaire; utiliser 'TECHNIQUE' à la place si nécessaire."
+          }
+        },
+        
+        "densite_informationnelle": {
+          "type": "ENUM",
+          "values": ["SUPERFICIELLE", "STRUCTUREE", "PROFONDE"],
+          "description": "Richesse et profondeur de l'information (du profil ou, si fourni, des exemples soft skills du candidat)"
+        }
+      },
+    
+    "signaux_speciaux": {
+      "publication_scientifique": {
+        "type": "BOOLEAN",
+        "description": "Présence de publications scientifiques/techniques"
+      },
+      
+      "responsabilite_budget": {
+        "type": "BOOLEAN",
+        "description": "Responsabilité budgétaire mentionnée"
+      },
+      
+      "responsabilite_equipe": {
+        "type": "BOOLEAN",
+        "description": "Management d'équipe (nombre de personnes)"
+      },
+      
+      "gestion_risque_critique": {
+        "type": "BOOLEAN",
+        "description": "Gestion de risques critiques (sécurité, compliance, etc.)"
+      },
+      
+      "impact_marche_direct": {
+        "type": "BOOLEAN",
+        "description": "Impact direct sur le marché/clients finaux"
+      },
+      
+      "experience_reglementee": {
+        "type": "BOOLEAN",
+        "description": "Expérience dans environnement réglementé (santé, finance, etc.)"
+      }
+    },
+    
+    "evaluation_soft_skills_declares": {
+      "_source_note": "À remplir UNIQUEMENT quand le prompt contient 'SOFT SKILLS DECLARES PAR LE CANDIDAT'. Sinon retourner un tableau vide [].",
+      "type": "ARRAY",
+      "items": {
+        "nom": "string - nom du soft skill tel que mentionné par le candidat",
+        "niveau": "ENUM: FAIBLE | MOYEN | FORT - niveau évalué à partir des exemples donnés"
+      },
+      "description": "Liste des soft skills extraits du texte du candidat, avec un niveau évalué pour chacun (FAIBLE/MOYEN/FORT selon la qualité des exemples)"
+    },
+
+    "anomalies_detectees": {
+      "surdeclaration_seniority": {
+        "type": "BOOLEAN",
+        "description": "Titre/seniority non aligné avec expérience réelle"
+      },
+      
+      "competences_sans_preuves_significatives": {
+        "type": "BOOLEAN",
+        "description": "Compétences listées sans exemples d'utilisation"
+      },
+      
+      "absence_metriques_chiffrees": {
+        "type": "BOOLEAN",
+        "description": "Aucune métrique quantifiée dans le profil"
+      },
+      
+      "incoherence_majeure_parcours": {
+        "type": "BOOLEAN",
+        "description": "Transitions inexpliquées ou incohérences temporelles"
+      },
+      
+      "keyword_stuffing_probable": {
+        "type": "BOOLEAN",
+        "description": "Liste excessive de mots-clés sans contexte"
+      }
+    }
+  },
+  
+  "exemple_output_valide": {
+    "profil_contexte": {
+      "niveau_profil": "INTERMEDIAIRE",
+      "type_parcours": "CORPORATE",
+      "mobilite_geographique": "NATIONALE"
+    },
+    "impact": {
+      "preuve_precision": "CHIFFREE",
+      "ampleur": "MAJEURE",
+      "portee": "ORGANISATION",
+      "nature_impact": "TECHNIQUE",
+      "maturite_relative": "AU_DESSUS_NIVEAU",
+      "repetition_impact": "REPETE"
+    },
+    "complexite": {
+      "niveau_max": "AVANCE",
+      "type_problemes": "ARCHITECTURE",
+      "environnement": "ENTREPRISE"
+    },
+    "hard_skills": {
+      "niveau_maitrise_global": "AVANCE",
+      "transversalite_competences": "FORTE",
+      "autonomie_technique": "AUTONOME"
+    },
+    "progression": {
+      "technique": "FORTE",
+      "hierarchique": "MODEREE",
+      "vitesse_relative": "RAPIDE"
+    },
+    "coherence": {
+      "continuite_thematique": "FORTE",
+      "logique_sectorielle": "COHERENTE",
+      "narratif_professionnel": "TRES_STRUCTURE"
+    },
+    "rarete": {
+      "densite_competences_rares": "PLUSIEURS",
+      "combinaison_atypique": true,
+      "exposition_internationale": false,
+      "contribution_reconnue": "EXTERNE"
+    },
+    "stabilite": {
+      "coherence_parcours": "TRES_LOGIQUE",
+      "duree_typique_poste": "NORMALE",
+      "engagement_long_terme": "ELEVE"
+    },
+    "communication": {
+      "clarte": "EXCELLENTE",
+      "structure": "TRES_STRUCTUREE",
+      "precision_vocabulaire": "TRES_PRECISE",
+      "densite_informationnelle": "PROFONDE"
+    },
+    "signaux_speciaux": {
+      "publication_scientifique": false,
+      "responsabilite_budget": true,
+      "responsabilite_equipe": true,
+      "gestion_risque_critique": false,
+      "impact_marche_direct": true,
+      "experience_reglementee": false
+    },
+    "anomalies_detectees": {
+      "surdeclaration_seniority": false,
+      "competences_sans_preuves_significatives": false,
+      "absence_metriques_chiffrees": false,
+      "incoherence_majeure_parcours": false,
+      "keyword_stuffing_probable": false
+    },
+    "evaluation_soft_skills_declares": [
+      { "nom": "Leadership", "niveau": "FORT" },
+      { "nom": "Travail d'équipe", "niveau": "MOYEN" },
+      { "nom": "Résolution de problèmes", "niveau": "FORT" }
+    ]
+  }
+}

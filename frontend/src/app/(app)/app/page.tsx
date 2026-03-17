@@ -53,23 +53,29 @@ export default function DashboardPage() {
   const { user } = useAuth();
   const isRecruteur = user?.role === "recruteur";
   const isCandidat = user?.role === "candidat";
-  const statsQuery = useCandidatStats({
-    enabled: isCandidat,
-  } as any);
+  const statsQuery = useCandidatStats();
   const features = isRecruteur ? recruteurFeatures : candidatFeatures;
   const firstName = user?.email?.split("@")[0] || "";
 
   // Si candidat connecté mais aucun profil candidat en base, rediriger vers onboarding
   useEffect(() => {
     if (!isCandidat) return;
-    if (statsQuery.isLoading || statsQuery.isError) return;
+    if (statsQuery.isLoading || statsQuery.isError || statsQuery.isFetching)
+      return;
     const stats = statsQuery.data;
     const hasProfile =
       stats?.candidateId !== null && stats?.candidateId !== undefined;
     if (!hasProfile) {
       router.push("/app/onboarding-candidat");
     }
-  }, [isCandidat, statsQuery.isLoading, statsQuery.isError, statsQuery.data, router]);
+  }, [
+    isCandidat,
+    statsQuery.isLoading,
+    statsQuery.isError,
+    statsQuery.isFetching,
+    statsQuery.data,
+    router,
+  ]);
 
   return (
     <div className="max-w-[1100px] mx-auto">

@@ -24,11 +24,19 @@ export default function MatchingPage() {
   // Rediriger vers la complétion de profil si aucun candidat en BDD
   useEffect(() => {
     if (!isCandidat) return;
-    if (statsQuery.isLoading || statsQuery.isError) return;
+    if (statsQuery.isLoading || statsQuery.isError || statsQuery.isFetching)
+      return;
     if (!hasProfile) {
       router.push("/app/onboarding-candidat");
     }
-  }, [isCandidat, hasProfile, statsQuery.isLoading, statsQuery.isError, router]);
+  }, [
+    isCandidat,
+    hasProfile,
+    statsQuery.isLoading,
+    statsQuery.isError,
+    statsQuery.isFetching,
+    router,
+  ]);
 
   if (!isCandidat) {
     return (

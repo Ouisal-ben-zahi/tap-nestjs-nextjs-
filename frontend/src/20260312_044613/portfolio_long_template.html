@@ -1,0 +1,429 @@
+<!DOCTYPE html>
+<html lang="{{ portfolio_lang|default('fr') }}">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Portfolio - {{ candidate.first_name|default('') }} {{ candidate.last_name|default('') }}</title>
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700;800&display=swap" rel="stylesheet">
+    <style>
+        {% set is_en = (portfolio_lang|default('fr')) == 'en' %}
+        *{margin:0;padding:0;box-sizing:border-box}
+        :root{--red:#dc2626;--red-bg:rgba(220,38,38,.08);--red-border:rgba(220,38,38,.15);--bg:#09090b;--card:rgba(255,255,255,.02);--border:rgba(255,255,255,.06);--border-light:rgba(255,255,255,.04);--t1:rgba(255,255,255,.85);--t2:rgba(255,255,255,.6);--t3:rgba(255,255,255,.4);--t4:rgba(255,255,255,.25);--t5:rgba(255,255,255,.15)}
+        body{font-family:'Inter',system-ui,sans-serif;background:var(--bg);color:#fff;-webkit-print-color-adjust:exact;print-color-adjust:exact}
+        @media screen{body{padding:24px 16px}}
+
+        .page{max-width:1100px;margin:0 auto 24px;background:var(--bg);border:1px solid var(--border);border-radius:20px;overflow:hidden;position:relative;page-break-after:always;page-break-inside:avoid}
+        .page:last-child{page-break-after:auto}
+        .page::before{content:'';position:absolute;top:-80px;left:-60px;width:350px;height:350px;background:radial-gradient(circle,rgba(220,38,38,.08),transparent 60%);border-radius:50%;pointer-events:none}
+        .page-inner{position:relative;z-index:1;padding:40px 48px}
+        .page-title{font-size:10px;text-transform:uppercase;letter-spacing:3px;color:var(--t4);font-weight:600;margin-bottom:8px}
+
+        /* Page 1: Hero */
+        .hero-layout{display:flex;gap:32px;align-items:flex-start;margin-bottom:32px}
+        .hero-photo{width:120px;height:120px;border-radius:16px;background:var(--red-bg);border:1px solid var(--red-border);flex-shrink:0;overflow:hidden;display:flex;align-items:center;justify-content:center}
+        .hero-photo img{width:100%;height:100%;object-fit:cover}
+        .hero-photo .fallback{font-size:40px;font-weight:700;color:rgba(220,38,38,.5)}
+        .hero-right{flex:1;min-width:0}
+        .hero-badge{display:inline-flex;align-items:center;gap:6px;padding:5px 16px;border-radius:100px;background:var(--red-bg);border:1px solid var(--red-border);margin-bottom:12px}
+        .hero-badge-dot{width:6px;height:6px;border-radius:50%;background:var(--red)}
+        .hero-badge span{font-size:9px;text-transform:uppercase;letter-spacing:2.5px;color:rgba(220,38,38,.8);font-weight:600}
+        .hero-name{font-size:36px;font-weight:800;letter-spacing:-.04em;line-height:1.1;margin-bottom:6px}
+        .hero-jobtitle{font-size:16px;color:var(--t2);font-weight:400;margin-bottom:12px}
+
+        /* Section headers */
+        .sec-title{font-size:10px;text-transform:uppercase;letter-spacing:2.5px;color:var(--t4);font-weight:600;margin-bottom:20px;display:flex;align-items:center;gap:8px}
+        .sec-title::before{content:'';width:3px;height:16px;border-radius:2px;background:var(--red)}
+        .sec-banner{padding:14px 24px;background:var(--red-bg);border:1px solid var(--red-border);border-radius:14px;font-size:11px;font-weight:700;text-transform:uppercase;letter-spacing:2px;color:rgba(220,38,38,.8);margin-bottom:24px;text-align:center}
+
+        /* About */
+        .about-text{font-size:14px;color:var(--t2);font-weight:300;line-height:1.8;margin-bottom:24px}
+        .about-text p{margin-bottom:12px}
+
+        /* Info Grid */
+        .info-grid{display:grid;grid-template-columns:1fr 1fr;gap:12px;margin-bottom:24px}
+        .info-card{background:var(--card);border:1px solid var(--border);border-radius:14px;padding:20px}
+        .info-card h4{font-size:11px;text-transform:uppercase;letter-spacing:1px;color:var(--t4);margin-bottom:8px;font-weight:600}
+        .info-card p{font-size:13px;color:var(--t2);font-weight:400}
+        .info-card ul{list-style:none;padding:0}
+        .info-card ul li{font-size:12px;color:var(--t3);padding-left:12px;position:relative;margin-bottom:3px}
+        .info-card ul li::before{content:'';position:absolute;left:0;top:7px;width:4px;height:4px;border-radius:50%;background:rgba(220,38,38,.4)}
+
+        /* Contact Row */
+        .contact-row{display:flex;gap:8px;flex-wrap:wrap;margin-top:20px;padding-top:20px;border-top:1px solid var(--border)}
+        .contact-btn{display:flex;align-items:center;gap:6px;padding:10px 18px;border-radius:12px;background:var(--card);border:1px solid var(--border);font-size:12px;color:var(--t3);text-decoration:none;font-family:inherit;transition:all .2s}
+        .contact-btn:hover{border-color:var(--red-border);color:var(--t1)}
+        .contact-btn svg{width:16px;height:16px;opacity:.5}
+        .contact-cta{padding:10px 24px;border-radius:12px;background:var(--red-bg);border:1px solid var(--red-border);color:var(--red);font-size:12px;font-weight:600;text-decoration:none;margin-left:auto}
+
+        /* Skill Cards */
+        .skill-grid{display:grid;grid-template-columns:repeat(auto-fill,minmax(300px,1fr));gap:12px}
+        .skill-card{background:var(--card);border:1px solid var(--border);border-radius:14px;padding:20px}
+        .skill-card-head{display:flex;align-items:center;gap:10px;margin-bottom:12px}
+        .skill-card-num{width:28px;height:28px;border-radius:8px;background:var(--red-bg);border:1px solid var(--red-border);display:flex;align-items:center;justify-content:center;font-size:11px;font-weight:700;color:var(--red)}
+        .skill-card-name{font-size:12px;font-weight:700;color:var(--t2);text-transform:uppercase;letter-spacing:.5px}
+        .skill-dots{display:flex;gap:3px;margin-bottom:6px}
+        .skill-dots span{width:22px;height:4px;border-radius:2px;background:rgba(255,255,255,.08)}
+        .skill-dots span.filled{background:var(--red)}
+        .skill-status{font-size:10px;color:var(--t4);margin-bottom:10px}
+        .skill-tags{display:flex;flex-wrap:wrap;gap:4px}
+        .skill-tag{padding:4px 10px;border-radius:6px;background:rgba(255,255,255,.04);border:1px solid var(--border-light);font-size:11px;color:var(--t3)}
+
+        /* Soft Skills */
+        .soft-grid{display:grid;grid-template-columns:repeat(auto-fill,minmax(320px,1fr));gap:12px}
+        .soft-card{background:var(--card);border:1px solid var(--border);border-radius:14px;padding:20px}
+        .soft-name{font-size:12px;font-weight:700;text-transform:uppercase;letter-spacing:.5px;color:var(--t2);margin-bottom:10px}
+        .soft-meta{font-size:11px;color:var(--t4);margin-bottom:4px}
+        .soft-meta b{color:var(--t3);font-weight:600}
+        .soft-example{font-size:12px;color:var(--t3);font-weight:300;line-height:1.6;margin-top:8px;padding-top:8px;border-top:1px solid var(--border-light)}
+
+        /* Projects */
+        .proj-grid{display:grid;grid-template-columns:repeat(auto-fill,minmax(340px,1fr));gap:12px}
+        .proj-card{background:var(--card);border:1px solid var(--border);border-radius:14px;padding:20px}
+        .proj-title{font-size:12px;font-weight:700;color:var(--t2);text-transform:uppercase;letter-spacing:.5px;margin-bottom:14px;padding-bottom:10px;border-bottom:1px solid var(--border-light)}
+        .proj-detail{font-size:11px;color:var(--t3);margin-bottom:5px;line-height:1.5}
+        .proj-detail b{color:var(--t2);font-weight:600}
+        .proj-links{display:flex;gap:6px;margin-top:12px;padding-top:10px;border-top:1px solid var(--border-light)}
+        .proj-link{padding:5px 14px;border-radius:8px;background:var(--red-bg);border:1px solid var(--red-border);color:var(--red);font-size:11px;font-weight:600;text-decoration:none}
+
+        /* Experience */
+        .exp-list{display:flex;flex-direction:column;gap:12px}
+        .exp-card{background:var(--card);border:1px solid var(--border);border-radius:14px;padding:20px;display:flex;gap:16px}
+        .exp-num{width:36px;height:36px;border-radius:10px;background:var(--red-bg);border:1px solid var(--red-border);display:flex;align-items:center;justify-content:center;font-size:13px;font-weight:700;color:rgba(220,38,38,.7);flex-shrink:0}
+        .exp-body{flex:1;min-width:0}
+        .exp-role{font-size:14px;font-weight:600;color:var(--t1);margin-bottom:4px}
+        .exp-company{font-size:12px;color:var(--t3);margin-bottom:2px}
+        .exp-period{font-size:11px;color:var(--t4)}
+        .exp-tasks{list-style:none;padding:0;margin-top:8px}
+        .exp-tasks li{font-size:12px;color:var(--t3);font-weight:300;padding-left:14px;position:relative;margin-bottom:3px}
+        .exp-tasks li::before{content:'';position:absolute;left:0;top:7px;width:5px;height:5px;border-radius:50%;background:rgba(220,38,38,.3)}
+
+        /* Learning */
+        .learn-grid{display:grid;grid-template-columns:1fr 1fr;gap:16px}
+        .learn-block{background:var(--card);border:1px solid var(--border);border-radius:14px;padding:20px}
+        .learn-label{font-size:11px;font-weight:700;text-transform:uppercase;letter-spacing:1px;color:var(--t3);margin-bottom:14px}
+        .learn-item{font-size:12px;color:var(--t3);margin-bottom:6px;padding-left:12px;position:relative}
+        .learn-item::before{content:'';position:absolute;left:0;top:7px;width:4px;height:4px;border-radius:50%;background:rgba(220,38,38,.4)}
+
+        /* Score */
+        .score-hero{display:flex;align-items:center;gap:28px;margin-bottom:28px}
+        .score-ring{width:120px;height:120px;position:relative;flex-shrink:0}
+        .score-ring svg{width:100%;height:100%;transform:rotate(-90deg)}
+        .score-ring .bg{fill:none;stroke:rgba(255,255,255,.06);stroke-width:6}
+        .score-ring .fg{fill:none;stroke:var(--red);stroke-width:6;stroke-linecap:round}
+        .score-val{position:absolute;inset:0;display:flex;flex-direction:column;align-items:center;justify-content:center}
+        .score-val .n{font-size:32px;font-weight:800;color:var(--red);letter-spacing:-1px}
+        .score-val .l{font-size:10px;color:var(--t4);text-transform:uppercase;letter-spacing:1px}
+        .score-txt h3{font-size:18px;font-weight:700;color:var(--t1);margin-bottom:4px}
+        .score-txt p{font-size:13px;color:var(--t3);font-weight:300;line-height:1.6}
+        .dim-grid{display:grid;grid-template-columns:repeat(auto-fill,minmax(220px,1fr));gap:10px}
+        .dim-card{background:var(--card);border:1px solid var(--border);border-radius:12px;padding:14px 16px}
+        .dim-label{font-size:11px;color:var(--t3);margin-bottom:6px}
+        .dim-bar{height:6px;background:rgba(255,255,255,.06);border-radius:3px;overflow:hidden;margin-bottom:4px}
+        .dim-fill{height:100%;background:var(--red);border-radius:3px}
+        .dim-pct{font-size:13px;font-weight:700;color:rgba(220,38,38,.8)}
+        .dim-desc{font-size:10px;color:var(--t4);margin-top:4px;line-height:1.4}
+
+        /* Footer */
+        .page-footer{display:flex;align-items:center;gap:8px;margin-top:32px;padding-top:16px;border-top:1px solid var(--border-light)}
+        .page-footer span{font-size:10px;color:var(--t5)}
+        .page-footer .tap{color:rgba(220,38,38,.5);font-weight:700}
+
+        @media print{body{padding:0}.page{border:none;border-radius:0;margin:0;page-break-after:always}.page-inner{padding:24px 32px}}
+        @media(max-width:768px){.page-inner{padding:24px 20px}.hero-layout{flex-direction:column}.hero-name{font-size:26px}.info-grid,.learn-grid{grid-template-columns:1fr}.skill-grid,.soft-grid,.proj-grid{grid-template-columns:1fr}.contact-row{flex-direction:column}.contact-cta{margin-left:0}.dim-grid{grid-template-columns:1fr 1fr}}
+    </style>
+</head>
+<body>
+    {% set is_en = (portfolio_lang|default('fr')) == 'en' %}
+    {% set linkedin = candidate.linkedin_url|default('') %}
+    {% set github = candidate.github_url|default('') %}
+    {% set behance = candidate.behance_url|default('') %}
+
+    <!-- PAGE 1: HERO + ABOUT + CONTACT -->
+    <div class="page">
+        <div class="page-inner">
+            <div class="page-title">{{ 'PROFESSIONAL PORTFOLIO' if is_en else 'PORTFOLIO PROFESSIONNEL' }}</div>
+
+            <div class="hero-layout">
+                <div class="hero-photo">
+                    {% if candidate.profile_image_url %}
+                    <img src="{{ candidate.profile_image_url }}" alt="{{ candidate.first_name }} {{ candidate.last_name }}" onerror="this.style.display='none'; var s=this.nextElementSibling; if(s) s.style.display='flex';">
+                    <div class="fallback" style="display:none">{{ (candidate.first_name or 'T')[0] }}{{ (candidate.last_name or 'P')[0] }}</div>
+                    {% else %}
+                    <div class="fallback">{{ (candidate.first_name or 'T')[0] }}{{ (candidate.last_name or 'P')[0] }}</div>
+                    {% endif %}
+                </div>
+                <div class="hero-right">
+                    <div class="hero-badge"><div class="hero-badge-dot"></div><span>{{ 'Portfolio' }}</span></div>
+                    <h1 class="hero-name">{{ (candidate.last_name or '')|upper }} {{ (candidate.first_name or '')|upper }}</h1>
+                    <div class="hero-jobtitle">{{ candidate.job_title or ('Job title / role' if is_en else 'Titre professionnel / poste') }}</div>
+                </div>
+            </div>
+
+            <!-- About -->
+            <div class="sec-title">{{ 'ABOUT ME' if is_en else '&Agrave; PROPOS DE MOI' }}</div>
+            <div class="about-text">
+                {% if about_paragraphs is defined and about_paragraphs %}
+                {% for paragraph in about_paragraphs %}
+                <p>{{ paragraph.strip() }}</p>
+                {% endfor %}
+                {% else %}
+                <p>{{ 'Results-oriented professional with proven experience.' if is_en else 'Professionnel orient&eacute; r&eacute;sultats, avec une exp&eacute;rience confirm&eacute;e.' }}</p>
+                {% endif %}
+            </div>
+
+            <!-- Info grid -->
+            <div class="info-grid">
+                <div class="info-card">
+                    <h4>{{ 'Target job' if is_en else 'Poste cible' }}</h4>
+                    <p>{{ candidate.job_title or ('Job title' if is_en else 'Titre du poste') }}</p>
+                    <p style="font-size:11px;color:var(--t4);margin-top:4px">{{ 'Type:' if is_en else 'Type :' }} {{ candidate.contract_type or (candidate.type_contrat|join(', ') if candidate.type_contrat else ('CDI / CDD' if not is_en else 'Permanent / Contract')) }}</p>
+                    <p style="font-size:11px;color:var(--t4)">{{ 'Availability:' if is_en else 'Disponibilit&eacute; :' }} {{ candidate.availability or candidate.disponibilite or ('Immediate' if is_en else 'Imm&eacute;diate') }}</p>
+                </div>
+                <div class="info-card">
+                    <h4>{{ 'Key points' if is_en else 'Points cl&eacute;s' }}</h4>
+                    <ul>
+                        {% if key_phrases is defined and key_phrases %}
+                        {% for phrase in key_phrases %}
+                        <li>{{ phrase }}</li>
+                        {% endfor %}
+                        {% else %}
+                        <li>{{ 'Solid professional fundamentals' if is_en else 'Solide ma&icirc;trise des fondamentaux' }}</li>
+                        <li>{{ 'Team and autonomous work' if is_en else 'Travail en &eacute;quipe et en autonomie' }}</li>
+                        <li>{{ 'Structured approach' if is_en else 'Approche structur&eacute;e' }}</li>
+                        {% endif %}
+                    </ul>
+                </div>
+            </div>
+
+            <!-- Contact -->
+            <div class="contact-row">
+                {% if candidate.phone %}
+                <a href="tel:{{ candidate.phone }}" class="contact-btn" title="{{ 'Phone' if is_en else 'T&eacute;l&eacute;phone' }}">
+                    <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M22 16.92v3a2 2 0 01-2.18 2 19.79 19.79 0 01-8.63-3.07 19.5 19.5 0 01-6-6A19.79 19.79 0 014.12 2.18 2 2 0 016.11 2h3a2 2 0 012 1.72c.127.96.361 1.903.7 2.81a2 2 0 01-.45 2.11L8.09 9.91a16 16 0 006 6l1.27-1.27a2 2 0 012.11-.45c.907.339 1.85.573 2.81.7A2 2 0 0122 16.92z"/></svg>
+                    {{ candidate.phone }}
+                </a>
+                {% endif %}
+                {% if candidate.email %}
+                <a href="mailto:{{ candidate.email }}" class="contact-btn">
+                    <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><rect x="2" y="4" width="20" height="16" rx="2"/><path d="M22 7l-10 7L2 7"/></svg>
+                    {{ candidate.email }}
+                </a>
+                {% endif %}
+                {% if linkedin %}
+                <a href="{{ linkedin }}" target="_blank" rel="noopener" class="contact-btn">
+                    <svg viewBox="0 0 24 24" fill="currentColor" width="16" height="16"><path d="M20.447 20.452h-3.554v-5.569c0-1.328-.027-3.037-1.852-3.037-1.853 0-2.136 1.445-2.136 2.939v5.667H9.351V9h3.414v1.561h.046c.477-.9 1.637-1.85 3.37-1.85 3.601 0 4.267 2.37 4.267 5.455v6.286zM5.337 7.433a2.062 2.062 0 01-2.063-2.065 2.064 2.064 0 112.063 2.065zm1.782 13.019H3.555V9h3.564v11.452zM22.225 0H1.771C.792 0 0 .774 0 1.729v20.542C0 23.227.792 24 1.771 24h20.451C23.2 24 24 23.227 24 22.271V1.729C24 .774 23.2 0 22.222 0h.003z"/></svg>
+                    LinkedIn
+                </a>
+                {% endif %}
+                {% if github or behance %}
+                <a href="{{ github or behance }}" target="_blank" rel="noopener" class="contact-btn">
+                    <svg viewBox="0 0 24 24" fill="currentColor" width="16" height="16"><path d="M12 0C5.374 0 0 5.373 0 12c0 5.302 3.438 9.8 8.207 11.387.599.111.793-.261.793-.577v-2.234c-3.338.726-4.033-1.416-4.033-1.416-.546-1.387-1.333-1.756-1.333-1.756-1.089-.745.083-.729.083-.729 1.205.084 1.839 1.237 1.839 1.237 1.07 1.834 2.807 1.304 3.492.997.107-.775.418-1.305.762-1.604-2.665-.305-5.467-1.334-5.467-5.931 0-1.311.469-2.381 1.236-3.221-.124-.303-.535-1.524.117-3.176 0 0 1.008-.322 3.301 1.23A11.509 11.509 0 0112 5.803c1.02.005 2.047.138 3.006.404 2.291-1.552 3.297-1.23 3.297-1.23.653 1.653.242 2.874.118 3.176.77.84 1.235 1.911 1.235 3.221 0 4.609-2.807 5.624-5.479 5.921.43.372.823 1.102.823 2.222v3.293c0 .319.192.694.801.576C20.566 21.797 24 17.3 24 12c0-6.627-5.373-12-12-12z"/></svg>
+                    {{ 'GitHub' if github else 'Behance' }}
+                </a>
+                {% endif %}
+                <a href="mailto:{{ candidate.email }}" class="contact-cta">{{ 'Contact me' if is_en else 'Contactez-moi' }}</a>
+            </div>
+
+            <div class="page-footer"><span>{{ 'Generated by' if is_en else 'G&eacute;n&eacute;r&eacute; par' }}</span><span class="tap">TAP</span><span>&mdash;</span><span>Talent Acquisition Platform</span></div>
+        </div>
+    </div>
+
+    <!-- PAGE 2: TECHNICAL SKILLS -->
+    {% if skill_categories_sorted is defined and skill_categories_sorted %}
+    <div class="page">
+        <div class="page-inner">
+            <div class="sec-banner">{{ 'SKILLS MAP &mdash; TECHNICAL SKILLS' if is_en else 'CARTE DES COMP&Eacute;TENCES &mdash; COMP&Eacute;TENCES TECHNIQUES' }}</div>
+            <div class="skill-grid">
+                {% for group in skill_categories_sorted %}
+                {% set category_name = group.category if group is mapping else 'Skill' %}
+                {% set lvl = (group.avg_level|default(3))|int %}
+                {% set statut_label = group.get('status', ('Active' if is_en else 'Actif')) if group is mapping else '' %}
+                <div class="skill-card">
+                    <div class="skill-card-head">
+                        <div class="skill-card-num">#{{ loop.index }}</div>
+                        <div class="skill-card-name">{{ category_name|upper }}</div>
+                    </div>
+                    <div class="skill-dots">{% for i in range(1, 6) %}<span class="{{ 'filled' if lvl >= i else '' }}"></span>{% endfor %}</div>
+                    {% if statut_label %}<div class="skill-status">{{ 'Status:' if is_en else 'Statut :' }} {{ statut_label }}</div>{% endif %}
+                    <div class="skill-tags">
+                        {% for sk in group.list|default([]) %}
+                        {% set s = sk if sk is mapping else {'name': sk} %}
+                        <span class="skill-tag">{{ (s.get('name') or s)|string }}</span>
+                        {% endfor %}
+                        {% if not group.list %}
+                        <span class="skill-tag">&mdash;</span>
+                        {% endif %}
+                    </div>
+                </div>
+                {% endfor %}
+            </div>
+            <div class="page-footer"><span>{{ 'Generated by' if is_en else 'G&eacute;n&eacute;r&eacute; par' }}</span><span class="tap">TAP</span><span>&mdash;</span><span>Talent Acquisition Platform</span></div>
+        </div>
+    </div>
+    {% endif %}
+
+    <!-- PAGE 3: SOFT SKILLS -->
+    {% if soft_skills_data is defined and soft_skills_data %}
+    <div class="page">
+        <div class="page-inner">
+            <div class="sec-banner">{{ 'BEHAVIORAL SKILLS MAP' if is_en else 'CARTE DES COMP&Eacute;TENCES COMPORTEMENTALES' }}</div>
+            <div class="soft-grid">
+                {% for s in soft_skills_data %}
+                {% set score = (s.get('score', s.get('level', 3))|default(3))|int %}
+                <div class="soft-card">
+                    <div class="soft-name">{{ (s.get('name') or ('BEHAVIORAL SKILL' if is_en else 'COMP&Eacute;TENCE COMPORTEMENTALE'))|upper }}</div>
+                    <div class="skill-dots" style="margin-bottom:10px">{% for i in range(1, 6) %}<span class="{{ 'filled' if score >= i else '' }}"></span>{% endfor %}</div>
+                    <div class="soft-meta"><b>{{ 'Score:' if is_en else 'Score :' }}</b> {{ score }}/5</div>
+                    {% if s.get('proof_type') or s.get('proof') %}
+                    <div class="soft-meta"><b>{{ 'Proof:' if is_en else 'Preuve :' }}</b> {{ s.get('proof_type', s.get('proof', '&mdash;')) }}</div>
+                    {% endif %}
+                    {% if s.get('concrete_example') %}
+                    <div class="soft-example"><b>{{ 'Example:' if is_en else 'Exemple :' }}</b> {{ s.get('concrete_example', '&mdash;') }}</div>
+                    {% endif %}
+                </div>
+                {% endfor %}
+            </div>
+            <div class="page-footer"><span>{{ 'Generated by' if is_en else 'G&eacute;n&eacute;r&eacute; par' }}</span><span class="tap">TAP</span><span>&mdash;</span><span>Talent Acquisition Platform</span></div>
+        </div>
+    </div>
+    {% endif %}
+
+    <!-- PAGE 4: PROJECTS -->
+    {% if projects_data is defined and projects_data %}
+    <div class="page">
+        <div class="page-inner">
+            <div class="sec-banner">{{ 'PROOF OF WORK &mdash; PROJECTS' if is_en else 'PREUVE DE TRAVAIL &mdash; PROJETS' }}</div>
+            <div class="proj-grid">
+                {% for p in projects_data %}
+                {% set stack_str = (p.get('technologies') or p.get('stack', []))|join(', ') if (p.get('technologies') or p.get('stack')) is iterable and (p.get('technologies') or p.get('stack')) is not string else (p.get('technologies') or p.get('stack', '')) %}
+                {% set soft_str = (p.get('soft_skills_used', []))|join(', ') if p.get('soft_skills_used') is iterable else '' %}
+                <div class="proj-card">
+                    <div class="proj-title">{{ (p.get('title') or ('PROJECT' if is_en else 'PROJET'))|upper }}</div>
+                    {% if p.get('context') %}<div class="proj-detail"><b>{{ 'Context:' if is_en else 'Contexte :' }}</b> {{ p.get('context') }}</div>{% endif %}
+                    {% if p.get('problem') %}<div class="proj-detail"><b>{{ 'Problem:' if is_en else 'Probl&egrave;me :' }}</b> {{ p.get('problem') }}</div>{% endif %}
+                    {% if p.get('solution') %}<div class="proj-detail"><b>Solution :</b> {{ p.get('solution') }}</div>{% endif %}
+                    {% if stack_str %}<div class="proj-detail"><b>{{ 'Technologies:' if is_en else 'Technologies :' }}</b> {{ stack_str }}</div>{% endif %}
+                    {% if p.get('exact_role') %}<div class="proj-detail"><b>{{ 'Role:' if is_en else 'R&ocirc;le :' }}</b> {{ p.get('exact_role') }}</div>{% endif %}
+                    {% if p.get('results') %}<div class="proj-detail"><b>{{ 'Result:' if is_en else 'R&eacute;sultat :' }}</b> {{ p.get('results') }}</div>{% endif %}
+                    {% if p.get('learnings') %}<div class="proj-detail"><b>{{ 'Learnings:' if is_en else 'Apprentissages :' }}</b> {{ p.get('learnings') }}</div>{% endif %}
+                    {% if soft_str %}<div class="proj-detail"><b>{{ 'Soft skills:' if is_en else 'Soft skills :' }}</b> {{ soft_str }}</div>{% endif %}
+                    {% if p.get('autonomy_level') %}<div class="proj-detail"><b>{{ 'Autonomy:' if is_en else 'Autonomie :' }}</b> {% if (p.get('autonomy_level') or 3)|int >= 4 %}{{ 'High' if is_en else '&Eacute;lev&eacute;' }}{% elif (p.get('autonomy_level') or 3)|int >= 3 %}{{ 'Medium' if is_en else 'Moyen' }}{% else %}{{ 'Low' if is_en else 'Faible' }}{% endif %}</div>{% endif %}
+                    {% if p.get('links') %}
+                    <div class="proj-links">
+                        {% for link_url in p.get('links', []) %}
+                        {% set lurl = link_url.get('url', '#') if link_url is mapping else (link_url if link_url else '#') %}
+                        <a href="{{ lurl }}" class="proj-link" target="_blank" rel="noopener">Link</a>
+                        {% endfor %}
+                    </div>
+                    {% endif %}
+                </div>
+                {% endfor %}
+            </div>
+            <div class="page-footer"><span>{{ 'Generated by' if is_en else 'G&eacute;n&eacute;r&eacute; par' }}</span><span class="tap">TAP</span><span>&mdash;</span><span>Talent Acquisition Platform</span></div>
+        </div>
+    </div>
+    {% endif %}
+
+    <!-- PAGE 5: EXPERIENCE TIMELINE -->
+    {% if experience_timeline is defined and experience_timeline %}
+    <div class="page">
+        <div class="page-inner">
+            <div class="sec-banner">{{ 'EXPERIENCE TIMELINE' if is_en else 'CHRONOLOGIE DES EXP&Eacute;RIENCES' }}</div>
+            <div class="exp-list">
+                {% for e in experience_timeline %}
+                {% set exp_location = e.get('location', e.get('lieu', '')) %}
+                <div class="exp-card">
+                    <div class="exp-num">{{ loop.index }}</div>
+                    <div class="exp-body">
+                        <div class="exp-role">{{ (e.get('poste') or e.get('job_title') or e.get('position') or e.get('role') or ('ROLE / TITLE' if is_en else 'POSTE / INTITUL&Eacute;'))|upper }}</div>
+                        <div class="exp-company">{{ e.get('company') or e.get('organization', '') }}{% if exp_location %} &mdash; {{ exp_location }}{% endif %}</div>
+                        <div class="exp-period">{{ 'Period:' if is_en else 'P&eacute;riode :' }} {{ e.get('period') or e.get('periode') or (e.get('date_start', '') ~ ' - ' ~ (e.get('date_end') or ('Present' if is_en else 'Pr&eacute;sent'))) }}</div>
+                        {% if e.get('key_achievements') %}
+                        <ul class="exp-tasks">
+                            {% for item in e.get('key_achievements', []) %}
+                            <li>{{ item if item is string else (item.get('text', item) if item is mapping else item) }}</li>
+                            {% endfor %}
+                        </ul>
+                        {% elif e.get('description') or e.get('impact') %}
+                        <ul class="exp-tasks"><li>{{ e.get('description', e.get('impact', '&mdash;')) }}</li></ul>
+                        {% endif %}
+                    </div>
+                </div>
+                {% endfor %}
+            </div>
+            <div class="page-footer"><span>{{ 'Generated by' if is_en else 'G&eacute;n&eacute;r&eacute; par' }}</span><span class="tap">TAP</span><span>&mdash;</span><span>Talent Acquisition Platform</span></div>
+        </div>
+    </div>
+    {% endif %}
+
+    <!-- PAGE 6: LEARNING & GROWTH -->
+    {% if (learning_trainings is defined and learning_trainings) or (learning_certs is defined and learning_certs) %}
+    <div class="page">
+        <div class="page-inner">
+            <div class="sec-banner">{{ 'LEARNING &amp; GROWTH' if is_en else 'APPRENTISSAGE &amp; CROISSANCE' }}</div>
+            <div class="learn-grid">
+                {% if learning_trainings is defined and learning_trainings %}
+                <div class="learn-block">
+                    <div class="learn-label">{{ 'TRAINING' if is_en else 'FORMATIONS' }}</div>
+                    {% for item in learning_trainings %}
+                    <div class="learn-item">{{ (item.get('name') or item.get('title') or ('Training' if is_en else 'Formation')) }} &mdash; {{ item.get('organism', item.get('organization', ('Organization' if is_en else 'Organisme'))) }} {{ item.get('year', '') }}</div>
+                    {% endfor %}
+                </div>
+                {% endif %}
+                {% if learning_certs is defined and learning_certs %}
+                <div class="learn-block">
+                    <div class="learn-label">CERTIFICATIONS</div>
+                    {% for item in learning_certs %}
+                    <div class="learn-item">{{ (item.get('name') or item.get('title') or 'Certification') }} &mdash; {{ item.get('organism', item.get('organization', ('Organization' if is_en else 'Organisme'))) }} {{ item.get('year', '') }}</div>
+                    {% endfor %}
+                </div>
+                {% endif %}
+            </div>
+            <div class="page-footer"><span>{{ 'Generated by' if is_en else 'G&eacute;n&eacute;r&eacute; par' }}</span><span class="tap">TAP</span><span>&mdash;</span><span>Talent Acquisition Platform</span></div>
+        </div>
+    </div>
+    {% endif %}
+
+    <!-- PAGE 7: SCORE -->
+    {% if readiness_score is defined and readiness_score is not none and readiness_score != '' %}
+    <div class="page">
+        <div class="page-inner">
+            <div class="sec-banner">{{ 'READINESS SCORE' if is_en else 'SCORE DE PR&Eacute;PARATION' }}</div>
+            {% set rs = (readiness_score|float|int) %}
+            {% set circ = 251 %}
+            {% set offset = circ - (circ * rs / 100) %}
+            <div class="score-hero">
+                <div class="score-ring">
+                    <svg viewBox="0 0 90 90"><circle class="bg" cx="45" cy="45" r="40"/><circle class="fg" cx="45" cy="45" r="40" stroke-dasharray="{{ circ }}" stroke-dashoffset="{{ offset }}"/></svg>
+                    <div class="score-val"><span class="n">{{ rs }}</span><span class="l">/ 100</span></div>
+                </div>
+                <div class="score-txt">
+                    <h3>{{ 'Global Score' if is_en else 'Score Global' }}</h3>
+                    <p>{{ 'Overall score reflecting professional readiness for a corporate environment.' if is_en else 'Score global qui refl&egrave;te le niveau de pr&eacute;paration professionnelle pour un environnement entreprise.' }}</p>
+                </div>
+            </div>
+
+            {% if score_dims is defined and score_dims %}
+            <div class="sec-title">{{ 'Score details' if is_en else 'D&eacute;tails du score' }}</div>
+            <div class="dim-grid">
+                {% for label, desc, pct in score_dims %}
+                <div class="dim-card">
+                    <div class="dim-label">{{ label }}</div>
+                    <div class="dim-bar"><div class="dim-fill" style="width:{{ ((pct|float|int)|string ~ '%') if (pct is defined and pct is not none and pct != '') else '0%' }}"></div></div>
+                    <div class="dim-pct">{{ ((pct|float|int)|string ~ ' %') if (pct is defined and pct is not none and pct != '') else 'XX %' }}</div>
+                    {% if desc %}<div class="dim-desc">{{ desc }}</div>{% endif %}
+                </div>
+                {% endfor %}
+            </div>
+            {% endif %}
+
+            <div style="margin-top:24px;padding:16px 20px;background:var(--card);border:1px solid var(--border);border-radius:12px">
+                <p style="font-size:12px;color:var(--t3);font-weight:300;line-height:1.6">{{ 'Each dimension contributes to the final score.' if is_en else 'Chaque dimension contribue au score final.' }}</p>
+            </div>
+
+            <div class="page-footer"><span>{{ 'Generated by' if is_en else 'G&eacute;n&eacute;r&eacute; par' }}</span><span class="tap">TAP</span><span>&mdash;</span><span>Talent Acquisition Platform</span></div>
+        </div>
+    </div>
+    {% endif %}
+</body>
+</html>

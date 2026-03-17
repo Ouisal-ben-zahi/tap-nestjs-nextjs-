@@ -1,9 +1,11 @@
 "use client";
 
 import { useState } from "react";
+import { useQueryClient } from "@tanstack/react-query";
 import { useRouter } from "next/navigation";
 import { useAuth } from "@/hooks/use-auth";
 import EmptyState from "@/components/ui/EmptyState";
+import api from "@/lib/api";
 
 type OtherLink = { type: string; url: string };
 
@@ -57,6 +59,8 @@ const wizardSteps = [
 export default function OnboardingCandidatPage() {
   const { isCandidat } = useAuth();
   const router = useRouter();
+  const FLASK_AI_URL =
+    process.env.NEXT_PUBLIC_FLASK_AI_URL ?? "http://127.0.0.1:5002";
 
   // Wizard state
   const [currentWizardStep, setCurrentWizardStep] = useState(1);
@@ -82,6 +86,11 @@ export default function OnboardingCandidatPage() {
   const [talentCardLang, setTalentCardLang] = useState<"fr" | "en">("fr");
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
+  const [checkingCvPhoto, setCheckingCvPhoto] = useState(false);
+  const [cvNeedsManualPhoto, setCvNeedsManualPhoto] = useState<boolean | null>(
+    null,
+  );
+  const queryClient = useQueryClient();
 
   if (!isCandidat) {
     return (
@@ -102,13 +111,7 @@ export default function OnboardingCandidatPage() {
   const isStepComplete = (stepId: number) => {
     switch (stepId) {
       case 1:
-        return (
-          nationality &&
-          locationCountry &&
-          seniorityLevel &&
-          disponibilite &&
-          imgFile
-        );
+        return nationality && locationCountry && seniorityLevel && disponibilite;
       case 2:
         return (
           targetPosition &&
@@ -119,7 +122,12 @@ export default function OnboardingCandidatPage() {
           domaineActivite
         );
       case 3:
-        return Boolean(cvFile) || Boolean(linkedinUrl.trim());
+        if (cvFile) {
+          if (cvNeedsManualPhoto === true) return Boolean(imgFile);
+          // false (photo found) OR null (unknown) => allow continuing
+          return true;
+        }
+        return Boolean(linkedinUrl.trim());
       case 4:
         return true;
       default:
@@ -127,13 +135,47 @@ export default function OnboardingCandidatPage() {
     }
   };
 
-  const handleFileChange = (e: React.ChangeEvent<HTMLInputElement>) => {
+  const handleFileChange = async (e: React.ChangeEvent<HTMLInputElement>) => {
     const selectedFile = e.target.files?.[0];
-    if (selectedFile) setCvFile(selectedFile);
+    if (!selectedFile) return;
+    setCvFile(selectedFile);
+    setError(null);
+    setCheckingCvPhoto(true);
+    setCvNeedsManualPhoto(null);
+
+    try {
+      const formData = new FormData();
+      // Le backend IA attend `cv_file`
+      formData.append("cv_file", selectedFile);
+
+      const res = await fetch(
+        `${FLASK_AI_URL.replace(/\/$/, "")}/check-cv-photo`,
+        {
+        method: "POST",
+        body: formData,
+        },
+      );
+      if (!res.ok) {
+        throw new Error("check-cv-photo failed");
+      }
+      const data = (await res.json()) as { has_photo?: boolean };
+      const hasPhoto = Boolean(data?.has_photo);
+      setCvNeedsManualPhoto(!hasPhoto);
+      if (hasPhoto) {
+        setImgFile(null);
+      }
+    } catch {
+      // si on ne peut pas vérifier, on ne force pas la photo
+      setCvNeedsManualPhoto(null);
+    } finally {
+      setCheckingCvPhoto(false);
+    }
   };
 
   const handleRemoveCv = () => {
     setCvFile(null);
+    setCvNeedsManualPhoto(null);
+    setCheckingCvPhoto(false);
   };
 
   const handleImageChange = (e: React.ChangeEvent<HTMLInputElement>) => {
@@ -159,11 +201,78 @@ export default function OnboardingCandidatPage() {
         return;
       }
 
-      // TODO: ici, appeler ton backend (Nest/Flask) avec FormData comme dans ton exemple
-      await new Promise((resolve) => setTimeout(resolve, 800));
-      router.push("/app/matching");
-    } catch (err: any) {
-      setError(err?.message || "Erreur lors de la sauvegarde du profil.");
+      if (cvFile) {
+        const formData = new FormData();
+        // Nest expects `file` for CV. It will forward to Flask as `cv_file`.
+        formData.append("file", cvFile);
+
+        // Optional: forward photo to Flask for better talentcard generation.
+        if (imgFile) {
+          formData.append("img_file", imgFile);
+        }
+
+        // Forward onboarding fields to Flask (via Nest)
+        formData.append("lang", talentCardLang);
+        if (linkedinUrl.trim()) formData.append("linkedin_url", linkedinUrl.trim());
+        if (githubUrl.trim()) formData.append("github_url", githubUrl.trim());
+        if (targetPosition.trim()) formData.append("target_position", targetPosition.trim());
+        if (targetCountry.trim()) formData.append("target_country", targetCountry.trim());
+        if (pretARelocater.trim()) formData.append("pret_a_relocater", pretARelocater.trim());
+        if (constraints.trim()) formData.append("constraints", constraints.trim());
+        if (searchCriteria.trim()) formData.append("search_criteria", searchCriteria.trim());
+        if (nationality.trim()) formData.append("nationality", nationality.trim());
+        if (locationCountry.trim()) formData.append("location_country", locationCountry.trim());
+        if (seniorityLevel.trim()) formData.append("seniority_level", seniorityLevel.trim());
+        if (disponibilite.trim()) formData.append("disponibilite", disponibilite.trim());
+        if (salaireMinimum.trim()) formData.append("salaire_minimum", salaireMinimum.trim());
+        if (domaineActivite.trim()) formData.append("domaine_activite", domaineActivite.trim());
+
+        typeContrat.forEach((t) => formData.append("type_contrat", t));
+        if (otherLinks.length > 0) {
+          formData.append("other_links", JSON.stringify(otherLinks));
+        }
+
+        await api.post("/dashboard/candidat/upload-cv", formData);
+
+        // 🕒 Attendre que la Talent Card soit générée (polling sur les fichiers Talent Card)
+        const sleep = (ms: number) =>
+          new Promise<void>((resolve) => setTimeout(resolve, ms));
+        try {
+          for (let i = 0; i < 20; i += 1) {
+            try {
+              const res = await api.get<{ talentcardFiles: unknown[] }>(
+                "/dashboard/candidat/talentcard-files",
+              );
+              const files = Array.isArray(res.data?.talentcardFiles)
+                ? res.data.talentcardFiles
+                : [];
+              if (files.length > 0) {
+                break;
+              }
+            } catch {
+              // on ignore et on retente
+            }
+            await sleep(3000);
+          }
+        } catch {
+          // en cas de problème de polling, on laisse quand même l'utilisateur aller au dashboard
+        }
+
+        // Forcer la mise à jour des stats candidat afin que /app et /app/matching
+        // voient bien le profil créé immédiatement après l'onboarding.
+        queryClient.invalidateQueries({ queryKey: ["candidat", "stats"] });
+      } else {
+        // TODO: support LinkedIn-only onboarding if needed (Flask requires cv_content today)
+        throw new Error("Pour lancer la génération IA, veuillez importer un CV (PDF).");
+      }
+
+      router.push("/app");
+    } catch (err: unknown) {
+      const message =
+        err instanceof Error
+          ? err.message
+          : "Erreur lors de la sauvegarde du profil.";
+      setError(message);
     } finally {
       setLoading(false);
     }
@@ -313,29 +422,6 @@ export default function OnboardingCandidatPage() {
                 <option value="5 semaines">5 semaines</option>
               </select>
             </div>
-            <div>
-              <label className="block text-[12px] font-semibold uppercase tracking-[2px] text-white/50 mb-2">
-                Photo professionnelle *
-              </label>
-              <input
-                type="file"
-                accept=".jpg,.jpeg,.png"
-                onChange={handleImageChange}
-                className="block w-full text-[13px] text-white/70 file:mr-3 file:rounded-lg file:border-0 file:bg-white/10 file:px-3 file:py-1.5 file:text-[12px] file:font-medium file:text-white hover:file:bg-white/20"
-              />
-              {imgFile && (
-                <div className="mt-2 flex items-center justify-between rounded-lg bg-white/5 px-3 py-2 text-[12px]">
-                  <span className="text-white/80 truncate">{imgFile.name}</span>
-                  <button
-                    type="button"
-                    onClick={handleRemoveImage}
-                    className="text-red-300 hover:text-red-200"
-                  >
-                    Supprimer
-                  </button>
-                </div>
-              )}
-            </div>
           </div>
         )}
 
@@ -448,12 +534,135 @@ export default function OnboardingCandidatPage() {
               <label className="block text-[12px] font-semibold uppercase tracking-[2px] text-white/50 mb-2">
                 Domaine d&apos;activité *
               </label>
-              <input
+              <select
                 value={domaineActivite}
                 onChange={(e) => setDomaineActivite(e.target.value)}
-                placeholder="Ex: Développement web, Data, Marketing..."
-                className="input-premium"
-              />
+                className="input-premium bg-black/20"
+              >
+                <option value="">Sélectionner...</option>
+
+                <optgroup label="Informatique & Technologies (IT)">
+                  <option value="Développement logiciel / Software engineering">
+                    Développement logiciel / Software engineering
+                  </option>
+                  <option value="Développement web">Développement web</option>
+                  <option value="Réseaux informatiques">Réseaux informatiques</option>
+                  <option value="Cybersécurité">Cybersécurité</option>
+                  <option value="Cloud computing">Cloud computing</option>
+                  <option value="DevOps">DevOps</option>
+                  <option value="Architecture logicielle">Architecture logicielle</option>
+                </optgroup>
+
+                <optgroup label="Intelligence artificielle & Data">
+                  <option value="Data science">Data science</option>
+                  <option value="Analyse de données">Analyse de données</option>
+                  <option value="Intelligence artificielle & Machine learning">
+                    Intelligence artificielle & Machine learning
+                  </option>
+                  <option value="Business Intelligence (BI)">
+                    Business Intelligence (BI)
+                  </option>
+                  <option value="ERP & CRM">ERP & CRM</option>
+                </optgroup>
+
+                <optgroup label="Marketing & Communication">
+                  <option value="Marketing digital">Marketing digital</option>
+                  <option value="Community management">Community management</option>
+                  <option value="SEO / SEA">SEO / SEA</option>
+                  <option value="Content marketing">Content marketing</option>
+                  <option value="Branding & communication corporate">
+                    Branding & communication corporate
+                  </option>
+                  <option value="Relations publiques (RP)">
+                    Relations publiques (RP)
+                  </option>
+                  <option value="Email marketing">Email marketing</option>
+                  <option value="Growth marketing">Growth marketing</option>
+                </optgroup>
+
+                <optgroup label="Finance, Comptabilité & Banque">
+                  <option value="Comptabilité générale">Comptabilité générale</option>
+                  <option value="Audit & contrôle de gestion">
+                    Audit & contrôle de gestion
+                  </option>
+                  <option value="Finance d’entreprise">Finance d’entreprise</option>
+                  <option value="Analyse financière">Analyse financière</option>
+                  <option value="Banque & gestion de portefeuille">
+                    Banque & gestion de portefeuille
+                  </option>
+                  <option value="Fiscalité">Fiscalité</option>
+                  <option value="Trésorerie">Trésorerie</option>
+                  <option value="Assurance">Assurance</option>
+                </optgroup>
+
+                <optgroup label="Commerce & Vente">
+                  <option value="Vente terrain">Vente terrain</option>
+                  <option value="Vente en magasin / retail">
+                    Vente en magasin / retail
+                  </option>
+                  <option value="Business development">Business development</option>
+                  <option value="Gestion grands comptes">Gestion grands comptes</option>
+                  <option value="E-commerce">E-commerce</option>
+                  <option value="Relation client">Relation client</option>
+                  <option value="Négociation commerciale">Négociation commerciale</option>
+                  <option value="Avant-vente / presales">Avant-vente / presales</option>
+                </optgroup>
+
+                <optgroup label="Transport & Automobile">
+                  <option value="Logistique transport">Logistique transport</option>
+                  <option value="Maintenance automobile">Maintenance automobile</option>
+                  <option value="Gestion flotte véhicules">
+                    Gestion flotte véhicules
+                  </option>
+                  <option value="Transport international">Transport international</option>
+                  <option value="Exploitation transport">Exploitation transport</option>
+                  <option value="Mécanique automobile">Mécanique automobile</option>
+                  <option value="Diagnostic technique">Diagnostic technique</option>
+                </optgroup>
+
+                <optgroup label="Télécommunications">
+                  <option value="Réseaux télécom">Réseaux télécom</option>
+                  <option value="Support télécom">Support télécom</option>
+                  <option value="Fibre optique">Fibre optique</option>
+                  <option value="Radio & mobile (4G/5G)">Radio & mobile (4G/5G)</option>
+                  <option value="VoIP & communications unifiées">
+                    VoIP & communications unifiées
+                  </option>
+                  <option value="Infrastructure télécom">Infrastructure télécom</option>
+                </optgroup>
+
+                <optgroup label="Immobilier">
+                  <option value="Transaction immobilière">Transaction immobilière</option>
+                  <option value="Gestion locative">Gestion locative</option>
+                  <option value="Syndic">Syndic</option>
+                  <option value="Promotion immobilière">Promotion immobilière</option>
+                  <option value="Expertise immobilière">Expertise immobilière</option>
+                  <option value="Négociation immobilière">Négociation immobilière</option>
+                </optgroup>
+
+                <optgroup label="Média, Design & Création">
+                  <option value="Design graphique">Design graphique</option>
+                  <option value="UI / UX design">UI / UX design</option>
+                  <option value="Motion design">Motion design</option>
+                  <option value="Montage vidéo">Montage vidéo</option>
+                  <option value="Photographie">Photographie</option>
+                  <option value="Illustration">Illustration</option>
+                  <option value="Production média">Production média</option>
+                  <option value="Direction artistique">Direction artistique</option>
+                </optgroup>
+
+                <optgroup label="Logistique & Supply chain">
+                  <option value="Gestion des stocks">Gestion des stocks</option>
+                  <option value="Planification & approvisionnement">
+                    Planification & approvisionnement
+                  </option>
+                  <option value="Transport & distribution">Transport & distribution</option>
+                  <option value="Supply chain management">Supply chain management</option>
+                  <option value="Import / Export">Import / Export</option>
+                  <option value="Gestion d’entrepôt">Gestion d’entrepôt</option>
+                  <option value="Procurement / achats">Procurement / achats</option>
+                </optgroup>
+              </select>
             </div>
           </div>
         )}
@@ -488,6 +697,49 @@ export default function OnboardingCandidatPage() {
                 réalisations de ton CV.
               </p>
             </div>
+
+            {checkingCvPhoto && cvFile && (
+              <p className="text-[12px] text-white/60">
+                Vérification de la photo dans ton CV...
+              </p>
+            )}
+
+            {cvFile && !checkingCvPhoto && cvNeedsManualPhoto === null && (
+              <p className="text-[12px] text-white/50">
+                Impossible de vérifier si ton CV contient une photo. Tu peux
+                continuer, ou ajouter une photo si tu veux.
+              </p>
+            )}
+
+            {cvFile && cvNeedsManualPhoto === true && (
+              <div>
+                <label className="block text-[12px] font-semibold uppercase tracking-[2px] text-white/50 mb-2">
+                  Photo professionnelle *
+                </label>
+                <input
+                  type="file"
+                  accept=".jpg,.jpeg,.png"
+                  onChange={handleImageChange}
+                  className="block w-full text-[13px] text-white/70 file:mr-3 file:rounded-lg file:border-0 file:bg-white/10 file:px-3 file:py-1.5 file:text-[12px] file:font-medium file:text-white hover:file:bg-white/20"
+                />
+                {imgFile && (
+                  <div className="mt-2 flex items-center justify-between rounded-lg bg-white/5 px-3 py-2 text-[12px]">
+                    <span className="text-white/80 truncate">{imgFile.name}</span>
+                    <button
+                      type="button"
+                      onClick={handleRemoveImage}
+                      className="text-red-300 hover:text-red-200"
+                    >
+                      Supprimer
+                    </button>
+                  </div>
+                )}
+                <p className="mt-1 text-[11px] text-white/50">
+                  Ton CV ne contient pas de photo détectable, ajoute-en une pour
+                  améliorer la Talent Card.
+                </p>
+              </div>
+            )}
             <div>
               <label className="block text-[12px] font-semibold uppercase tracking-[2px] text-white/50 mb-2">
                 OU URL LinkedIn

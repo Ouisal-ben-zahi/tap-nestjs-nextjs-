@@ -1,0 +1,365 @@
+<!DOCTYPE html>
+<html lang="fr">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>CV - {{ candidate.nom_complet|default(candidate.prenom + ' ' + candidate.nom)|trim }}</title>
+  <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700;800&display=swap" rel="stylesheet">
+  <style>
+    @page { size: 21cm 29.7cm; margin: 0; }
+    * { margin: 0; padding: 0; box-sizing: border-box; }
+
+    body {
+      font-family: 'Inter', system-ui, sans-serif;
+      font-size: 9pt;
+      line-height: 1.45;
+      color: #1a1a1a;
+      background: #fff;
+      width: 21cm;
+      min-height: 29.7cm;
+      max-width: 21cm;
+      margin: 0 auto;
+      padding: 14mm 16mm;
+    }
+    @media print { body { width: 21cm; min-height: 29.7cm; padding: 14mm 16mm; } }
+
+    /* Header */
+    .cv-header { display: flex; gap: 20px; margin-bottom: 16px; }
+    .cv-photo {
+      width: 100px; height: 100px; border-radius: 12px;
+      background: #f5f5f5; flex-shrink: 0; overflow: hidden;
+      display: flex; align-items: center; justify-content: center;
+      border: 2px solid #dc2626;
+    }
+    .cv-photo img { width: 100%; height: 100%; object-fit: cover; }
+    .cv-photo svg { width: 48px; height: 48px; stroke: #dc2626; fill: none; stroke-width: 1.5; }
+    .cv-header-right { flex: 1; min-width: 0; display: flex; flex-direction: column; justify-content: center; }
+    .cv-name {
+      font-size: 18pt; font-weight: 800; letter-spacing: -0.03em;
+      color: #1a1a1a; line-height: 1.1; margin-bottom: 4px;
+    }
+    .cv-title-bar {
+      font-size: 9pt; font-weight: 500; color: #fff; text-transform: uppercase;
+      letter-spacing: 0.04em; padding: 5px 14px; background: #dc2626;
+      display: inline-block; border-radius: 4px; margin-bottom: 8px;
+    }
+    .cv-contact-row { display: flex; gap: 12px; flex-wrap: wrap; }
+    .cv-contact-item {
+      display: flex; align-items: center; gap: 4px;
+      font-size: 8pt; color: #555;
+    }
+    .cv-contact-icon {
+      width: 18px; height: 18px; border-radius: 4px;
+      background: #dc2626; display: flex; align-items: center; justify-content: center;
+    }
+    .cv-contact-icon svg { width: 10px; height: 10px; stroke: #fff; fill: none; stroke-width: 2; }
+
+    /* Section */
+    .cv-section { margin-bottom: 12px; }
+    .cv-section-header { display: flex; align-items: center; gap: 0; margin-bottom: 8px; }
+    .cv-section-bar { width: 4px; min-height: 24px; background: #dc2626; border-radius: 2px; flex-shrink: 0; }
+    .cv-section-title {
+      background: #1a1a1a; color: #fff; font-weight: 600;
+      font-size: 9pt; text-transform: uppercase; letter-spacing: 0.04em;
+      padding: 4px 12px; flex: 1;
+    }
+
+    /* Profile */
+    .cv-profil { padding: 8px 0; font-size: 8.5pt; color: #444; font-weight: 300; line-height: 1.6; text-align: justify; }
+
+    /* Two columns */
+    .cv-two-cols { display: grid; grid-template-columns: 1fr 1fr; gap: 12px 32px; }
+    .cv-exp-grid { display: grid; grid-template-columns: 1fr 1fr; gap: 12px 32px; }
+
+    /* Experience */
+    .cv-exp-item { margin-bottom: 10px; }
+    .cv-exp-title-bar {
+      display: flex; align-items: center; gap: 6px;
+      background: #dc2626; color: #fff; padding: 3px 8px;
+      border-radius: 3px; margin-bottom: 4px;
+    }
+    .cv-exp-title-bar span { font-weight: 600; font-size: 8pt; }
+    .cv-exp-meta { font-size: 8pt; color: #666; margin-bottom: 3px; font-weight: 300; }
+    .cv-exp-list { list-style: none; padding-left: 0; font-size: 8pt; font-weight: 300; }
+    .cv-exp-list li { position: relative; padding-left: 10px; margin-bottom: 2px; color: #444; }
+    .cv-exp-list li::before { content: ''; position: absolute; left: 0; top: 6px; width: 4px; height: 4px; border-radius: 50%; background: #dc2626; }
+
+    /* Projects */
+    .cv-project-name { font-weight: 600; margin-bottom: 3px; font-size: 8pt; }
+    .cv-project-meta { font-size: 8pt; margin-bottom: 2px; font-weight: 300; color: #444; }
+    .cv-project-meta strong { font-weight: 500; color: #333; }
+
+    /* Skills */
+    .cv-skills-list { list-style: none; padding-left: 0; font-size: 8pt; font-weight: 300; }
+    .cv-skills-list li { position: relative; padding-left: 10px; margin-bottom: 2px; color: #444; }
+    .cv-skills-list li::before { content: ''; position: absolute; left: 0; top: 6px; width: 4px; height: 4px; border-radius: 50%; background: #dc2626; }
+
+    /* Education */
+    .cv-edu-item { margin-bottom: 6px; }
+    .cv-edu-diploma { font-weight: 500; font-size: 8pt; color: #333; }
+    .cv-edu-meta { font-size: 8pt; color: #666; }
+
+    /* Divider (side-by-side sections) */
+    .cv-section-divider { display: grid; grid-template-columns: 1fr 1fr; gap: 16px; }
+
+    /* Languages */
+    .cv-langues { display: flex; flex-wrap: wrap; gap: 8px; }
+    .cv-langue-item { font-size: 8pt; color: #444; }
+    .cv-langue-item span { font-weight: 600; color: #333; }
+
+    /* Soft skills */
+    .cv-soft-list { list-style: none; padding: 0; display: flex; flex-wrap: wrap; gap: 6px 14px; }
+    .cv-soft-list li {
+      padding: 3px 10px; border-radius: 4px; font-size: 8pt;
+      background: #f5f5f5; border: 1px solid #e5e5e5; color: #555;
+    }
+
+    /* Footer */
+    .cv-footer {
+      margin-top: auto; padding-top: 8px; border-top: 1px solid #eee;
+      display: flex; align-items: center; gap: 6px;
+      font-size: 7pt; color: #999;
+    }
+    .cv-footer .tap { color: #dc2626; font-weight: 700; }
+  </style>
+</head>
+<body>
+  <!-- HEADER -->
+  <header class="cv-header">
+    <div class="cv-photo">
+      {% if candidate.profile_image_url %}
+      <img src="{{ candidate.profile_image_url }}" alt="Photo" />
+      {% else %}
+      <svg viewBox="0 0 24 24" xmlns="http://www.w3.org/2000/svg" stroke-linecap="round" stroke-linejoin="round">
+        <circle cx="12" cy="8" r="3.5" /><path d="M5 20a7 7 0 0 1 14 0" />
+      </svg>
+      {% endif %}
+    </div>
+    <div class="cv-header-right">
+      <div class="cv-name">{{ candidate.nom_complet|default(candidate.prenom + ' ' + candidate.nom)|trim }}</div>
+      <div class="cv-title-bar">{{ candidate.titre_profil|default(candidate['Titre de profil'])|default('Professional Title / Role') }}</div>
+      <div class="cv-contact-row">
+        {% if candidate.ville or candidate.pays %}
+        <div class="cv-contact-item">
+          <div class="cv-contact-icon"><svg viewBox="0 0 24 24"><path d="M12 2C8.13 2 5 5.13 5 9c0 5.25 7 13 7 13s7-7.75 7-13c0-3.87-3.13-7-7-7z"/><circle cx="12" cy="9" r="2.5"/></svg></div>
+          {{ candidate.ville|default('') }}{% if candidate.ville and candidate.pays %}, {% endif %}{{ candidate.pays|default('') }}
+        </div>
+        {% endif %}
+        {% if candidate.phone %}
+        <div class="cv-contact-item">
+          <div class="cv-contact-icon"><svg viewBox="0 0 24 24"><path d="M22 16.92v3a2 2 0 01-2.18 2 19.79 19.79 0 01-8.63-3.07 19.5 19.5 0 01-6-6A19.79 19.79 0 014.12 2.18 2 2 0 016.11 2h3a2 2 0 012 1.72c.127.96.361 1.903.7 2.81a2 2 0 01-.45 2.11L8.09 9.91a16 16 0 006 6l1.27-1.27a2 2 0 012.11-.45c.907.339 1.85.573 2.81.7A2 2 0 0122 16.92z"/></svg></div>
+          {{ candidate.phone }}
+        </div>
+        {% endif %}
+        {% if candidate.email %}
+        <div class="cv-contact-item">
+          <div class="cv-contact-icon"><svg viewBox="0 0 24 24"><rect x="2" y="4" width="20" height="16" rx="2"/><path d="M22 7l-10 7L2 7"/></svg></div>
+          {{ candidate.email }}
+        </div>
+        {% endif %}
+      </div>
+    </div>
+  </header>
+
+  <!-- PROFIL -->
+  <section class="cv-section">
+    <div class="cv-section-header">
+      <div class="cv-section-bar"></div>
+      <div class="cv-section-title">Profil</div>
+    </div>
+    <div class="cv-profil">
+      {{ candidate.profil|default(candidate.resume_bref)|default("Professionnel motivé et organisé, avec une expérience dans le domaine visé. Habitué à travailler en équipe et à respecter les délais et les standards professionnels.") }}
+    </div>
+  </section>
+
+  <!-- EXPÉRIENCE PROFESSIONNELLE -->
+  {% if experiences and (experiences|length) > 0 %}
+  <section class="cv-section">
+    <div class="cv-section-header">
+      <div class="cv-section-bar"></div>
+      <div class="cv-section-title">Expérience professionnelle</div>
+    </div>
+    <div class="cv-exp-grid">
+      {% for exp in experiences %}
+      <div class="cv-exp-item">
+        <div class="cv-exp-title-bar">
+          <span>{{ exp.role|default(exp.Role)|default('Poste occupé') }}</span>
+        </div>
+        <div class="cv-exp-meta">{{ exp.entreprise|default('Entreprise') }}</div>
+        <div class="cv-exp-meta">{{ exp.periode|default('Période') }}</div>
+        <ul class="cv-exp-list">
+          {% for point in (exp.points|default([])) %}
+          <li>{{ point }}</li>
+          {% endfor %}
+          {% if not exp.points and exp.description %}
+          {% for line in (exp.description|string).split('\n') %}
+          {% if line.strip() %}<li>{{ line.strip() }}</li>{% endif %}
+          {% endfor %}
+          {% endif %}
+          {% if not exp.points and not exp.description %}
+          <li>Réalisation des missions confiées</li>
+          <li>Participation active aux projets d'équipe</li>
+          {% endif %}
+        </ul>
+      </div>
+      {% endfor %}
+    </div>
+  </section>
+  {% endif %}
+
+  <!-- PROJETS -->
+  {% set projs_list = projets|default(realisations|default([])) %}
+  {% set nb_exps = (experiences|default([]))|length %}
+  {# Règle d'affichage :
+     - Si le candidat a au plus 2 expériences => afficher jusqu'à 4 projets
+     - Sinon (plus de 2 expériences) => afficher au plus 2 projets
+  #}
+  {% if nb_exps <= 2 %}
+  {% set max_projects = 4 %}
+  {% else %}
+  {% set max_projects = 2 %}
+  {% endif %}
+  {% if projs_list and (projs_list|length) > 0 %}
+  <section class="cv-section">
+    <div class="cv-section-header">
+      <div class="cv-section-bar"></div>
+      <div class="cv-section-title">Projets sélectionnés</div>
+    </div>
+    <div class="cv-two-cols">
+      {% for proj in projs_list[:max_projects] %}
+      <div class="cv-exp-item">
+        <div class="cv-project-name">{{ proj.nom|default(proj.name)|default('Projet') }}</div>
+        {% if proj.contexte or proj.context %}<div class="cv-project-meta">{{ proj.contexte|default(proj.context, true) }}</div>{% endif %}
+        {% if proj.stack %}<div class="cv-project-meta"><strong>Stack:</strong> {{ proj.stack }}</div>{% endif %}
+        <div class="cv-project-meta"><strong>Résultat:</strong> {{ proj.resultat|default(proj.description, true)|default(proj, true)|default('') }}</div>
+      </div>
+      {% endfor %}
+    </div>
+  </section>
+  {% endif %}
+
+  <div class="cv-section-divider">
+    <!-- COMPÉTENCES -->
+    <section class="cv-section">
+      <div class="cv-section-header">
+        <div class="cv-section-bar"></div>
+        <div class="cv-section-title">Compétences</div>
+      </div>
+      <div class="cv-two-cols">
+        <div>
+          <ul class="cv-skills-list">
+            {% for skill in (skills|default(candidate.skills|default([])))[:6] %}
+            <li>{{ skill }}</li>
+            {% endfor %}
+            {% if not (skills|default(candidate.skills|default([]))) %}
+            <li>Compétence 1</li><li>Compétence 2</li><li>Compétence 3</li>
+            <li>Compétence 4</li><li>Compétence 5</li><li>Compétence 6</li>
+            {% endif %}
+          </ul>
+        </div>
+        <div>
+          <ul class="cv-skills-list">
+            {% for skill in (skills|default(candidate.skills|default([])))[6:12] %}
+            <li>{{ skill }}</li>
+            {% endfor %}
+            {% if not (skills|default(candidate.skills|default([]))) or (skills|default(candidate.skills|default([]))|length) <= 6 %}
+            <li>Compétence 7</li><li>Compétence 8</li><li>Compétence 9</li>
+            <li>Compétence 10</li><li>Compétence 11</li><li>Compétence 12</li>
+            {% endif %}
+          </ul>
+        </div>
+      </div>
+    </section>
+
+    <!-- FORMATION -->
+    <section class="cv-section">
+      <div class="cv-section-header">
+        <div class="cv-section-bar"></div>
+        <div class="cv-section-title">Formation</div>
+      </div>
+      <div style="padding-left:4px">
+        {% set last_two_formations = (formations|default([]))[-2:] %}
+        {% if last_two_formations|length >= 1 %}
+        <div class="cv-edu-item">
+          <div class="cv-edu-diploma">{{ last_two_formations[0].diplome|default(last_two_formations[0].diploma)|default('Diplôme / Formation') }}</div>
+          <div class="cv-edu-meta">{{ last_two_formations[0].etablissement|default(last_two_formations[0].ecole)|default('Établissement') }}</div>
+          <div class="cv-edu-meta">{{ last_two_formations[0].annee|default(last_two_formations[0].year)|default('Année') }}</div>
+        </div>
+        {% endif %}
+        {% if last_two_formations|length >= 2 %}
+        <div class="cv-edu-item">
+          <div class="cv-edu-diploma">{{ last_two_formations[1].diplome|default(last_two_formations[1].diploma)|default('Diplôme / Formation') }}</div>
+          <div class="cv-edu-meta">{{ last_two_formations[1].etablissement|default(last_two_formations[1].ecole)|default('Établissement') }}</div>
+          <div class="cv-edu-meta">{{ last_two_formations[1].annee|default(last_two_formations[1].year)|default('Année') }}</div>
+        </div>
+        {% endif %}
+      </div>
+    </section>
+  </div>
+
+  <div class="cv-section-divider">
+    <!-- LANGUES -->
+    <section class="cv-section">
+      <div class="cv-section-header">
+        <div class="cv-section-bar"></div>
+        <div class="cv-section-title">Langues</div>
+      </div>
+      <div class="cv-langues">
+        {% for l in (langues|default(candidate.langues_parlees|default([]))) %}
+        <div class="cv-langue-item">
+          {% if l is mapping %}
+          {% set niv = (l.niveau|default(l.level)|default(''))|trim %}
+          {% set n = (niv|lower) if niv else '' %}
+          {% set ns = namespace(abbrev=niv) %}
+          {% if n and niv|length > 2 %}
+            {% if 'maternelle' in n or 'natif' in n or 'bilingue' in n or 'native' in n %}{% set ns.abbrev = 'nat.' %}
+            {% elif 'courant' in n or 'fluent' in n or 'maîtrise' in n or 'c2' in n %}{% set ns.abbrev = 'cour.' %}
+            {% elif 'avancé' in n or 'advanced' in n or 'c1' in n or 'b2' in n %}{% set ns.abbrev = 'avan.' %}
+            {% elif 'intermédiaire' in n or 'intermediate' in n or 'b1' in n %}{% set ns.abbrev = 'inter' %}
+            {% elif 'débutant' in n or 'beginner' in n or 'a1' in n or 'a2' in n %}{% set ns.abbrev = 'déb.' %}
+            {% elif 'élémentaire' in n or 'notions' in n or 'basic' in n %}{% set ns.abbrev = 'élém.' %}
+            {% elif 'scolaire' in n or 'school' in n %}{% set ns.abbrev = 'scol.' %}
+            {% endif %}
+          {% endif %}
+          <span>{{ l.nom|default(l.langue)|default('') }} :</span> {{ ns.abbrev }}
+          {% else %}
+          {{ l }}
+          {% endif %}
+        </div>
+        {% endfor %}
+        {% if not langues and not (candidate.langues_parlees|default([])) %}
+        <div class="cv-langue-item"><span>Français :</span> Courant</div>
+        <div class="cv-langue-item"><span>Anglais :</span> Intermédiaire</div>
+        <div class="cv-langue-item"><span>Arabe :</span> Maternelle</div>
+        {% endif %}
+      </div>
+    </section>
+
+    <!-- SOFT SKILLS -->
+    <section class="cv-section">
+      <div class="cv-section-header">
+        <div class="cv-section-bar"></div>
+        <div class="cv-section-title">Soft Skills</div>
+      </div>
+      <ul class="cv-soft-list">
+        {% for s in (soft_skills|default([])) %}
+        <li>{{ s }}</li>
+        {% endfor %}
+        {% if not soft_skills %}
+        <li>Travail en équipe</li>
+        <li>Autonomie</li>
+        <li>Organisation</li>
+        {% endif %}
+      </ul>
+    </section>
+  </div>
+
+  <!-- Footer -->
+  <div class="cv-footer">
+    <span>Généré par</span>
+    <span class="tap">TAP</span>
+    <span>—</span>
+    <span>Talent Acquisition Platform</span>
+  </div>
+</body>
+</html>

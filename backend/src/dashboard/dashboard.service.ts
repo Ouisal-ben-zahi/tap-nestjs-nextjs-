@@ -162,23 +162,18 @@ export class DashboardService {
 
     if (existing) return existing;
 
-    // Fetch user email for the new candidate profile
-    const { data: user } = await this.supabase
-      .from("users")
-      .select("email")
-      .eq("id", userId)
-      .single();
-
     const idAgent = 'A1-' + Math.random().toString(16).slice(2, 8).toUpperCase();
-    const emailPrefix = (user?.email || 'candidat').split('@')[0];
     const { data: created, error } = await this.supabase
       .from("candidates")
       .insert({
         user_id: userId,
-        email: user?.email || null,
-        nom: emailPrefix,
-        prenom: '',
-        categorie_profil: 'Autres',
+        // IMPORTANT :
+        // - `nom` est NOT NULL côté BDD, donc on met une valeur placeholder.
+        // - `categorie_profil` est mise à "Autres" par défaut, et sera ensuite
+        //   écrasée par le backend IA après extraction du CV.
+        nom: "À compléter",
+        prenom: "",
+        categorie_profil: "Autres",
         id_agent: idAgent,
       })
       .select("id, categorie_profil")
@@ -974,6 +969,7 @@ export class DashboardService {
   async uploadCandidateCv(
     userId: number,
     file: any,
+    opts?: { onboarding?: Record<string, any>; imgFile?: any },
   ): Promise<CandidateCvFileItem> {
     if (!userId || Number.isNaN(userId)) {
       throw new BadRequestException('userId invalide');
@@ -1040,6 +1036,57 @@ export class DashboardService {
         form.append("existing_candidate_id", String(candidateId));
         form.append('storage_prefix', basePath);
 
+        // Optional onboarding fields forwarded to Flask /process
+        const onboarding = (opts?.onboarding ?? {}) as Record<string, any>;
+        const forwardKeys = [
+          'linkedin_url',
+          'github_url',
+          'behance_url',
+          'target_position',
+          'target_country',
+          'pret_a_relocater',
+          'constraints',
+          'search_criteria',
+          'nationality',
+          'location_country',
+          'seniority_level',
+          'disponibilite',
+          'salaire_minimum',
+          'domaine_activite',
+          'lang',
+          'other_links',
+        ];
+
+        for (const key of forwardKeys) {
+          const raw = onboarding[key];
+          if (raw === undefined || raw === null) continue;
+          if (key === 'other_links' && typeof raw !== 'string') {
+            // Flask expects a JSON string for other_links
+            form.append(key, JSON.stringify(raw));
+            continue;
+          }
+          form.append(key, String(raw));
+        }
+
+        const typeContrat = onboarding.type_contrat;
+        if (Array.isArray(typeContrat)) {
+          typeContrat.forEach((v) => form.append('type_contrat', String(v)));
+        } else if (typeof typeContrat === 'string' && typeContrat.trim()) {
+          // if sent as comma-separated
+          typeContrat
+            .split(',')
+            .map((x) => x.trim())
+            .filter(Boolean)
+            .forEach((v) => form.append('type_contrat', v));
+        }
+
+        const imgFile = opts?.imgFile;
+        if (imgFile?.buffer) {
+          const contentType = (imgFile.mimetype as string | undefined) ?? 'application/octet-stream';
+          const filename = (imgFile.originalname as string | undefined) ?? 'image';
+          form.append('img_file', imgFile.buffer, { filename, contentType });
+        }
+
         const parsed = new URL(flaskUrl + '/process');
         const transport = parsed.protocol === 'https:' ? https : http;
         const req = transport.request(
@@ -1077,6 +1124,82 @@ export class DashboardService {
       updatedAt: new Date().toISOString(),
       size,
     };
+  }
+
+  async checkCvHasPhoto(
+    userId: number,
+    file: any,
+  ): Promise<{ has_photo: boolean }> {
+    if (!userId || Number.isNaN(userId)) {
+      throw new BadRequestException('userId invalide');
+    }
+    if (!file || !file.buffer) {
+      throw new BadRequestException('Fichier CV manquant');
+    }
+
+    const mime = (file.mimetype as string | undefined) ?? '';
+    if (!mime.includes('pdf')) {
+      // Only PDF is supported for photo extraction today
+      return { has_photo: false };
+    }
+
+    const flaskUrl = this.config.get<string>('FLASK_AI_URL');
+    if (!flaskUrl) {
+      return { has_photo: false };
+    }
+
+    try {
+      const FormData = require('form-data');
+      const http = require('http');
+      const https = require('https');
+      const { URL } = require('url');
+
+      const form = new FormData();
+      form.append('cv_file', file.buffer, {
+        filename: (file.originalname as string | undefined) ?? 'cv.pdf',
+        contentType: 'application/pdf',
+      });
+
+      const parsed = new URL(flaskUrl + '/check-cv-photo');
+      const transport = parsed.protocol === 'https:' ? https : http;
+
+      const result: { has_photo: boolean } = await new Promise(
+        (resolve, reject) => {
+          const req = transport.request(
+            {
+              hostname: parsed.hostname,
+              port: parsed.port,
+              path: parsed.pathname,
+              method: 'POST',
+              headers: form.getHeaders(),
+              timeout: 60000,
+            },
+            (res) => {
+              let body = '';
+              res.on('data', (chunk) => (body += chunk));
+              res.on('end', () => {
+                try {
+                  const parsedBody = body ? JSON.parse(body) : {};
+                  const hasPhoto = Boolean(parsedBody?.has_photo);
+                  resolve({ has_photo: hasPhoto });
+                } catch {
+                  resolve({ has_photo: false });
+                }
+              });
+            },
+          );
+          req.on('error', reject);
+          req.on('timeout', () => {
+            req.destroy(new Error('timeout'));
+          });
+          form.pipe(req);
+        },
+      );
+
+      return result;
+    } catch {
+      return { has_photo: false };
+    }
   }
 
   async createRecruiterJob(

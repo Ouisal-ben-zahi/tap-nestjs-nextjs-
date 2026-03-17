@@ -1,0 +1,16 @@
+{
+  "_comment": "Contrat de scoring A2 — version semi-déterministe",
+
+  "normalization": {
+    "target_scale": 5.0
+  },
+
+  "skill_scoring_criteria": {
+    "_comment": "Poids des 5 critères — doivent sommer à 1.0",
+    "base":       0.30,
+    "proof":      0.30,
+    "scope":      0.15,
+    "repetition": 0.15,
+    "recency":    0.10
+  }
+}

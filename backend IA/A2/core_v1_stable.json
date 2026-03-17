@@ -1,0 +1,365 @@
+{
+  "engine_version": "CORE_V1_STABLE",
+  "description": "Configuration du moteur de scoring déterministe - Version stable 1.0",
+  
+  "dimensions": {
+    "impact": {
+      "poids_global": 0.25,
+      "composantes": {
+        "precision": 0.20,
+        "ampleur": 0.25,
+        "portee": 0.25,
+        "repetition": 0.20,
+        "nature": 0.10
+      },
+      "bonus_maturite_max": 15,
+      "plafond_multiplicateur": 1.25
+    },
+    
+    "hard_skills_depth": {
+      "poids_global": 0.25,
+      "composantes": {
+        "complexite": 0.30,
+        "maitrise": 0.20,
+        "autonomie": 0.20,
+        "type_problemes": 0.15,
+        "transversalite": 0.15
+      },
+      "plafond_multiplicateur": 1.25
+    },
+    
+    "coherence": {
+      "poids_global": 0.15,
+      "composantes": {
+        "progression": 0.40,
+        "continuite_thematique": 0.35,
+        "logique_sectorielle": 0.25
+      },
+      "progression_sub_weights": {
+        "technique": 0.50,
+        "hierarchique": 0.30,
+        "vitesse": 0.20
+      }
+    },
+    
+    "rarete_marche": {
+      "poids_global": 0.20,
+      "composantes": {
+        "densite_competences_rares": 0.50,
+        "combinaison_atypique": 0.30,
+        "contribution_reconnue": 0.20
+      }
+    },
+    
+    "stabilite": {
+      "poids_global": 0.10,
+      "composantes": {
+        "coherence_parcours": 0.40,
+        "duree_typique_poste": 0.35,
+        "engagement_long_terme": 0.25
+      }
+    },
+    
+    "communication": {
+      "poids_global": 0.05,
+      "composantes": {
+        "clarte": 0.30,
+        "structure": 0.25,
+        "precision_vocabulaire": 0.25,
+        "densite_informationnelle": 0.20
+      }
+    }
+  },
+  
+  "mappings": {
+    "preuve_precision": {
+      "AUCUNE": 0,
+      "QUALITATIVE": 50,
+      "CHIFFREE": 90
+    },
+    
+    "ampleur": {
+      "FAIBLE": 30,
+      "MODEREE": 60,
+      "MAJEURE": 100
+    },
+    
+    "portee": {
+      "LOCALE": 40,
+      "EQUIPE": 60,
+      "ORGANISATION": 80,
+      "MARCHE": 100
+    },
+    
+    "repetition_impact": {
+      "ISOLE": 40,
+      "REPETE": 70,
+      "STRUCTUREL": 100
+    },
+    
+    "nature_impact": {
+      "TECHNIQUE": 85,
+      "BUSINESS": 90,
+      "ORGANISATIONNEL": 80,
+      "SCIENTIFIQUE": 95,
+      "REGLEMENTAIRE": 85,
+      "CREATIF": 75,
+      "OPERATIONNEL": 70
+    },
+    
+    "maturite_relative": {
+      "ATTENDU_NIVEAU": 0,
+      "AU_DESSUS_NIVEAU": 8,
+      "EXCEPTIONNEL": 15
+    },
+    
+    "complexite_niveau_max": {
+      "STANDARD": 40,
+      "AVANCE": 70,
+      "CRITIQUE": 100
+    },
+    
+    "type_problemes": {
+      "EXECUTION": 40,
+      "OPTIMISATION": 60,
+      "ARCHITECTURE": 80,
+      "RECHERCHE": 90,
+      "STRATEGIE": 85
+    },
+    
+    "environnement": {
+      "ACADEMIQUE": 70,
+      "STARTUP": 75,
+      "ENTREPRISE": 80,
+      "REGLEMENTE": 90,
+      "INDUSTRIEL": 85
+    },
+    
+    "niveau_maitrise_global": {
+      "ACADEMIQUE": 40,
+      "OPERATIONNEL": 70,
+      "AVANCE": 85,
+      "EXPERTISE": 100
+    },
+    
+    "autonomie_technique": {
+      "ASSISTE": 40,
+      "SEMI_AUTONOME": 65,
+      "AUTONOME": 85,
+      "REFERENT": 100
+    },
+    
+    "transversalite_competences": {
+      "FAIBLE": 40,
+      "MOYENNE": 70,
+      "FORTE": 100
+    },
+    
+    "progression_technique": {
+      "AUCUNE": 40,
+      "MODEREE": 70,
+      "FORTE": 100
+    },
+    
+    "progression_hierarchique": {
+      "AUCUNE": 40,
+      "MODEREE": 70,
+      "FORTE": 100
+    },
+    
+    "vitesse_relative": {
+      "LENTE": 40,
+      "NORMALE": 70,
+      "RAPIDE": 100
+    },
+    
+    "continuite_thematique": {
+      "FAIBLE": 40,
+      "MOYENNE": 70,
+      "FORTE": 100
+    },
+    
+    "logique_sectorielle": {
+      "RUPTURE_FORTE": 40,
+      "TRANSITION_PARTIELLE": 70,
+      "COHERENTE": 100
+    },
+    
+    "narratif_professionnel": {
+      "CONFUS": 40,
+      "LOGIQUE": 70,
+      "TRES_STRUCTURE": 100
+    },
+    
+    "densite_competences_rares": {
+      "AUCUNE": 30,
+      "QUELQUES": 60,
+      "PLUSIEURS": 90
+    },
+    
+    "combinaison_atypique": {
+      "false": 0,
+      "true": 100
+    },
+    
+    "contribution_reconnue": {
+      "AUCUNE": 0,
+      "INTERNE": 50,
+      "EXTERNE": 75,
+      "PUBLIQUE": 100
+    },
+    
+    "coherence_parcours": {
+      "ERRATIQUE": 40,
+      "LOGIQUE": 70,
+      "TRES_LOGIQUE": 100
+    },
+    
+    "duree_typique_poste": {
+      "COURTE": 40,
+      "NORMALE": 70,
+      "LONGUE": 100
+    },
+    
+    "engagement_long_terme": {
+      "FAIBLE": 40,
+      "MOYEN": 70,
+      "ELEVE": 100
+    },
+    
+    "clarte": {
+      "FAIBLE": 40,
+      "CORRECTE": 70,
+      "EXCELLENTE": 100
+    },
+    
+    "structure": {
+      "DESORGANISEE": 40,
+      "ORGANISEE": 70,
+      "TRES_STRUCTUREE": 100
+    },
+    
+    "precision_vocabulaire": {
+      "VAGUE": 40,
+      "TECHNIQUE": 70,
+      "TRES_PRECISE": 100
+    },
+    
+    "densite_informationnelle": {
+      "SUPERFICIELLE": 40,
+      "STRUCTUREE": 70,
+      "PROFONDE": 100
+    }
+  },
+  
+  "penalites": {
+    "anomalie_absence_metriques_chiffrees": {
+      "dimension": "impact",
+      "multiplicateur": 0.85
+    },
+    "anomalie_surdeclaration_seniority": {
+      "dimension": "hard_skills_depth",
+      "multiplicateur": 0.85
+    }
+  },
+  
+  "regles_globales": {
+    "max_bonus_total_par_dimension": 0.25,
+    "max_penalite_par_dimension": 0.30,
+    "score_global_plafond": 100,
+    "score_global_plancher": 0
+  },
+  
+  "formule_score_core": "ScoreCore = Σ(Dimension × poids_global)",
+  
+  "familles_professionnelles": {
+    "C_TECH": {
+      "composantes": {
+        "hard_skills_depth": 0.35,
+        "impact_technique": 0.25,
+        "complexite": 0.20,
+        "progression_technique": 0.10,
+        "rarete": 0.10
+      },
+      "condition_impact": "TECHNIQUE"
+    },
+    
+    "C_BUSINESS": {
+      "composantes": {
+        "impact_business": 0.35,
+        "progression_hierarchique": 0.25,
+        "portee": 0.20,
+        "stabilite": 0.10,
+        "communication": 0.10
+      },
+      "condition_impact": "BUSINESS"
+    },
+    
+    "C_SCIENCE": {
+      "composantes": {
+        "hard_skills_depth": 0.30,
+        "complexite_recherche": 0.25,
+        "contribution_reconnue": 0.20,
+        "maturite_relative": 0.15,
+        "environnement_academique": 0.10
+      },
+      "condition_impact": "SCIENTIFIQUE",
+      "condition_type_problemes": "RECHERCHE"
+    },
+    
+    "C_ORG": {
+      "composantes": {
+        "progression_hierarchique": 0.35,
+        "portee_org": 0.25,
+        "stabilite": 0.20,
+        "communication": 0.10,
+        "impact": 0.10
+      },
+      "condition_portee": ["ORGANISATION", "MARCHE"]
+    },
+    
+    "C_HEALTH": {
+      "composantes": {
+        "hard_skills_depth": 0.30,
+        "impact": 0.25,
+        "gestion_risque_critique": 0.20,
+        "stabilite": 0.15,
+        "rarete": 0.10
+      },
+      "condition_environnement": "REGLEMENTE"
+    },
+    
+    "C_LEGAL": {
+      "composantes": {
+        "gestion_risque_critique": 0.30,
+        "impact_reglementaire": 0.25,
+        "progression_hierarchique": 0.20,
+        "stabilite": 0.15,
+        "communication": 0.10
+      },
+      "condition_impact": "REGLEMENTAIRE"
+    },
+    
+    "C_CREATIVE": {
+      "composantes": {
+        "communication": 0.30,
+        "impact_creatif": 0.25,
+        "combinaison_atypique": 0.20,
+        "portee_marche": 0.15,
+        "rarete": 0.10
+      },
+      "condition_impact": "CREATIF"
+    },
+    
+    "C_OPS": {
+      "composantes": {
+        "stabilite": 0.30,
+        "impact_operationnel": 0.25,
+        "autonomie": 0.20,
+        "complexite_standard": 0.15,
+        "coherence": 0.10
+      },
+      "condition_impact": "OPERATIONNEL"
+    }
+  }
+}

@@ -1,0 +1,570 @@
+<!DOCTYPE html>
+<html lang="{{ portfolio_lang|default('fr') }}" id="portfolio-lang-root" data-initial-lang="{{ portfolio_lang|default('fr') }}">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Portfolio - {{ candidate.first_name }} {{ candidate.last_name }}</title>
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700;800&display=swap" rel="stylesheet">
+    <style>
+        {% set plang = portfolio_lang|default('fr') %}
+        *{margin:0;padding:0;box-sizing:border-box}
+        body{font-family:'Inter',system-ui,sans-serif;background:#09090b;color:#fff;-webkit-print-color-adjust:exact;print-color-adjust:exact}
+        @media screen{body{padding:24px}}
+
+        .portfolio{max-width:1200px;margin:0 auto;background:#09090b;border:1px solid rgba(255,255,255,.06);border-radius:24px;overflow:hidden;position:relative}
+        .portfolio::before{content:'';position:absolute;top:-100px;left:-80px;width:400px;height:400px;background:radial-gradient(circle,rgba(220,38,38,.1),transparent 60%);border-radius:50%;pointer-events:none}
+        .portfolio::after{content:'';position:absolute;bottom:-80px;right:-60px;width:300px;height:300px;background:radial-gradient(circle,rgba(220,38,38,.06),transparent 60%);border-radius:50%;pointer-events:none}
+        .p-inner{position:relative;z-index:1}
+
+        /* Lang Switcher */
+        .lang-switch{position:fixed;top:16px;right:16px;z-index:100;display:flex;gap:2px;padding:3px;background:rgba(255,255,255,.06);border:1px solid rgba(255,255,255,.08);border-radius:10px}
+        .lang-switch button{padding:6px 14px;border:none;border-radius:8px;font-family:inherit;font-size:11px;font-weight:600;letter-spacing:1px;cursor:pointer;background:transparent;color:rgba(255,255,255,.4);transition:all .2s}
+        .lang-switch button.active{background:rgba(220,38,38,.15);color:#dc2626;border:1px solid rgba(220,38,38,.2)}
+        @media print{.lang-switch{display:none}}
+
+        /* Hero */
+        .hero{padding:48px 48px 40px;display:flex;gap:32px;align-items:flex-start;border-bottom:1px solid rgba(255,255,255,.06)}
+        .hero-avatar{width:110px;height:110px;border-radius:16px;background:rgba(220,38,38,.08);border:1px solid rgba(220,38,38,.15);flex-shrink:0;overflow:hidden;display:flex;align-items:center;justify-content:center}
+        .hero-avatar img{width:100%;height:100%;object-fit:cover}
+        .hero-avatar .fallback{font-size:36px;font-weight:700;color:rgba(220,38,38,.5)}
+        .hero-info{flex:1;min-width:0}
+        .hero-badge{display:inline-flex;align-items:center;gap:6px;padding:5px 16px;border-radius:100px;background:rgba(220,38,38,.08);border:1px solid rgba(220,38,38,.15);margin-bottom:12px}
+        .hero-badge-dot{width:6px;height:6px;border-radius:50%;background:#dc2626}
+        .hero-badge span{font-size:9px;text-transform:uppercase;letter-spacing:2.5px;color:rgba(220,38,38,.8);font-weight:600}
+        .hero-name{font-size:32px;font-weight:800;letter-spacing:-.04em;line-height:1.1;margin-bottom:6px}
+        .hero-title{font-size:15px;color:rgba(255,255,255,.5);font-weight:400;margin-bottom:8px}
+        .hero-meta{display:flex;gap:16px;flex-wrap:wrap}
+        .hero-meta-item{font-size:12px;color:rgba(255,255,255,.35);display:flex;align-items:center;gap:5px}
+        .hero-meta-item svg{opacity:.5;width:14px;height:14px}
+
+        /* Sections */
+        .section{padding:32px 48px;border-bottom:1px solid rgba(255,255,255,.04)}
+        .section:last-child{border-bottom:none}
+        .section-title{font-size:10px;text-transform:uppercase;letter-spacing:2.5px;color:rgba(255,255,255,.3);font-weight:600;margin-bottom:20px;display:flex;align-items:center;gap:8px}
+        .section-title::before{content:'';width:3px;height:16px;border-radius:2px;background:#dc2626}
+
+        /* About */
+        .about-text{font-size:14px;color:rgba(255,255,255,.55);font-weight:300;line-height:1.8;max-width:900px}
+
+        /* Skills Grid */
+        .skills-grid{display:grid;grid-template-columns:repeat(auto-fill,minmax(280px,1fr));gap:12px}
+        .skill-category{background:rgba(255,255,255,.02);border:1px solid rgba(255,255,255,.06);border-radius:14px;padding:20px}
+        .skill-cat-header{display:flex;align-items:center;gap:10px;margin-bottom:14px}
+        .skill-cat-num{width:28px;height:28px;border-radius:8px;background:rgba(220,38,38,.1);border:1px solid rgba(220,38,38,.15);display:flex;align-items:center;justify-content:center;font-size:11px;font-weight:700;color:#dc2626}
+        .skill-cat-name{font-size:13px;font-weight:600;color:rgba(255,255,255,.7);text-transform:uppercase;letter-spacing:.5px}
+        .skill-cat-level{display:flex;gap:3px;margin-bottom:12px}
+        .skill-cat-level span{width:24px;height:4px;border-radius:2px;background:rgba(255,255,255,.08)}
+        .skill-cat-level span.filled{background:#dc2626}
+        .skill-tags{display:flex;flex-wrap:wrap;gap:5px}
+        .skill-tag{padding:4px 12px;border-radius:6px;background:rgba(255,255,255,.04);border:1px solid rgba(255,255,255,.06);font-size:11px;color:rgba(255,255,255,.5);font-weight:500}
+
+        /* Soft Skills */
+        .soft-grid{display:grid;grid-template-columns:repeat(auto-fill,minmax(320px,1fr));gap:12px}
+        .soft-card{background:rgba(255,255,255,.02);border:1px solid rgba(255,255,255,.06);border-radius:14px;padding:20px}
+        .soft-card-name{font-size:12px;font-weight:700;color:rgba(255,255,255,.7);text-transform:uppercase;letter-spacing:.5px;margin-bottom:10px}
+        .soft-card-level{display:flex;gap:3px;margin-bottom:8px}
+        .soft-card-level span{width:20px;height:4px;border-radius:2px;background:rgba(255,255,255,.08)}
+        .soft-card-level span.filled{background:#dc2626}
+        .soft-detail{font-size:11px;color:rgba(255,255,255,.35);margin-bottom:4px}
+        .soft-detail b{color:rgba(255,255,255,.5);font-weight:600}
+        .soft-example{font-size:12px;color:rgba(255,255,255,.45);font-weight:300;line-height:1.6;margin-top:8px;padding-top:8px;border-top:1px solid rgba(255,255,255,.04)}
+
+        /* Experience */
+        .exp-list{display:flex;flex-direction:column;gap:12px}
+        .exp-card{background:rgba(255,255,255,.02);border:1px solid rgba(255,255,255,.06);border-radius:14px;padding:20px;display:flex;gap:16px}
+        .exp-num{width:32px;height:32px;border-radius:10px;background:rgba(220,38,38,.08);border:1px solid rgba(220,38,38,.15);display:flex;align-items:center;justify-content:center;font-size:12px;font-weight:700;color:rgba(220,38,38,.7);flex-shrink:0}
+        .exp-content{flex:1;min-width:0}
+        .exp-role{font-size:14px;font-weight:600;color:rgba(255,255,255,.8);margin-bottom:4px}
+        .exp-company{font-size:12px;color:rgba(255,255,255,.4);margin-bottom:2px}
+        .exp-period{font-size:11px;color:rgba(255,255,255,.25)}
+        .exp-desc{font-size:12px;color:rgba(255,255,255,.4);font-weight:300;line-height:1.6;margin-top:8px}
+        .exp-tasks{list-style:none;padding:0;margin-top:6px}
+        .exp-tasks li{font-size:12px;color:rgba(255,255,255,.4);font-weight:300;padding-left:14px;position:relative;margin-bottom:3px}
+        .exp-tasks li::before{content:'';position:absolute;left:0;top:7px;width:5px;height:5px;border-radius:50%;background:rgba(220,38,38,.3)}
+
+        /* Projects */
+        .proj-grid{display:grid;grid-template-columns:repeat(auto-fill,minmax(340px,1fr));gap:12px}
+        .proj-card{background:rgba(255,255,255,.02);border:1px solid rgba(255,255,255,.06);border-radius:14px;padding:20px}
+        .proj-title{font-size:13px;font-weight:700;color:rgba(255,255,255,.7);text-transform:uppercase;letter-spacing:.5px;margin-bottom:12px;padding-bottom:8px;border-bottom:1px solid rgba(255,255,255,.04)}
+        .proj-detail{font-size:11px;color:rgba(255,255,255,.4);margin-bottom:4px;line-height:1.5}
+        .proj-detail b{color:rgba(255,255,255,.55);font-weight:600}
+        .proj-links{display:flex;gap:6px;margin-top:12px;padding-top:10px;border-top:1px solid rgba(255,255,255,.04)}
+        .proj-link{padding:5px 14px;border-radius:8px;background:rgba(220,38,38,.08);border:1px solid rgba(220,38,38,.15);color:#dc2626;font-size:11px;font-weight:600;text-decoration:none;transition:all .2s}
+        .proj-link:hover{background:rgba(220,38,38,.15)}
+
+        /* Learning */
+        .learn-grid{display:grid;grid-template-columns:1fr 1fr;gap:16px}
+        .learn-block{background:rgba(255,255,255,.02);border:1px solid rgba(255,255,255,.06);border-radius:14px;padding:20px}
+        .learn-block-title{font-size:11px;font-weight:700;color:rgba(255,255,255,.5);text-transform:uppercase;letter-spacing:1px;margin-bottom:12px}
+        .learn-item{font-size:12px;color:rgba(255,255,255,.45);margin-bottom:6px;padding-left:12px;position:relative}
+        .learn-item::before{content:'';position:absolute;left:0;top:7px;width:4px;height:4px;border-radius:50%;background:rgba(220,38,38,.4)}
+
+        /* Languages */
+        .lang-list{display:flex;flex-wrap:wrap;gap:8px}
+        .lang-pill{padding:8px 18px;border-radius:10px;background:rgba(255,255,255,.03);border:1px solid rgba(255,255,255,.06);font-size:12px;color:rgba(255,255,255,.5)}
+        .lang-pill b{color:rgba(255,255,255,.7);font-weight:600}
+
+        /* Score */
+        .score-hero{display:flex;align-items:center;gap:24px;margin-bottom:24px}
+        .score-ring{width:100px;height:100px;position:relative;flex-shrink:0}
+        .score-ring svg{width:100%;height:100%;transform:rotate(-90deg)}
+        .score-ring .bg{fill:none;stroke:rgba(255,255,255,.06);stroke-width:6}
+        .score-ring .fg{fill:none;stroke:#dc2626;stroke-width:6;stroke-linecap:round;transition:stroke-dashoffset 1s ease}
+        .score-value{position:absolute;inset:0;display:flex;flex-direction:column;align-items:center;justify-content:center}
+        .score-value .num{font-size:28px;font-weight:800;color:#dc2626;letter-spacing:-1px}
+        .score-value .lbl{font-size:9px;color:rgba(255,255,255,.3);text-transform:uppercase;letter-spacing:1px}
+        .score-info h3{font-size:16px;font-weight:700;color:rgba(255,255,255,.8);margin-bottom:4px}
+        .score-info p{font-size:13px;color:rgba(255,255,255,.4);font-weight:300;line-height:1.6}
+        .score-dims{display:grid;grid-template-columns:repeat(auto-fill,minmax(200px,1fr));gap:10px}
+        .score-dim{background:rgba(255,255,255,.02);border:1px solid rgba(255,255,255,.06);border-radius:12px;padding:14px 16px}
+        .score-dim-label{font-size:11px;color:rgba(255,255,255,.4);margin-bottom:6px}
+        .score-dim-bar{height:6px;background:rgba(255,255,255,.06);border-radius:3px;overflow:hidden;margin-bottom:4px}
+        .score-dim-bar-fill{height:100%;background:#dc2626;border-radius:3px;transition:width 1s ease}
+        .score-dim-pct{font-size:12px;font-weight:700;color:rgba(220,38,38,.8)}
+
+        /* Contact */
+        .contact-bar{display:flex;gap:8px;flex-wrap:wrap}
+        .contact-item{display:flex;align-items:center;gap:8px;padding:10px 18px;border-radius:12px;background:rgba(255,255,255,.03);border:1px solid rgba(255,255,255,.06);font-size:12px;color:rgba(255,255,255,.5);text-decoration:none;transition:all .2s}
+        .contact-item:hover{border-color:rgba(220,38,38,.3);color:rgba(255,255,255,.8)}
+        .contact-item svg{width:16px;height:16px;opacity:.5}
+        .contact-cta{margin-left:auto;padding:10px 24px;border-radius:12px;background:rgba(220,38,38,.1);border:1px solid rgba(220,38,38,.2);color:#dc2626;font-size:12px;font-weight:600;text-decoration:none;transition:all .2s}
+        .contact-cta:hover{background:rgba(220,38,38,.15)}
+
+        /* Footer */
+        .footer{padding:20px 48px;display:flex;align-items:center;gap:8px}
+        .footer span{font-size:10px;color:rgba(255,255,255,.15)}
+        .footer .tap{color:rgba(220,38,38,.5);font-weight:700}
+
+        @media print{
+            body{padding:0;background:#09090b}
+            .portfolio{border:none;border-radius:0}
+            .section{padding:20px 32px}
+            }
+        @media(max-width:768px){.hero{flex-direction:column;padding:28px 20px}.section{padding:24px 20px}.hero-name{font-size:24px}.skills-grid,.soft-grid,.proj-grid{grid-template-columns:1fr}.learn-grid{grid-template-columns:1fr}.contact-bar{flex-direction:column}.contact-cta{margin-left:0}.exp-card{flex-direction:column}.score-dims{grid-template-columns:1fr 1fr}}
+    </style>
+</head>
+<body>
+    {% set plang = portfolio_lang|default('fr') %}
+
+    <!-- Language Switcher -->
+    <div class="lang-switch">
+        <button type="button" data-lang="fr" aria-pressed="{{ 'true' if plang == 'fr' else 'false' }}" class="{{ 'active' if plang == 'fr' else '' }}">FR</button>
+        <button type="button" data-lang="en" aria-pressed="{{ 'true' if plang == 'en' else 'false' }}" class="{{ 'active' if plang == 'en' else '' }}">EN</button>
+    </div>
+
+    <div class="portfolio">
+        <div class="p-inner">
+
+            <!-- HERO -->
+            <div class="hero">
+                <div class="hero-avatar">
+                    {% if candidate.profile_image_url %}
+                    <img src="{{ candidate.profile_image_url }}" alt="Photo" onerror="this.style.display='none';this.parentElement.querySelector('.fallback').style.display='flex';">
+                    <div class="fallback" style="display:none">{{ (candidate.first_name or 'T')[0] }}{{ (candidate.last_name or 'P')[0] }}</div>
+                    {% else %}
+                    <div class="fallback">{{ (candidate.first_name or 'T')[0] }}{{ (candidate.last_name or 'P')[0] }}</div>
+                    {% endif %}
+                </div>
+                <div class="hero-info">
+                    <div class="hero-badge"><div class="hero-badge-dot"></div><span>Portfolio</span></div>
+                    <h1 class="hero-name">{{ candidate.first_name }} {{ candidate.last_name }}</h1>
+                    <p class="hero-title">{{ candidate.job_title }}</p>
+                    <div class="hero-meta">
+                        {% if candidate.years_experience is defined and candidate.years_experience is not none %}
+                        <div class="hero-meta-item">
+                            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><rect x="2" y="7" width="20" height="14" rx="2"/><path d="M16 3h-8v4h8z"/></svg>
+                            <span class="lang-txt" data-fr="{% if candidate.years_experience == 0 %}D&eacute;butant{% elif candidate.years_experience == 1 %}1 an{% else %}{{ candidate.years_experience }} ans{% endif %}" data-en="{% if candidate.years_experience == 0 %}Entry level{% elif candidate.years_experience == 1 %}1 year{% else %}{{ candidate.years_experience }}+ years{% endif %}">{% if plang == 'en' %}{{ candidate.years_experience }} years{% else %}{{ candidate.years_experience }} ans{% endif %}</span>
+                        </div>
+                        {% endif %}
+                        {% if candidate.contract_type or candidate.type_contrat %}
+                        <div class="hero-meta-item">
+                            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M14 2H6a2 2 0 00-2 2v16a2 2 0 002 2h12a2 2 0 002-2V8z"/><path d="M14 2v6h6"/></svg>
+                            {{ candidate.contract_type or (candidate.type_contrat|join(', ') if candidate.type_contrat is iterable and candidate.type_contrat is not string else candidate.type_contrat) }}
+                        </div>
+                        {% endif %}
+                        {% if candidate.availability or candidate.disponibilite %}
+                        <div class="hero-meta-item">
+                            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="12" cy="12" r="10"/><path d="M12 6v6l4 2"/></svg>
+                            {{ candidate.availability or candidate.disponibilite }}
+                        </div>
+                        {% endif %}
+                    </div>
+                </div>
+            </div>
+
+            <!-- ABOUT -->
+            {% if about_fr is defined or about_en is defined %}
+            <div class="section">
+                <div class="section-title"><span class="lang-txt" data-fr="&Agrave; propos" data-en="About">{% if plang == 'en' %}About{% else %}&Agrave; propos{% endif %}</span></div>
+                <p class="about-text lang-txt" data-fr="{{ about_fr|default('')|e }}" data-en="{{ about_en|default('')|e }}">{% if plang == 'en' %}{{ about_en|default('') }}{% else %}{{ about_fr|default('') }}{% endif %}</p>
+            </div>
+            {% endif %}
+
+            <!-- TECHNICAL SKILLS -->
+            {% if skill_categories_sorted is defined and skill_categories_sorted %}
+            <div class="section">
+                <div class="section-title"><span class="lang-txt" data-fr="Comp&eacute;tences techniques" data-en="Technical Skills">{% if plang == 'en' %}Technical Skills{% else %}Comp&eacute;tences techniques{% endif %}</span></div>
+                <div class="skills-grid">
+                    {% for group in skill_categories_sorted %}
+                    {% set category_name = group.category if group is mapping else 'Skill' %}
+                    {% set lvl = (group.avg_level|default(3))|int %}
+                    <div class="skill-category">
+                        <div class="skill-cat-header">
+                            <div class="skill-cat-num">#{{ loop.index }}</div>
+                            <div class="skill-cat-name">{{ category_name }}</div>
+                        </div>
+                        <div class="skill-cat-level">
+                            {% for i in range(1, 6) %}<span class="{{ 'filled' if lvl >= i else '' }}"></span>{% endfor %}
+                        </div>
+                        <div class="skill-tags">
+                            {% for sk in group.list|default([]) %}
+                            {% set s = sk if sk is mapping else {'name': sk} %}
+                            <span class="skill-tag">{{ (s.get('name') or s)|string }}</span>
+                            {% endfor %}
+                        </div>
+                    </div>
+                    {% endfor %}
+                </div>
+            </div>
+            {% elif candidate.skill_categories is defined and candidate.skill_categories %}
+            <div class="section">
+                <div class="section-title"><span class="lang-txt" data-fr="Comp&eacute;tences" data-en="Skills">{% if plang == 'en' %}Skills{% else %}Comp&eacute;tences{% endif %}</span></div>
+                <div class="skills-grid">
+                    {% for cat in candidate.skill_categories[:3] %}
+                    <div class="skill-category">
+                        <div class="skill-cat-header">
+                            <div class="skill-cat-num">#{{ loop.index }}</div>
+                            <div class="skill-cat-name lang-txt" data-fr="{{ (cat.fr or '')|e }}" data-en="{{ (cat.en or '')|e }}">{% if plang == 'en' %}{{ cat.en or cat.fr }}{% else %}{{ cat.fr or cat.en }}{% endif %}</div>
+                        </div>
+                    </div>
+                    {% endfor %}
+                </div>
+                {% if candidate.skills %}
+                <div class="skill-tags" style="margin-top:16px">
+                    {% for skill in candidate.skills %}
+                    <span class="skill-tag">{{ skill.get('name', skill) if skill is mapping else skill }}</span>
+                    {% endfor %}
+                </div>
+                {% endif %}
+            </div>
+            {% endif %}
+
+            <!-- SOFT SKILLS -->
+            {% if soft_skills_data is defined and soft_skills_data %}
+            <div class="section">
+                <div class="section-title"><span class="lang-txt" data-fr="Comp&eacute;tences comportementales" data-en="Behavioral Skills">{% if plang == 'en' %}Behavioral Skills{% else %}Comp&eacute;tences comportementales{% endif %}</span></div>
+                <div class="soft-grid">
+                    {% for s in soft_skills_data %}
+                    {% set score = (s.get('score', s.get('level', 3))|default(3))|int %}
+                    <div class="soft-card">
+                        <div class="soft-card-name">{{ (s.get('name') or 'Skill')|upper }}</div>
+                        <div class="soft-card-level">
+                            {% for i in range(1, 6) %}<span class="{{ 'filled' if score >= i else '' }}"></span>{% endfor %}
+                        </div>
+                        {% if s.get('proof_type') or s.get('proof') %}
+                        <div class="soft-detail"><b class="lang-txt" data-fr="Preuve :" data-en="Proof:">{% if plang == 'en' %}Proof:{% else %}Preuve :{% endif %}</b> {{ s.get('proof_type', s.get('proof', '')) }}</div>
+                        {% endif %}
+                        {% if s.get('concrete_example') %}
+                        <div class="soft-example">{{ s.get('concrete_example') }}</div>
+                        {% endif %}
+                    </div>
+                    {% endfor %}
+                </div>
+            </div>
+            {% endif %}
+
+            <!-- EXPERIENCE -->
+            {% if experience_timeline is defined and experience_timeline %}
+            <div class="section">
+                <div class="section-title"><span class="lang-txt" data-fr="Exp&eacute;riences" data-en="Experience">{% if plang == 'en' %}Experience{% else %}Exp&eacute;riences{% endif %}</span></div>
+                <div class="exp-list">
+                    {% for e in experience_timeline %}
+                    {% set exp_location = e.get('location', e.get('lieu', '')) %}
+                    <div class="exp-card">
+                        <div class="exp-num">{{ loop.index }}</div>
+                        <div class="exp-content">
+                            <div class="exp-role">{{ (e.get('poste') or e.get('job_title') or e.get('position') or e.get('role') or '') }}</div>
+                            <div class="exp-company">{{ e.get('company') or e.get('organization', '') }}{% if exp_location %} &mdash; {{ exp_location }}{% endif %}</div>
+                            <div class="exp-period">{{ e.get('period') or e.get('periode') or (e.get('date_start', '') ~ ' - ' ~ (e.get('date_end') or 'Present')) }}</div>
+                            {% if e.get('key_achievements') %}
+                            <ul class="exp-tasks">
+                                {% for item in e.get('key_achievements', []) %}
+                                <li>{{ item if item is string else (item.get('text', item) if item is mapping else item) }}</li>
+                                {% endfor %}
+                            </ul>
+                            {% elif e.get('description') or e.get('impact') %}
+                            <div class="exp-desc">{{ e.get('description', e.get('impact', '')) }}</div>
+                            {% endif %}
+                        </div>
+                    </div>
+                    {% endfor %}
+                </div>
+            </div>
+            {% elif candidate.experiences is defined and candidate.experiences %}
+            <div class="section">
+                <div class="section-title"><span class="lang-txt" data-fr="Exp&eacute;riences" data-en="Experience">{% if plang == 'en' %}Experience{% else %}Exp&eacute;riences{% endif %}</span></div>
+                <div class="exp-list">
+                    {% for exp in candidate.experiences %}
+                    {% set exp_title_fr = exp.get('title_fr', exp.get('title', exp.get('poste', ''))) if exp is mapping else exp %}
+                    {% set exp_title_en = exp.get('title_en', exp.get('title', exp.get('poste', ''))) if exp is mapping else exp %}
+                    {% set exp_company_fr = exp.get('company_fr', exp.get('company', exp.get('entreprise', ''))) if exp is mapping else '' %}
+                    {% set exp_company_en = exp.get('company_en', exp.get('company', exp.get('entreprise', ''))) if exp is mapping else '' %}
+                    {% set exp_desc_fr = exp.get('desc_fr', exp.get('description', '')) if exp is mapping else '' %}
+                    {% set exp_desc_en = exp.get('desc_en', exp.get('description', '')) if exp is mapping else '' %}
+                    <div class="exp-card">
+                        <div class="exp-num">{{ loop.index }}</div>
+                        <div class="exp-content">
+                            <div class="exp-role lang-txt" data-fr="{{ exp_title_fr|e }}" data-en="{{ exp_title_en|e }}">{{ exp_title_en if plang == 'en' else exp_title_fr }}</div>
+                            <div class="exp-company lang-txt" data-fr="{{ exp_company_fr|e }}{% if exp.get('year') %} &ndash; {{ exp.get('year')|e }}{% endif %}" data-en="{{ exp_company_en|e }}{% if exp.get('year') %} &ndash; {{ exp.get('year')|e }}{% endif %}">{{ exp_company_en if plang == 'en' else exp_company_fr }}{% if exp.get('year') %} &ndash; {{ exp.get('year') }}{% endif %}</div>
+                            {% if exp_desc_fr or exp_desc_en %}
+                            <div class="exp-desc lang-txt" data-fr="{{ exp_desc_fr|e }}" data-en="{{ exp_desc_en|e }}">{{ exp_desc_en if plang == 'en' else exp_desc_fr }}</div>
+                            {% endif %}
+                        </div>
+                    </div>
+                    {% endfor %}
+                </div>
+            </div>
+            {% endif %}
+
+            <!-- PROJECTS -->
+            {% if projects_data is defined and projects_data %}
+            <div class="section">
+                <div class="section-title"><span class="lang-txt" data-fr="Projets" data-en="Projects">{% if plang == 'en' %}Projects{% else %}Projets{% endif %}</span></div>
+                <div class="proj-grid">
+                    {# Afficher au maximum 3 projets #}
+                    {% for p in projects_data[:3] %}
+                    {% set stack_str = (p.get('technologies') or p.get('stack', []))|join(', ') if (p.get('technologies') or p.get('stack')) is iterable and (p.get('technologies') or p.get('stack')) is not string else (p.get('technologies') or p.get('stack', '')) %}
+                    {% set soft_str = (p.get('soft_skills_used', []))|join(', ') if p.get('soft_skills_used') is iterable else '' %}
+                    <div class="proj-card">
+                        <div class="proj-title">{{ (p.get('title') or 'Projet')|upper }}</div>
+                        {% if p.get('context') %}<div class="proj-detail"><b class="lang-txt" data-fr="Contexte :" data-en="Context:">{% if plang == 'en' %}Context:{% else %}Contexte :{% endif %}</b> {{ p.get('context') }}</div>{% endif %}
+                        {% if p.get('problem') %}<div class="proj-detail"><b class="lang-txt" data-fr="Probl&egrave;me :" data-en="Problem:">{% if plang == 'en' %}Problem:{% else %}Probl&egrave;me :{% endif %}</b> {{ p.get('problem') }}</div>{% endif %}
+                        {% if p.get('solution') %}<div class="proj-detail"><b class="lang-txt" data-fr="Solution :" data-en="Solution:">Solution :</b> {{ p.get('solution') }}</div>{% endif %}
+                        {% if stack_str %}<div class="proj-detail"><b>Stack :</b> {{ stack_str }}</div>{% endif %}
+                        {% if p.get('results') %}<div class="proj-detail"><b class="lang-txt" data-fr="R&eacute;sultat :" data-en="Result:">{% if plang == 'en' %}Result:{% else %}R&eacute;sultat :{% endif %}</b> {{ p.get('results') }}</div>{% endif %}
+                        {% if p.get('links') %}
+                        <div class="proj-links">
+                            {% for link_url in p.get('links', []) %}
+                            <a href="{{ link_url }}" class="proj-link" target="_blank" rel="noopener">
+                                <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M18 13v6a2 2 0 01-2 2H5a2 2 0 01-2-2V8a2 2 0 012-2h6"/><polyline points="15,3 21,3 21,9"/><line x1="10" y1="14" x2="21" y2="3"/></svg>
+                                Link
+                            </a>
+                            {% endfor %}
+                        </div>
+                        {% endif %}
+                    </div>
+                    {% endfor %}
+                </div>
+            </div>
+            {% elif candidate.projects is defined and candidate.projects %}
+            <div class="section">
+                <div class="section-title"><span class="lang-txt" data-fr="Projets" data-en="Projects">{% if plang == 'en' %}Projects{% else %}Projets{% endif %}</span></div>
+                <div class="proj-grid">
+                    {# Fallback : maximum 3 projets depuis candidate.projects #}
+                    {% for proj in candidate.projects[:3] %}
+                    {% set proj_title_fr = proj.get('title_fr', proj.get('title', 'Projet')) if proj is mapping else proj %}
+                    {% set proj_title_en = proj.get('title_en', proj.get('title', 'Project')) if proj is mapping else proj %}
+                    {% set proj_desc_fr = proj.get('desc_fr', proj.get('description', '')) if proj is mapping else '' %}
+                    {% set proj_desc_en = proj.get('desc_en', proj.get('description', '')) if proj is mapping else '' %}
+                    <div class="proj-card">
+                        <div class="proj-title lang-txt" data-fr="{{ proj_title_fr|e }}" data-en="{{ proj_title_en|e }}">{{ (proj_title_en if plang == 'en' else proj_title_fr)|upper }}</div>
+                        {% if proj_desc_fr or proj_desc_en %}
+                        <div class="proj-detail lang-txt" data-fr="{{ proj_desc_fr|e }}" data-en="{{ proj_desc_en|e }}">{{ proj_desc_en if plang == 'en' else proj_desc_fr }}</div>
+                        {% endif %}
+                    </div>
+                    {% endfor %}
+                </div>
+            </div>
+            {% endif %}
+
+            <!-- LEARNING & GROWTH -->
+            {# Normalisation des données de formation :
+               - learning_trainings / learning_certs : anciennes variables (si jamais définies)
+               - candidate.learning_growth.certifications / self_learning : nouveau schéma (agent_portfolio)
+               - candidate.formations : fallback éventuel #}
+            {% set lg = candidate.learning_growth if candidate.learning_growth is defined else {} %}
+            {% if lg is none %}{% set lg = {} %}{% endif %}
+            {% set auto_trainings = lg.get('certifications', []) or lg.get('self_learning', []) %}
+            {% set has_trainings = (learning_trainings is defined and learning_trainings) or auto_trainings %}
+            {% set has_certs = (learning_certs is defined and learning_certs) %}
+            {% set has_formations = (candidate.formations is defined and candidate.formations) %}
+            {% if has_trainings or has_certs or has_formations %}
+            <div class="section">
+                <div class="section-title"><span class="lang-txt" data-fr="Formation &amp; certifications" data-en="Education &amp; Certifications">{% if plang == 'en' %}Education &amp; Certifications{% else %}Formation &amp; certifications{% endif %}</span></div>
+                <div class="learn-grid">
+                    {% if learning_trainings is defined and learning_trainings or auto_trainings %}
+                    {% set trainings = learning_trainings if learning_trainings is defined and learning_trainings else auto_trainings %}
+                    <div class="learn-block">
+                        <div class="learn-block-title lang-txt" data-fr="Formations" data-en="Training">{% if plang == 'en' %}Training{% else %}Formations{% endif %}</div>
+                        {% for item in trainings %}
+                        {% if item is mapping %}
+                        {# merged_formations (generate_portfolio_html) : name/name_fr/name_en, organization/organization_fr/en, year #}
+                        {% set t_name = item.get('name') or item.get('title') %}
+                        {% set t_name_fr = item.get('name_fr') or t_name %}
+                        {% set t_name_en = item.get('name_en') or t_name %}
+                        {% set t_org = item.get('organization') or item.get('institution') %}
+                        {% set t_org_fr = item.get('organization_fr') or t_org %}
+                        {% set t_org_en = item.get('organization_en') or t_org %}
+                        {% set t_year = item.get('year', '') %}
+                        <div class="learn-item lang-txt"
+                             data-fr="{{ (t_name_fr or 'Formation')|e }} &mdash; {{ (t_org_fr or '')|e }} {{ t_year|e }}"
+                             data-en="{{ (t_name_en or 'Training')|e }} &mdash; {{ (t_org_en or '')|e }} {{ t_year|e }}">
+                            {{ (t_name_en if plang == 'en' else t_name_fr) or ('Training' if plang == 'en' else 'Formation') }}
+                            &mdash;
+                            {{ (t_org_en if plang == 'en' else t_org_fr) or '' }}
+                            {{ t_year }}
+                        </div>
+                        {% else %}
+                        <div class="learn-item">{{ item }}</div>
+                        {% endif %}
+                        {% endfor %}
+                    </div>
+                    {% elif candidate.formations is defined and candidate.formations %}
+                    <div class="learn-block">
+                        <div class="learn-block-title lang-txt" data-fr="Formations" data-en="Training">{% if plang == 'en' %}Training{% else %}Formations{% endif %}</div>
+                        {% for f in candidate.formations %}
+                        {% set f_title_fr = f.get('title_fr', f.get('title', f.get('diplome', ''))) if f is mapping else f %}
+                        {% set f_title_en = f.get('title_en', f.get('title', f.get('diplome', ''))) if f is mapping else f %}
+                        {% set f_org_fr = f.get('org_fr', f.get('school', f.get('etablissement', ''))) if f is mapping else '' %}
+                        {% set f_org_en = f.get('org_en', f.get('school', f.get('etablissement', ''))) if f is mapping else '' %}
+                        <div class="learn-item lang-txt" data-fr="{{ f_title_fr|e }} &mdash; {{ f_org_fr|e }} {{ f.get('year', '')|e }}" data-en="{{ f_title_en|e }} &mdash; {{ f_org_en|e }} {{ f.get('year', '')|e }}">{{ f_title_en if plang == 'en' else f_title_fr }} &mdash; {{ f_org_en if plang == 'en' else f_org_fr }} {{ f.get('year', '') if f is mapping else '' }}</div>
+                        {% endfor %}
+                    </div>
+                    {% endif %}
+                    {% if learning_certs is defined and learning_certs %}
+                    <div class="learn-block">
+                        <div class="learn-block-title">Certifications</div>
+                        {% for item in learning_certs %}
+                        <div class="learn-item">{{ (item.get('name') or item.get('title') or 'Certification') }} &mdash; {{ item.get('organism', item.get('organization', '')) }} {{ item.get('year', '') }}</div>
+                        {% endfor %}
+                    </div>
+                    {% endif %}
+                </div>
+            </div>
+            {% endif %}
+
+            <!-- LANGUAGES -->
+            {% if candidate.languages is defined and candidate.languages %}
+            <div class="section">
+                <div class="section-title"><span class="lang-txt" data-fr="Langues" data-en="Languages">{% if plang == 'en' %}Languages{% else %}Langues{% endif %}</span></div>
+                <div class="lang-list">
+                    {% for lang in candidate.languages %}
+                    {% if lang is mapping %}
+                    {% set text_fr = (lang.get('name_fr') or lang.get('name', lang.get('langue', ''))) ~ ((' — ' ~ lang.get('level', lang.get('niveau', ''))) if lang.get('level') or lang.get('niveau') else '') %}
+                    {% set text_en = (lang.get('name_en') or lang.get('name', lang.get('langue', ''))) ~ ((' — ' ~ lang.get('level', lang.get('niveau', ''))) if lang.get('level') or lang.get('niveau') else '') %}
+                    <span class="lang-pill lang-txt" data-fr="{{ text_fr|e }}" data-en="{{ text_en|e }}">{{ text_en if plang == 'en' else text_fr }}</span>
+                    {% else %}
+                    <span class="lang-pill">{{ lang }}</span>
+                    {% endif %}
+                    {% endfor %}
+                </div>
+            </div>
+            {% endif %}
+
+            <!-- SCORE -->
+            {% if readiness_score is defined and readiness_score is not none and readiness_score != '' %}
+            <div class="section">
+                <div class="section-title"><span class="lang-txt" data-fr="Score de pr&eacute;paration" data-en="Readiness Score">{% if plang == 'en' %}Readiness Score{% else %}Score de pr&eacute;paration{% endif %}</span></div>
+                {% set rs = (readiness_score|float|int) %}
+                {% set circ = 251 %}
+                {% set offset = circ - (circ * rs / 100) %}
+                <div class="score-hero">
+                    <div class="score-ring">
+                        <svg viewBox="0 0 90 90"><circle class="bg" cx="45" cy="45" r="40"/><circle class="fg" cx="45" cy="45" r="40" stroke-dasharray="{{ circ }}" stroke-dashoffset="{{ offset }}"/></svg>
+                        <div class="score-value"><span class="num">{{ rs }}</span><span class="lbl">/ 100</span></div>
+                    </div>
+                    <div class="score-info">
+                        <h3 class="lang-txt" data-fr="Score global" data-en="Global Score">{% if plang == 'en' %}Global Score{% else %}Score global{% endif %}</h3>
+                        <p class="lang-txt" data-fr="Score r&eacute;fl&eacute;tant le niveau de pr&eacute;paration professionnelle." data-en="Score reflecting professional readiness.">{% if plang == 'en' %}Score reflecting professional readiness.{% else %}Score r&eacute;fl&eacute;tant le niveau de pr&eacute;paration professionnelle.{% endif %}</p>
+                    </div>
+                </div>
+                {% if score_dims is defined and score_dims %}
+                <div class="score-dims">
+                    {% for label, desc, pct in score_dims %}
+                    <div class="score-dim">
+                        <div class="score-dim-label">{{ label }}</div>
+                        <div class="score-dim-bar"><div class="score-dim-bar-fill" style="width:{{ ((pct|float|int)|string ~ '%') if (pct is defined and pct is not none and pct != '') else '0%' }}"></div></div>
+                        <div class="score-dim-pct">{{ ((pct|float|int)|string ~ ' %') if (pct is defined and pct is not none and pct != '') else '— %' }}</div>
+                    </div>
+                    {% endfor %}
+                </div>
+                {% endif %}
+            </div>
+            {% endif %}
+
+            <!-- CONTACT -->
+            <div class="section">
+                <div class="section-title"><span class="lang-txt" data-fr="Contact" data-en="Contact">Contact</span></div>
+                <div class="contact-bar">
+                    {% if candidate.phone %}
+                    <a href="tel:{{ candidate.phone }}" class="contact-item">
+                        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M22 16.92v3a2 2 0 01-2.18 2 19.79 19.79 0 01-8.63-3.07 19.5 19.5 0 01-6-6 19.79 19.79 0 01-3.07-8.67A2 2 0 014.11 2h3a2 2 0 012 1.72c.127.96.361 1.903.7 2.81a2 2 0 01-.45 2.11L8.09 9.91a16 16 0 006 6l1.27-1.27a2 2 0 012.11-.45c.907.339 1.85.573 2.81.7A2 2 0 0122 16.92z"/></svg>
+                        {{ candidate.phone }}
+                    </a>
+                    {% endif %}
+                    {% if candidate.email %}
+                    <a href="mailto:{{ candidate.email }}" class="contact-item">
+                        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><rect x="2" y="4" width="20" height="16" rx="2"/><path d="M22 7l-10 7L2 7"/></svg>
+                        {{ candidate.email }}
+                    </a>
+                    {% endif %}
+                    {% if candidate.linkedin_url %}
+                    <a href="{{ candidate.linkedin_url }}" target="_blank" rel="noopener" class="contact-item">
+                        <svg viewBox="0 0 24 24" fill="currentColor"><path d="M20.447 20.452h-3.554v-5.569c0-1.328-.027-3.037-1.852-3.037-1.853 0-2.136 1.445-2.136 2.939v5.667H9.351V9h3.414v1.561h.046c.477-.9 1.637-1.85 3.37-1.85 3.601 0 4.267 2.37 4.267 5.455v6.286zM5.337 7.433a2.062 2.062 0 01-2.063-2.065 2.064 2.064 0 112.063 2.065zm1.782 13.019H3.555V9h3.564v11.452zM22.225 0H1.771C.792 0 0 .774 0 1.729v20.542C0 23.227.792 24 1.771 24h20.451C23.2 24 24 23.227 24 22.271V1.729C24 .774 23.2 0 22.222 0h.003z"/></svg>
+                        LinkedIn
+                    </a>
+                    {% endif %}
+                    {% if candidate.github_url %}
+                    <a href="{{ candidate.github_url }}" target="_blank" rel="noopener" class="contact-item">
+                        <svg viewBox="0 0 24 24" fill="currentColor"><path d="M12 0C5.374 0 0 5.373 0 12c0 5.302 3.438 9.8 8.207 11.387.599.111.793-.261.793-.577v-2.234c-3.338.726-4.033-1.416-4.033-1.416-.546-1.387-1.333-1.756-1.333-1.756-1.089-.745.083-.729.083-.729 1.205.084 1.839 1.237 1.839 1.237 1.07 1.834 2.807 1.304 3.492.997.107-.775.418-1.305.762-1.604-2.665-.305-5.467-1.334-5.467-5.931 0-1.311.469-2.381 1.236-3.221-.124-.303-.535-1.524.117-3.176 0 0 1.008-.322 3.301 1.23A11.509 11.509 0 0112 5.803c1.02.005 2.047.138 3.006.404 2.291-1.552 3.297-1.23 3.297-1.23.653 1.653.242 2.874.118 3.176.77.84 1.235 1.911 1.235 3.221 0 4.609-2.807 5.624-5.479 5.921.43.372.823 1.102.823 2.222v3.293c0 .319.192.694.801.576C20.566 21.797 24 17.3 24 12c0-6.627-5.373-12-12-12z"/></svg>
+                        GitHub
+                    </a>
+                    {% elif candidate.behance_url %}
+                    <a href="{{ candidate.behance_url }}" target="_blank" rel="noopener" class="contact-item">
+                        <svg viewBox="0 0 24 24" fill="currentColor"><path d="M6.938 4.503c.702 0 1.34.06 1.92.188.577.13 1.07.33 1.485.609.41.28.733.65.96 1.12.225.47.34 1.05.34 1.73 0 .74-.17 1.36-.507 1.86-.338.5-.837.9-1.502 1.22.906.26 1.576.72 2.022 1.37.448.66.665 1.45.665 2.36 0 .75-.13 1.39-.41 1.93-.28.55-.67 1-1.16 1.35-.48.348-1.05.6-1.67.767-.63.16-1.3.243-2.01.243H0V4.51h6.938v-.007z"/></svg>
+                        Behance
+                    </a>
+                    {% endif %}
+                    {% if candidate.cv_download_url %}
+                    <a href="{{ candidate.cv_download_url }}" class="contact-cta lang-txt" data-fr="T&eacute;l&eacute;charger le CV" data-en="Download CV" target="_blank" rel="noopener noreferrer">{% if plang == 'en' %}Download CV{% else %}T&eacute;l&eacute;charger le CV{% endif %}</a>
+                    {% endif %}
+                </div>
+            </div>
+
+            <!-- Footer -->
+            <div class="footer">
+                <span class="lang-txt" data-fr="G&eacute;n&eacute;r&eacute; par" data-en="Generated by">{% if plang == 'en' %}Generated by{% else %}G&eacute;n&eacute;r&eacute; par{% endif %}</span>
+                <span class="tap">TAP</span>
+                <span>&mdash;</span>
+                <span>Talent Acquisition Platform</span>
+            </div>
+        </div>
+    </div>
+
+    <script>
+(function(){
+    var root=document.getElementById('portfolio-lang-root');
+    var lang=root?(root.getAttribute('data-initial-lang')||'fr'):'fr';
+    function setLang(l){
+        lang=l;
+        if(root){root.setAttribute('lang',l);root.setAttribute('data-initial-lang',l);}
+        document.querySelectorAll('.lang-txt[data-fr][data-en]').forEach(function(el){
+            var v=el.getAttribute('data-'+l);
+            if(v!=null){
+                if(el.tagName==='INPUT'||el.tagName==='TEXTAREA')el.value=v;
+                else el.innerHTML=v;
+            }
+        });
+        document.querySelectorAll('.lang-switch button').forEach(function(b){
+            b.classList.toggle('active',b.getAttribute('data-lang')===l);
+            b.setAttribute('aria-pressed',b.getAttribute('data-lang')===l?'true':'false');
+        });
+    }
+    setLang(lang);
+    document.querySelectorAll('.lang-switch button').forEach(function(b){
+        b.addEventListener('click',function(){setLang(this.getAttribute('data-lang'));});
+    });
+})();
+    </script>
+</body>
+</html>

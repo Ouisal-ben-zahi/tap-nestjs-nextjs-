@@ -1,6 +1,6 @@
-import { Body, Controller, Delete, Get, Param, Post, Query, Req, UploadedFile, UseGuards, UseInterceptors } from '@nestjs/common';
+import { Body, Controller, Delete, Get, Param, Post, Query, Req, UploadedFile, UploadedFiles, UseGuards, UseInterceptors } from '@nestjs/common';
 import { AuthGuard } from '@nestjs/passport';
-import { FileInterceptor } from '@nestjs/platform-express';
+import { FileFieldsInterceptor, FileInterceptor } from '@nestjs/platform-express';
 import { DashboardService, type RecruiterJobPayload } from './dashboard.service';
 
 @Controller('dashboard')
@@ -54,9 +54,34 @@ export class DashboardController {
 
   @Post('candidat/upload-cv')
   @UseGuards(AuthGuard('jwt'))
+  @UseInterceptors(
+    FileFieldsInterceptor([
+      { name: 'file', maxCount: 1 }, // legacy / frontend field name
+      { name: 'img_file', maxCount: 1 }, // forwarded to Flask if provided
+    ]),
+  )
+  async uploadCandidateCvByJwt(
+    @Req() req: any,
+    @UploadedFiles()
+    files: { file?: any[]; img_file?: any[] },
+    @Body() body: Record<string, any>,
+  ) {
+    const cvFile = files?.file?.[0];
+    const imgFile = files?.img_file?.[0];
+    return this.dashboardService.uploadCandidateCv(req.user.sub, cvFile, {
+      onboarding: body,
+      imgFile,
+    });
+  }
+
+  @Post('candidat/check-cv-photo')
+  @UseGuards(AuthGuard('jwt'))
   @UseInterceptors(FileInterceptor('file'))
-  async uploadCandidateCvByJwt(@Req() req: any, @UploadedFile() file: any) {
-    return this.dashboardService.uploadCandidateCv(req.user.sub, file);
+  async checkCandidateCvPhotoByJwt(
+    @Req() req: any,
+    @UploadedFile() file: any,
+  ) {
+    return this.dashboardService.checkCvHasPhoto(req.user.sub, file);
   }
 
   @Delete("candidat/cv-file")
