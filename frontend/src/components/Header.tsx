@@ -5,6 +5,7 @@ import Link from "next/link";
 import { usePathname } from "next/navigation";
 import Image from "next/image";
 import { ChevronDown } from "lucide-react";
+import { useAuth } from "@/hooks/use-auth";
 
 const navLinks = [
   { href: "/", label: "Accueil" },
@@ -24,6 +25,8 @@ export default function Header() {
   const [menuOpen, setMenuOpen] = useState(false);
   const [scrolled, setScrolled] = useState(false);
   const pathname = usePathname();
+  const { user } = useAuth();
+  const initial = (user?.email?.[0] || "").toUpperCase();
 
   useEffect(() => {
     const onScroll = () => setScrolled(window.scrollY > 30);
@@ -109,18 +112,34 @@ export default function Header() {
           </nav>
 
           <div className="hidden lg:flex items-center gap-2">
-            <Link
-              href="/connexion"
-              className="inline-flex items-center gap-1.5 px-4 py-2 text-[10px] font-semibold uppercase tracking-[1.5px] text-white/50 hover:text-white/70 transition-colors duration-300 cursor-pointer"
-            >
-              Connexion
-            </Link>
-            <Link
-              href="/inscription"
-              className="btn-primary btn-sm"
-            >
-              Commencer
-            </Link>
+            {user ? (
+              <Link
+                href="/app"
+                className="inline-flex items-center gap-2.5 px-4 py-2 rounded-full bg-white/[0.04] hover:bg-white/[0.08] border border-white/[0.08] transition-colors duration-300 cursor-pointer"
+              >
+                <span className="text-[11px] text-white/70 truncate max-w-[180px] text-left">
+                  {user.email}
+                </span>
+                <div className="w-7 h-7 rounded-full bg-tap-red flex items-center justify-center text-[11px] font-bold text-white uppercase ring-1 ring-tap-red/40">
+                  {initial || "?"}
+                </div>
+              </Link>
+            ) : (
+              <>
+                <Link
+                  href="/connexion"
+                  className="inline-flex items-center gap-1.5 px-4 py-2 text-[10px] font-semibold uppercase tracking-[1.5px] text-white/50 hover:text-white/70 transition-colors duration-300 cursor-pointer"
+                >
+                  Connexion
+                </Link>
+                <Link
+                  href="/inscription"
+                  className="btn-primary btn-sm"
+                >
+                  Commencer
+                </Link>
+              </>
+            )}
           </div>
 
           <button
@@ -174,21 +193,47 @@ export default function Header() {
             ))}
           </div>
 
-          <div style={{ transitionDelay: menuOpen ? "350ms" : "0ms" }} className={`transition-all duration-400 ${menuOpen ? "opacity-100" : "opacity-0"}`}>
-            <Link
-              href="/connexion"
-              className="text-[28px] font-light tracking-[4px] uppercase text-white/50 hover:text-white transition-colors duration-300 cursor-pointer"
-              onClick={() => setMenuOpen(false)}
+          {user ? (
+            <div
+              style={{ transitionDelay: menuOpen ? "350ms" : "0ms" }}
+              className={`transition-all duration-400 ${menuOpen ? "opacity-100" : "opacity-0"}`}
             >
-              Connexion
-            </Link>
-          </div>
+              <Link
+                href="/app"
+                className="inline-flex items-center gap-3 px-5 py-3 rounded-full bg-white text-black text-[14px] font-medium tracking-[1px] uppercase"
+                onClick={() => setMenuOpen(false)}
+              >
+                <span className="truncate max-w-[200px]">{user.email}</span>
+                <div className="w-8 h-8 rounded-full bg-tap-red flex items-center justify-center text-[13px] font-bold text-white uppercase">
+                  {initial || "?"}
+                </div>
+              </Link>
+            </div>
+          ) : (
+            <>
+              <div
+                style={{ transitionDelay: menuOpen ? "350ms" : "0ms" }}
+                className={`transition-all duration-400 ${menuOpen ? "opacity-100" : "opacity-0"}`}
+              >
+                <Link
+                  href="/connexion"
+                  className="text-[28px] font-light tracking-[4px] uppercase text-white/50 hover:text-white transition-colors duration-300 cursor-pointer"
+                  onClick={() => setMenuOpen(false)}
+                >
+                  Connexion
+                </Link>
+              </div>
+              <div
+                style={{ transitionDelay: menuOpen ? "400ms" : "0ms" }}
+                className={`mt-12 transition-all duration-400 ${menuOpen ? "opacity-100" : "opacity-0"}`}
+              >
+                <Link href="/inscription" className="btn-primary" onClick={() => setMenuOpen(false)}>
+                  Commencer
+                </Link>
+              </div>
+            </>
+          )}
         </nav>
-        <div style={{ transitionDelay: menuOpen ? "400ms" : "0ms" }} className={`mt-12 transition-all duration-400 ${menuOpen ? "opacity-100" : "opacity-0"}`}>
-          <Link href="/inscription" className="btn-primary" onClick={() => setMenuOpen(false)}>
-            Commencer
-          </Link>
-        </div>
       </div>
     </header>
   );
