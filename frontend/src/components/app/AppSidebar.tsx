@@ -1,5 +1,6 @@
 "use client";
 
+import { useState } from "react";
 import Link from "next/link";
 import { usePathname } from "next/navigation";
 import { useAuth } from "@/hooks/use-auth";
@@ -13,7 +14,6 @@ import {
   MessageSquare,
   FolderOpen,
   X,
-  ArrowUpLeft,
   Briefcase,
   Search,
   UserCheck,
@@ -21,6 +21,7 @@ import {
   LogOut,
   Settings,
   ClipboardList,
+  Menu,
 } from "lucide-react";
 
 const candidatNavItems = [
@@ -54,6 +55,7 @@ export default function AppSidebar({ open, onClose }: AppSidebarProps) {
   const pathname = usePathname();
   const { user, logout } = useAuth();
   const isCandidat = user?.role === "candidat";
+  const [collapsed, setCollapsed] = useState(false);
 
   // Pour les candidats, on vérifie si un profil existe en base
   const statsQuery = useCandidatStats();
@@ -81,7 +83,9 @@ export default function AppSidebar({ open, onClose }: AppSidebarProps) {
       )}
 
       <aside
-        className={`fixed lg:sticky top-0 lg:top-[60px] left-0 h-screen lg:h-[calc(100vh-60px)] w-[250px] bg-[#060606]/90 backdrop-blur-xl border-r border-white/[0.05] z-50 flex flex-col transition-transform duration-300 lg:translate-x-0 ${
+        className={`fixed lg:sticky top-0 lg:top-[60px] left-0 h-screen lg:h-[calc(100vh-60px)] ${
+          collapsed ? "w-[80px]" : "w-[250px]"
+        } bg-[#060606]/90 backdrop-blur-xl border-r border-white/[0.05] z-50 flex flex-col transition-transform duration-300 lg:translate-x-0 ${
           open ? "translate-x-0" : "-translate-x-full"
         }`}
       >
@@ -95,12 +99,26 @@ export default function AppSidebar({ open, onClose }: AppSidebarProps) {
           </button>
         </div>
 
-        <nav className="flex-1 px-3 py-6 space-y-0.5 overflow-y-auto">
-          <div className="px-3 mb-6">
-            <span className="text-[9px] font-bold uppercase tracking-[3px] text-white/25">
-              Navigation
-            </span>
-          </div>
+        {/* Desktop collapse / expand button */}
+        <div className="hidden lg:flex items-center justify-end px-3 pt-3">
+          <button
+            type="button"
+            onClick={() => setCollapsed((v) => !v)}
+            className="w-8 h-8 flex items-center justify-center rounded-lg text-white/30 hover:text-white hover:bg-white/[0.06] transition-colors"
+            aria-label="Basculer la taille de la barre latérale"
+          >
+            <Menu size={16} />
+          </button>
+        </div>
+
+        <nav className="flex-1 px-3 py-4 space-y-0.5 overflow-y-auto">
+          {!collapsed && (
+            <div className="px-3 mb-4">
+              <span className="text-[9px] font-bold uppercase tracking-[3px] text-white/25">
+                Navigation
+              </span>
+            </div>
+          )}
           {navItems.map((item) => {
             const isActive = pathname === item.href;
             const Icon = item.icon;
@@ -109,8 +127,9 @@ export default function AppSidebar({ open, onClose }: AppSidebarProps) {
             const isCandidatParam = isCandidat && item.href === "/app/parametres";
             const disabled = isCandidat && !hasProfile && !isCandidatParam;
 
-            const baseClasses =
-              "relative flex items-center gap-3 px-3 py-2.5 rounded-xl text-[13px] transition-all duration-300 group";
+            const baseClasses = collapsed
+              ? "relative flex items-center justify-center px-3 py-2.5 rounded-xl transition-all duration-300 group"
+              : "relative flex items-center gap-3 px-3 py-2.5 rounded-xl text-[13px] transition-all duration-300 group";
             const activeClasses = isActive
               ? "bg-tap-red/[0.08] text-tap-red font-medium"
               : "text-white/45 hover:text-white/70 hover:bg-white/[0.04] font-normal";
@@ -131,11 +150,15 @@ export default function AppSidebar({ open, onClose }: AppSidebarProps) {
                 >
                   <Icon size={16} strokeWidth={isActive ? 2 : 1.5} />
                 </div>
-                <span className="flex-1">{item.label}</span>
-                {disabled && (
-                  <span className="ml-2 text-[10px] uppercase tracking-[1px] text-white/30">
-                    Inactif
-                  </span>
+                {!collapsed && (
+                  <>
+                    <span className="flex-1">{item.label}</span>
+                    {disabled && (
+                      <span className="ml-2 text-[10px] uppercase tracking-[1px] text-white/30">
+                        Inactif
+                      </span>
+                    )}
+                  </>
                 )}
               </>
             );
@@ -166,19 +189,16 @@ export default function AppSidebar({ open, onClose }: AppSidebarProps) {
 
         {/* Footer */}
         <div className="p-3 border-t border-white/[0.05] space-y-2">
-          <Link
-            href="/"
-            className="flex items-center gap-2.5 px-3 py-2.5 rounded-xl text-[12px] text-white/40 hover:text-white/60 hover:bg-white/[0.04] transition-all duration-300"
-          >
-            <ArrowUpLeft size={14} />
-            <span>Retour au site</span>
-          </Link>
           <button
             onClick={handleLogout}
-            className="w-full flex items-center gap-2.5 px-3 py-2.5 rounded-xl text-[12px] text-white/40 hover:text-tap-red/80 hover:bg-tap-red/[0.06] transition-all duration-300"
+            className={`w-full flex items-center px-3 py-2.5 rounded-xl text-[12px] text-white/40 hover:text-tap-red/80 hover:bg-tap-red/[0.06] transition-all duration-300 ${
+              collapsed ? "justify-center" : "gap-2.5"
+            }`}
           >
-            <LogOut size={14} />
-            <span>Quitter</span>
+            <div className="w-8 h-8 rounded-lg flex items-center justify-center bg-white/[0.03] group-hover:bg-white/[0.06] transition-colors">
+              <LogOut size={14} />
+            </div>
+            {!collapsed && <span>Quitter</span>}
           </button>
         </div>
       </aside>

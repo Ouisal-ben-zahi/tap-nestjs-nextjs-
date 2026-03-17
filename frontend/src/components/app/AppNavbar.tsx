@@ -6,7 +6,7 @@ import Image from "next/image";
 import { useRouter } from "next/navigation";
 import { useAuth } from "@/hooks/use-auth";
 import { useCandidatStats } from "@/hooks/use-candidat";
-import { LogOut, Menu, Settings } from "lucide-react";
+import { ArrowUpRight, LogOut, Menu, Settings } from "lucide-react";
 
 interface AppNavbarProps {
   onToggleSidebar: () => void;
@@ -59,12 +59,12 @@ export default function AppNavbar({ onToggleSidebar }: AppNavbarProps) {
         </Link>
       </div>
 
-      <div className="relative flex items-center gap-2">
+      <div className="relative flex items-center gap-3">
         {user?.email && (
           <button
             type="button"
             onClick={toggleProfileMenu}
-            className="hidden sm:flex items-center gap-2.5 px-3.5 py-2 rounded-xl bg-white/[0.03] border border-white/[0.06] hover:bg-white/[0.06] transition-colors"
+            className="hidden sm:flex items-center gap-2.5 px-3.5 py-2 rounded-xl hover:bg-white/[0.06] transition-colors"
           >
             <span className="text-[12px] text-white/45 truncate max-w-[160px] text-left">
               {user.email}
@@ -86,6 +86,22 @@ export default function AppNavbar({ onToggleSidebar }: AppNavbarProps) {
             )}
           </button>
         )}
+
+        {/* Bouton "Retour au site" à droite du profil — icône seule avec tooltip décoré */}
+        <div className="hidden sm:block relative group">
+          <Link
+            href="/"
+            className="inline-flex items-center justify-center w-9 h-9 rounded-lg text-white/40 hover:text-white/80 hover:bg-white/[0.06] transition-colors"
+            aria-label="Retour au site"
+          >
+            <ArrowUpRight size={16} />
+          </Link>
+          <div className="pointer-events-none absolute right-0 top-10 opacity-0 group-hover:opacity-100 group-hover:translate-y-0 translate-y-1 transition-all duration-150">
+            <div className="px-3 py-1.5 rounded-md bg-white text-[11px] font-medium text-black shadow-lg shadow-black/40 whitespace-nowrap">
+              Retour au site
+            </div>
+          </div>
+        </div>
 
         {openProfileMenu && (
           <div className="absolute right-0 top-[52px] w-64 bg-[#050505]/95 border border-white/[0.08] rounded-2xl shadow-lg backdrop-blur-xl overflow-hidden z-50">
