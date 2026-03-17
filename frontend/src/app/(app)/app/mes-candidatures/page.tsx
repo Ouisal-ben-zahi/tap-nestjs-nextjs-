@@ -54,21 +54,23 @@ export default function MesCandidaturesPage() {
             >
               <div className="flex-1 min-w-0">
                 <p className="text-[14px] font-medium text-white truncate">
-                  {app.job_title}
+                  {app.jobTitle ?? "Offre sans titre"}
                 </p>
                 <p className="text-[12px] text-white/40">{app.company}</p>
               </div>
               <div className="flex items-center gap-3 shrink-0">
                 <span
                   className={`text-[11px] px-2.5 py-1 rounded-full border font-medium ${statusBg(
-                    app.status,
+                    app.status ?? "Inconnu",
                   )}`}
                 >
-                  {app.status}
+                  {app.status ?? "Inconnu"}
                 </span>
-                <span className="text-[11px] text-white/30">
-                  {formatRelative(app.validated_at || app.applied_at)}
-                </span>
+                {app.validatedAt && (
+                  <span className="text-[11px] text-white/30">
+                    {formatRelative(app.validatedAt)}
+                  </span>
+                )}
               </div>
             </div>
           ))}

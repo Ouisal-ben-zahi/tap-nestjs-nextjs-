@@ -27,8 +27,8 @@ export default function StatistiquesPage() {
   }
 
   const overview = overviewQuery.data;
-  const maxAppCount = Math.max(...(overview?.applicationsByJob?.map((a) => a.count) || [1]), 1);
-  const maxCatCount = Math.max(...(overview?.jobsByCategory?.map((c) => c.count) || [1]), 1);
+  const maxAppCount = Math.max(...(overview?.applicationsPerJob?.map((a) => a.value) || [1]), 1);
+  const maxCatCount = Math.max(...(overview?.jobsPerCategory?.map((c) => c.value) || [1]), 1);
   const totalApps = overview?.totalApplications ?? 0;
   const totalJobs = overview?.totalJobs ?? 0;
   const avgPerJob = totalJobs > 0 ? Math.round(totalApps / totalJobs) : 0;
@@ -98,7 +98,7 @@ export default function StatistiquesPage() {
                 <TrendingUp size={18} className="text-emerald-500" />
               </div>
               <div>
-                <p className="text-[22px] font-bold text-white">{overview?.applicationsByJob?.length ?? 0}</p>
+                <p className="text-[22px] font-bold text-white">{overview?.applicationsPerJob?.length ?? 0}</p>
                 <p className="text-[11px] text-white/40">Offres avec candidatures</p>
               </div>
             </div>
@@ -107,7 +107,7 @@ export default function StatistiquesPage() {
                 <PieChart size={18} className="text-purple-500" />
               </div>
               <div>
-                <p className="text-[22px] font-bold text-white">{overview?.jobsByCategory?.length ?? 0}</p>
+                <p className="text-[22px] font-bold text-white">{overview?.jobsPerCategory?.length ?? 0}</p>
                 <p className="text-[11px] text-white/40">Catégories actives</p>
               </div>
             </div>
@@ -121,19 +121,19 @@ export default function StatistiquesPage() {
                 <BarChart3 size={14} className="text-tap-red" />
                 <h3 className="text-[13px] uppercase tracking-[2px] text-white/50 font-semibold">Candidatures par offre</h3>
               </div>
-              {!overview?.applicationsByJob?.length ? (
+              {!overview?.applicationsPerJob?.length ? (
                 <p className="text-[13px] text-white/30 py-8 text-center">Aucune donnée disponible</p>
               ) : (
                 <div className="space-y-3">
-                  {overview.applicationsByJob.map((item, i) => (
+                  {overview.applicationsPerJob.map((item, i) => (
                     <div key={i} className="flex items-center gap-3">
-                      <span className="text-[12px] text-white/50 w-[140px] truncate shrink-0">{item.jobTitle}</span>
+                      <span className="text-[12px] text-white/50 w-[140px] truncate shrink-0">{item.title}</span>
                       <div className="flex-1 h-7 bg-zinc-800/60 rounded-md overflow-hidden">
                         <div
                           className="h-full bg-gradient-to-r from-tap-red/70 to-tap-red/40 rounded-md transition-all duration-700 flex items-center justify-end pr-2"
-                          style={{ width: `${Math.max(15, (item.count / maxAppCount) * 100)}%` }}
+                          style={{ width: `${Math.max(15, (item.value / maxAppCount) * 100)}%` }}
                         >
-                          <span className="text-[10px] text-white/80 font-medium">{item.count}</span>
+                          <span className="text-[10px] text-white/80 font-medium">{item.value}</span>
                         </div>
                       </div>
                     </div>
@@ -148,21 +148,21 @@ export default function StatistiquesPage() {
                 <PieChart size={14} className="text-blue-500" />
                 <h3 className="text-[13px] uppercase tracking-[2px] text-white/50 font-semibold">Offres par catégorie</h3>
               </div>
-              {!overview?.jobsByCategory?.length ? (
+              {!overview?.jobsPerCategory?.length ? (
                 <p className="text-[13px] text-white/30 py-8 text-center">Aucune donnée disponible</p>
               ) : (
                 <div className="space-y-3">
-                  {overview.jobsByCategory.map((item, i) => {
+                  {overview.jobsPerCategory.map((item, i) => {
                     const colors = ["bg-blue-500/60", "bg-emerald-500/60", "bg-purple-500/60", "bg-amber-500/60", "bg-cyan-500/60", "bg-rose-500/60"];
                     return (
                       <div key={i} className="flex items-center gap-3">
-                        <span className="text-[12px] text-white/50 w-[140px] truncate shrink-0">{item.category}</span>
+                        <span className="text-[12px] text-white/50 w-[140px] truncate shrink-0">{item.label}</span>
                         <div className="flex-1 h-7 bg-zinc-800/60 rounded-md overflow-hidden">
                           <div
                             className={`h-full ${colors[i % colors.length]} rounded-md transition-all duration-700 flex items-center justify-end pr-2`}
-                            style={{ width: `${Math.max(15, (item.count / maxCatCount) * 100)}%` }}
+                            style={{ width: `${Math.max(15, (item.value / maxCatCount) * 100)}%` }}
                           >
-                            <span className="text-[10px] text-white/80 font-medium">{item.count}</span>
+                            <span className="text-[10px] text-white/80 font-medium">{item.value}</span>
                           </div>
                         </div>
                       </div>

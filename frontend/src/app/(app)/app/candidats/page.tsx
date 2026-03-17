@@ -107,7 +107,7 @@ export default function CandidatsPage() {
               <h2 className="text-[13px] uppercase tracking-[2px] text-white/50 font-semibold">Candidatures par offre</h2>
             </div>
 
-            {!overview?.applicationsByJob?.length ? (
+            {!overview?.applicationsPerJob?.length ? (
               <EmptyState
                 icon={<Users className="w-10 h-10" />}
                 title="Aucun candidat"
@@ -115,18 +115,20 @@ export default function CandidatsPage() {
               />
             ) : (
               <div className="space-y-3">
-                {overview.applicationsByJob.map((item, i) => {
-                  const maxCount = Math.max(...overview.applicationsByJob.map((a) => a.count), 1);
+                {overview.applicationsPerJob.map((item, i) => {
+                  const maxCount = Math.max(...overview.applicationsPerJob.map((a) => a.value), 1);
                   return (
                     <div key={i} className="bg-zinc-900/50 border border-white/[0.06] rounded-xl px-5 py-4 hover:border-white/[0.1] transition">
                       <div className="flex items-center justify-between mb-2">
-                        <span className="text-[14px] font-medium text-white truncate">{item.jobTitle}</span>
-                        <span className="text-[13px] text-blue-400 font-semibold shrink-0 ml-3">{item.count} candidat{item.count > 1 ? "s" : ""}</span>
+                        <span className="text-[14px] font-medium text-white truncate">{item.title}</span>
+                        <span className="text-[13px] text-blue-400 font-semibold shrink-0 ml-3">
+                          {item.value} candidat{item.value > 1 ? "s" : ""}
+                        </span>
                       </div>
                       <div className="h-2 bg-zinc-800 rounded-full overflow-hidden">
                         <div
                           className="h-full bg-blue-500/60 rounded-full transition-all duration-700"
-                          style={{ width: `${(item.count / maxCount) * 100}%` }}
+                          style={{ width: `${(item.value / maxCount) * 100}%` }}
                         />
                       </div>
                     </div>
@@ -152,16 +154,27 @@ export default function CandidatsPage() {
             ) : (
               <div className="space-y-2">
                 {overview.recentApplications.map((app) => (
-                  <div key={app.id} className="flex items-center justify-between gap-4 bg-zinc-900/50 border border-white/[0.06] rounded-xl px-5 py-4 hover:border-white/[0.1] transition">
+                  <div
+                    key={app.id}
+                    className="flex items-center justify-between gap-4 bg-zinc-900/50 border border-white/[0.06] rounded-xl px-5 py-4 hover:border-white/[0.1] transition"
+                  >
                     <div className="flex-1 min-w-0">
                       <p className="text-[14px] font-medium text-white truncate">{app.candidateName}</p>
                       <p className="text-[12px] text-white/40">{app.jobTitle}</p>
                     </div>
                     <div className="flex items-center gap-3 shrink-0">
-                      <span className={`text-[11px] px-2.5 py-1 rounded-full border font-medium ${statusBg(app.status)}`}>
-                        {app.status}
+                      <span
+                        className={`text-[11px] px-2.5 py-1 rounded-full border font-medium ${statusBg(
+                          app.status ?? "Inconnu",
+                        )}`}
+                      >
+                        {app.status ?? "Inconnu"}
                       </span>
-                      <span className="text-[11px] text-white/30">{formatRelative(app.appliedAt)}</span>
+                      {app.validatedAt && (
+                        <span className="text-[11px] text-white/30">
+                          {formatRelative(app.validatedAt)}
+                        </span>
+                      )}
                     </div>
                   </div>
                 ))}

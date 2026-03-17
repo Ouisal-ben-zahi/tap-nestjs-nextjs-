@@ -137,7 +137,11 @@ export default function EntretiensPlanifiesPage() {
                       <span className="text-[11px] px-2.5 py-1 rounded-full bg-green-500/10 text-green-400 border border-green-500/20 font-medium flex items-center gap-1">
                         <CheckCircle size={10} /> Accepté
                       </span>
-                      <span className="text-[11px] text-white/30">{formatRelative(app.appliedAt)}</span>
+                      {app.validatedAt && (
+                        <span className="text-[11px] text-white/30">
+                          {formatRelative(app.validatedAt)}
+                        </span>
+                      )}
                     </div>
                   </div>
                 ))}
@@ -167,10 +171,18 @@ export default function EntretiensPlanifiesPage() {
                       <p className="text-[12px] text-white/40">{app.jobTitle}</p>
                     </div>
                     <div className="flex items-center gap-3 shrink-0">
-                      <span className={`text-[11px] px-2.5 py-1 rounded-full border font-medium ${statusBg(app.status)}`}>
-                        {app.status}
+                      <span
+                        className={`text-[11px] px-2.5 py-1 rounded-full border font-medium ${statusBg(
+                          app.status ?? "Inconnu",
+                        )}`}
+                      >
+                        {app.status ?? "Inconnu"}
                       </span>
-                      <span className="text-[11px] text-white/30">{formatRelative(app.appliedAt)}</span>
+                      {app.validatedAt && (
+                        <span className="text-[11px] text-white/30">
+                          {formatRelative(app.validatedAt)}
+                        </span>
+                      )}
                     </div>
                   </div>
                 ))}

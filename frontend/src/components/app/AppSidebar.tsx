@@ -56,9 +56,7 @@ export default function AppSidebar({ open, onClose }: AppSidebarProps) {
   const isCandidat = user?.role === "candidat";
 
   // Pour les candidats, on vérifie si un profil existe en base
-  const statsQuery = useCandidatStats({
-    enabled: isCandidat,
-  } as any);
+  const statsQuery = useCandidatStats();
   const stats = statsQuery.data;
   const hasProfile =
     !isCandidat ||

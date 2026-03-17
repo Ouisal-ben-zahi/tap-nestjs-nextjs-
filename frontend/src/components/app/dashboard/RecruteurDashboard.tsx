@@ -14,8 +14,8 @@ export default function RecruteurDashboard() {
 
   if (overviewQuery.isError) return <ErrorState onRetry={() => overviewQuery.refetch()} />;
 
-  const maxAppCount = Math.max(...(overview?.applicationsByJob?.map((a) => a.count) || [1]), 1);
-  const maxCatCount = Math.max(...(overview?.jobsByCategory?.map((c) => c.count) || [1]), 1);
+  const maxAppCount = Math.max(...(overview?.applicationsPerJob?.map((a) => a.value) || [1]), 1);
+  const maxCatCount = Math.max(...(overview?.jobsPerCategory?.map((c) => c.value) || [1]), 1);
 
   return (
     <div className="space-y-8">
@@ -46,20 +46,20 @@ export default function RecruteurDashboard() {
           {/* Candidatures par offre */}
           <div className="bg-zinc-900/50 border border-white/[0.06] rounded-2xl p-6">
             <h3 className="text-[13px] uppercase tracking-[2px] text-white/50 font-semibold mb-5">Candidatures par offre</h3>
-            {!overview.applicationsByJob?.length ? (
+            {!overview.applicationsPerJob?.length ? (
               <p className="text-[13px] text-white/30">Aucune donnée</p>
             ) : (
               <div className="space-y-3">
-                {overview.applicationsByJob.map((item, i) => (
+                {overview.applicationsPerJob.map((item, i) => (
                   <div key={i} className="flex items-center gap-3">
-                    <span className="text-[12px] text-white/50 w-[130px] truncate shrink-0">{item.jobTitle}</span>
+                    <span className="text-[12px] text-white/50 w-[130px] truncate shrink-0">{item.title}</span>
                     <div className="flex-1 h-6 bg-zinc-800/60 rounded-md overflow-hidden">
                       <div
                         className="h-full bg-tap-red/60 rounded-md transition-all duration-700"
-                        style={{ width: `${(item.count / maxAppCount) * 100}%` }}
+                        style={{ width: `${(item.value / maxAppCount) * 100}%` }}
                       />
                     </div>
-                    <span className="text-[12px] text-white/60 w-8 text-right font-medium">{item.count}</span>
+                    <span className="text-[12px] text-white/60 w-8 text-right font-medium">{item.value}</span>
                   </div>
                 ))}
               </div>
@@ -69,20 +69,20 @@ export default function RecruteurDashboard() {
           {/* Offres par catégorie */}
           <div className="bg-zinc-900/50 border border-white/[0.06] rounded-2xl p-6">
             <h3 className="text-[13px] uppercase tracking-[2px] text-white/50 font-semibold mb-5">Offres par catégorie</h3>
-            {!overview.jobsByCategory?.length ? (
+            {!overview.jobsPerCategory?.length ? (
               <p className="text-[13px] text-white/30">Aucune donnée</p>
             ) : (
               <div className="space-y-3">
-                {overview.jobsByCategory.map((item, i) => (
+                {overview.jobsPerCategory.map((item, i) => (
                   <div key={i} className="flex items-center gap-3">
-                    <span className="text-[12px] text-white/50 w-[130px] truncate shrink-0">{item.category}</span>
+                    <span className="text-[12px] text-white/50 w-[130px] truncate shrink-0">{item.label}</span>
                     <div className="flex-1 h-6 bg-zinc-800/60 rounded-md overflow-hidden">
                       <div
                         className="h-full bg-blue-500/60 rounded-md transition-all duration-700"
-                        style={{ width: `${(item.count / maxCatCount) * 100}%` }}
+                        style={{ width: `${(item.value / maxCatCount) * 100}%` }}
                       />
                     </div>
-                    <span className="text-[12px] text-white/60 w-8 text-right font-medium">{item.count}</span>
+                    <span className="text-[12px] text-white/60 w-8 text-right font-medium">{item.value}</span>
                   </div>
                 ))}
               </div>
@@ -115,10 +115,18 @@ export default function RecruteurDashboard() {
                   <p className="text-[12px] text-white/40">{app.jobTitle}</p>
                 </div>
                 <div className="flex items-center gap-3 shrink-0">
-                  <span className={`text-[11px] px-2.5 py-1 rounded-full border font-medium ${statusBg(app.status)}`}>
-                    {app.status}
+                  <span
+                    className={`text-[11px] px-2.5 py-1 rounded-full border font-medium ${statusBg(
+                      app.status ?? "Inconnu",
+                    )}`}
+                  >
+                    {app.status ?? "Inconnu"}
                   </span>
-                  <span className="text-[11px] text-white/30">{formatRelative(app.appliedAt)}</span>
+                  {app.validatedAt && (
+                    <span className="text-[11px] text-white/30">
+                      {formatRelative(app.validatedAt)}
+                    </span>
+                  )}
                 </div>
               </div>
             ))}

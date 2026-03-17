@@ -124,20 +124,25 @@ export default function MatchingRecruteurPage() {
 
             <div className="space-y-3">
               {jobs.map((job) => {
-                const appCount = overview?.applicationsByJob?.find(
-                  (a) => a.jobTitle === job.titre
-                )?.count ?? 0;
+                const appCount =
+                  overview?.applicationsPerJob?.find((a) => a.title === job.title)?.value ?? 0;
                 const matchScore = Math.min(95, Math.max(30, 50 + appCount * 8));
 
                 return (
                   <div key={job.id} className="bg-zinc-900/50 border border-white/[0.06] rounded-xl p-5 hover:border-white/[0.1] transition group">
                     <div className="flex items-start justify-between gap-4 mb-4">
                       <div className="flex-1 min-w-0">
-                        <h3 className="text-[15px] font-semibold text-white truncate">{job.titre}</h3>
+                        <h3 className="text-[15px] font-semibold text-white truncate">
+                          {job.title ?? "Offre sans titre"}
+                        </h3>
                         <div className="flex items-center gap-3 mt-1">
-                          <span className="text-[12px] text-white/40">{job.localisation || "Non précisé"}</span>
+                          <span className="text-[12px] text-white/40">
+                            {job.location_type || "Mode de travail non précisé"}
+                          </span>
                           <span className="text-[12px] text-white/30">•</span>
-                          <span className="text-[12px] text-white/40">{job.type_contrat || "CDI"}</span>
+                          <span className="text-[12px] text-white/40">
+                            {job.categorie_profil || "Profil non précisé"}
+                          </span>
                         </div>
                       </div>
                       <div className="flex items-center gap-2 shrink-0">

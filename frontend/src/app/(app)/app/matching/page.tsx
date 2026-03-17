@@ -217,14 +217,14 @@ export default function MatchingPage() {
                     <div className="flex-1 min-w-0">
                       <div className="flex items-center gap-3 mb-2">
                         <h3 className="text-[15px] font-semibold text-white truncate">
-                          {app.job_title}
+                          {app.jobTitle ?? "Offre sans titre"}
                         </h3>
                         <span
                           className={`text-[11px] px-2.5 py-1 rounded-full border font-medium shrink-0 ${statusBg(
-                            app.status,
+                            app.status ?? "Inconnu",
                           )}`}
                         >
-                          {app.status}
+                          {app.status ?? "Inconnu"}
                         </span>
                       </div>
                       <div className="flex flex-wrap items-center gap-3 text-[12px] text-white/40">
@@ -232,16 +232,12 @@ export default function MatchingPage() {
                           <Briefcase size={12} />
                           {app.company}
                         </span>
-                        {app.category && (
+                        {app.validatedAt && (
                           <span className="flex items-center gap-1">
-                            <MapPin size={12} />
-                            {app.category}
+                            <Clock size={12} />
+                            {formatRelative(app.validatedAt)}
                           </span>
                         )}
-                        <span className="flex items-center gap-1">
-                          <Clock size={12} />
-                          {formatRelative(app.applied_at)}
-                        </span>
                       </div>
                     </div>
                   </div>

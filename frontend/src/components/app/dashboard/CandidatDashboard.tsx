@@ -93,16 +93,23 @@ export default function CandidatDashboard() {
         ) : (
           <div className="space-y-2">
             {apps.map((app) => (
-              <div key={app.id} className="flex items-center justify-between gap-4 bg-zinc-900/50 border border-white/[0.06] rounded-xl px-5 py-4 hover:border-white/[0.1] transition">
+              <div
+                key={app.id}
+                className="flex items-center justify-between gap-4 bg-zinc-900/50 border border-white/[0.06] rounded-xl px-5 py-4 hover:border-white/[0.1] transition"
+              >
                 <div className="flex-1 min-w-0">
-                  <p className="text-[14px] font-medium text-white truncate">{app.job_title}</p>
+                  <p className="text-[14px] font-medium text-white truncate">
+                    {app.jobTitle ?? "Offre sans titre"}
+                  </p>
                   <p className="text-[12px] text-white/40">{app.company}</p>
                 </div>
                 <div className="flex items-center gap-3 shrink-0">
-                  <span className={`text-[11px] px-2.5 py-1 rounded-full border font-medium ${statusBg(app.status)}`}>
-                    {app.status}
-                  </span>
-                  <span className="text-[11px] text-white/30">{formatRelative(app.applied_at)}</span>
+                  <StatusBadge status={app.status ?? "Inconnu"} />
+                  {app.validatedAt && (
+                    <span className="text-[11px] text-white/30">
+                      {formatRelative(app.validatedAt)}
+                    </span>
+                  )}
                 </div>
               </div>
             ))}

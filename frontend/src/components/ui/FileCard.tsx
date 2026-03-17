@@ -8,7 +8,7 @@ interface FileCardProps {
   path?: string;
   size: number | null;
   created_at?: string;
-  updatedAt?: string;
+  updatedAt?: string | null;
   type?: string;
   onDelete?: (path: string) => void;
 }
