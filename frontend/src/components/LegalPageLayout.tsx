@@ -51,7 +51,7 @@ export default function LegalPageLayout({ badge, title, subtitle, sections }: Le
       </section>
 
       {/* Table of contents + Content */}
-      <section className="py-12 sm:py-20 bg-black relative overflow-hidden">
+      <section className="py-10 sm:py-16 bg-black relative overflow-hidden">
         <div className="absolute top-[5%] right-[-100px] w-[400px] h-[400px] rounded-full bg-[radial-gradient(circle,rgba(202,27,40,0.03),transparent_60%)] blur-3xl" />
         <div ref={containerRef} className="max-w-[900px] w-[88%] mx-auto relative z-10">
 

@@ -11,6 +11,7 @@ const config: Config = {
       colors: {
         tap: {
           black: "#050505",
+          dark: "#050505",
           surface: "#0A0A0A",
           card: "#111111",
           border: "#1A1A1A",

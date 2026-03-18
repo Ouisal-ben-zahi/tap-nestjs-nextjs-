@@ -1,7 +1,7 @@
 "use client";
 
 import Link from "next/link";
-import { Brain, BarChart3, GraduationCap, Eye, ArrowRight, Building2, Users, CheckCircle2 } from "lucide-react";
+import { Brain, BarChart3, GraduationCap, Eye, ArrowRight } from "lucide-react";
 import { useScrollReveal } from "@/hooks/useScrollReveal";
 
 const features = [
@@ -47,7 +47,7 @@ export default function PresentationTap() {
   const containerRef = useScrollReveal();
 
   return (
-    <section className="relative py-16 sm:py-32 bg-tap-dark overflow-hidden" ref={containerRef}>
+    <section className="relative py-10 sm:py-16 bg-black overflow-hidden" ref={containerRef}>
       <div className="absolute top-[-200px] left-[-200px] w-[500px] h-[500px] rounded-full bg-[radial-gradient(circle,rgba(202,27,40,0.03),transparent_60%)] blur-3xl floating-orb" style={{ animationDuration: "10s" }} />
       <div className="absolute bottom-[-100px] right-[-150px] w-[400px] h-[400px] rounded-full bg-[radial-gradient(circle,rgba(202,27,40,0.025),transparent_60%)] blur-3xl" />
 
@@ -67,7 +67,7 @@ export default function PresentationTap() {
         </div>
 
         {/* Feature cards */}
-        <div className="reveal-stagger grid grid-cols-1 md:grid-cols-2 gap-3 sm:gap-4 mb-12 sm:mb-20">
+        <div className="reveal-stagger grid grid-cols-1 md:grid-cols-2 gap-3 sm:gap-4">
           {features.map((f, i) => (
             <div key={i} className="reveal-item group relative rounded-2xl overflow-hidden bg-[#0A0A0A] border border-white/[0.06] hover:border-tap-red/15 transition-all duration-500 cursor-default">
               <div className={`absolute top-0 left-0 right-0 h-[120px] bg-gradient-to-b ${f.gradient} pointer-events-none`} />
@@ -90,54 +90,6 @@ export default function PresentationTap() {
               </div>
             </div>
           ))}
-        </div>
-
-        {/* Audience cards */}
-        <div className="reveal-stagger grid grid-cols-1 md:grid-cols-2 gap-3 sm:gap-4">
-          {/* Entreprises */}
-          <div className="reveal-item group rounded-2xl overflow-hidden bg-[#0A0A0A] border border-white/[0.06] hover:border-tap-red/15 transition-all duration-500">
-            <div className="px-5 sm:px-7 py-4 sm:py-5 bg-gradient-to-r from-tap-red to-tap-red/60 flex items-center justify-between">
-              <div className="flex items-center gap-3">
-                <div className="w-9 h-9 rounded-lg bg-white/15 flex items-center justify-center">
-                  <Building2 size={17} className="text-white" strokeWidth={1.5} />
-                </div>
-                <h3 className="text-[12px] font-bold uppercase tracking-[2px] text-white">Entreprises</h3>
-              </div>
-              <ArrowRight size={14} className="text-white/40 group-hover:text-white/80 group-hover:translate-x-1 transition-all duration-300" />
-            </div>
-            <div className="p-5 sm:p-7 flex flex-col gap-3.5">
-              {["Candidats préparés, opérationnels dès le jour 1.", "Sélection sécurisée par les données et l'IA.", "Moins de risque. Plus de rétention."].map((item, j) => (
-                <div key={j} className="flex items-start gap-3">
-                  <CheckCircle2 size={14} className="text-tap-red/50 mt-[3px] shrink-0" strokeWidth={1.5} />
-                  <p className="text-[13px] sm:text-[14px] text-white/45 leading-[1.7] font-light">{item}</p>
-                </div>
-              ))}
-            </div>
-          </div>
-
-          {/* Candidats */}
-          <div className="reveal-item group rounded-2xl overflow-hidden bg-[#0A0A0A] border border-white/[0.06] hover:border-white/10 transition-all duration-500">
-            <div className="px-5 sm:px-7 py-4 sm:py-5 bg-gradient-to-r from-white/90 to-white/70 flex items-center justify-between">
-              <div className="flex items-center gap-3">
-                <div className="w-9 h-9 rounded-lg bg-black/10 flex items-center justify-center">
-                  <Users size={17} className="text-black/70" strokeWidth={1.5} />
-                </div>
-                <h3 className="text-[12px] font-bold uppercase tracking-[2px] text-black">Candidats</h3>
-              </div>
-              <ArrowRight size={14} className="text-black/30 group-hover:text-black/60 group-hover:translate-x-1 transition-all duration-300" />
-            </div>
-            <div className="p-5 sm:p-7 flex flex-col gap-3.5">
-              {["Vos forces révélées, pas juste votre CV.", "Formation ciblée pour renforcer vos atouts.", "Visibilité directe auprès des recruteurs."].map((item, j) => (
-                <div key={j} className="flex items-start gap-3">
-                  <CheckCircle2 size={14} className="text-white/25 mt-[3px] shrink-0" strokeWidth={1.5} />
-                  <p className="text-[13px] sm:text-[14px] text-white/45 leading-[1.7] font-light">{item}</p>
-                </div>
-              ))}
-              <div className="mt-1 pt-4 border-t border-white/[0.06]">
-                <p className="text-[12px] font-semibold text-tap-red">100 % gratuit pour les candidats.</p>
-              </div>
-            </div>
-          </div>
         </div>
       </div>
     </section>

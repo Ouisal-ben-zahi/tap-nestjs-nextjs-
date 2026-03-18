@@ -64,7 +64,7 @@ export default function AProposContent() {
 
       <div ref={containerRef}>
       {/* Mission & Approche — Premium cards */}
-      <section className="py-16 sm:py-28 bg-black relative overflow-hidden">
+      <section className="py-12 sm:py-20 bg-black relative overflow-hidden">
         <div className="absolute bottom-0 right-[-100px] w-[400px] h-[400px] rounded-full bg-[radial-gradient(circle,rgba(202,27,40,0.03),transparent_60%)] blur-3xl" />
         <div className="absolute top-[20%] left-[-150px] w-[500px] h-[500px] rounded-full bg-[radial-gradient(circle,rgba(202,27,40,0.025),transparent_60%)] blur-3xl" />
         <div className="max-w-[1300px] w-[88%] mx-auto relative z-10">
@@ -115,7 +115,7 @@ export default function AProposContent() {
       </section>
 
       {/* 4 Piliers — Timeline circles */}
-      <section className="py-16 sm:py-28 bg-tap-dark relative overflow-hidden">
+      <section className="py-12 sm:py-20 bg-tap-dark relative overflow-hidden">
         <div className="absolute top-[20%] right-[-150px] w-[500px] h-[500px] rounded-full bg-[radial-gradient(circle,rgba(202,27,40,0.03),transparent_60%)] blur-3xl" />
         <div className="max-w-[1300px] w-[88%] mx-auto relative z-10">
           <div className="reveal text-center mb-12 sm:mb-20">
@@ -166,7 +166,7 @@ export default function AProposContent() {
       </section>
 
       {/* Pour qui — Premium audience cards */}
-      <section className="py-16 sm:py-28 bg-black relative overflow-hidden">
+      <section className="py-12 sm:py-20 bg-black relative overflow-hidden">
         <div className="absolute bottom-[10%] left-[-100px] w-[400px] h-[400px] rounded-full bg-[radial-gradient(circle,rgba(202,27,40,0.025),transparent_60%)] blur-3xl" />
         <div className="max-w-[1300px] w-[88%] mx-auto relative z-10">
           <div className="reveal text-center mb-10 sm:mb-16">
@@ -238,7 +238,7 @@ export default function AProposContent() {
       </section>
 
       {/* CTA */}
-      <section className="py-16 sm:py-20 bg-transparent relative overflow-hidden">
+      <section className="py-12 sm:py-16 bg-transparent relative overflow-hidden">
         <div className="absolute inset-0 bg-gradient-to-b from-tap-red/[0.02] to-transparent pointer-events-none" />
         <div className="max-w-[1300px] w-[88%] mx-auto relative z-10">
           <div className="reveal relative rounded-2xl sm:rounded-3xl overflow-hidden border border-white/[0.06] bg-[url('/images/bgsections.jpg')] bg-no-repeat bg-center bg-[length:100%_auto]">

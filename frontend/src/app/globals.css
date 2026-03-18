@@ -212,9 +212,42 @@ input.input-premium:-webkit-autofill:focus {
   opacity: 0;
   transition: opacity 0.5s ease;
 }
+.card-animated-border::after {
+  content: "";
+  position: absolute;
+  inset: 0;
+  padding: 1px;
+  border-radius: inherit;
+  pointer-events: none;
+  opacity: 0;
+  background: linear-gradient(
+    90deg,
+    transparent 0%,
+    rgba(202, 27, 40, 0.65) 45%,
+    rgba(255, 255, 255, 0.18) 55%,
+    transparent 100%
+  );
+  -webkit-mask: linear-gradient(#fff 0 0) content-box, linear-gradient(#fff 0 0);
+  -webkit-mask-composite: xor;
+  mask-composite: exclude;
+}
+.card-animated-border:hover::after {
+  opacity: 1;
+  animation: luxuryBorderSweep 1.15s ease-out;
+}
 .card-animated-border:hover::before {
   opacity: 1;
   animation: borderRotate 3s linear infinite;
+}
+
+/* Active state: animation permanente (sans hover) */
+.card-carousel-active::before {
+  opacity: 1 !important;
+  animation: borderRotate 3s linear infinite !important;
+}
+.card-carousel-active::after {
+  opacity: 1 !important;
+  animation: luxuryBorderSweep 1.6s ease-in-out infinite !important;
 }
 
 /* ═══ Floating orb ═══ */
@@ -223,6 +256,101 @@ input.input-premium:-webkit-autofill:focus {
   50% { transform: translateY(-20px) scale(1.04); }
 }
 .floating-orb { animation: float 8s ease-in-out infinite; will-change: transform; }
+
+/* ═══ Luxury sweep (left -> right) ═══ */
+@keyframes luxurySweep {
+  0% { transform: translateX(-90%); opacity: 0; }
+  15% { opacity: 1; }
+  55% { opacity: 1; }
+  100% { transform: translateX(90%); opacity: 0; }
+}
+
+.luxury-sweep {
+  pointer-events: none;
+  will-change: transform;
+  opacity: 0;
+  filter: blur(6px) saturate(1.2);
+}
+
+.card-animated-border:hover .luxury-sweep {
+  animation: luxurySweep 1.2s ease-out;
+  opacity: 1;
+}
+
+@keyframes luxuryBorderSweep {
+  0% { transform: translateX(-120%); opacity: 0; }
+  20% { opacity: 1; }
+  80% { opacity: 1; }
+  100% { transform: translateX(120%); opacity: 0; }
+}
+
+/* ═══ CTA premium (no flashy) ═══ */
+@property --cta-border-angle {
+  syntax: "<angle>";
+  initial-value: 0deg;
+  inherits: false;
+}
+
+@keyframes ctaBorderRotate {
+  0% { --cta-border-angle: 0deg; }
+  100% { --cta-border-angle: 360deg; }
+}
+
+@keyframes ctaBgShift {
+  0% { transform: translateX(-6%); opacity: 0.25; }
+  50% { transform: translateX(6%); opacity: 0.35; }
+  100% { transform: translateX(-6%); opacity: 0.25; }
+}
+
+.cta-bg-shift {
+  position: absolute;
+  inset: 0;
+  pointer-events: none;
+  background: linear-gradient(
+    90deg,
+    transparent 0%,
+    rgba(202, 27, 40, 0.45) 42%,
+    rgba(255, 255, 255, 0.10) 55%,
+    transparent 100%
+  );
+  background-size: 200% 100%;
+  animation: ctaBgShift 10s ease-in-out infinite;
+}
+
+.cta-animated-border {
+  position: relative;
+}
+
+.cta-animated-border::before {
+  content: "";
+  position: absolute;
+  inset: 0;
+  padding: 1px;
+  border-radius: inherit;
+  pointer-events: none;
+  opacity: 0.6;
+  transition: opacity 0.35s ease;
+  animation: ctaBorderRotate 18s linear infinite;
+  background: conic-gradient(
+    from var(--cta-border-angle, 0deg),
+    transparent 35%,
+    rgba(202, 27, 40, 0.55) 50%,
+    rgba(255, 255, 255, 0.14) 60%,
+    transparent 75%
+  );
+  -webkit-mask: linear-gradient(#fff 0 0) content-box, linear-gradient(#fff 0 0);
+  -webkit-mask-composite: xor;
+  mask-composite: exclude;
+}
+
+.cta-animated-border:hover::before {
+  opacity: 0.85;
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .cta-bg-shift { animation: none !important; }
+  .cta-animated-border::before { animation: none !important; }
+}
 
 /* ═══ Hero — CSS reveal animations (no Framer Motion) ═══ */
 @keyframes heroFadeIn {

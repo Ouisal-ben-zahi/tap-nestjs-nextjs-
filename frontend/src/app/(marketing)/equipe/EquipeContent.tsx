@@ -116,7 +116,7 @@ export default function EquipeContent() {
 
       <div ref={containerRef}>
       {/* Fondateurs — Premium cards */}
-      <section className="py-16 sm:py-28 bg-black relative overflow-hidden">
+      <section className="py-8 sm:py-12 bg-black relative overflow-hidden">
         <div className="absolute top-0 left-[20%] w-[500px] h-[500px] rounded-full bg-[radial-gradient(circle,rgba(202,27,40,0.04),transparent_60%)] blur-3xl" />
         <div className="absolute bottom-[10%] right-[-100px] w-[400px] h-[400px] rounded-full bg-[radial-gradient(circle,rgba(202,27,40,0.025),transparent_60%)] blur-3xl" />
         <div className="max-w-[1300px] w-[88%] mx-auto relative z-10">
@@ -191,7 +191,7 @@ export default function EquipeContent() {
       </section>
 
       {/* Équipe opérationnelle — Premium centered cards */}
-      <section className="py-16 sm:py-28 bg-tap-dark relative overflow-hidden">
+      <section className="py-8 sm:py-12 bg-tap-dark relative overflow-hidden">
         <div className="absolute bottom-0 right-[-100px] w-[400px] h-[400px] rounded-full bg-[radial-gradient(circle,rgba(202,27,40,0.04),transparent_60%)] blur-3xl" />
         <div className="max-w-[1300px] w-[88%] mx-auto relative z-10">
           <div className="reveal text-center mb-10 sm:mb-16">
@@ -252,7 +252,7 @@ export default function EquipeContent() {
       </section>
 
       {/* CTA */}
-      <section className="py-16 sm:py-20 bg-transparent relative overflow-hidden">
+      <section className="py-8 sm:py-12 bg-transparent relative overflow-hidden">
         <div className="absolute inset-0 bg-gradient-to-b from-tap-red/[0.02] to-transparent pointer-events-none" />
         <div className="max-w-[1300px] w-[88%] mx-auto relative z-10">
           <div className="reveal relative rounded-2xl sm:rounded-3xl overflow-hidden border border-white/[0.06] bg-[url('/images/bgsections.jpg')] bg-no-repeat bg-center bg-[length:100%_auto]">

@@ -40,7 +40,7 @@ export default function Hero() {
         </div>
       )}
 
-      <div className="relative z-[3] w-[88%] max-w-[1300px] mx-auto pt-[140px] sm:pt-[180px] pb-[80px] sm:pb-[100px]">
+      <div className="relative z-[3] w-[88%] max-w-[1300px] mx-auto pt-[140px] sm:pt-[180px] pb-10 sm:pb-16">
         <div className="hero-fade-in" style={{ animationDelay: "0.1s" }}>
           <div className="inline-flex items-center gap-2 sm:gap-2.5 px-4 sm:px-5 py-2 sm:py-2.5 mb-8 sm:mb-10 glass rounded-full">
             <Sparkles size={12} className="text-tap-red shrink-0" />

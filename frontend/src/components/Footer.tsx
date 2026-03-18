@@ -157,22 +157,22 @@ export default function Footer() {
                     <div className="flex flex-col gap-3">
                       <a
                         href="mailto:tap@entrepreneursmorocco.com"
-                        className="flex items-center gap-2.5 text-[14px] text-white/40 hover:text-tap-red transition-colors duration-300 group"
+                        className="flex items-start gap-2.5 text-[14px] text-white/40 hover:text-tap-red transition-colors duration-300 group"
                       >
                         <Mail
                           size={14}
-                          className="text-white/30 group-hover:text-tap-red transition-colors duration-300"
+                          className="text-white/30 group-hover:text-tap-red transition-colors duration-300 shrink-0 mt-[1px]"
                           strokeWidth={1.5}
                         />
                         tap@entrepreneursmorocco.com
                       </a>
                       <a
                         href="tel:+212776868163"
-                        className="flex items-center gap-2.5 text-[14px] text-white/40 hover:text-tap-red transition-colors duration-300 group"
+                        className="flex items-start gap-2.5 text-[14px] text-white/40 hover:text-tap-red transition-colors duration-300 group"
                       >
                         <Phone
                           size={14}
-                          className="text-white/30 group-hover:text-tap-red transition-colors duration-300"
+                          className="text-white/30 group-hover:text-tap-red transition-colors duration-300 shrink-0 mt-[1px]"
                           strokeWidth={1.5}
                         />
                         +212 7 76 86 81 63
@@ -181,9 +181,9 @@ export default function Footer() {
                         href="https://www.google.com/maps/search/?api=1&query=Immeuble+STAVROULA+gueliz+Marrakesh+4000"
                         target="_blank"
                         rel="noopener noreferrer"
-                        className="flex items-center gap-2.5 text-[14px] text-white/30 hover:text-white/50 transition-colors duration-300 group"
+                        className="flex items-start gap-2.5 text-[14px] text-white/30 hover:text-white/50 transition-colors duration-300 group"
                       >
-                        <MapPin size={14} className="text-white/30" strokeWidth={1.5} />
+                        <MapPin size={14} className="text-white/30 shrink-0 mt-[1px]" strokeWidth={1.5} />
                         Immeuble STAVROULA, Gueliz — Marrakech
                       </a>
                     </div>
@@ -195,9 +195,9 @@ export default function Footer() {
         </div>
 
         {/* Tablet/Desktop: grid columns */}
-        <div className="hidden sm:grid grid-cols-3 lg:grid-cols-5 gap-8">
+        <div className="hidden sm:grid grid-cols-3 lg:grid-cols-6 gap-8">
           {/* Brand */}
-          <div className="text-center sm:text-left">
+          <div className="text-center sm:text-left lg:col-span-2">
             <Image
               src="/images/logo-white.svg"
               alt="TAP"
@@ -208,7 +208,7 @@ export default function Footer() {
             <p className="text-[13px] sm:text-[14px] text-white/40 leading-[1.7] font-light">
               La plateforme qui transforme des profils en talents prêts à performer.
             </p>
-            <div className="mt-5 flex justify-center sm:justify-start">
+            <div className="mt-5 flex justify-center sm:justify-start gap-3">
               <a
                 href="https://www.linkedin.com/company/tap-ai"
                 target="_blank"
@@ -217,6 +217,14 @@ export default function Footer() {
                 aria-label="LinkedIn"
               >
                 <Linkedin size={14} className="text-white/30 group-hover:text-tap-red transition-colors duration-300" strokeWidth={1.5} />
+              </a>
+
+              <a
+                href="mailto:tap@entrepreneursmorocco.com"
+                className="w-8 h-8 rounded-lg bg-white/[0.04] border border-white/[0.06] flex items-center justify-center hover:bg-tap-red/10 hover:border-tap-red/20 transition-all duration-300 group"
+                aria-label="Envoyer un email"
+              >
+                <Mail size={14} className="text-white/30 group-hover:text-tap-red transition-colors duration-300" strokeWidth={1.5} />
               </a>
             </div>
           </div>
@@ -273,28 +281,36 @@ export default function Footer() {
             <h4 className="text-[11px] sm:text-[12px] font-extrabold uppercase tracking-[2.5px] text-tap-red mb-4 sm:mb-5">
               Contact
             </h4>
-            <div className="flex flex-col gap-3 items-center sm:items-start">
+            <div className="flex flex-col gap-3 items-start">
               <a
                 href="mailto:tap@entrepreneursmorocco.com"
-                className="flex items-center gap-2.5 text-[13px] text-white/40 hover:text-tap-red transition-colors duration-300 group"
+                className="flex items-start gap-2.5 text-[13px] text-white/40 hover:text-tap-red transition-colors duration-300 group"
               >
-                <Mail size={14} className="text-white/30 group-hover:text-tap-red transition-colors duration-300" strokeWidth={1.5} />
+                <Mail
+                  size={14}
+                  className="text-white/30 group-hover:text-tap-red transition-colors duration-300 shrink-0 mt-[1px]"
+                  strokeWidth={1.5}
+                />
                 tap@entrepreneursmorocco.com
               </a>
               <a
                 href="tel:+212776868163"
-                className="flex items-center gap-2.5 text-[13px] text-white/40 hover:text-tap-red transition-colors duration-300 group"
+                className="flex items-start gap-2.5 text-[13px] text-white/40 hover:text-tap-red transition-colors duration-300 group"
               >
-                <Phone size={14} className="text-white/30 group-hover:text-tap-red transition-colors duration-300" strokeWidth={1.5} />
+                <Phone
+                  size={14}
+                  className="text-white/30 group-hover:text-tap-red transition-colors duration-300 shrink-0 mt-[1px]"
+                  strokeWidth={1.5}
+                />
                 +212 7 76 86 81 63
               </a>
               <a
                 href="https://www.google.com/maps/search/?api=1&query=Immeuble+STAVROULA+gueliz+Marrakesh+4000"
                 target="_blank"
                 rel="noopener noreferrer"
-                className="flex items-center gap-2.5 text-[13px] text-white/30 hover:text-white/50 transition-colors duration-300 group"
+                className="flex items-start gap-2.5 text-[13px] text-white/30 hover:text-white/50 transition-colors duration-300 group"
               >
-                <MapPin size={14} className="text-white/30" strokeWidth={1.5} />
+                <MapPin size={14} className="text-white/30 shrink-0 mt-[1px]" strokeWidth={1.5} />
                 Immeuble STAVROULA, Gueliz — Marrakech
               </a>
             </div>
