@@ -24,6 +24,7 @@ const produitLinks = [
 export default function Header() {
   const [menuOpen, setMenuOpen] = useState(false);
   const [scrolled, setScrolled] = useState(false);
+  const [produitOpen, setProduitOpen] = useState(false);
   const pathname = usePathname();
   const { user } = useAuth();
   const initial = (user?.email?.[0] || "").toUpperCase();
@@ -34,207 +35,359 @@ export default function Header() {
     return () => window.removeEventListener("scroll", onScroll);
   }, []);
 
-  useEffect(() => { setMenuOpen(false); }, [pathname]);
-
   useEffect(() => {
-    document.body.style.overflow = menuOpen ? "hidden" : "";
-    return () => { document.body.style.overflow = ""; };
+    if (!menuOpen) return;
+    const closeOnScroll = () => setMenuOpen(false);
+    window.addEventListener("scroll", closeOnScroll, { passive: true });
+    return () => window.removeEventListener("scroll", closeOnScroll);
   }, [menuOpen]);
 
-  return (
-    <header className="fixed top-0 left-0 right-0 z-50">
-      <div className={`mx-auto transition-all duration-500 hero-fade-in ${
-        scrolled
-          ? "max-w-full bg-black/70 backdrop-blur-2xl border-b border-white/[0.04] py-3"
-          : "max-w-[1300px] w-[92%] sm:w-[88%] mt-3 sm:mt-4 rounded-full bg-white/[0.05] backdrop-blur-xl border border-white/[0.08] py-2.5 sm:py-3 px-1 sm:px-2"
-      }`}>
-        <div className={`flex items-center justify-between ${scrolled ? "max-w-[1300px] w-[88%] mx-auto" : "px-3 sm:px-5"}`}>
-          <Link href="/" className="cursor-pointer relative z-10 shrink-0">
-            <Image
-              src="/images/logo-white.svg"
-              alt="TAP — Plateforme de recrutement IA"
-              width={120}
-              height={40}
-              className="h-[26px] sm:h-[32px] w-auto"
-              priority
-            />
-          </Link>
+  useEffect(() => {
+    setMenuOpen(false);
+    setProduitOpen(false);
+  }, [pathname]);
 
-          <nav className="hidden lg:flex items-center gap-1">
-            {navLinks.map((link) => {
+
+
+  return (
+    <>
+      <style>{`
+        @import url('https://fonts.googleapis.com/css2?family=Cormorant+Garamond:ital,wght@0,300;0,400;0,500;1,300;1,400&family=Montserrat:wght@300;400;500;600&display=swap');
+
+        .header-font { font-family: 'Montserrat', sans-serif; }
+        .serif-font  { font-family: 'Cormorant Garamond', serif; }
+
+        /* Hamburger morphing bars */
+        .bar { transition: transform 0.45s cubic-bezier(.22,1,.36,1), opacity 0.3s ease, width 0.3s ease; }
+      `}</style>
+
+      <header className="header-font fixed top-0 left-0 right-0 z-50">
+        {/* ── Desktop / Shared bar ── */}
+        <div
+          className={`mx-auto transition-all duration-500 ${
+            scrolled
+              ? "max-w-full bg-black/80 backdrop-blur-2xl border-b border-white/[0.05] py-3"
+              : "max-w-full bg-black/60 backdrop-blur-xl border-b border-white/[0.04] py-3 lg:max-w-[1300px] lg:w-[88%] lg:mt-4 lg:rounded-full lg:bg-white/[0.05] lg:border lg:border-white/[0.08] lg:py-3 lg:px-2"
+          }`}
+        >
+          <div
+            className={`flex items-center justify-between ${
+              scrolled ? "max-w-[1300px] w-[88%] mx-auto" : "px-4 sm:px-6"
+            }`}
+          >
+            {/* Logo */}
+            <Link href="/" className="relative z-10 shrink-0">
+              <Image
+                src="/images/logo-white.svg"
+                alt="TAP — Plateforme de recrutement IA"
+                width={120}
+                height={40}
+                className="h-[26px] sm:h-[32px] w-auto"
+                priority
+              />
+            </Link>
+
+            {/* Desktop nav */}
+            <nav className="hidden lg:flex items-center gap-1">
+              {navLinks.slice(0, 1).map((link) => {
+                const isActive = pathname === link.href;
+                return (
+                  <Link
+                    key={link.href}
+                    href={link.href}
+                    className={`relative px-4 py-2 text-[11px] font-medium uppercase tracking-[1.5px] rounded-full transition-all duration-300 ${
+                      isActive
+                        ? "text-red-500 font-semibold"
+                        : "text-white/50 hover:text-white/70 hover:bg-white/[0.04]"
+                    }`}
+                  >
+                    {link.label}
+                  </Link>
+                );
+              })}
+
+              {navLinks.slice(1, 2).map((link) => {
+                const isActive = pathname === link.href;
+                return (
+                  <Link
+                    key={link.href}
+                    href={link.href}
+                    className={`relative px-4 py-2 text-[11px] font-medium uppercase tracking-[1.5px] rounded-full transition-all duration-300 ${
+                      isActive
+                        ? "text-red-500 font-semibold"
+                        : "text-white/50 hover:text-white/70 hover:bg-white/[0.04]"
+                    }`}
+                  >
+                    {link.label}
+                  </Link>
+                );
+              })}
+
+              {/* Produit dropdown */}
+              <div className="relative">
+                <button
+                  className={`flex items-center gap-1 px-4 py-2 text-[11px] font-medium uppercase tracking-[1.5px] rounded-full transition-all duration-300 ${
+                    produitLinks.some((l) => pathname === l.href)
+                      ? "text-red-500 font-semibold"
+                      : "text-white/50 hover:text-white/70 hover:bg-white/[0.04]"
+                  }`}
+                  onClick={() => setProduitOpen((v) => !v)}
+                  aria-haspopup="menu"
+                  aria-expanded={produitOpen}
+                >
+                  Produit
+                  <ChevronDown
+                    size={12}
+                    className={`transition-transform duration-300 ${produitOpen ? "rotate-180" : ""}`}
+                  />
+                </button>
+                <div
+                  className={`absolute top-full left-1/2 -translate-x-1/2 pt-2 transition-all duration-300 ${
+                    produitOpen ? "opacity-100 visible" : "opacity-0 invisible"
+                  }`}
+                  role="menu"
+                >
+                  <div className="bg-[#0C0C0C]/95 backdrop-blur-2xl border border-white/[0.08] rounded-xl p-2 min-w-[220px] shadow-2xl shadow-black/50">
+                    {produitLinks.map((link) => (
+                      <Link
+                        key={link.href}
+                        href={link.href}
+                        role="menuitem"
+                        onClick={() => setProduitOpen(false)}
+                        className={`block px-4 py-2.5 text-[12px] rounded-lg transition-all duration-200 ${
+                          pathname === link.href
+                            ? "text-red-500 bg-red-500/[0.08]"
+                            : "text-white/50 hover:text-white hover:bg-white/[0.04]"
+                        }`}
+                      >
+                        {link.label}
+                      </Link>
+                    ))}
+                  </div>
+                </div>
+              </div>
+
+              {navLinks.slice(2).map((link) => {
+                const isActive = pathname === link.href;
+                return (
+                  <Link
+                    key={link.href}
+                    href={link.href}
+                    className={`relative px-4 py-2 text-[11px] font-medium uppercase tracking-[1.5px] rounded-full transition-all duration-300 ${
+                      isActive
+                        ? "text-red-500 font-semibold"
+                        : "text-white/50 hover:text-white/70 hover:bg-white/[0.04]"
+                    }`}
+                  >
+                    {link.label}
+                  </Link>
+                );
+              })}
+            </nav>
+
+            {/* Desktop CTA */}
+            <div className="hidden lg:flex items-center gap-2">
+              {user ? (
+                <Link
+                  href="/app"
+                  className="inline-flex items-center gap-2.5 px-3.5 py-2 rounded-xl hover:bg-white/[0.06] transition-colors duration-300"
+                >
+                  <span className="text-[11px] text-white/80 truncate max-w-[180px]">
+                    {user.email}
+                  </span>
+                  <div className="w-7 h-7 rounded-full bg-red-600 flex items-center justify-center text-[11px] font-bold text-white uppercase ring-1 ring-red-600/40">
+                    {initial || "?"}
+                  </div>
+                </Link>
+              ) : (
+                <>
+                  <Link
+                    href="/connexion"
+                    className="inline-flex items-center px-4 py-2 text-[10px] font-semibold uppercase tracking-[1.5px] text-white/50 hover:text-white/70 transition-colors duration-300"
+                  >
+                    Connexion
+                  </Link>
+                  <Link href="/inscription" className="btn-primary btn-sm">
+                    Commencer
+                  </Link>
+                </>
+              )}
+            </div>
+
+            {/* ── Mobile hamburger / close ── */}
+            <button
+              className="lg:hidden relative z-[70] w-9 h-9 flex items-center justify-center rounded-lg bg-white/[0.06] hover:bg-white/[0.10] transition-colors duration-200 border border-white/[0.08]"
+              onClick={() => setMenuOpen(!menuOpen)}
+              aria-label={menuOpen ? "Fermer le menu" : "Ouvrir le menu"}
+              aria-expanded={menuOpen}
+            >
+              {/* Hamburger bars — visible when closed */}
+              <span className={`absolute flex flex-col gap-[5px] items-center transition-all duration-300 ${menuOpen ? "opacity-0 scale-75" : "opacity-100 scale-100"}`}>
+                <span className="block w-[18px] h-[1.5px] bg-white rounded-full" />
+                <span className="block w-[13px] h-[1.5px] bg-white/50 rounded-full self-start" />
+                <span className="block w-[18px] h-[1.5px] bg-white rounded-full" />
+              </span>
+
+              {/* X — visible when open */}
+              <span className={`absolute transition-all duration-300 ${menuOpen ? "opacity-100 scale-100 rotate-0" : "opacity-0 scale-50 rotate-90"}`}>
+                <svg width="13" height="13" viewBox="0 0 13 13" fill="none">
+                  <path d="M1 1l11 11M12 1L1 12" stroke="white" strokeWidth="1.8" strokeLinecap="round"/>
+                </svg>
+              </span>
+            </button>
+          </div>
+        </div>
+
+        {/* Overlay (mobile): click outside closes menu */}
+        {menuOpen && (
+          <div
+            className="lg:hidden fixed inset-0 z-40"
+            onClick={() => setMenuOpen(false)}
+            aria-hidden="true"
+          />
+        )}
+
+        {/* ── Mobile dropdown panel ── */}
+        <div
+          className={`lg:hidden overflow-hidden transition-all duration-500 ease-[cubic-bezier(.22,1,.36,1)] relative z-50 ${
+            menuOpen ? "max-h-[600px] opacity-100" : "max-h-0 opacity-0"
+          }`}
+          style={{ background: "rgba(6,6,6,0.97)", backdropFilter: "blur(24px)" }}
+          role="navigation"
+          aria-label="Menu mobile"
+        >
+          {/* Top border line */}
+          <div className="h-[1px] bg-gradient-to-r from-transparent via-white/[0.08] to-transparent" />
+
+          <div className="px-5 py-4 flex flex-col gap-1">
+
+            {/* Accueil + À propos */}
+            {navLinks.slice(0, 2).map((link) => {
               const isActive = pathname === link.href;
               return (
                 <Link
                   key={link.href}
                   href={link.href}
-                  className={`relative px-4 py-2 text-[11px] font-medium uppercase tracking-[1.5px] rounded-full transition-all duration-300 cursor-pointer ${
+                  onClick={() => setMenuOpen(false)}
+                  className={`flex items-center justify-between px-3 py-3 rounded-xl text-[13px] font-medium tracking-wide transition-colors duration-200 ${
                     isActive
-                      ? "text-white bg-white/[0.1]"
-                      : "text-white/50 hover:text-white/70 hover:bg-white/[0.04]"
+                      ? "text-red-500 font-semibold"
+                      : "text-white/50 hover:text-white hover:bg-white/[0.04]"
                   }`}
                 >
                   {link.label}
+                  {isActive && (
+                    <span className="w-1 h-1 rounded-full bg-red-500" />
+                  )}
                 </Link>
               );
             })}
 
-            <div className="relative group">
+            {/* Produit accordion */}
+            <div>
               <button
-                className={`flex items-center gap-1 px-4 py-2 text-[11px] font-medium uppercase tracking-[1.5px] rounded-full transition-all duration-300 cursor-pointer ${
+                onClick={() => setProduitOpen((v) => !v)}
+                className={`w-full flex items-center justify-between px-3 py-3 rounded-xl text-[13px] font-medium tracking-wide transition-colors duration-200 ${
                   produitLinks.some((l) => pathname === l.href)
-                    ? "text-white bg-white/[0.1]"
-                    : "text-white/50 hover:text-white/70 hover:bg-white/[0.04]"
+                    ? "text-red-500 font-semibold"
+                    : "text-white/50 hover:text-white hover:bg-white/[0.04]"
                 }`}
-                aria-haspopup="menu"
               >
                 Produit
-                <ChevronDown size={12} className="transition-transform duration-300 group-hover:rotate-180" />
+                <ChevronDown
+                  size={13}
+                  strokeWidth={2}
+                  className={`text-white/30 transition-transform duration-300 ${produitOpen ? "rotate-180" : ""}`}
+                />
               </button>
-              <div className="absolute top-full left-1/2 -translate-x-1/2 pt-2 opacity-0 invisible group-hover:opacity-100 group-hover:visible transition-all duration-300" role="menu">
-                <div className="bg-[#0C0C0C]/95 backdrop-blur-2xl border border-white/[0.08] rounded-xl p-2 min-w-[220px] shadow-2xl shadow-black/50">
-                  {produitLinks.map((link) => (
-                    <Link
-                      key={link.href}
-                      href={link.href}
-                      role="menuitem"
-                      className={`block px-4 py-2.5 text-[12px] rounded-lg transition-all duration-200 ${
-                        pathname === link.href
-                          ? "text-tap-red bg-tap-red/[0.08]"
-                          : "text-white/50 hover:text-white hover:bg-white/[0.04]"
-                      }`}
-                    >
-                      {link.label}
-                    </Link>
-                  ))}
+
+              <div
+                className={`overflow-hidden transition-all duration-400 ${
+                  produitOpen ? "max-h-60 opacity-100" : "max-h-0 opacity-0"
+                }`}
+                style={{ transition: "max-height 0.4s cubic-bezier(.22,1,.36,1), opacity 0.25s ease" }}
+              >
+                <div className="ml-3 mt-1 mb-1 pl-3 border-l border-white/[0.07] flex flex-col gap-0.5">
+                  {produitLinks.map((link) => {
+                    const isActive = pathname === link.href;
+                    return (
+                      <Link
+                        key={link.href}
+                        href={link.href}
+                        onClick={() => setMenuOpen(false)}
+                        className={`flex items-center justify-between px-3 py-2.5 rounded-lg text-[12px] tracking-wide transition-colors duration-200 ${
+                          isActive
+                            ? "text-white font-medium"
+                            : "text-white/35 hover:text-white/70 font-light"
+                        }`}
+                      >
+                        {link.label}
+                        {isActive && <span className="w-1 h-1 rounded-full bg-red-500" />}
+                      </Link>
+                    );
+                  })}
                 </div>
               </div>
             </div>
-          </nav>
 
-          <div className="hidden lg:flex items-center gap-2">
-            {user ? (
-              <Link
-                href="/app"
-                className="inline-flex items-center gap-2.5 px-4 py-2 rounded-full bg-white/[0.04] hover:bg-white/[0.08] border border-white/[0.08] transition-colors duration-300 cursor-pointer"
-              >
-                <span className="text-[11px] text-white/70 truncate max-w-[180px] text-left">
-                  {user.email}
-                </span>
-                <div className="w-7 h-7 rounded-full bg-tap-red flex items-center justify-center text-[11px] font-bold text-white uppercase ring-1 ring-tap-red/40">
-                  {initial || "?"}
-                </div>
-              </Link>
-            ) : (
-              <>
+            {/* Équipe + Contact */}
+            {navLinks.slice(2).map((link) => {
+              const isActive = pathname === link.href;
+              return (
                 <Link
-                  href="/connexion"
-                  className="inline-flex items-center gap-1.5 px-4 py-2 text-[10px] font-semibold uppercase tracking-[1.5px] text-white/50 hover:text-white/70 transition-colors duration-300 cursor-pointer"
-                >
-                  Connexion
-                </Link>
-                <Link
-                  href="/inscription"
-                  className="btn-primary btn-sm"
-                >
-                  Commencer
-                </Link>
-              </>
-            )}
-          </div>
-
-          <button
-            className="lg:hidden relative z-[60] w-10 h-10 flex flex-col items-center justify-center gap-1.5 cursor-pointer bg-transparent border-none"
-            onClick={() => setMenuOpen(!menuOpen)}
-            aria-label={menuOpen ? "Fermer le menu" : "Ouvrir le menu"}
-            aria-expanded={menuOpen}
-          >
-            <span className={`block w-5 h-[1.5px] bg-white transition-all duration-500 origin-center ${menuOpen ? "rotate-45 translate-y-[4.5px]" : ""}`} />
-            <span className={`block w-5 h-[1.5px] bg-white transition-all duration-500 origin-center ${menuOpen ? "-rotate-45 -translate-y-[4.5px]" : ""}`} />
-          </button>
-        </div>
-      </div>
-
-      <div
-        className={`lg:hidden fixed inset-0 bg-black/98 backdrop-blur-3xl z-50 flex flex-col justify-center items-center transition-all duration-300 ${
-          menuOpen ? "opacity-100 visible" : "opacity-0 invisible pointer-events-none"
-        }`}
-        role="dialog"
-        aria-modal="true"
-        aria-label="Menu de navigation"
-      >
-        <nav className="flex flex-col items-center gap-5">
-          {navLinks.map((link, i) => (
-            <div key={link.href} style={{ transitionDelay: menuOpen ? `${50 + i * 50}ms` : "0ms" }} className={`transition-all duration-400 ${menuOpen ? "opacity-100 translate-y-0" : "opacity-0 translate-y-3"}`}>
-              <Link
-                href={link.href}
-                className={`text-[28px] font-light tracking-[4px] uppercase transition-colors duration-300 cursor-pointer ${
-                  pathname === link.href ? "text-tap-red" : "text-white/50 hover:text-white"
-                }`}
-                onClick={() => setMenuOpen(false)}
-              >
-                {link.label}
-              </Link>
-            </div>
-          ))}
-
-          <div style={{ transitionDelay: menuOpen ? "250ms" : "0ms" }} className={`flex flex-col items-center gap-2.5 mt-2 transition-all duration-400 ${menuOpen ? "opacity-100" : "opacity-0"}`}>
-            <span className="text-[9px] font-bold uppercase tracking-[3px] text-white/20 mb-1">Produit</span>
-            {produitLinks.map((link) => (
-              <Link
-                key={link.href}
-                href={link.href}
-                className={`text-[16px] font-light tracking-[2px] uppercase transition-colors duration-300 cursor-pointer ${
-                  pathname === link.href ? "text-tap-red" : "text-white/30 hover:text-white/60"
-                }`}
-                onClick={() => setMenuOpen(false)}
-              >
-                {link.label}
-              </Link>
-            ))}
-          </div>
-
-          {user ? (
-            <div
-              style={{ transitionDelay: menuOpen ? "350ms" : "0ms" }}
-              className={`transition-all duration-400 ${menuOpen ? "opacity-100" : "opacity-0"}`}
-            >
-              <Link
-                href="/app"
-                className="inline-flex items-center gap-3 px-5 py-3 rounded-full bg-white text-black text-[14px] font-medium tracking-[1px] uppercase"
-                onClick={() => setMenuOpen(false)}
-              >
-                <span className="truncate max-w-[200px]">{user.email}</span>
-                <div className="w-8 h-8 rounded-full bg-tap-red flex items-center justify-center text-[13px] font-bold text-white uppercase">
-                  {initial || "?"}
-                </div>
-              </Link>
-            </div>
-          ) : (
-            <>
-              <div
-                style={{ transitionDelay: menuOpen ? "350ms" : "0ms" }}
-                className={`transition-all duration-400 ${menuOpen ? "opacity-100" : "opacity-0"}`}
-              >
-                <Link
-                  href="/connexion"
-                  className="text-[28px] font-light tracking-[4px] uppercase text-white/50 hover:text-white transition-colors duration-300 cursor-pointer"
+                  key={link.href}
+                  href={link.href}
                   onClick={() => setMenuOpen(false)}
+                  className={`flex items-center justify-between px-3 py-3 rounded-xl text-[13px] font-medium tracking-wide transition-colors duration-200 ${
+                    isActive
+                      ? "text-red-500 font-semibold"
+                      : "text-white/50 hover:text-white hover:bg-white/[0.04]"
+                  }`}
                 >
-                  Connexion
+                  {link.label}
+                  {isActive && <span className="w-1 h-1 rounded-full bg-red-500" />}
                 </Link>
-              </div>
-              <div
-                style={{ transitionDelay: menuOpen ? "400ms" : "0ms" }}
-                className={`mt-12 transition-all duration-400 ${menuOpen ? "opacity-100" : "opacity-0"}`}
-              >
-                <Link href="/inscription" className="btn-primary" onClick={() => setMenuOpen(false)}>
-                  Commencer
+              );
+            })}
+
+            {/* Auth zone */}
+            <div className="mt-2 pt-3 border-t border-white/[0.06]">
+              {user ? (
+                <Link
+                  href="/app"
+                  onClick={() => setMenuOpen(false)}
+                  className="flex items-center gap-3 px-3 py-2.5 rounded-xl hover:bg-white/[0.04] transition-colors"
+                >
+                  <div className="w-8 h-8 rounded-full bg-red-600 flex items-center justify-center text-[12px] font-bold text-white uppercase shrink-0">
+                    {initial || "?"}
+                  </div>
+                  <span className="text-[12px] text-white/60 truncate">{user.email}</span>
                 </Link>
-              </div>
-            </>
-          )}
-        </nav>
-      </div>
-    </header>
+              ) : (
+                <div className="flex items-center gap-2 px-1">
+                  <Link
+                    href="/connexion"
+                    onClick={() => setMenuOpen(false)}
+                    className="flex-1 bg-transparent border border-white/25 rounded-full text-center py-2.5 text-[11px] uppercase tracking-[1.5px] text-white/45 hover:text-white/70 hover:border-white/35 transition-colors font-medium"
+                  >
+                    Connexion
+                  </Link>
+                  <Link
+                    href="/inscription"
+                    onClick={() => setMenuOpen(false)}
+                    className="flex-1 py-2.5 px-4 bg-red-600 text-center text-white text-[11px] font-semibold uppercase tracking-[1.5px] rounded-full hover:bg-red-500 transition-colors"
+                  >
+                    Commencer
+                  </Link>
+                </div>
+              )}
+            </div>
+
+            {/* Bottom spacing */}
+            <div className="h-1" />
+          </div>
+        </div>
+      </header>
+    </>
   );
 }

@@ -114,10 +114,10 @@ export default function AppSidebar({ open, onClose }: AppSidebarProps) {
         <nav className="flex-1 px-3 py-4 space-y-0.5 overflow-y-auto">
           {!collapsed && (
             <div className="px-3 mb-4">
-              <span className="text-[9px] font-bold uppercase tracking-[3px] text-white/25">
-                Navigation
-              </span>
-            </div>
+            <span className="text-[9px] font-bold uppercase tracking-[3px] text-white/25">
+              Navigation
+            </span>
+          </div>
           )}
           {navItems.map((item) => {
             const isActive = pathname === item.href;
@@ -152,11 +152,11 @@ export default function AppSidebar({ open, onClose }: AppSidebarProps) {
                 </div>
                 {!collapsed && (
                   <>
-                    <span className="flex-1">{item.label}</span>
-                    {disabled && (
-                      <span className="ml-2 text-[10px] uppercase tracking-[1px] text-white/30">
-                        Inactif
-                      </span>
+                <span className="flex-1">{item.label}</span>
+                {disabled && (
+                  <span className="ml-2 text-[10px] uppercase tracking-[1px] text-white/30">
+                    Inactif
+                  </span>
                     )}
                   </>
                 )}
@@ -196,7 +196,7 @@ export default function AppSidebar({ open, onClose }: AppSidebarProps) {
             }`}
           >
             <div className="w-8 h-8 rounded-lg flex items-center justify-center bg-white/[0.03] group-hover:bg-white/[0.06] transition-colors">
-              <LogOut size={14} />
+            <LogOut size={14} />
             </div>
             {!collapsed && <span>Quitter</span>}
           </button>
