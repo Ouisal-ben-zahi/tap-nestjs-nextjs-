@@ -1,7 +1,7 @@
 "use client";
 
 import { useScrollReveal } from "@/hooks/useScrollReveal";
-import { ChevronDown, Users, Building2, Sparkles } from "lucide-react";
+import { ChevronDown, Users, Building2 } from "lucide-react";
 import { useState } from "react";
 
 const candidateFaqs = [
@@ -52,7 +52,7 @@ const companyFaqs = [
 
 export default function FaqHome() {
   const containerRef = useScrollReveal();
-  const [activeTab, setActiveTab] = useState<"all" | "candidates" | "companies">("all");
+  const [activeTab, setActiveTab] = useState<"candidates" | "companies">("candidates");
   const [openIndex, setOpenIndex] = useState<number | null>(0);
 
   const displayedFaqs = (() => {
@@ -62,25 +62,15 @@ export default function FaqHome() {
     if (activeTab === "companies") {
       return companyFaqs.slice(0, 5);
     }
-    // Mélange simple : alternance candidats / entreprises, limité à 5
-    const mixed: { question: string; answer: string }[] = [];
-    const max = 5;
-    let i = 0;
-    while (mixed.length < max && (i < candidateFaqs.length || i < companyFaqs.length)) {
-      if (i < candidateFaqs.length) mixed.push(candidateFaqs[i]);
-      if (mixed.length >= max) break;
-      if (i < companyFaqs.length) mixed.push(companyFaqs[i]);
-      i += 1;
-    }
-    return mixed.slice(0, max);
+    return candidateFaqs.slice(0, 5);
   })();
 
   return (
-    <section ref={containerRef} className="relative py-10 sm:py-16 bg-transparent overflow-hidden">
+    <section ref={containerRef} className="relative py-10 sm:py-16 bg-black overflow-hidden">
       <div className="absolute top-[15%] right-[-120px] w-[450px] h-[450px] rounded-full bg-[radial-gradient(circle,rgba(202,27,40,0.04),transparent_60%)] blur-3xl" />
       <div className="absolute bottom-[-120px] left-[-150px] w-[450px] h-[450px] rounded-full bg-[radial-gradient(circle,rgba(202,27,40,0.03),transparent_60%)] blur-3xl" />
 
-      <div className="max-w-[1300px] w-[88%] mx-auto relative z-10">
+      <div className="relative z-10 w-full">
         <div className="reveal text-center mb-10 sm:mb-16">
           <span className="inline-flex items-center gap-2 sm:gap-3 text-[9px] sm:text-[10px] uppercase tracking-[2px] sm:tracking-[3px] text-tap-red font-semibold mb-4 sm:mb-5">
             <span className="reveal-scale-x w-6 h-[1px] bg-tap-red origin-right" />
@@ -95,24 +85,9 @@ export default function FaqHome() {
           </p>
         </div>
 
-        {/* Filtres Candidats / Entreprises */}
+        {/* Barre Candidat / Recruteur */}
         <div className="reveal flex justify-center mb-7 sm:mb-9">
           <div className="inline-flex items-center gap-1.5 sm:gap-2 rounded-full bg-[#050505]/90 backdrop-blur-xl border border-white/[0.08] px-2 py-1.5 shadow-[0_10px_30px_rgba(0,0,0,0.45)]">
-            <button
-              type="button"
-              onClick={() => {
-                setActiveTab("all");
-                setOpenIndex(0);
-              }}
-              className={`inline-flex items-center gap-1.5 px-3 sm:px-4 py-1.5 rounded-full text-[11px] sm:text-[12px] font-semibold tracking-[1.2px] uppercase transition-all duration-200 ${
-                activeTab === "all"
-                  ? "bg-white text-black shadow-[0_0_0_1px_rgba(255,255,255,0.4)]"
-                  : "text-white/55 hover:text-white"
-              }`}
-            >
-              <Sparkles size={13} className={activeTab === "all" ? "text-[#D61D27]" : "text-white/50"} />
-              Candidats & entreprises
-            </button>
             <button
               type="button"
               onClick={() => {
@@ -126,7 +101,7 @@ export default function FaqHome() {
               }`}
             >
               <Users size={13} className={activeTab === "candidates" ? "text-[#D61D27]" : "text-white/50"} />
-              Candidats
+              Candidat
             </button>
             <button
               type="button"
@@ -141,13 +116,13 @@ export default function FaqHome() {
               }`}
             >
               <Building2 size={13} className={activeTab === "companies" ? "text-[#D61D27]" : "text-white/50"} />
-              Entreprises
+              Recruteur
             </button>
           </div>
         </div>
 
         {/* Liste des questions */}
-        <div className="reveal-stagger max-w-[1200px] w-[90%] mx-auto flex flex-col gap-3.5">
+        <div className="reveal-stagger w-full flex flex-col gap-3.5">
           {displayedFaqs.map((item, index) => {
             const isOpen = index === openIndex;
             return (
@@ -155,7 +130,16 @@ export default function FaqHome() {
                 key={`${activeTab}-${item.question}`}
                 type="button"
                 onClick={() => setOpenIndex(isOpen ? null : index)}
-                className="reveal-item text-left group relative rounded-2xl border border-white/[0.05] bg-[#050505]/95 transition-all duration-300 px-4 sm:px-5 md:px-6 py-3.5 sm:py-4 focus:outline-none focus-visible:ring-2 focus-visible:ring-tap-red/60 focus-visible:ring-offset-2 focus-visible:ring-offset-black shadow-[0_0_0_1px_rgba(255,255,255,0.02)] hover:border-[#D61D27] hover:shadow-[0_10px_30px_rgba(214,29,39,0.15)]"
+                aria-expanded={isOpen}
+                className={[
+                  "reveal-item text-left group relative rounded-2xl border bg-[#050505]/95 mx-1 sm:mx-2",
+                  "transition-[border-color,box-shadow] duration-300 px-4 sm:px-5 md:px-6 py-3.5 sm:py-4",
+                  "focus:outline-none focus-visible:ring-2 focus-visible:ring-tap-red/60 focus-visible:ring-offset-2 focus-visible:ring-offset-black",
+                  "shadow-[0_0_0_1px_rgba(255,255,255,0.02)] will-change-transform",
+                  "border-white/[0.05]",
+                  // L'animation premium de bordure ne se déclenche que si la question est active (ouverte)
+                  isOpen ? "card-animated-border card-carousel-active border-tap-red/20" : "",
+                ].join(" ")}
               >
                 <div className="flex items-center gap-3 sm:gap-4">
                   <div className="flex-1 min-w-0 relative z-[1]">
@@ -163,7 +147,12 @@ export default function FaqHome() {
                       <p className="text-[13px] sm:text-[15px] font-semibold text-white leading-[1.5]">
                         {item.question}
                       </p>
-                      <span className="shrink-0 w-7 h-7 rounded-full bg-white/[0.03] border border-white/[0.06] flex items-center justify-center group-hover:border-tap-red/40 group-hover:bg-tap-red/10 transition-all duration-300">
+                      <span
+                        className={[
+                          "shrink-0 w-7 h-7 rounded-full flex items-center justify-center transition-all duration-300",
+                          isOpen ? "bg-tap-red/10 border-tap-red/40" : "bg-white/[0.03] border-white/[0.06]",
+                        ].join(" ")}
+                      >
                         <ChevronDown
                           size={14}
                           className={`text-white/60 transition-transform duration-300 ${isOpen ? "rotate-180" : "rotate-0"}`}

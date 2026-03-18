@@ -2,6 +2,7 @@
 
 import { UserPlus, ScanSearch, Rocket, Building2, ArrowRight } from "lucide-react";
 import { useScrollReveal } from "@/hooks/useScrollReveal";
+import FaqHome from "@/components/FaqHome";
 
 const steps = [
   { icon: UserPlus, title: "Inscription", desc: "Créez votre profil candidat en quelques minutes et uploadez votre CV." },
@@ -101,6 +102,9 @@ export default function CommentCaMarche() {
             </div>
           </div>
         </div>
+
+        {/* Questions fréquentes */}
+        <FaqHome />
 
         {/* CTA Banner */}
         <div className="reveal group cta-animated-border relative rounded-2xl sm:rounded-3xl overflow-hidden border border-white/[0.06] bg-[#0A0A0A] shadow-[0_0_60px_rgba(202,27,40,0.12)] transition-all duration-500 hover:border-tap-red/25 hover:-translate-y-1 hover:scale-[1.01] hover:shadow-[0_0_80px_rgba(202,27,40,0.18),0_18px_70px_rgba(0,0,0,0.65)]">
