@@ -66,7 +66,7 @@ export default function Header() {
         <div
           className={`mx-auto transition-all duration-500 ${
             scrolled
-              ? "max-w-full bg-black/80 backdrop-blur-2xl border-b border-white/[0.05] py-3"
+              ? "max-w-full bg-white/[0.08] backdrop-blur-2xl border-b border-white/[0.10] py-3 rounded-b-2xl"
               : "max-w-full bg-black/60 backdrop-blur-xl border-b border-white/[0.04] py-3 lg:max-w-[1300px] lg:w-[88%] lg:mt-4 lg:rounded-full lg:bg-white/[0.05] lg:border lg:border-white/[0.08] lg:py-3 lg:px-2"
           }`}
         >
@@ -98,7 +98,7 @@ export default function Header() {
                     className={`relative px-4 py-2 text-[11px] font-medium uppercase tracking-[1.5px] rounded-full transition-all duration-300 ${
                       isActive
                         ? "text-red-500 font-semibold"
-                        : "text-white/50 hover:text-white/70 hover:bg-white/[0.04]"
+                        : "text-white/50 hover:text-red-500"
                     }`}
                   >
                     {link.label}
@@ -115,7 +115,7 @@ export default function Header() {
                     className={`relative px-4 py-2 text-[11px] font-medium uppercase tracking-[1.5px] rounded-full transition-all duration-300 ${
                       isActive
                         ? "text-red-500 font-semibold"
-                        : "text-white/50 hover:text-white/70 hover:bg-white/[0.04]"
+                        : "text-white/50 hover:text-red-500"
                     }`}
                   >
                     {link.label}
@@ -129,7 +129,7 @@ export default function Header() {
                   className={`flex items-center gap-1 px-4 py-2 text-[11px] font-medium uppercase tracking-[1.5px] rounded-full transition-all duration-300 ${
                     produitLinks.some((l) => pathname === l.href)
                       ? "text-red-500 font-semibold"
-                      : "text-white/50 hover:text-white/70 hover:bg-white/[0.04]"
+                      : "text-white/50 hover:text-red-500"
                   }`}
                   onClick={() => setProduitOpen((v) => !v)}
                   aria-haspopup="menu"
@@ -176,7 +176,7 @@ export default function Header() {
                     className={`relative px-4 py-2 text-[11px] font-medium uppercase tracking-[1.5px] rounded-full transition-all duration-300 ${
                       isActive
                         ? "text-red-500 font-semibold"
-                        : "text-white/50 hover:text-white/70 hover:bg-white/[0.04]"
+                        : "text-white/50 hover:text-red-500"
                     }`}
                   >
                     {link.label}
@@ -203,7 +203,7 @@ export default function Header() {
                 <>
                   <Link
                     href="/connexion"
-                    className="inline-flex items-center px-4 py-2 text-[10px] font-semibold uppercase tracking-[1.5px] text-white/50 hover:text-white/70 transition-colors duration-300"
+                    className="inline-flex items-center px-4 py-2 rounded-full border border-white/40 bg-transparent text-[10px] font-semibold uppercase tracking-[1.5px] text-white/50 hover:text-red-500 hover:border-red-500 transition-colors duration-300"
                   >
                     Connexion
                   </Link>
@@ -272,7 +272,7 @@ export default function Header() {
                   className={`flex items-center justify-between px-3 py-3 rounded-xl text-[13px] font-medium tracking-wide transition-colors duration-200 ${
                     isActive
                       ? "text-red-500 font-semibold"
-                      : "text-white/50 hover:text-white hover:bg-white/[0.04]"
+                      : "text-white/50 hover:text-red-500"
                   }`}
                 >
                   {link.label}
@@ -290,7 +290,7 @@ export default function Header() {
                 className={`w-full flex items-center justify-between px-3 py-3 rounded-xl text-[13px] font-medium tracking-wide transition-colors duration-200 ${
                   produitLinks.some((l) => pathname === l.href)
                     ? "text-red-500 font-semibold"
-                    : "text-white/50 hover:text-white hover:bg-white/[0.04]"
+                    : "text-white/50 hover:text-red-500"
                 }`}
               >
                 Produit
@@ -341,7 +341,7 @@ export default function Header() {
                   className={`flex items-center justify-between px-3 py-3 rounded-xl text-[13px] font-medium tracking-wide transition-colors duration-200 ${
                     isActive
                       ? "text-red-500 font-semibold"
-                      : "text-white/50 hover:text-white hover:bg-white/[0.04]"
+                      : "text-white/50 hover:text-red-500"
                   }`}
                 >
                   {link.label}
@@ -368,7 +368,7 @@ export default function Header() {
                   <Link
                     href="/connexion"
                     onClick={() => setMenuOpen(false)}
-                    className="flex-1 bg-transparent border border-white/25 rounded-full text-center py-2.5 text-[11px] uppercase tracking-[1.5px] text-white/45 hover:text-white/70 hover:border-white/35 transition-colors font-medium"
+                    className="flex-1 bg-transparent border border-white/40 rounded-full text-center py-2.5 text-[11px] uppercase tracking-[1.5px] text-white/50 hover:text-red-500 hover:border-red-500 transition-colors font-medium"
                   >
                     Connexion
                   </Link>
