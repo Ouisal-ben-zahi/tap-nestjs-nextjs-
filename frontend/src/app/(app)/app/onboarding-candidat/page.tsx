@@ -60,7 +60,7 @@ export default function OnboardingCandidatPage() {
   const { isCandidat } = useAuth();
   const router = useRouter();
   const FLASK_AI_URL =
-    process.env.NEXT_PUBLIC_FLASK_AI_URL ?? "http://127.0.0.1:5002";
+    process.env.NEXT_PUBLIC_FLASK_AI_URL ?? "http://localhost:5002";
 
   // Wizard state
   const [currentWizardStep, setCurrentWizardStep] = useState(1);
