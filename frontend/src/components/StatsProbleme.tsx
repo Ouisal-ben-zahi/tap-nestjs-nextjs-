@@ -127,7 +127,9 @@ export default function StatsProbleme() {
               const opacity = isActive ? 1 : distance === 1 ? 0.78 : 0;
               const blur = isActive ? 0 : distance === 1 ? 1.5 : 10;
               const scale = isActive ? 1 : distance === 1 ? 0.92 : 0.86;
-              const translateY = isActive ? 0 : distance * 8;
+              // Pour éviter que la carte centrale "monte/descende" pendant le carousel :
+              // on garde la même ligne verticale et on n'utilise qu'une légère profondeur via scale/blur.
+              const translateY = 0;
               const translateX = diff * stepPx;
               const zIndex = 100 - distance;
 

@@ -136,7 +136,10 @@ export default function ScoreContent() {
           {/* Bento grid: Big score left + 6 criteria cards right */}
           <div className="grid grid-cols-1 lg:grid-cols-12 gap-3 sm:gap-4 items-stretch">
             {/* Big Score Card — spans 5 cols, full height */}
-            <div className="reveal-scale lg:col-span-5 card-solid rounded-2xl p-6 sm:p-8 flex flex-col items-center justify-center relative overflow-hidden">
+            <div className="reveal-scale lg:col-span-5 group relative card-animated-border rounded-2xl bg-[#0A0A0A] border border-white/[0.06] p-6 sm:p-8 flex flex-col items-center justify-center overflow-hidden transform-gpu transition-all duration-500 ease-[cubic-bezier(.22,1,.36,1)] hover:-translate-y-1 hover:scale-[1.02] hover:shadow-[0_18px_60px_rgba(0,0,0,0.55),0_0_40px_rgba(202,27,40,0.10)] hover:border-tap-red/15"
+            >
+              <div className="absolute inset-0 opacity-0 transition-opacity duration-500 pointer-events-none bg-[radial-gradient(circle_at_25%_0%,rgba(202,27,40,0.28),transparent_55%)] blur-[2px] mix-blend-screen" />
+              <div className="luxury-sweep !opacity-0 absolute inset-0 bg-[linear-gradient(90deg,transparent_0%,rgba(202,27,40,0.35)_45%,rgba(255,255,255,0.14)_55%,transparent_100%)]" />
               {/* Glow behind circle */}
               <div className="absolute top-1/2 left-1/2 -translate-x-1/2 -translate-y-1/2 w-[250px] h-[250px] rounded-full bg-[radial-gradient(circle,rgba(202,27,40,0.08),transparent_70%)] blur-2xl pointer-events-none" />
 
@@ -191,8 +194,11 @@ export default function ScoreContent() {
                 return (
                   <div
                     key={item.label}
-                    className="reveal-item card-solid rounded-xl p-4 sm:p-5 flex flex-col items-center justify-center text-center group hover:bg-white/[0.025] transition-colors duration-300"
+                    className="reveal-item group relative card-animated-border rounded-xl bg-[#0A0A0A] border border-white/[0.06] p-4 sm:p-5 flex flex-col items-center justify-center text-center overflow-hidden transform-gpu transition-all duration-500 ease-[cubic-bezier(.22,1,.36,1)] hover:-translate-y-1 hover:scale-[1.02] hover:shadow-[0_18px_60px_rgba(0,0,0,0.55),0_0_40px_rgba(202,27,40,0.10)] hover:border-tap-red/15"
                   >
+                    <div className="absolute inset-0 opacity-0 transition-opacity duration-500 pointer-events-none bg-[radial-gradient(circle_at_25%_0%,rgba(202,27,40,0.28),transparent_55%)] blur-[2px] mix-blend-screen" />
+                    <div className="luxury-sweep !opacity-0 absolute inset-0 bg-[linear-gradient(90deg,transparent_0%,rgba(202,27,40,0.35)_45%,rgba(255,255,255,0.14)_55%,transparent_100%)]" />
+
                     {/* Mini circular gauge */}
                     <div className="relative w-[60px] h-[60px] mb-3">
                       <svg viewBox="0 0 64 64" className="w-full h-full -rotate-90">
@@ -224,7 +230,7 @@ export default function ScoreContent() {
       </section>
 
       {/* Features — 2x2 grid */}
-      <section className="py-12 sm:py-20 bg-tap-dark relative overflow-hidden">
+      <section className="py-12 sm:py-20 bg-black relative overflow-hidden">
         <div className="max-w-[1300px] w-[88%] mx-auto relative z-10">
           <div className="reveal text-center mb-10 sm:mb-16">
             <span className="inline-flex items-center gap-2 sm:gap-3 text-[9px] sm:text-[10px] uppercase tracking-[2px] sm:tracking-[3px] text-tap-red font-semibold mb-4 sm:mb-5">
@@ -241,8 +247,11 @@ export default function ScoreContent() {
             {features.map((feature, i) => (
               <div
                 key={feature.title}
-                className="reveal-item group card-solid rounded-2xl p-6 sm:p-8"
+                className="reveal-item group relative card-animated-border rounded-2xl bg-[#0A0A0A] border border-white/[0.06] p-6 sm:p-8 overflow-hidden transform-gpu transition-all duration-500 ease-[cubic-bezier(.22,1,.36,1)] hover:-translate-y-1 hover:scale-[1.02] hover:shadow-[0_18px_60px_rgba(0,0,0,0.55),0_0_40px_rgba(202,27,40,0.10)] hover:border-tap-red/15"
               >
+                <div className="absolute inset-0 opacity-0 transition-opacity duration-500 pointer-events-none bg-[radial-gradient(circle_at_25%_0%,rgba(202,27,40,0.28),transparent_55%)] blur-[2px] mix-blend-screen" />
+                <div className="luxury-sweep !opacity-0 absolute inset-0 bg-[linear-gradient(90deg,transparent_0%,rgba(202,27,40,0.35)_45%,rgba(255,255,255,0.14)_55%,transparent_100%)]" />
+
                 <div className="w-14 h-14 rounded-2xl bg-tap-red/[0.08] border border-tap-red/10 flex items-center justify-center mb-5 group-hover:bg-tap-red/15 group-hover:border-tap-red/20 transition-all duration-500">
                   <feature.icon size={24} className="text-tap-red" strokeWidth={1.5} />
                 </div>
@@ -258,8 +267,26 @@ export default function ScoreContent() {
       <section className="py-12 sm:py-16 bg-transparent relative overflow-hidden">
         <div className="absolute inset-0 bg-gradient-to-b from-tap-red/[0.02] to-transparent pointer-events-none" />
         <div className="max-w-[1300px] w-[88%] mx-auto relative z-10">
-          <div className="reveal relative rounded-2xl sm:rounded-3xl overflow-hidden border border-white/[0.06] bg-[url('/images/bgsections.jpg')] bg-no-repeat bg-center bg-[length:100%_auto]">
-            <div className="absolute inset-0 bg-black/50 pointer-events-none" />
+          <div className="reveal group cta-animated-border relative rounded-2xl sm:rounded-3xl overflow-hidden border border-white/[0.06] bg-[#0A0A0A] shadow-[0_0_60px_rgba(202,27,40,0.12)] transition-all duration-500 hover:border-tap-red/25 hover:-translate-y-1 hover:scale-[1.01] hover:shadow-[0_0_80px_rgba(202,27,40,0.18),0_18px_70px_rgba(0,0,0,0.65)]">
+            {/* Superposition fond image (premium) */}
+            <div className="absolute inset-0 bg-[url('/images/bgsections.jpg')] bg-no-repeat bg-center bg-[length:120%_auto] opacity-30 pointer-events-none" />
+            <div className="absolute inset-0 bg-black/55 pointer-events-none" />
+
+            {/* Glow accent */}
+            <div className="absolute inset-0 opacity-0 transition-opacity duration-500 pointer-events-none">
+              <div className="absolute -top-20 left-1/2 -translate-x-1/2 w-[420px] h-[200px] bg-[radial-gradient(circle,rgba(202,27,40,0.35),transparent_60%)] blur-2xl mix-blend-screen" />
+            </div>
+
+            {/* Accent gradient */}
+            <div className="absolute top-0 left-0 right-0 h-[140px] bg-gradient-to-b from-tap-red/[0.18] to-transparent pointer-events-none" />
+
+            {/* Orbes flottants */}
+            <div
+              className="absolute -top-8 -left-8 w-[180px] h-[180px] rounded-full bg-[radial-gradient(circle,rgba(202,27,40,0.12),transparent_60%)] blur-2xl floating-orb pointer-events-none"
+              style={{ animationDuration: "9s" }}
+            />
+            <div className="absolute bottom-[-110px] right-[-130px] w-[300px] h-[300px] rounded-full bg-[radial-gradient(circle,rgba(202,27,40,0.08),transparent_60%)] blur-3xl pointer-events-none" />
+
             <div className="relative z-10 p-7 sm:p-12 lg:p-16 text-center">
               <h3 className="font-heading text-[22px] sm:text-[26px] md:text-[36px] lg:text-[44px] font-extralight text-white mb-3 sm:mb-4 tracking-[-0.03em] leading-[1.1]">
                 Découvrez votre <span className="font-bold">score</span>

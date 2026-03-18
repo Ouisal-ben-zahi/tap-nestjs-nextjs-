@@ -111,7 +111,10 @@ export default function MatchingContent() {
           {/* Match UI */}
           <div className="grid grid-cols-1 lg:grid-cols-3 gap-4 sm:gap-5 max-w-[1000px] mx-auto items-start">
             {/* Candidate card */}
-            <div className="reveal-left card-solid rounded-2xl p-5 sm:p-6">
+            <div className="reveal-left group relative card-animated-border rounded-2xl bg-[#0A0A0A] border border-white/[0.06] p-5 sm:p-6 overflow-hidden transform-gpu transition-all duration-500 ease-[cubic-bezier(.22,1,.36,1)] hover:-translate-y-1 hover:scale-[1.02] hover:shadow-[0_18px_60px_rgba(0,0,0,0.55),0_0_40px_rgba(202,27,40,0.10)] hover:border-tap-red/15"
+            >
+              <div className="absolute inset-0 opacity-0 transition-opacity duration-500 pointer-events-none bg-[radial-gradient(circle_at_25%_0%,rgba(202,27,40,0.28),transparent_55%)] blur-[2px] mix-blend-screen" />
+              <div className="luxury-sweep !opacity-0 absolute inset-0 bg-[linear-gradient(90deg,transparent_0%,rgba(202,27,40,0.35)_45%,rgba(255,255,255,0.14)_55%,transparent_100%)]" />
               <div className="flex items-center gap-3 mb-4">
                 <div className="w-11 h-11 rounded-full bg-white/[0.06] flex items-center justify-center">
                   <Users size={18} className="text-white/40" strokeWidth={1.5} />
@@ -171,7 +174,10 @@ export default function MatchingContent() {
             </div>
 
             {/* Company card */}
-            <div className="reveal-right card-solid rounded-2xl p-5 sm:p-6">
+            <div className="reveal-right group relative card-animated-border rounded-2xl bg-[#0A0A0A] border border-white/[0.06] p-5 sm:p-6 overflow-hidden transform-gpu transition-all duration-500 ease-[cubic-bezier(.22,1,.36,1)] hover:-translate-y-1 hover:scale-[1.02] hover:shadow-[0_18px_60px_rgba(0,0,0,0.55),0_0_40px_rgba(202,27,40,0.10)] hover:border-tap-red/15"
+            >
+              <div className="absolute inset-0 opacity-0 transition-opacity duration-500 pointer-events-none bg-[radial-gradient(circle_at_25%_0%,rgba(202,27,40,0.28),transparent_55%)] blur-[2px] mix-blend-screen" />
+              <div className="luxury-sweep !opacity-0 absolute inset-0 bg-[linear-gradient(90deg,transparent_0%,rgba(202,27,40,0.35)_45%,rgba(255,255,255,0.14)_55%,transparent_100%)]" />
               <div className="flex items-center gap-3 mb-4">
                 <div className="w-11 h-11 rounded-full bg-tap-red/10 flex items-center justify-center">
                   <Building2 size={18} className="text-tap-red" strokeWidth={1.5} />
@@ -205,7 +211,7 @@ export default function MatchingContent() {
       </section>
 
       {/* Process — Premium timeline */}
-      <section className="py-12 sm:py-20 bg-tap-dark relative overflow-hidden">
+      <section className="py-12 sm:py-20 bg-black relative overflow-hidden">
         <div className="absolute top-[20%] right-[-150px] w-[500px] h-[500px] rounded-full bg-[radial-gradient(circle,rgba(202,27,40,0.03),transparent_60%)] blur-3xl" />
         <div className="max-w-[1300px] w-[88%] mx-auto relative z-10">
           <div className="reveal text-center mb-12 sm:mb-20">
@@ -274,8 +280,10 @@ export default function MatchingContent() {
             ].map((benefit, i) => (
               <div
                 key={i}
-                className="reveal-item flex items-center gap-3 card-solid rounded-xl p-4"
+                className="reveal-item group relative flex items-center gap-3 card-animated-border rounded-xl bg-[#0A0A0A] border border-white/[0.06] p-4 overflow-hidden transform-gpu transition-all duration-500 ease-[cubic-bezier(.22,1,.36,1)] hover:-translate-y-1 hover:scale-[1.02] hover:shadow-[0_18px_60px_rgba(0,0,0,0.55),0_0_40px_rgba(202,27,40,0.10)] hover:border-tap-red/15"
               >
+                <div className="absolute inset-0 opacity-0 transition-opacity duration-500 pointer-events-none bg-[radial-gradient(circle_at_25%_0%,rgba(202,27,40,0.28),transparent_55%)] blur-[2px] mix-blend-screen" />
+                <div className="luxury-sweep !opacity-0 absolute inset-0 bg-[linear-gradient(90deg,transparent_0%,rgba(202,27,40,0.35)_45%,rgba(255,255,255,0.14)_55%,transparent_100%)]" />
                 <CheckCircle2 size={15} className="text-tap-red shrink-0" strokeWidth={1.5} />
                 <p className="text-[13px] sm:text-[14px] text-white/45 font-light">{benefit}</p>
               </div>
@@ -288,8 +296,26 @@ export default function MatchingContent() {
       <section className="py-12 sm:py-16 bg-transparent relative overflow-hidden">
         <div className="absolute inset-0 bg-gradient-to-b from-tap-red/[0.02] to-transparent pointer-events-none" />
         <div className="max-w-[1300px] w-[88%] mx-auto relative z-10">
-          <div className="reveal relative rounded-2xl sm:rounded-3xl overflow-hidden border border-white/[0.06] bg-[url('/images/bgsections.jpg')] bg-no-repeat bg-center bg-[length:100%_auto]">
-            <div className="absolute inset-0 bg-black/50 pointer-events-none" />
+          <div className="reveal group cta-animated-border relative rounded-2xl sm:rounded-3xl overflow-hidden border border-white/[0.06] bg-[#0A0A0A] shadow-[0_0_60px_rgba(202,27,40,0.12)] transition-all duration-500 hover:border-tap-red/25 hover:-translate-y-1 hover:scale-[1.01] hover:shadow-[0_0_80px_rgba(202,27,40,0.18),0_18px_70px_rgba(0,0,0,0.65)]">
+            {/* Superposition fond image (premium) */}
+            <div className="absolute inset-0 bg-[url('/images/bgsections.jpg')] bg-no-repeat bg-center bg-[length:120%_auto] opacity-30 pointer-events-none" />
+            <div className="absolute inset-0 bg-black/55 pointer-events-none" />
+
+            {/* Glow accent */}
+            <div className="absolute inset-0 opacity-0 transition-opacity duration-500 pointer-events-none">
+              <div className="absolute -top-20 left-1/2 -translate-x-1/2 w-[420px] h-[200px] bg-[radial-gradient(circle,rgba(202,27,40,0.35),transparent_60%)] blur-2xl mix-blend-screen" />
+            </div>
+
+            {/* Accent gradient */}
+            <div className="absolute top-0 left-0 right-0 h-[140px] bg-gradient-to-b from-tap-red/[0.18] to-transparent pointer-events-none" />
+
+            {/* Orbes flottants */}
+            <div
+              className="absolute -top-8 -left-8 w-[180px] h-[180px] rounded-full bg-[radial-gradient(circle,rgba(202,27,40,0.12),transparent_60%)] blur-2xl floating-orb pointer-events-none"
+              style={{ animationDuration: "9s" }}
+            />
+            <div className="absolute bottom-[-110px] right-[-130px] w-[300px] h-[300px] rounded-full bg-[radial-gradient(circle,rgba(202,27,40,0.08),transparent_60%)] blur-3xl pointer-events-none" />
+
             <div className="relative z-10 p-7 sm:p-12 lg:p-16 text-center">
               <h3 className="font-heading text-[22px] sm:text-[26px] md:text-[36px] lg:text-[44px] font-extralight text-white mb-3 sm:mb-4 tracking-[-0.03em] leading-[1.1]">
                 Trouvez le <span className="font-bold">match parfait</span>

@@ -27,7 +27,12 @@ export default function PourQuiRecruteursTalents() {
       {/* Audience cards */}
         <div className="reveal-stagger grid grid-cols-1 md:grid-cols-2 gap-3 sm:gap-4">
         {/* Entreprises */}
-        <div className="reveal-item group rounded-2xl overflow-hidden bg-[#0A0A0A] border border-white/[0.06] hover:border-tap-red/15 transition-all duration-500">
+        <div className="reveal-item group card-animated-border rounded-2xl overflow-hidden bg-[#0A0A0A] border border-white/[0.06] hover:border-tap-red/15 transition-all duration-500">
+          {/* Background premium au hover */}
+          <div className="absolute inset-0 opacity-0 group-hover:opacity-100 transition-opacity duration-500 pointer-events-none">
+            <div className="absolute inset-0 bg-[radial-gradient(circle_at_20%_0%,rgba(202,27,40,0.38),transparent_55%)] blur-[2px] mix-blend-screen" />
+            <div className="absolute inset-0 bg-[linear-gradient(180deg,rgba(202,27,40,0.14),transparent_55%)]" />
+          </div>
           <div className="px-5 sm:px-7 py-4 sm:py-5 bg-gradient-to-r from-tap-red to-tap-red/60 flex items-center justify-between">
             <div className="flex items-center gap-3">
               <div className="w-9 h-9 rounded-lg bg-white/15 flex items-center justify-center">
@@ -50,7 +55,12 @@ export default function PourQuiRecruteursTalents() {
         </div>
 
         {/* Candidats */}
-        <div className="reveal-item group rounded-2xl overflow-hidden bg-[#0A0A0A] border border-white/[0.06] hover:border-white/10 transition-all duration-500">
+        <div className="reveal-item group card-animated-border-white rounded-2xl overflow-hidden bg-[#0A0A0A] border border-white/[0.06] hover:border-white/15 transition-all duration-500">
+          {/* Background premium au hover */}
+          <div className="absolute inset-0 opacity-0 group-hover:opacity-100 transition-opacity duration-500 pointer-events-none">
+            <div className="absolute inset-0 bg-[radial-gradient(circle_at_20%_0%,rgba(255,255,255,0.22),transparent_55%)] blur-[2px] mix-blend-screen" />
+            <div className="absolute inset-0 bg-[linear-gradient(180deg,rgba(255,255,255,0.10),transparent_55%)]" />
+          </div>
           <div className="px-5 sm:px-7 py-4 sm:py-5 bg-gradient-to-r from-white/90 to-white/70 flex items-center justify-between">
             <div className="flex items-center gap-3">
               <div className="w-9 h-9 rounded-lg bg-black/10 flex items-center justify-center">

@@ -67,7 +67,7 @@ export default function Header() {
           className={`mx-auto transition-all duration-500 ${
             scrolled
               ? "max-w-full bg-white/[0.08] backdrop-blur-2xl border-b border-white/[0.10] py-3 rounded-b-2xl"
-              : "max-w-full bg-black/60 backdrop-blur-xl border-b border-white/[0.04] py-3 lg:max-w-[1300px] lg:w-[88%] lg:mt-4 lg:rounded-full lg:bg-white/[0.05] lg:border lg:border-white/[0.08] lg:py-3 lg:px-2"
+              : "max-w-full bg-black/60 backdrop-blur-xl border-b border-white/[0.04] py-3 lg:max-w-[1300px] lg:w-[88%] lg:rounded-full lg:bg-white/[0.05] lg:border lg:border-white/[0.08] lg:py-3 lg:px-2"
           }`}
         >
           <div

@@ -1,6 +1,6 @@
 "use client";
 
-import { useEffect, useRef } from "react";
+import { useEffect, useRef, useState } from "react";
 import Link from "next/link";
 import { useScrollReveal } from "@/hooks/useScrollReveal";
 import { ArrowRight, FileText, Layout, Layers, Users, Sparkles, Upload, Cpu, Download, Share2, CheckCircle2 } from "lucide-react";
@@ -154,6 +154,11 @@ const deliverables = [
   },
 ];
 
+type TalentCandidate = {
+  name: string;
+  score: number; // 0..100
+};
+
 const scoreCategories = [
   { label: "Compétences techniques", score: 85 },
   { label: "Expérience professionnelle", score: 72 },
@@ -161,6 +166,137 @@ const scoreCategories = [
   { label: "Formation & certifications", score: 68 },
   { label: "Adéquation marché", score: 78 },
 ];
+
+function TalentScoreCard({ candidate, index }: { candidate: TalentCandidate; index: number }) {
+  const cardRef = useRef<HTMLDivElement>(null);
+  const [started, setStarted] = useState(false);
+  const [t, setT] = useState(0); // 0..1 for progress animation
+
+  // Start animation only when the card becomes visible
+  useEffect(() => {
+    const el = cardRef.current;
+    if (!el) return;
+
+    const observer = new IntersectionObserver(
+      (entries) => {
+        if (entries.some((e) => e.isIntersecting)) {
+          setStarted(true);
+          observer.disconnect();
+        }
+      },
+      { threshold: 0.25, rootMargin: "0px 0px -60px 0px" }
+    );
+
+    observer.observe(el);
+    return () => observer.disconnect();
+  }, []);
+
+  useEffect(() => {
+    if (!started) return;
+
+    let raf: number | null = null;
+    const startAt = performance.now();
+    const duration = 1200;
+
+    setT(0);
+
+    const tick = (now: number) => {
+      const p = Math.min((now - startAt) / duration, 1);
+      const eased = 1 - Math.pow(1 - p, 3);
+      setT(eased);
+      if (p < 1) raf = requestAnimationFrame(tick);
+    };
+
+    raf = requestAnimationFrame(tick);
+    return () => {
+      if (raf) cancelAnimationFrame(raf);
+    };
+  }, [started, candidate.score, index]);
+
+  const scoreAnim = (candidate.score || 0) * t; // 0..score
+  const progress = candidate.score > 0 ? scoreAnim / candidate.score : 0;
+
+  // Circle (global score)
+  const r = 34;
+  const circ = 2 * Math.PI * r;
+  const dashoffset = circ * (1 - scoreAnim / 100);
+  const gradId = `scoreGrad-${index}`;
+
+  return (
+    <div
+      ref={cardRef}
+      className="reveal-item group relative flex-1 max-w-[280px] sm:max-w-[200px] w-full card-animated-border rounded-xl p-4 sm:p-5 overflow-hidden bg-[#0A0A0A] border border-white/[0.06] hover:border-tap-red/15 transition-all duration-500 ease-[cubic-bezier(.22,1,.36,1)] transform-gpu hover:-translate-y-1 hover:scale-[1.02] hover:shadow-[0_18px_60px_rgba(0,0,0,0.55),0_0_40px_rgba(202,27,40,0.10)]"
+    >
+      <div className="absolute inset-0 opacity-0 transition-opacity duration-500 pointer-events-none bg-[radial-gradient(circle_at_25%_0%,rgba(202,27,40,0.28),transparent_55%)] blur-[2px] mix-blend-screen" />
+      <div className="luxury-sweep !opacity-0 absolute inset-0 bg-[linear-gradient(90deg,transparent_0%,rgba(202,27,40,0.35)_45%,rgba(255,255,255,0.14)_55%,transparent_100%)]" />
+
+      <div className="relative z-10">
+        <div className="w-10 h-10 rounded-full bg-white/[0.06] flex items-center justify-center mx-auto mb-3">
+          <span className="text-[13px] font-semibold text-white/40">{candidate.name[0]}</span>
+        </div>
+        <p className="text-[13px] font-semibold text-white text-center mb-0.5">{candidate.name}</p>
+        <p className="text-[9px] text-white/25 text-center uppercase tracking-[1.5px] mb-4">Talents Card</p>
+
+        {/* Score circle */}
+        <div className="relative w-[80px] h-[80px] mx-auto mb-4">
+          <svg viewBox="0 0 80 80" className="w-full h-full -rotate-90">
+            <circle cx="40" cy="40" r={r} fill="none" stroke="rgba(255,255,255,0.04)" strokeWidth="4" />
+            <circle
+              cx="40"
+              cy="40"
+              r={r}
+              fill="none"
+              stroke={`url(#${gradId})`}
+              strokeWidth="4"
+              strokeLinecap="round"
+              strokeDasharray={`${circ}`}
+              strokeDashoffset={dashoffset}
+            />
+            <defs>
+              <linearGradient id={gradId} x1="0" y1="0" x2="1" y2="1">
+                <stop offset="0%" stopColor="#CA1B28" />
+                <stop offset="100%" stopColor="#CA1B28" stopOpacity="0.4" />
+              </linearGradient>
+            </defs>
+          </svg>
+
+          <div className="absolute inset-0 flex items-center justify-center">
+            <span className="text-[22px] font-bold text-white tracking-[-0.02em]">{Math.round(scoreAnim)}</span>
+          </div>
+        </div>
+
+        {/* Progress bars */}
+        <div className="flex flex-col gap-1.5">
+          {scoreCategories.map((cat) => {
+            const adj =
+              index === 0 ? cat.score : index === 1 ? Math.max(40, cat.score - 13) : Math.max(30, cat.score - 25);
+            const barAnim = adj * progress; // 0..adj
+
+            const widthPct = Math.min(100, barAnim);
+
+            return (
+              <div key={cat.label}>
+                <div className="flex items-center justify-between mb-0.5">
+                  <span className="text-[9px] text-white/25 font-light truncate mr-2">{cat.label}</span>
+                  <span className="text-[10px] font-semibold text-white/40">{Math.round(barAnim)}</span>
+                </div>
+                <div className="w-full h-[2px] bg-white/[0.04] rounded-full overflow-hidden">
+                  <div
+                    className="h-full rounded-full"
+                    style={{
+                      width: `${widthPct}%`,
+                      background: "linear-gradient(90deg, rgba(202,27,40,0.35), rgba(202,27,40,0.95))",
+                    }}
+                  />
+                </div>
+              </div>
+            );
+          })}
+        </div>
+      </div>
+    </div>
+  );
+}
 
 export default function AnalyseCvContent() {
   const containerRef = useScrollReveal();
@@ -274,7 +410,7 @@ export default function AnalyseCvContent() {
       </section>
 
       {/* Deliverables — Bento Grid with visual mockups */}
-      <section className="py-12 sm:py-20 bg-tap-dark relative overflow-hidden">
+      <section className="py-12 sm:py-20 bg-black relative overflow-hidden">
         <div className="absolute top-[10%] right-[-100px] w-[500px] h-[500px] rounded-full bg-[radial-gradient(circle,rgba(202,27,40,0.04),transparent_60%)] blur-3xl" />
         <div className="absolute bottom-[10%] left-[-100px] w-[400px] h-[400px] rounded-full bg-[radial-gradient(circle,rgba(202,27,40,0.03),transparent_60%)] blur-3xl" />
         <div className="max-w-[1300px] w-[88%] mx-auto relative z-10">
@@ -294,8 +430,12 @@ export default function AnalyseCvContent() {
             {deliverables.map((item) => (
               <div
                 key={item.title}
-                className="reveal-item group card-solid rounded-2xl overflow-hidden"
+                className="reveal-item group relative card-animated-border rounded-2xl overflow-hidden bg-[#0A0A0A] border border-white/[0.06] hover:border-tap-red/15 transition-all duration-500 ease-[cubic-bezier(.22,1,.36,1)] transform-gpu hover:-translate-y-1 hover:scale-[1.02] hover:shadow-[0_18px_60px_rgba(0,0,0,0.55),0_0_40px_rgba(202,27,40,0.10)]"
               >
+                <div className="absolute inset-0 opacity-0 transition-opacity duration-500 pointer-events-none bg-[radial-gradient(circle_at_25%_0%,rgba(202,27,40,0.28),transparent_55%)] blur-[2px] mix-blend-screen" />
+                <div className="luxury-sweep !opacity-0 absolute inset-0 bg-[linear-gradient(90deg,transparent_0%,rgba(202,27,40,0.35)_45%,rgba(255,255,255,0.14)_55%,transparent_100%)]" />
+
+                <div className="relative z-10">
                 {/* Visual mockup */}
                 <div className="p-5 sm:p-6 pb-0">
                   {item.visual}
@@ -311,6 +451,7 @@ export default function AnalyseCvContent() {
                   </div>
                   <h3 className="text-[18px] sm:text-[20px] font-bold text-white mb-2 tracking-[-0.01em]">{item.title}</h3>
                   <p className="text-[13px] sm:text-[14px] text-white/40 leading-[1.7] font-light">{item.description}</p>
+                </div>
                 </div>
               </div>
             ))}
@@ -361,61 +502,7 @@ export default function AnalyseCvContent() {
                 { name: "Karim B.", score: 74 },
                 { name: "Leila A.", score: 62 },
               ].map((candidate, i) => (
-                <div
-                  key={candidate.name}
-                  className="reveal-item flex-1 max-w-[280px] sm:max-w-[200px] w-full card-solid rounded-xl p-4 sm:p-5"
-                >
-                  {/* Avatar */}
-                  <div className="w-10 h-10 rounded-full bg-white/[0.06] flex items-center justify-center mx-auto mb-3">
-                    <span className="text-[13px] font-semibold text-white/40">{candidate.name[0]}</span>
-                  </div>
-                  <p className="text-[13px] font-semibold text-white text-center mb-0.5">{candidate.name}</p>
-                  <p className="text-[9px] text-white/25 text-center uppercase tracking-[1.5px] mb-4">Talents Card</p>
-
-                  {/* Score circle */}
-                  <div className="relative w-[80px] h-[80px] mx-auto mb-4">
-                    <svg viewBox="0 0 80 80" className="w-full h-full -rotate-90">
-                      <circle cx="40" cy="40" r="34" fill="none" stroke="rgba(255,255,255,0.04)" strokeWidth="4" />
-                      <circle
-                        cx="40" cy="40" r="34" fill="none" stroke="url(#scoreGrad)" strokeWidth="4" strokeLinecap="round"
-                        strokeDasharray={`${2 * Math.PI * 34}`}
-                        strokeDashoffset={2 * Math.PI * 34 * (1 - candidate.score / 100)}
-                      />
-                      <defs>
-                        <linearGradient id="scoreGrad" x1="0" y1="0" x2="1" y2="1">
-                          <stop offset="0%" stopColor="#CA1B28" />
-                          <stop offset="100%" stopColor="#CA1B28" stopOpacity="0.4" />
-                        </linearGradient>
-                      </defs>
-                    </svg>
-                    <div className="absolute inset-0 flex items-center justify-center">
-                      <span className="text-[22px] font-bold text-white tracking-[-0.02em]">
-                        <AnimatedCounter value={candidate.score} delay={500 + i * 200} />
-                      </span>
-                    </div>
-                  </div>
-
-                  {/* Mini scores */}
-                  <div className="flex flex-col gap-1.5">
-                    {scoreCategories.map((cat) => {
-                      const adj = i === 0 ? cat.score : i === 1 ? Math.max(40, cat.score - 13) : Math.max(30, cat.score - 25);
-                      return (
-                        <div key={cat.label}>
-                          <div className="flex items-center justify-between mb-0.5">
-                            <span className="text-[9px] text-white/25 font-light truncate mr-2">{cat.label}</span>
-                            <span className="text-[10px] font-semibold text-white/40">{adj}</span>
-                          </div>
-                          <div className="w-full h-[2px] bg-white/[0.04] rounded-full overflow-hidden">
-                            <div
-                              style={{ width: `${adj}%` }}
-                              className="h-full bg-tap-red/40 rounded-full"
-                            />
-                          </div>
-                        </div>
-                      );
-                    })}
-                  </div>
-                </div>
+                <TalentScoreCard key={candidate.name} candidate={candidate} index={i} />
               ))}
             </div>
           </div>
@@ -426,8 +513,26 @@ export default function AnalyseCvContent() {
       <section className="py-12 sm:py-16 bg-transparent relative overflow-hidden">
         <div className="absolute inset-0 bg-gradient-to-b from-tap-red/[0.02] to-transparent pointer-events-none" />
         <div className="max-w-[1300px] w-[88%] mx-auto relative z-10">
-          <div className="reveal relative rounded-2xl sm:rounded-3xl overflow-hidden border border-white/[0.06] bg-[url('/images/bgsections.jpg')] bg-no-repeat bg-center bg-[length:100%_auto]">
-            <div className="absolute inset-0 bg-black/50 pointer-events-none" />
+          <div className="reveal group cta-animated-border relative rounded-2xl sm:rounded-3xl overflow-hidden border border-white/[0.06] bg-[#0A0A0A] shadow-[0_0_60px_rgba(202,27,40,0.12)] transition-all duration-500 hover:border-tap-red/25 hover:-translate-y-1 hover:scale-[1.01] hover:shadow-[0_0_80px_rgba(202,27,40,0.18),0_18px_70px_rgba(0,0,0,0.65)]">
+            {/* Superposition fond image (premium) */}
+            <div className="absolute inset-0 bg-[url('/images/bgsections.jpg')] bg-no-repeat bg-center bg-[length:120%_auto] opacity-30 pointer-events-none" />
+            <div className="absolute inset-0 bg-black/55 pointer-events-none" />
+
+            {/* Glow accent */}
+            <div className="absolute inset-0 opacity-0 transition-opacity duration-500 pointer-events-none">
+              <div className="absolute -top-20 left-1/2 -translate-x-1/2 w-[420px] h-[200px] bg-[radial-gradient(circle,rgba(202,27,40,0.35),transparent_60%)] blur-2xl mix-blend-screen" />
+            </div>
+
+            {/* Accent gradient */}
+            <div className="absolute top-0 left-0 right-0 h-[140px] bg-gradient-to-b from-tap-red/[0.18] to-transparent pointer-events-none" />
+
+            {/* Orbes flottants */}
+            <div
+              className="absolute -top-8 -left-8 w-[180px] h-[180px] rounded-full bg-[radial-gradient(circle,rgba(202,27,40,0.12),transparent_60%)] blur-2xl floating-orb pointer-events-none"
+              style={{ animationDuration: "9s" }}
+            />
+            <div className="absolute bottom-[-110px] right-[-130px] w-[300px] h-[300px] rounded-full bg-[radial-gradient(circle,rgba(202,27,40,0.08),transparent_60%)] blur-3xl pointer-events-none" />
+
             <div className="relative z-10 p-7 sm:p-12 lg:p-16 text-center">
               <h3 className="font-heading text-[22px] sm:text-[26px] md:text-[36px] lg:text-[44px] font-extralight text-white mb-3 sm:mb-4 tracking-[-0.03em] leading-[1.1]">
                 Prêt à <span className="font-bold">tester</span> ?

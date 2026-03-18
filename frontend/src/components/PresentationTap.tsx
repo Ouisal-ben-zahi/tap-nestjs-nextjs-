@@ -69,8 +69,16 @@ export default function PresentationTap() {
         {/* Feature cards */}
         <div className="reveal-stagger grid grid-cols-1 md:grid-cols-2 gap-3 sm:gap-4">
           {features.map((f, i) => (
-            <div key={i} className="reveal-item group relative rounded-2xl overflow-hidden bg-[#0A0A0A] border border-white/[0.06] hover:border-tap-red/15 transition-all duration-500 cursor-default">
+            <div
+              key={i}
+              className="reveal-item group relative card-animated-border rounded-2xl overflow-hidden bg-[#0A0A0A] border border-white/[0.06] hover:border-tap-red/15 transition-all duration-500 ease-[cubic-bezier(.22,1,.36,1)] cursor-default transform-gpu will-change-transform hover:-translate-y-1 hover:scale-[1.02] hover:shadow-[0_18px_60px_rgba(0,0,0,0.55),0_0_40px_rgba(202,27,40,0.10)]"
+            >
               <div className={`absolute top-0 left-0 right-0 h-[120px] bg-gradient-to-b ${f.gradient} pointer-events-none`} />
+              {/* Background premium au hover (rouge) */}
+              <div className="absolute inset-0 opacity-0 group-hover:opacity-100 transition-opacity duration-500 pointer-events-none">
+                <div className="absolute inset-0 bg-[radial-gradient(circle_at_25%_0%,rgba(202,27,40,0.28),transparent_55%)] blur-[2px] mix-blend-screen" />
+                <div className="absolute inset-0 bg-[linear-gradient(180deg,rgba(202,27,40,0.10),transparent_55%)]" />
+              </div>
               <div className="relative p-5 sm:p-7 lg:p-8">
                 <div className="flex items-start justify-between mb-5">
                   <div className="w-14 h-14 rounded-2xl bg-tap-red/[0.08] border border-tap-red/10 flex items-center justify-center group-hover:bg-tap-red/15 group-hover:border-tap-red/20 transition-all duration-500">
@@ -83,10 +91,16 @@ export default function PresentationTap() {
                 </div>
                 <h3 className="text-[17px] sm:text-[19px] font-bold text-white tracking-[-0.01em] mb-2">{f.label}</h3>
                 <p className="text-[13px] sm:text-[14px] text-white/40 leading-[1.7] font-light mb-5">{f.desc}</p>
-                <Link href={f.href} className="inline-flex items-center gap-2 text-[12px] font-semibold text-tap-red/70 hover:text-tap-red transition-colors duration-300 group/link">
-                  En savoir plus
-                  <ArrowRight size={12} className="transition-transform duration-300 group-hover/link:translate-x-1" />
-                </Link>
+                {/* Appears only on hover (top-right alignment) */}
+                <div className="absolute right-5 bottom-5 sm:right-7 sm:bottom-7 lg:right-8 lg:bottom-8">
+                  <Link
+                    href={f.href}
+                    className="inline-flex items-center gap-2 text-[12px] font-semibold text-tap-red/70 hover:text-tap-red transition-colors duration-300 group/link opacity-0 translate-y-2 pointer-events-none group-hover:opacity-100 group-hover:translate-y-0 group-hover:pointer-events-auto transition-all"
+                  >
+                    En savoir plus
+                    <ArrowRight size={12} className="transition-transform duration-300 group-hover/link:translate-x-1" />
+                  </Link>
+                </div>
               </div>
             </div>
           ))}

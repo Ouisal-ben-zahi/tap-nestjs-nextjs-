@@ -250,6 +250,128 @@ input.input-premium:-webkit-autofill:focus {
   animation: luxuryBorderSweep 1.6s ease-in-out infinite !important;
 }
 
+/* ═══ Animated gradient border — White ═══ */
+.card-animated-border-white { position: relative; }
+.card-animated-border-white::before {
+  content: "";
+  position: absolute;
+  inset: 0;
+  padding: 1px;
+  background: conic-gradient(
+    from var(--border-angle, 0deg),
+    transparent 40%,
+    rgba(255, 255, 255, 0.55) 50%,
+    transparent 60%
+  );
+  border-radius: inherit;
+  -webkit-mask: linear-gradient(#fff 0 0) content-box, linear-gradient(#fff 0 0);
+  -webkit-mask-composite: xor;
+  mask-composite: exclude;
+  pointer-events: none;
+  opacity: 0;
+  transition: opacity 0.5s ease;
+}
+.card-animated-border-white::after {
+  content: "";
+  position: absolute;
+  inset: 0;
+  padding: 1px;
+  border-radius: inherit;
+  pointer-events: none;
+  opacity: 0;
+  background: linear-gradient(
+    90deg,
+    transparent 0%,
+    rgba(255, 255, 255, 0.65) 45%,
+    rgba(255, 255, 255, 0.18) 55%,
+    transparent 100%
+  );
+  -webkit-mask: linear-gradient(#fff 0 0) content-box, linear-gradient(#fff 0 0);
+  -webkit-mask-composite: xor;
+  mask-composite: exclude;
+}
+.card-animated-border-white:hover::after {
+  opacity: 1;
+  animation: luxuryBorderSweep 1.15s ease-out;
+}
+.card-animated-border-white:hover::before {
+  opacity: 1;
+  animation: borderRotate 3s linear infinite;
+}
+
+/* ═══ Timeline dash animation ═══ */
+.timeline-dash {
+  stroke-dasharray: 14 12;
+  stroke-dashoffset: 0;
+  animation: timelineDashMove 1.8s linear infinite;
+}
+
+@keyframes timelineDashMove {
+  from { stroke-dashoffset: 0; }
+  to { stroke-dashoffset: -220; }
+}
+
+/* Node pulse helpers (SVG) */
+.timeline-node-pulse {
+  transform-origin: center;
+  animation: timelineNodePulse 1.8s ease-in-out infinite;
+}
+
+@keyframes timelineNodePulse {
+  0% {
+    transform: scale(1);
+    filter: blur(0px);
+    opacity: 0.9;
+  }
+  50% {
+    transform: scale(1.08);
+    filter: blur(0.2px);
+    opacity: 1;
+  }
+  100% {
+    transform: scale(1);
+    filter: blur(0px);
+    opacity: 0.9;
+  }
+}
+
+.timeline-glow-dot {
+  filter: blur(0.2px) saturate(1.2);
+}
+
+/* ═══ Processus — pulse (no fade/slide) ═══ */
+@keyframes processusGentlePulse {
+  0% {
+    transform: translateZ(0) scale(1);
+    box-shadow: 0 0 0 rgba(202, 27, 40, 0);
+  }
+  50% {
+    transform: translateZ(0) scale(1.06);
+    box-shadow: 0 0 26px rgba(202, 27, 40, 0.20);
+  }
+  100% {
+    transform: translateZ(0) scale(1);
+    box-shadow: 0 0 0 rgba(202, 27, 40, 0);
+  }
+}
+
+.processus-icon-pulse {
+  animation: processusGentlePulse 2.6s ease-in-out infinite;
+  will-change: transform;
+}
+
+.processus-number-pulse {
+  animation: processusGentlePulse 2.6s ease-in-out infinite;
+  will-change: transform;
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .processus-icon-pulse,
+  .processus-number-pulse {
+    animation: none !important;
+  }
+}
+
 /* ═══ Floating orb ═══ */
 @keyframes float {
   0%, 100% { transform: translateY(0) scale(1); }
@@ -273,6 +395,12 @@ input.input-premium:-webkit-autofill:focus {
 }
 
 .card-animated-border:hover .luxury-sweep {
+  animation: luxurySweep 1.2s ease-out;
+  opacity: 1;
+}
+
+/* CTA — même effet lumière */
+.cta-animated-border:hover .luxury-sweep {
   animation: luxurySweep 1.2s ease-out;
   opacity: 1;
 }
@@ -330,7 +458,7 @@ input.input-premium:-webkit-autofill:focus {
   pointer-events: none;
   opacity: 0.6;
   transition: opacity 0.35s ease;
-  animation: ctaBorderRotate 18s linear infinite;
+  animation: none;
   background: conic-gradient(
     from var(--cta-border-angle, 0deg),
     transparent 35%,
@@ -345,6 +473,7 @@ input.input-premium:-webkit-autofill:focus {
 
 .cta-animated-border:hover::before {
   opacity: 0.85;
+  animation: ctaBorderRotate 18s linear infinite;
 }
 
 @media (prefers-reduced-motion: reduce) {
