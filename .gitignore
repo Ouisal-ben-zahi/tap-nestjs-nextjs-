@@ -1,2 +1,3 @@
 backend IA/.env
 backend IA/venv1/
+backend IA/.env.example
