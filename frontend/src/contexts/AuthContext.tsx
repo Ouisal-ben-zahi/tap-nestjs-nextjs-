@@ -2,8 +2,7 @@
 
 import { createContext, useCallback, useContext, useEffect, useState, type ReactNode } from "react";
 
-const API_URL = process.env.NEXT_PUBLIC_API_URL ?? "http://localhost:3112";
-const API_URL = "/api";
+const API_URL = process.env.NEXT_PUBLIC_API_URL ?? "/api";
 
 
 const TOKEN_KEY = "tap_auth_token";
