@@ -6,6 +6,7 @@ import { useRouter } from "next/navigation";
 import { useAuth } from "@/hooks/use-auth";
 import EmptyState from "@/components/ui/EmptyState";
 import api from "@/lib/api";
+import DropdownSelect from "@/components/app/DropdownSelect";
 
 type OtherLink = { type: string; url: string };
 
@@ -53,6 +54,220 @@ const wizardSteps = [
       "Tu obtiendras un profil structuré, prêt à être utilisé pour le matching et les candidatures.",
     whatAiDoes:
       "Je génère et sauvegarde ton profil pour qu'il puisse être utilisé par l'IA et les recruteurs.",
+  },
+];
+
+type DropdownOption = { value: string; label: string };
+type DropdownGroup = { label?: string; options: DropdownOption[] };
+
+const SENIORITY_GROUPS: DropdownGroup[] = [
+  {
+    options: [
+      { value: "Entry Level", label: "Entry Level / Débutant" },
+      { value: "Junior", label: "Junior" },
+      { value: "Intermediate", label: "Intermédiaire" },
+      { value: "Mid-Level", label: "Mid-Level / Confirmé" },
+      { value: "Senior", label: "Senior" },
+      { value: "Expert", label: "Expert / Lead" },
+    ],
+  },
+];
+
+const DISPONIBILITE_GROUPS: DropdownGroup[] = [
+  {
+    options: [
+      { value: "Immediat", label: "Immédiate" },
+      { value: "1 semaine", label: "1 semaine" },
+      { value: "2 semaines", label: "2 semaines" },
+      { value: "3 semaines", label: "3 semaines" },
+      { value: "4 semaines", label: "4 semaines" },
+      { value: "5 semaines", label: "5 semaines" },
+    ],
+  },
+];
+
+const RELOCATION_GROUPS: DropdownGroup[] = [
+  {
+    options: [
+      { value: "Oui", label: "Oui" },
+      { value: "Non", label: "Non" },
+    ],
+  },
+];
+
+const DOMAINE_GROUPS: DropdownGroup[] = [
+  {
+    label: "Informatique & Technologies (IT)",
+    options: [
+      { value: "Développement logiciel / Software engineering", label: "Développement logiciel / Software engineering" },
+      { value: "Développement web", label: "Développement web" },
+      { value: "Réseaux informatiques", label: "Réseaux informatiques" },
+      { value: "Cybersécurité", label: "Cybersécurité" },
+      { value: "Cloud computing", label: "Cloud computing" },
+      { value: "DevOps", label: "DevOps" },
+      { value: "Architecture logicielle", label: "Architecture logicielle" },
+    ],
+  },
+  {
+    label: "Intelligence artificielle & Data",
+    options: [
+      { value: "Data science", label: "Data science" },
+      { value: "Analyse de données", label: "Analyse de données" },
+      {
+        value: "Intelligence artificielle & Machine learning",
+        label: "Intelligence artificielle & Machine learning",
+      },
+      { value: "Business Intelligence (BI)", label: "Business Intelligence (BI)" },
+      { value: "ERP & CRM", label: "ERP & CRM" },
+    ],
+  },
+  {
+    label: "Marketing & Communication",
+    options: [
+      { value: "Marketing digital", label: "Marketing digital" },
+      { value: "Community management", label: "Community management" },
+      { value: "SEO / SEA", label: "SEO / SEA" },
+      { value: "Content marketing", label: "Content marketing" },
+      {
+        value: "Branding & communication corporate",
+        label: "Branding & communication corporate",
+      },
+      { value: "Relations publiques (RP)", label: "Relations publiques (RP)" },
+      { value: "Email marketing", label: "Email marketing" },
+      { value: "Growth marketing", label: "Growth marketing" },
+    ],
+  },
+  {
+    label: "Finance, Comptabilité & Banque",
+    options: [
+      { value: "Comptabilité générale", label: "Comptabilité générale" },
+      { value: "Audit & contrôle de gestion", label: "Audit & contrôle de gestion" },
+      { value: "Finance d’entreprise", label: "Finance d’entreprise" },
+      { value: "Analyse financière", label: "Analyse financière" },
+      { value: "Banque & gestion de portefeuille", label: "Banque & gestion de portefeuille" },
+      { value: "Fiscalité", label: "Fiscalité" },
+      { value: "Trésorerie", label: "Trésorerie" },
+      { value: "Assurance", label: "Assurance" },
+    ],
+  },
+  {
+    label: "Commerce & Vente",
+    options: [
+      { value: "Vente terrain", label: "Vente terrain" },
+      { value: "Vente en magasin / retail", label: "Vente en magasin / retail" },
+      { value: "Business development", label: "Business development" },
+      { value: "Gestion grands comptes", label: "Gestion grands comptes" },
+      { value: "E-commerce", label: "E-commerce" },
+      { value: "Relation client", label: "Relation client" },
+      { value: "Négociation commerciale", label: "Négociation commerciale" },
+      { value: "Avant-vente / presales", label: "Avant-vente / presales" },
+    ],
+  },
+  {
+    label: "Transport & Automobile",
+    options: [
+      { value: "Logistique transport", label: "Logistique transport" },
+      { value: "Maintenance automobile", label: "Maintenance automobile" },
+      { value: "Gestion flotte véhicules", label: "Gestion flotte véhicules" },
+      { value: "Transport international", label: "Transport international" },
+      { value: "Exploitation transport", label: "Exploitation transport" },
+      { value: "Mécanique automobile", label: "Mécanique automobile" },
+      { value: "Diagnostic technique", label: "Diagnostic technique" },
+    ],
+  },
+  {
+    label: "Télécommunications",
+    options: [
+      { value: "Réseaux télécom", label: "Réseaux télécom" },
+      { value: "Support télécom", label: "Support télécom" },
+      { value: "Fibre optique", label: "Fibre optique" },
+      { value: "Radio & mobile (4G/5G)", label: "Radio & mobile (4G/5G)" },
+      {
+        value: "VoIP & communications unifiées",
+        label: "VoIP & communications unifiées",
+      },
+      { value: "Infrastructure télécom", label: "Infrastructure télécom" },
+    ],
+  },
+  {
+    label: "Immobilier",
+    options: [
+      { value: "Transaction immobilière", label: "Transaction immobilière" },
+      { value: "Gestion locative", label: "Gestion locative" },
+      { value: "Syndic", label: "Syndic" },
+      { value: "Promotion immobilière", label: "Promotion immobilière" },
+      { value: "Expertise immobilière", label: "Expertise immobilière" },
+      { value: "Négociation immobilière", label: "Négociation immobilière" },
+    ],
+  },
+  {
+    label: "Média, Design & Création",
+    options: [
+      { value: "Design graphique", label: "Design graphique" },
+      { value: "UI / UX design", label: "UI / UX design" },
+      { value: "Motion design", label: "Motion design" },
+      { value: "Montage vidéo", label: "Montage vidéo" },
+      { value: "Photographie", label: "Photographie" },
+      { value: "Illustration", label: "Illustration" },
+      { value: "Production média", label: "Production média" },
+      { value: "Direction artistique", label: "Direction artistique" },
+    ],
+  },
+  {
+    label: "Logistique & Supply chain",
+    options: [
+      { value: "Gestion des stocks", label: "Gestion des stocks" },
+      { value: "Planification & approvisionnement", label: "Planification & approvisionnement" },
+      { value: "Transport & distribution", label: "Transport & distribution" },
+      { value: "Supply chain management", label: "Supply chain management" },
+      { value: "Import / Export", label: "Import / Export" },
+      { value: "Gestion d’entrepôt", label: "Gestion d’entrepôt" },
+      { value: "Procurement / achats", label: "Procurement / achats" },
+    ],
+  },
+];
+
+const NATIONALITE_GROUPS: DropdownGroup[] = [
+  {
+    options: [
+      { value: "Marocaine", label: "Marocaine" },
+      { value: "Française", label: "Française" },
+      { value: "Belge", label: "Belge" },
+      { value: "Suisse", label: "Suisse" },
+      { value: "Canadienne", label: "Canadienne" },
+      { value: "Espagnole", label: "Espagnole" },
+      { value: "Allemande", label: "Allemande" },
+      { value: "Britannique", label: "Britannique" },
+      { value: "Américaine", label: "Américaine" },
+      { value: "Néerlandaise", label: "Néerlandaise" },
+      { value: "Italienne", label: "Italienne" },
+      { value: "Portugaise", label: "Portugaise" },
+      { value: "Luxembourgeoise", label: "Luxembourgeoise" },
+      { value: "Émiratie", label: "Émiratie" },
+      { value: "Autre", label: "Autre" },
+    ],
+  },
+];
+
+const PAYS_GROUPS: DropdownGroup[] = [
+  {
+    options: [
+      { value: "Maroc", label: "Maroc" },
+      { value: "France", label: "France" },
+      { value: "Belgique", label: "Belgique" },
+      { value: "Suisse", label: "Suisse" },
+      { value: "Canada", label: "Canada" },
+      { value: "Espagne", label: "Espagne" },
+      { value: "Allemagne", label: "Allemagne" },
+      { value: "Royaume-Uni", label: "Royaume-Uni" },
+      { value: "États-Unis", label: "États-Unis" },
+      { value: "Pays-Bas", label: "Pays-Bas" },
+      { value: "Italie", label: "Italie" },
+      { value: "Portugal", label: "Portugal" },
+      { value: "Luxembourg", label: "Luxembourg" },
+      { value: "Émirats arabes unis", label: "Émirats arabes unis" },
+      { value: "Autre", label: "Autre" },
+    ],
   },
 ];
 
@@ -124,10 +339,10 @@ export default function OnboardingCandidatPage() {
       case 3:
         if (cvFile) {
           if (cvNeedsManualPhoto === true) return Boolean(imgFile);
-          // false (photo found) OR null (unknown) => allow continuing
-          return true;
+          // Photo OK (ou inconnue) => vérifier aussi LinkedIn ou GitHub
+          return Boolean(linkedinUrl.trim() || githubUrl.trim());
         }
-        return Boolean(linkedinUrl.trim());
+        return false;
       case 4:
         return true;
       default:
@@ -193,78 +408,79 @@ export default function OnboardingCandidatPage() {
     setError(null);
 
     try {
-      if (!cvFile && !linkedinUrl.trim()) {
-        setError(
-          "Veuillez fournir au moins un CV (PDF/DOCX) ou une URL LinkedIn.",
-        );
+      const hasLinkedin = Boolean(linkedinUrl.trim());
+      const hasGithub = Boolean(githubUrl.trim());
+
+      if (!cvFile) {
+        setError("Veuillez importer votre CV (PDF ou DOCX).");
         setLoading(false);
         return;
       }
 
-      if (cvFile) {
-        const formData = new FormData();
-        // Nest expects `file` for CV. It will forward to Flask as `cv_file`.
-        formData.append("file", cvFile);
-
-        // Optional: forward photo to Flask for better talentcard generation.
-        if (imgFile) {
-          formData.append("img_file", imgFile);
-        }
-
-        // Forward onboarding fields to Flask (via Nest)
-        formData.append("lang", talentCardLang);
-        if (linkedinUrl.trim()) formData.append("linkedin_url", linkedinUrl.trim());
-        if (githubUrl.trim()) formData.append("github_url", githubUrl.trim());
-        if (targetPosition.trim()) formData.append("target_position", targetPosition.trim());
-        if (targetCountry.trim()) formData.append("target_country", targetCountry.trim());
-        if (pretARelocater.trim()) formData.append("pret_a_relocater", pretARelocater.trim());
-        if (constraints.trim()) formData.append("constraints", constraints.trim());
-        if (searchCriteria.trim()) formData.append("search_criteria", searchCriteria.trim());
-        if (nationality.trim()) formData.append("nationality", nationality.trim());
-        if (locationCountry.trim()) formData.append("location_country", locationCountry.trim());
-        if (seniorityLevel.trim()) formData.append("seniority_level", seniorityLevel.trim());
-        if (disponibilite.trim()) formData.append("disponibilite", disponibilite.trim());
-        if (salaireMinimum.trim()) formData.append("salaire_minimum", salaireMinimum.trim());
-        if (domaineActivite.trim()) formData.append("domaine_activite", domaineActivite.trim());
-
-        typeContrat.forEach((t) => formData.append("type_contrat", t));
-        if (otherLinks.length > 0) {
-          formData.append("other_links", JSON.stringify(otherLinks));
-        }
-
-        await api.post("/dashboard/candidat/upload-cv", formData);
-
-        // 🕒 Attendre que la Talent Card soit générée (polling sur les fichiers Talent Card)
-        const sleep = (ms: number) =>
-          new Promise<void>((resolve) => setTimeout(resolve, ms));
-        try {
-          for (let i = 0; i < 20; i += 1) {
-            try {
-              const res = await api.get<{ talentcardFiles: unknown[] }>(
-                "/dashboard/candidat/talentcard-files",
-              );
-              const files = Array.isArray(res.data?.talentcardFiles)
-                ? res.data.talentcardFiles
-                : [];
-              if (files.length > 0) {
-                break;
-              }
-            } catch {
-              // on ignore et on retente
-            }
-            await sleep(3000);
-          }
-        } catch {
-          // en cas de problème de polling, on laisse quand même l'utilisateur aller au dashboard
-        }
-
-        // Forcer la mise à jour des stats candidat afin que /app et /app/matching
-        // voient bien le profil créé immédiatement après l'onboarding.
-        queryClient.invalidateQueries({ queryKey: ["candidat", "stats"] });
-      } else {
-        // TODO: support LinkedIn-only onboarding if needed (Flask requires cv_content today)
-        throw new Error("Pour lancer la génération IA, veuillez importer un CV (PDF).");
+      if (!hasLinkedin && !hasGithub) {
+        setError("Veuillez renseigner au moins un profil : LinkedIn ou GitHub.");
+        setLoading(false);
+        return;
       }
+
+      const formData = new FormData();
+      // Nest expects `file` for CV. It will forward to Flask as `cv_file`.
+      formData.append("file", cvFile);
+
+      // Optional: forward photo to Flask for better talentcard generation.
+      if (imgFile) {
+        formData.append("img_file", imgFile);
+      }
+
+      // Forward onboarding fields to Flask (via Nest)
+      formData.append("lang", talentCardLang);
+      if (hasLinkedin) formData.append("linkedin_url", linkedinUrl.trim());
+      if (hasGithub) formData.append("github_url", githubUrl.trim());
+      if (targetPosition.trim()) formData.append("target_position", targetPosition.trim());
+      if (targetCountry.trim()) formData.append("target_country", targetCountry.trim());
+      if (pretARelocater.trim()) formData.append("pret_a_relocater", pretARelocater.trim());
+      if (constraints.trim()) formData.append("constraints", constraints.trim());
+      if (searchCriteria.trim()) formData.append("search_criteria", searchCriteria.trim());
+      if (nationality.trim()) formData.append("nationality", nationality.trim());
+      if (locationCountry.trim()) formData.append("location_country", locationCountry.trim());
+      if (seniorityLevel.trim()) formData.append("seniority_level", seniorityLevel.trim());
+      if (disponibilite.trim()) formData.append("disponibilite", disponibilite.trim());
+      if (salaireMinimum.trim()) formData.append("salaire_minimum", salaireMinimum.trim());
+      if (domaineActivite.trim()) formData.append("domaine_activite", domaineActivite.trim());
+
+      typeContrat.forEach((t) => formData.append("type_contrat", t));
+      if (otherLinks.length > 0) {
+        formData.append("other_links", JSON.stringify(otherLinks));
+      }
+
+      await api.post("/dashboard/candidat/upload-cv", formData);
+
+      // 🕒 Attendre que la Talent Card soit générée (polling sur les fichiers Talent Card)
+      const sleep = (ms: number) => new Promise<void>((resolve) => setTimeout(resolve, ms));
+      try {
+        for (let i = 0; i < 20; i += 1) {
+          try {
+            const res = await api.get<{ talentcardFiles: unknown[] }>(
+              "/dashboard/candidat/talentcard-files",
+            );
+            const files = Array.isArray(res.data?.talentcardFiles)
+              ? res.data.talentcardFiles
+              : [];
+            if (files.length > 0) {
+              break;
+            }
+          } catch {
+            // on ignore et on retente
+          }
+          await sleep(3000);
+        }
+      } catch {
+        // en cas de problème de polling, on laisse quand même l'utilisateur aller au dashboard
+      }
+
+      // Forcer la mise à jour des stats candidat afin que /app et /app/matching
+      // voient bien le profil créé immédiatement après l'onboarding.
+      queryClient.invalidateQueries({ queryKey: ["candidat", "stats"] });
 
       router.push("/app");
     } catch (err: unknown) {
@@ -368,59 +584,45 @@ export default function OnboardingCandidatPage() {
               <label className="block text-[12px] font-semibold uppercase tracking-[2px] text-white/50 mb-2">
                 Nationalité *
               </label>
-              <input
+              <DropdownSelect
                 value={nationality}
-                onChange={(e) => setNationality(e.target.value)}
+                onChange={setNationality}
                 placeholder="Ex: Marocaine, Française, Canadienne..."
-                className="input-premium"
+                groups={NATIONALITE_GROUPS}
               />
             </div>
             <div>
               <label className="block text-[12px] font-semibold uppercase tracking-[2px] text-white/50 mb-2">
                 Pays de résidence actuel *
               </label>
-              <input
+              <DropdownSelect
                 value={locationCountry}
-                onChange={(e) => setLocationCountry(e.target.value)}
+                onChange={setLocationCountry}
                 placeholder="Ex: Maroc, France, Canada..."
-                className="input-premium"
+                groups={PAYS_GROUPS}
               />
             </div>
             <div>
               <label className="block text-[12px] font-semibold uppercase tracking-[2px] text-white/50 mb-2">
                 Niveau de séniorité *
               </label>
-              <select
+              <DropdownSelect
                 value={seniorityLevel}
-                onChange={(e) => setSeniorityLevel(e.target.value)}
-                className="input-premium bg-black/20"
-              >
-                <option value="">Sélectionner...</option>
-                <option value="Entry Level">Entry Level / Débutant</option>
-                <option value="Junior">Junior</option>
-                <option value="Intermediate">Intermédiaire</option>
-                <option value="Mid-Level">Mid-Level / Confirmé</option>
-                <option value="Senior">Senior</option>
-                <option value="Expert">Expert / Lead</option>
-              </select>
+                onChange={setSeniorityLevel}
+                placeholder="Sélectionner..."
+                groups={SENIORITY_GROUPS}
+              />
             </div>
             <div>
               <label className="block text-[12px] font-semibold uppercase tracking-[2px] text-white/50 mb-2">
                 Disponibilité *
               </label>
-              <select
+              <DropdownSelect
                 value={disponibilite}
-                onChange={(e) => setDisponibilite(e.target.value)}
-                className="input-premium bg-black/20"
-              >
-                <option value="">Sélectionner...</option>
-                <option value="Immediat">Immédiate</option>
-                <option value="1 semaine">1 semaine</option>
-                <option value="2 semaines">2 semaines</option>
-                <option value="3 semaines">3 semaines</option>
-                <option value="4 semaines">4 semaines</option>
-                <option value="5 semaines">5 semaines</option>
-              </select>
+                onChange={setDisponibilite}
+                placeholder="Sélectionner..."
+                groups={DISPONIBILITE_GROUPS}
+              />
             </div>
           </div>
         )}
@@ -443,26 +645,23 @@ export default function OnboardingCandidatPage() {
               <label className="block text-[12px] font-semibold uppercase tracking-[2px] text-white/50 mb-2">
                 Pays cible *
               </label>
-              <input
+              <DropdownSelect
                 value={targetCountry}
-                onChange={(e) => setTargetCountry(e.target.value)}
+                onChange={setTargetCountry}
                 placeholder="Ex: France, Canada, USA..."
-                className="input-premium"
+                groups={PAYS_GROUPS}
               />
             </div>
             <div>
               <label className="block text-[12px] font-semibold uppercase tracking-[2px] text-white/50 mb-2">
                 Prêt à relocaliser
               </label>
-              <select
+              <DropdownSelect
                 value={pretARelocater}
-                onChange={(e) => setPretARelocater(e.target.value)}
-                className="input-premium bg-black/20"
-              >
-                <option value="">Non spécifié</option>
-                <option value="Oui">Oui</option>
-                <option value="Non">Non</option>
-              </select>
+                onChange={setPretARelocater}
+                placeholder="Non spécifié"
+                groups={RELOCATION_GROUPS}
+              />
             </div>
             <div>
               <label className="block text-[12px] font-semibold uppercase tracking-[2px] text-white/50 mb-2">
@@ -494,7 +693,13 @@ export default function OnboardingCandidatPage() {
               </label>
               <input
                 value={salaireMinimum}
-                onChange={(e) => setSalaireMinimum(e.target.value)}
+                inputMode="numeric"
+                pattern="[0-9]*"
+                onChange={(e) => {
+                  // Garde uniquement les chiffres (pas de lettres / séparateurs)
+                  const digitsOnly = e.target.value.replace(/\D/g, "");
+                  setSalaireMinimum(digitsOnly);
+                }}
                 placeholder="Ex: 8000"
                 className="input-premium"
               />
@@ -534,10 +739,17 @@ export default function OnboardingCandidatPage() {
               <label className="block text-[12px] font-semibold uppercase tracking-[2px] text-white/50 mb-2">
                 Domaine d&apos;activité *
               </label>
+              <DropdownSelect
+                value={domaineActivite}
+                onChange={setDomaineActivite}
+                placeholder="Sélectionner..."
+                groups={DOMAINE_GROUPS}
+              />
               <select
                 value={domaineActivite}
                 onChange={(e) => setDomaineActivite(e.target.value)}
-                className="input-premium bg-black/20"
+                className="hidden"
+                aria-hidden="true"
               >
                 <option value="">Sélectionner...</option>
 
@@ -678,6 +890,7 @@ export default function OnboardingCandidatPage() {
                 type="file"
                 accept=".pdf,.doc,.docx"
                 onChange={handleFileChange}
+                required
                 className="block w-full text-[13px] text-white/70 file:mr-3 file:rounded-lg file:border-0 file:bg-white/10 file:px-3 file:py-1.5 file:text-[12px] file:font-medium file:text-white hover:file:bg-white/20"
               />
               {cvFile && (
@@ -742,7 +955,7 @@ export default function OnboardingCandidatPage() {
             )}
             <div>
               <label className="block text-[12px] font-semibold uppercase tracking-[2px] text-white/50 mb-2">
-                OU URL LinkedIn
+                OU URL LinkedIn (obligatoire avec GitHub ou seul)
               </label>
               <input
                 type="url"
@@ -754,7 +967,7 @@ export default function OnboardingCandidatPage() {
             </div>
             <div>
               <label className="block text-[12px] font-semibold uppercase tracking-[2px] text-white/50 mb-2">
-                URL GitHub
+                URL GitHub (obligatoire avec LinkedIn ou seul)
               </label>
               <input
                 type="url"
@@ -764,6 +977,9 @@ export default function OnboardingCandidatPage() {
                 className="input-premium"
               />
             </div>
+            <p className="text-[11px] text-white/45">
+              Au moins une URL est obligatoire : LinkedIn ou GitHub.
+            </p>
             <div>
               <label className="block text-[12px] font-semibold uppercase tracking-[2px] text-white/50 mb-2">
                 Autres liens (optionnel)
