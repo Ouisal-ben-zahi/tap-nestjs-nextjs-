@@ -103,7 +103,7 @@ export default function DashboardPage() {
           <p className="text-white/45 text-[15px] mt-3 font-light max-w-md">
             {isRecruteur
               ? "Gérez vos recrutements et trouvez les meilleurs talents."
-              : "Explorez vos outils IA pour booster votre carrière."}
+              : "Explorez vos outils dsfdg IA pour booster votre carrière."}
           </p>
         </div>
       </div>
