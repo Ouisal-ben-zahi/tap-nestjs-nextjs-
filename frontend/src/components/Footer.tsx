@@ -35,7 +35,7 @@ export default function Footer() {
   return (
     <footer
       ref={containerRef}
-      className="relative overflow-hidden rounded-t-2xl"
+      className="relative bg-white/[0.08] backdrop-blur-2xl border-t border-white/[0.10] overflow-hidden rounded-t-2xl"
     >
       <div className="h-[1px] bg-gradient-to-r from-transparent via-tap-red/20 to-transparent" />
 
