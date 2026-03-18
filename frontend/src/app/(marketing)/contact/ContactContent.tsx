@@ -1,7 +1,8 @@
 "use client";
 
+import Link from "next/link";
 import { useState, FormEvent } from "react";
-import { Mail, Phone, MapPin, CheckCircle2, Send } from "lucide-react";
+import { Mail, Phone, MapPin, CheckCircle2, Send, ArrowRight } from "lucide-react";
 import { useScrollReveal } from "@/hooks/useScrollReveal";
 
 const contactInfo = [
@@ -63,85 +64,110 @@ export default function ContactContent() {
         <div className="absolute bottom-0 left-0 right-0 h-[200px] bg-gradient-to-t from-black to-transparent z-[5]" />
       </section>
 
-      <section ref={containerRef} className="py-16 sm:py-32 bg-black relative overflow-hidden">
-        <div className="absolute top-[20%] right-[-100px] w-[350px] h-[350px] rounded-full bg-[radial-gradient(circle,rgba(202,27,40,0.03),transparent_60%)] blur-3xl" />
-        <div className="max-w-[1300px] w-[88%] mx-auto relative z-10">
-          <div className="grid grid-cols-1 lg:grid-cols-12 gap-8 items-stretch">
-            <div
-              className="lg:col-span-4 flex flex-col gap-3 reveal"
-            >
-              {contactInfo.map((info, i) => (
-                <a
-                  key={i}
-                  href={info.href}
-                  target={info.label === "Adresse" ? "_blank" : undefined}
-                  rel={info.label === "Adresse" ? "noopener noreferrer" : undefined}
-                  className="group card-solid rounded-xl flex items-center gap-4 p-5 flex-1"
-                >
-                  <div className="w-10 h-10 rounded-xl bg-tap-red/[0.08] border border-tap-red/10 flex items-center justify-center shrink-0 group-hover:bg-tap-red/15 group-hover:border-tap-red/20 transition-all duration-500">
-                    <info.icon size={16} className="text-tap-red" strokeWidth={1.5} />
-                  </div>
-                  <div>
-                    <span className="text-[9px] uppercase tracking-[2px] text-white/35 font-medium block mb-1">{info.label}</span>
-                    <span className="text-[12px] text-white/50 group-hover:text-white/60 transition-colors duration-300 whitespace-pre-line leading-[1.5]">{info.value}</span>
-                  </div>
-                </a>
-              ))}
-            </div>
-
-            <div
-              className="lg:col-span-8 reveal"
-            >
-              {sent ? (
-                <div className="flex flex-col items-center justify-center card-solid rounded-2xl p-16 text-center h-full min-h-[350px]">
-                  <div className="w-14 h-14 rounded-2xl bg-tap-red/[0.08] border border-tap-red/10 flex items-center justify-center mb-5">
-                    <CheckCircle2 size={28} className="text-tap-red" />
-                  </div>
-                  <h3 className="font-heading font-bold text-[20px] text-white mb-2">Message envoyé</h3>
-                  <p className="text-[13px] text-white/45 font-light">Nous revenons vers vous rapidement.</p>
-                </div>
-              ) : (
-                <form onSubmit={handleSubmit} className="card-solid rounded-2xl p-7 md:p-8">
-                  <input type="hidden" name="_subject" value="Nouveau message depuis le site TAP" />
-                  <input type="text" name="_honey" style={{ display: "none" }} tabIndex={-1} autoComplete="off" />
-
-                  <div className="grid grid-cols-1 sm:grid-cols-2 gap-4 mb-4">
-                    <div>
-                      <label htmlFor="name" className="block text-[9px] text-white/35 uppercase tracking-[2px] font-medium mb-2">Nom et prénom</label>
-                      <input id="name" name="name" type="text" required placeholder="Votre nom complet" className="input-premium" />
+      <div ref={containerRef}>
+        <section className="py-16 sm:py-32 bg-black relative overflow-hidden">
+          <div className="absolute top-[20%] right-[-100px] w-[350px] h-[350px] rounded-full bg-[radial-gradient(circle,rgba(202,27,40,0.03),transparent_60%)] blur-3xl" />
+          <div className="max-w-[1300px] w-[88%] mx-auto relative z-10">
+            <div className="grid grid-cols-1 lg:grid-cols-12 gap-8 items-stretch">
+              <div className="lg:col-span-4 flex flex-col gap-3 reveal">
+                {contactInfo.map((info, i) => (
+                  <a
+                    key={i}
+                    href={info.href}
+                    target={info.label === "Adresse" ? "_blank" : undefined}
+                    rel={info.label === "Adresse" ? "noopener noreferrer" : undefined}
+                    className="group card-solid rounded-xl flex items-center gap-4 p-5 flex-1"
+                  >
+                    <div className="w-10 h-10 rounded-xl bg-tap-red/[0.08] border border-tap-red/10 flex items-center justify-center shrink-0 group-hover:bg-tap-red/15 group-hover:border-tap-red/20 transition-all duration-500">
+                      <info.icon size={16} className="text-tap-red" strokeWidth={1.5} />
                     </div>
                     <div>
-                      <label htmlFor="email" className="block text-[9px] text-white/35 uppercase tracking-[2px] font-medium mb-2">E-mail</label>
-                      <input id="email" name="email" type="email" required placeholder="vous@email.com" className="input-premium" />
+                      <span className="text-[9px] uppercase tracking-[2px] text-white/35 font-medium block mb-1">{info.label}</span>
+                      <span className="text-[12px] text-white/50 group-hover:text-white/60 transition-colors duration-300 whitespace-pre-line leading-[1.5]">{info.value}</span>
                     </div>
-                  </div>
+                  </a>
+                ))}
+              </div>
 
-                  <div className="grid grid-cols-1 sm:grid-cols-2 gap-4 mb-4">
-                    <div>
-                      <label htmlFor="company" className="block text-[9px] text-white/35 uppercase tracking-[2px] font-medium mb-2">Entreprise (facultatif)</label>
-                      <input id="company" name="company" type="text" placeholder="Nom de l'entreprise" className="input-premium" />
+              <div className="lg:col-span-8 reveal">
+                {sent ? (
+                  <div className="flex flex-col items-center justify-center card-solid rounded-2xl p-16 text-center h-full min-h-[350px]">
+                    <div className="w-14 h-14 rounded-2xl bg-tap-red/[0.08] border border-tap-red/10 flex items-center justify-center mb-5">
+                      <CheckCircle2 size={28} className="text-tap-red" />
                     </div>
-                    <div>
-                      <label htmlFor="subject" className="block text-[9px] text-white/35 uppercase tracking-[2px] font-medium mb-2">Sujet</label>
-                      <input id="subject" name="subject" type="text" required placeholder="Recrutement, partenariat..." className="input-premium" />
+                    <h3 className="font-heading font-bold text-[20px] text-white mb-2">Message envoyé</h3>
+                    <p className="text-[13px] text-white/45 font-light">Nous revenons vers vous rapidement.</p>
+                  </div>
+                ) : (
+                  <form onSubmit={handleSubmit} className="card-solid rounded-2xl p-7 md:p-8">
+                    <input type="hidden" name="_subject" value="Nouveau message depuis le site TAP" />
+                    <input type="text" name="_honey" style={{ display: "none" }} tabIndex={-1} autoComplete="off" />
+
+                    <div className="grid grid-cols-1 sm:grid-cols-2 gap-4 mb-4">
+                      <div>
+                        <label htmlFor="name" className="block text-[9px] text-white/35 uppercase tracking-[2px] font-medium mb-2">Nom et prénom</label>
+                        <input id="name" name="name" type="text" required placeholder="Votre nom complet" className="input-premium" />
+                      </div>
+                      <div>
+                        <label htmlFor="email" className="block text-[9px] text-white/35 uppercase tracking-[2px] font-medium mb-2">E-mail</label>
+                        <input id="email" name="email" type="email" required placeholder="vous@email.com" className="input-premium" />
+                      </div>
                     </div>
-                  </div>
 
-                  <div className="mb-6">
-                    <label htmlFor="message" className="block text-[9px] text-white/35 uppercase tracking-[2px] font-medium mb-2">Message</label>
-                    <textarea id="message" name="message" rows={5} required placeholder="Décrivez votre besoin." className="input-premium resize-none" />
-                  </div>
+                    <div className="grid grid-cols-1 sm:grid-cols-2 gap-4 mb-4">
+                      <div>
+                        <label htmlFor="company" className="block text-[9px] text-white/35 uppercase tracking-[2px] font-medium mb-2">Entreprise (facultatif)</label>
+                        <input id="company" name="company" type="text" placeholder="Nom de l'entreprise" className="input-premium" />
+                      </div>
+                      <div>
+                        <label htmlFor="subject" className="block text-[9px] text-white/35 uppercase tracking-[2px] font-medium mb-2">Sujet</label>
+                        <input id="subject" name="subject" type="text" required placeholder="Recrutement, partenariat..." className="input-premium" />
+                      </div>
+                    </div>
 
-                  <button type="submit" disabled={sending} className="btn-primary disabled:opacity-50 disabled:cursor-not-allowed">
-                    <Send size={13} />
-                    {sending ? "Envoi..." : "Envoyer"}
-                  </button>
-                </form>
-              )}
+                    <div className="mb-6">
+                      <label htmlFor="message" className="block text-[9px] text-white/35 uppercase tracking-[2px] font-medium mb-2">Message</label>
+                      <textarea id="message" name="message" rows={5} required placeholder="Décrivez votre besoin." className="input-premium resize-none" />
+                    </div>
+
+                    <button type="submit" disabled={sending} className="btn-primary disabled:opacity-50 disabled:cursor-not-allowed">
+                      <Send size={13} />
+                      {sending ? "Envoi..." : "Envoyer"}
+                    </button>
+                  </form>
+                )}
+              </div>
             </div>
           </div>
-        </div>
-      </section>
+        </section>
+
+        {/* CTA */}
+        <section className="py-16 sm:py-20 bg-transparent relative overflow-hidden">
+          <div className="absolute inset-0 bg-gradient-to-b from-tap-red/[0.02] to-transparent pointer-events-none" />
+          <div className="max-w-[1300px] w-[88%] mx-auto relative z-10">
+            <div className="reveal revealed relative rounded-2xl sm:rounded-3xl overflow-hidden border border-white/[0.06] bg-[url('/images/bgsections.jpg')] bg-no-repeat bg-center bg-[length:100%_auto]">
+              <div className="absolute inset-0 bg-black/50 pointer-events-none" />
+              <div className="relative z-10 p-7 sm:p-12 lg:p-16 text-center">
+                <h3 className="font-heading text-[22px] sm:text-[26px] md:text-[36px] lg:text-[44px] font-extralight text-white mb-3 sm:mb-4 tracking-[-0.03em] leading-[1.1]">
+                  Rejoignez <span className="font-bold">TAP</span>
+                </h3>
+                <p className="text-[14px] text-white/40 mb-8 font-light max-w-[520px] mx-auto leading-[1.7]">
+                  Découvrez la plateforme qui révèle et accélère les talents.
+                </p>
+                <div className="flex gap-3 flex-wrap justify-center">
+                  <Link href="/connexion" className="btn-primary group">
+                    Découvrir TAP
+                    <ArrowRight size={14} className="transition-transform duration-300 group-hover:translate-x-1" />
+                  </Link>
+                  <Link href="/inscription" className="btn-secondary">
+                    Créer mon profil
+                  </Link>
+                </div>
+              </div>
+            </div>
+          </div>
+        </section>
+      </div>
     </div>
   );
 }

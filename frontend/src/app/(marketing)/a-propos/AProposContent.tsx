@@ -1,5 +1,6 @@
 "use client";
 
+import Link from "next/link";
 import { Target, Lightbulb, BarChart3, BookOpen, FileCheck, Users, Building2, ArrowRight, CheckCircle2, Sparkles, GraduationCap, TrendingUp } from "lucide-react";
 import { useScrollReveal } from "@/hooks/useScrollReveal";
 
@@ -237,20 +238,28 @@ export default function AProposContent() {
       </section>
 
       {/* CTA */}
-      <section className="py-16 sm:py-20 bg-tap-dark relative overflow-hidden">
+      <section className="py-16 sm:py-20 bg-transparent relative overflow-hidden">
         <div className="absolute inset-0 bg-gradient-to-b from-tap-red/[0.02] to-transparent pointer-events-none" />
-        <div className="max-w-[600px] w-[88%] mx-auto text-center relative z-10">
-          <div className="reveal">
-            <h2 className="font-heading text-[22px] sm:text-[32px] md:text-[40px] font-extralight text-white tracking-[-0.03em] leading-[1.15] mb-4">
-              Rejoignez <span className="font-bold">TAP</span>
-            </h2>
-            <p className="text-[14px] sm:text-[15px] text-white/40 max-w-[400px] mx-auto mb-8 leading-[1.7] font-light">
-              Découvrez la plateforme qui révèle et accélère les talents.
-            </p>
-            <a href="https://demo.tap-hr.com/" target="_blank" rel="noopener noreferrer" className="btn-primary group">
-              Découvrir TAP
-              <ArrowRight size={14} className="transition-transform duration-300 group-hover:translate-x-1" />
-            </a>
+        <div className="max-w-[1300px] w-[88%] mx-auto relative z-10">
+          <div className="reveal relative rounded-2xl sm:rounded-3xl overflow-hidden border border-white/[0.06] bg-[url('/images/bgsections.jpg')] bg-no-repeat bg-center bg-[length:100%_auto]">
+            <div className="absolute inset-0 bg-black/50 pointer-events-none" />
+            <div className="relative z-10 p-7 sm:p-12 lg:p-16 text-center">
+              <h3 className="font-heading text-[22px] sm:text-[26px] md:text-[36px] lg:text-[44px] font-extralight text-white mb-3 sm:mb-4 tracking-[-0.03em] leading-[1.1]">
+                Rejoignez <span className="font-bold">TAP</span>
+              </h3>
+              <p className="text-[14px] text-white/40 mb-8 font-light max-w-[520px] mx-auto leading-[1.7]">
+                Découvrez la plateforme qui révèle et accélère les talents.
+              </p>
+              <div className="flex gap-3 flex-wrap justify-center">
+                <Link href="/connexion" className="btn-primary group">
+                  Découvrir TAP
+                  <ArrowRight size={14} className="transition-transform duration-300 group-hover:translate-x-1" />
+                </Link>
+                <Link href="/inscription" className="btn-secondary">
+                  Créer mon profil
+                </Link>
+              </div>
+            </div>
           </div>
         </div>
       </section>

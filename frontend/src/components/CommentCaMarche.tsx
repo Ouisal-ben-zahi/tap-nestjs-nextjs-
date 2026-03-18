@@ -53,9 +53,8 @@ export default function CommentCaMarche() {
         </div>
 
         {/* CTA Banner */}
-        <div className="reveal relative rounded-2xl sm:rounded-3xl overflow-hidden bg-[#0A0A0A] border border-white/[0.06]">
-          <div className="absolute top-0 left-0 right-0 h-[200px] bg-gradient-to-b from-tap-red/[0.04] to-transparent pointer-events-none" />
-          <div className="absolute inset-0 bg-[radial-gradient(ellipse_at_center,rgba(202,27,40,0.04),transparent_60%)] pointer-events-none" />
+        <div className="reveal relative rounded-2xl sm:rounded-3xl overflow-hidden border border-white/[0.06] bg-[url('/images/bgsections.jpg')] bg-no-repeat bg-center bg-[length:100%_auto]">
+          <div className="absolute inset-0 bg-black/50 pointer-events-none" />
           <div className="relative z-10 p-7 sm:p-12 lg:p-16 text-center">
             <h3 className="font-heading text-[22px] sm:text-[26px] md:text-[36px] lg:text-[44px] font-extralight text-white mb-3 sm:mb-4 tracking-[-0.03em] leading-[1.1]">
               Des talents <span className="font-bold">déjà préparés</span>
