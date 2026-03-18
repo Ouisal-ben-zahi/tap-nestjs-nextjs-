@@ -72,15 +72,23 @@ class AgentScoringV2:
         
         print(f"Agent Scoring V2 initialisé (Engine: {self.engine.version}, LLM: {self.gemini_model})")
     
-    def build_evaluation_prompt(self, talentcard: Dict[str, Any], chat_soft_skills_text: Optional[str] = None) -> str:
+    def build_evaluation_prompt(
+        self,
+        talentcard: Dict[str, Any],
+        chat_soft_skills_text: Optional[str] = None,
+        chat_context_text: Optional[str] = None,
+    ) -> str:
         """
         Construit le prompt structuré pour Gemini.
         Inclut le schéma JSON directement dans le prompt.
-        Si chat_soft_skills_text est fourni (réponse chatbot), l'évaluateur en tient compte pour les soft skills.
+        Si des réponses du chatbot sont fournies, l'évaluateur en tient compte pour inférer des signaux
+        comportementaux (autonomie, travail en équipe, leadership, gestion de conflit, etc.) et enrichir
+        les sections impact / stabilite / coherence / communication.
         
         Args:
             talentcard: Données du TalentCard JSON
             chat_soft_skills_text: Texte libre des soft skills déclarés par le candidat (question soft_skills_8_examples)
+            chat_context_text: Bloc texte Q/R complet du chatbot (toutes les réponses)
         
         Returns:
             Prompt formaté avec schema JSON
@@ -94,6 +102,17 @@ class AgentScoringV2:
         exemple = self.llm_contract.get('exemple_output_valide', {})
         exemple_str = json.dumps(exemple, indent=2, ensure_ascii=False)
         
+        chat_block = ""
+        if chat_context_text:
+            chat_block = f"""
+REPONSES DU CHATBOT (questions/réponses du candidat - UTILISER COMME PREUVES) :
+Ces réponses sont prioritaires sur les généralisations. Elles servent à inférer: autonomie, travail en équipe,
+leadership, gestion des conflits, communication et maturité pro. Si une réponse contredit le CV, signale une incohérence.
+---
+{chat_context_text}
+---
+"""
+
         soft_skills_block = ""
         communication_rule = ""
         if chat_soft_skills_text:
@@ -128,6 +147,7 @@ REGLES CRITIQUES:
 
 PROFIL A ANALYSER:
 {talentcard_formatted}
+{chat_block}
 {soft_skills_block}
 
 SCHEMA JSON A RESPECTER (retourne exactement cette structure):
@@ -397,7 +417,8 @@ Retourne UNIQUEMENT le JSON, sans markdown ni texte supplémentaire."""
         self,
         talentcard: Dict[str, Any],
         candidate_id: int,
-        chat_soft_skills_text: Optional[str] = None
+        chat_soft_skills_text: Optional[str] = None,
+        chat_context_text: Optional[str] = None,
     ) -> Dict[str, Any]:
         """
         Point d'entrée principal: évalue un candidat complet.
@@ -414,6 +435,7 @@ Retourne UNIQUEMENT le JSON, sans markdown ni texte supplémentaire."""
             talentcard: Données du TalentCard JSON
             candidate_id: ID du candidat en base
             chat_soft_skills_text: Texte des soft skills déclarés par le candidat (question soft_skills_8_examples)
+            chat_context_text: Bloc Q/R complet du chatbot (toutes les réponses)
         
         Returns:
             Dictionnaire complet de l'analyse
@@ -424,7 +446,11 @@ Retourne UNIQUEMENT le JSON, sans markdown ni texte supplémentaire."""
         
         # Étape 1: Construire le prompt
         print("Construction du prompt...")
-        prompt = self.build_evaluation_prompt(talentcard, chat_soft_skills_text=chat_soft_skills_text)
+        prompt = self.build_evaluation_prompt(
+            talentcard,
+            chat_soft_skills_text=chat_soft_skills_text,
+            chat_context_text=chat_context_text,
+        )
         
         # Étape 2: Appeler Gemini
         print("Appel Gemini API...")

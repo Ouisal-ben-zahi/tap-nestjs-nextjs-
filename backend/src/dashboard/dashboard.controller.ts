@@ -1,4 +1,4 @@
-import { Body, Controller, Delete, Get, Param, Post, Query, Req, UploadedFile, UploadedFiles, UseGuards, UseInterceptors } from '@nestjs/common';
+import { Body, Controller, Delete, Get, HttpCode, Param, Post, Query, Req, UploadedFile, UploadedFiles, UseGuards, UseInterceptors } from '@nestjs/common';
 import { AuthGuard } from '@nestjs/passport';
 import { FileFieldsInterceptor, FileInterceptor } from '@nestjs/platform-express';
 import { DashboardService, type RecruiterJobPayload } from './dashboard.service';
@@ -52,12 +52,61 @@ export class DashboardController {
     return this.dashboardService.getCandidatePortfolioPdfFiles(req.user.sub);
   }
 
+  @Post('candidat/generate-portfolio-long')
+  @UseGuards(AuthGuard('jwt'))
+  async generateCandidatePortfolioLongByJwt(
+    @Req() req: any,
+    @Body() body: { lang?: 'fr' | 'en' },
+  ) {
+    return this.dashboardService.generateCandidatePortfolioLong(req.user.sub, body?.lang);
+  }
+
+  // === Portfolio long flow (chatbot → scoring → generation) ===
+
+  @Post('candidat/portfolio-long/start')
+  @UseGuards(AuthGuard('jwt'))
+  async startCandidatePortfolioLongChatByJwt(
+    @Req() req: any,
+    @Body() body: { lang?: 'fr' | 'en' },
+  ) {
+    return (this.dashboardService as any).startCandidatePortfolioLongChat(req.user.sub, body?.lang);
+  }
+
+  @Post('candidat/portfolio-long/:sessionId/message')
+  @UseGuards(AuthGuard('jwt'))
+  async sendCandidatePortfolioLongChatMessageByJwt(
+    @Req() req: any,
+    @Param('sessionId') sessionId: string,
+    @Body() body: { message: string },
+  ) {
+    return (this.dashboardService as any).sendCandidatePortfolioLongChatMessage(req.user.sub, sessionId, body?.message);
+  }
+
+  @Get('candidat/portfolio-long/:sessionId/state')
+  @UseGuards(AuthGuard('jwt'))
+  async getCandidatePortfolioLongChatStateByJwt(
+    @Req() req: any,
+    @Param('sessionId') sessionId: string,
+  ) {
+    return (this.dashboardService as any).getCandidatePortfolioLongChatState(req.user.sub, sessionId);
+  }
+
+  @Post('candidat/portfolio-long/run')
+  @UseGuards(AuthGuard('jwt'))
+  @HttpCode(202)
+  async runCandidatePortfolioLongPipelineByJwt(
+    @Req() req: any,
+    @Body() body: { lang?: 'fr' | 'en' },
+  ) {
+    return (this.dashboardService as any).runCandidatePortfolioLongPipeline(req.user.sub, body?.lang);
+  }
+
   @Post('candidat/upload-cv')
   @UseGuards(AuthGuard('jwt'))
   @UseInterceptors(
     FileFieldsInterceptor([
-      { name: 'file', maxCount: 1 }, // legacy / frontend field name
-      { name: 'img_file', maxCount: 1 }, // forwarded to Flask if provided
+      { name: 'file', maxCount: 1 },
+      { name: 'img_file', maxCount: 1 },
     ]),
   )
   async uploadCandidateCvByJwt(

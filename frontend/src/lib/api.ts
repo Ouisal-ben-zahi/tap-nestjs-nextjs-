@@ -1,7 +1,12 @@
 import axios from 'axios';
 
 const api = axios.create({
-  baseURL: '/api',
+  baseURL:
+    // Prefer direct backend calls when explicitly configured (avoids dev proxy socket hangups)
+    // Example: NEXT_PUBLIC_BACKEND_URL="http://127.0.0.1:3112"
+    (process.env.NEXT_PUBLIC_BACKEND_URL
+      ? process.env.NEXT_PUBLIC_BACKEND_URL.replace(/\/$/, '')
+      : '/api'),
   headers: { 'Content-Type': 'application/json' },
 });
 

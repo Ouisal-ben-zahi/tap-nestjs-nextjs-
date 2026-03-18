@@ -59,16 +59,17 @@ RUN curl --proto '=https' --tlsv1.2 -sSf https://sh.rustup.rs | sh -s -- -y && \
     export PATH="$HOME/.cargo/bin:$PATH" && \
     rustup default stable || echo "⚠️  Rust installation failed, sudachipy may not work"
 
-# Installation de Playwright et Chromium
-RUN pip install --no-cache-dir playwright && \
-    playwright install chromium && \
-    playwright install-deps chromium
+
 
 # Créer le répertoire de travail
 WORKDIR /app
 
-COPY backend/requirements.txt .
+# Installer les dépendances Python
+COPY ["backend IA/requirements.txt", "./requirements.txt"]
 RUN pip install --no-cache-dir -r requirements.txt
+RUN python -m playwright install --with-deps chromium
+# Gunicorn pour exécuter Flask en production
+RUN pip install --no-cache-dir gunicorn
 
 # Installer les dépendances supplémentaires pour TTS et Whisper
 # Ajouter Rust au PATH pour les packages qui en ont besoin
@@ -88,9 +89,9 @@ RUN pip install --no-cache-dir TTS || (echo "⚠️  TTS installation failed" &&
 # Installer simpleaudio et webrtcvad (nécessaires pour l'entretien)
 RUN pip install --no-cache-dir simpleaudio || (echo "⚠️  simpleaudio installation failed" && exit 0)
 RUN pip install --no-cache-dir webrtcvad || (echo "⚠️  webrtcvad installation failed" && exit 0)
-
-# Copier le code de l'application backend
-COPY backend/ .
+RUN pip install --no-cache-dir PyMuPDF
+# Copier le code de l'application (Flask)
+COPY ["backend IA/", "./"]
 
 # Copier le template portfolio depuis le frontend (pour génération PDF)
 # Créer la structure de répertoires d'abord
@@ -104,5 +105,5 @@ RUN mkdir -p uploads generated corrected_cv corrected_cv_pdf
 # Exposer le port Flask
 EXPOSE 5002
 
-# Commande par défaut (peut être surchargée dans docker-compose)
-CMD ["python", "app.py"]
+# Production: Gunicorn (Flask app = "app" dans app.py)
+CMD ["python", "app.py", "--host=0.0.0.0", "--port=5002"]

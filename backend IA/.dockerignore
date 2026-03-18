@@ -1,3 +1,31 @@
+__pycache__/
+*.pyc
+*.pyo
+*.pyd
+.pytest_cache/
+.mypy_cache/
+.ruff_cache/
+
+# Secrets / local env
+.env
+.env.*
+
+# Virtualenvs
+venv/
+venv1/
+.venv/
+
+# Local generated/runtime folders
+uploads/
+generated/
+corrected_cv/
+corrected_cv_pdf/
+audio_sessions/
+
+# OS/editor noise
+.DS_Store
+.idea/
+.vscode/
 # Python
 __pycache__/
 *.py[cod]

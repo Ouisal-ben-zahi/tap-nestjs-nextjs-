@@ -3953,6 +3953,12 @@ def send_portfolio_message(session_id):
             # Mettre à jour le profil seulement si on a extrait des données valides
             if extracted_data:
                 session.update_profile(extracted_data)
+                # IMPORTANT: persist the answer so next question advances
+                try:
+                    session.add_answer(current_question_key, user_message)
+                    session.mark_filled(current_question_key)
+                except Exception:
+                    pass
         
         # Obtenir la prochaine question
         next_question = QuestionLogic.get_next_question(session)
@@ -6451,8 +6457,11 @@ def scoring_candidate(db_candidate_id):
                     'message': f"Impossible de lire le fichier JSON : {object_name}"
                 }), 404
 
-            # 3b. Récupérer la dernière réponse du chatbot (soft skills déclarés par le candidat) pour enrichir le scoring
+            # 3b. Récupérer les réponses du chatbot pour enrichir le scoring
+            # - chat_soft_skills_text: réponse dédiée soft skills (si présente)
+            # - chat_context_text: bloc Q/A complet (toutes les réponses)
             chat_soft_skills_text = None
+            chat_context_text = None
             try:
                 from B2.chat.save_responses import get_chat_responses_from_minio
                 success, chat_data, _ = get_chat_responses_from_minio(int(db_candidate_id))
@@ -6460,6 +6469,38 @@ def scoring_candidate(db_candidate_id):
                     answers = chat_data.get("answers") or {}
                     if not isinstance(answers, dict):
                         answers = {}
+                    questions = chat_data.get("questions") or []
+                    if not isinstance(questions, list):
+                        questions = []
+
+                    # Construire un bloc Q/R compact à inclure dans le prompt A2
+                    q_text_by_id = {}
+                    for q in questions:
+                        if not isinstance(q, dict):
+                            continue
+                        qid = q.get("id") or q.get("question_id")
+                        qtext = q.get("question") or q.get("text") or q.get("label")
+                        if qid and qtext:
+                            q_text_by_id[str(qid)] = str(qtext)
+
+                    qa_lines = []
+                    for k, v in (answers or {}).items():
+                        if v is None:
+                            continue
+                        ans = v.strip() if isinstance(v, str) else str(v).strip()
+                        if not ans:
+                            continue
+                        qtext = q_text_by_id.get(str(k))
+                        if qtext:
+                            qa_lines.append(f"Q({k}): {qtext}\nA: {ans}")
+                        else:
+                            qa_lines.append(f"Q({k})\nA: {ans}")
+
+                    if qa_lines:
+                        joined = "\n\n".join(qa_lines)
+                        # Limiter la taille du prompt
+                        chat_context_text = joined[:12000]
+
                     # Clé attendue (question soft skills en dernier)
                     chat_soft_skills_text = (answers.get("soft_skills_8_examples") or "").strip()
                     if not chat_soft_skills_text:
@@ -6477,9 +6518,14 @@ def scoring_candidate(db_candidate_id):
                     else:
                         print("⚠️ Aucune réponse soft skills trouvée dans chat_responses (scoring sans soft skills chatbot).")
                         chat_soft_skills_text = None
+                    if chat_context_text:
+                        print("✅ Réponses complètes du chatbot récupérées pour enrichir le scoring A2.")
+                    else:
+                        print("⚠️ Aucune réponse chatbot exploitable pour enrichir le scoring A2.")
             except Exception as e:
                 print(f"⚠️ Chat responses non disponibles (scoring sans soft skills chatbot): {e}")
                 chat_soft_skills_text = None
+                chat_context_text = None
 
             # 4. Lancer l'Agent Scoring V2 (persistance score/skills dans Supabase)
             try:
@@ -6492,6 +6538,7 @@ def scoring_candidate(db_candidate_id):
                     talentcard_data,
                     db_candidate_id,
                     chat_soft_skills_text=chat_soft_skills_text,
+                    chat_context_text=chat_context_text,
                 )
 
                 # Mini-agent compétences (A2 bis)

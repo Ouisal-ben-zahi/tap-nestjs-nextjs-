@@ -7,7 +7,8 @@ import FileCard from "@/components/ui/FileCard";
 import EmptyState from "@/components/ui/EmptyState";
 import ErrorState from "@/components/ui/ErrorState";
 import { Skeleton } from "@/components/ui/Skeleton";
-import { FolderOpen, FileText, Award, Briefcase, Upload, X } from "lucide-react";
+import { FolderOpen, FileText, Award, Briefcase, Upload } from "lucide-react";
+import PortfolioLongChatModal from "@/components/app/portfolio/PortfolioLongChatModal";
 
 type Tab = "cv" | "talentcard" | "portfolio";
 
@@ -25,6 +26,7 @@ export default function MesFichiersPage() {
   const talentcardQuery = useCandidatTalentcardFiles();
   const portfolioQuery = useCandidatPortfolioPdfs();
   const uploadCv = useUploadCv();
+  const [portfolioLongModalOpen, setPortfolioLongModalOpen] = useState(false);
 
   const [dragOver, setDragOver] = useState(false);
 
@@ -171,6 +173,19 @@ export default function MesFichiersPage() {
       {/* Portfolio Tab */}
       {activeTab === "portfolio" && (
         <div>
+          <div className="flex items-center justify-between gap-4 mb-5">
+            <div className="text-white/40 text-[13px]">
+              Générez votre portfolio long si vous souhaitez une version détaillée.
+            </div>
+            <button
+              onClick={() => setPortfolioLongModalOpen(true)}
+              className="inline-flex items-center gap-2 px-4 py-2 rounded-lg text-[13px] border border-white/[0.08] bg-zinc-900/40 hover:bg-zinc-900/60 text-white/80 hover:text-white transition disabled:opacity-50 disabled:cursor-not-allowed"
+            >
+              <Briefcase size={14} />
+              Générer le portfolio long
+            </button>
+          </div>
+
           {portfolioQuery.isLoading ? (
             <div className="grid gap-3">{Array.from({ length: 3 }).map((_, i) => <Skeleton key={i} className="h-20 w-full" />)}</div>
           ) : portfolioQuery.isError ? (
@@ -190,6 +205,11 @@ export default function MesFichiersPage() {
           )}
         </div>
       )}
+
+      <PortfolioLongChatModal
+        open={portfolioLongModalOpen}
+        onClose={() => setPortfolioLongModalOpen(false)}
+      />
     </div>
   );
 }

@@ -44,6 +44,31 @@ export const candidatService = {
     return api.post('/dashboard/candidat/upload-cv', formData).then((r) => r.data);
   },
 
+  generatePortfolioLong: (lang: 'fr' | 'en' = 'fr') =>
+    api
+      .post('/dashboard/candidat/generate-portfolio-long', { lang })
+      .then((r) => r.data as { success: boolean; message?: string }),
+
+  startPortfolioLongChat: (lang: 'fr' | 'en' = 'fr') =>
+    api
+      .post('/dashboard/candidat/portfolio-long/start', { lang })
+      .then((r) => r.data as { success: boolean; session_id?: string; question?: string | null; is_complete?: boolean; profile?: any; missing_fields?: any }),
+
+  sendPortfolioLongChatMessage: (sessionId: string, message: string) =>
+    api
+      .post(`/dashboard/candidat/portfolio-long/${encodeURIComponent(sessionId)}/message`, { message })
+      .then((r) => r.data as { success: boolean; session_id?: string; question?: string | null; is_complete?: boolean; profile?: any; missing_fields?: any; filled_field?: string | null; message?: string }),
+
+  getPortfolioLongChatState: (sessionId: string) =>
+    api
+      .get(`/dashboard/candidat/portfolio-long/${encodeURIComponent(sessionId)}/state`)
+      .then((r) => r.data as { success: boolean; session_id?: string; state?: any }),
+
+  runPortfolioLongPipeline: (lang: 'fr' | 'en' = 'fr') =>
+    api
+      .post('/dashboard/candidat/portfolio-long/run', { lang })
+      .then((r) => r.data as { success: boolean; scoring?: any; generation?: { success: boolean; message?: string } }),
+
   deleteCvFile: (path: string) =>
     api.delete('/dashboard/candidat/cv-file', { params: { path } }).then((r) => r.data),
 };

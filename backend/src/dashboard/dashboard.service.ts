@@ -67,6 +67,49 @@ export interface CandidatePortfolioPdfFiles {
   portfolioLong: CandidateCvFileItem[];
 }
 
+export interface GeneratePortfolioResult {
+  success: boolean;
+  message?: string;
+  error?: string;
+}
+
+export interface PortfolioChatStartResult {
+  success: boolean;
+  session_id?: string;
+  question?: string | null;
+  is_complete?: boolean;
+  profile?: any;
+  missing_fields?: any;
+  error?: string;
+}
+
+export interface PortfolioChatMessageResult {
+  success: boolean;
+  session_id?: string;
+  question?: string | null;
+  is_complete?: boolean;
+  message?: string;
+  profile?: any;
+  missing_fields?: any;
+  filled_field?: string | null;
+  error?: string;
+}
+
+export interface PortfolioChatStateResult {
+  success: boolean;
+  session_id?: string;
+  state?: any;
+  error?: string;
+}
+
+export interface PortfolioLongPipelineResult {
+  success: boolean;
+  started?: boolean;
+  scoring?: any;
+  generation?: GeneratePortfolioResult;
+  error?: string;
+}
+
 export interface RecruiterOverviewStats {
   totalJobs: number;
   totalApplications: number;
@@ -183,6 +226,256 @@ export class DashboardService {
       throw new BadRequestException(error?.message || "Impossible de creer le profil candidat");
     }
     return created;
+  }
+
+  private getFlaskBaseUrl(): string {
+    const flaskUrl = this.config.get<string>('FLASK_AI_URL');
+    if (!flaskUrl) {
+      throw new BadRequestException('FLASK_AI_URL non configuré');
+    }
+    return flaskUrl.replace(/\/$/, '');
+  }
+
+  private async callFlaskJson<T>(
+    method: 'GET' | 'POST',
+    path: string,
+    body?: any,
+    timeoutMs: number = 300000,
+  ): Promise<T> {
+    try {
+      const http = require('http');
+      const https = require('https');
+      const { URL } = require('url');
+
+      const base = this.getFlaskBaseUrl();
+      const url = new URL(base + path);
+      const transport = url.protocol === 'https:' ? https : http;
+
+      const payload = body !== undefined ? JSON.stringify(body) : undefined;
+
+      return await new Promise((resolve, reject) => {
+        const req = transport.request(
+          {
+            hostname: url.hostname,
+            port: url.port,
+            path: url.pathname + url.search,
+            method,
+            headers:
+              method === 'POST'
+                ? {
+                    'Content-Type': 'application/json',
+                    'Content-Length': Buffer.byteLength(payload ?? ''),
+                  }
+                : undefined,
+            timeout: timeoutMs,
+          },
+          (res) => {
+            let raw = '';
+            res.on('data', (chunk) => (raw += chunk));
+            res.on('end', () => {
+              const status = res.statusCode ?? 0;
+              if (status < 200 || status >= 300) {
+                try {
+                  const parsed = raw ? JSON.parse(raw) : {};
+                  reject(
+                    new Error(
+                      parsed?.error ||
+                        parsed?.message ||
+                        `Erreur Flask (${status})`,
+                    ),
+                  );
+                } catch {
+                  reject(new Error(`Erreur Flask (${status})`));
+                }
+                return;
+              }
+
+              try {
+                const parsed = raw ? JSON.parse(raw) : {};
+                resolve(parsed);
+              } catch {
+                // Some endpoints might return empty body on success
+                resolve({} as T);
+              }
+            });
+          },
+        );
+
+        req.on('error', reject);
+        req.on('timeout', () => req.destroy(new Error('timeout')));
+        if (method === 'POST') req.write(payload ?? '');
+        req.end();
+      });
+    } catch (e: any) {
+      throw new BadRequestException(e?.message || 'Erreur appel Flask');
+    }
+  }
+
+  private async getCandidateRowForUser(
+    userId: number,
+  ): Promise<{ id: number; id_agent?: string | null }> {
+    const {
+      data: candidate,
+      error: candidateError,
+    } = await this.supabase
+      .from('candidates')
+      .select('id, id_agent')
+      .eq('user_id', userId)
+      .order('created_at', { ascending: true })
+      .limit(1)
+      .maybeSingle();
+
+    if (candidateError) {
+      throw new BadRequestException(
+        candidateError.message || 'Erreur lors du chargement du candidat',
+      );
+    }
+    if (!candidate) {
+      throw new BadRequestException('Profil candidat introuvable');
+    }
+    return candidate as any;
+  }
+
+  async startCandidatePortfolioLongChat(
+    userId: number,
+    lang?: 'fr' | 'en',
+  ): Promise<PortfolioChatStartResult> {
+    if (!userId || Number.isNaN(userId)) {
+      throw new BadRequestException('userId invalide');
+    }
+
+    const candidate = await this.getCandidateRowForUser(userId);
+    const safeLang: 'fr' | 'en' = lang === 'en' ? 'en' : 'fr';
+
+    // Flask start endpoint doesn't use lang today, but we keep it in extracted_data for future compatibility
+    return await this.callFlaskJson<PortfolioChatStartResult>('POST', '/portfolio/start', {
+      candidate_id: candidate.id,
+      extracted_data: { lang: safeLang },
+    });
+  }
+
+  async sendCandidatePortfolioLongChatMessage(
+    userId: number,
+    sessionId: string,
+    message: string,
+  ): Promise<PortfolioChatMessageResult> {
+    if (!userId || Number.isNaN(userId)) {
+      throw new BadRequestException('userId invalide');
+    }
+    if (!sessionId || !sessionId.trim()) {
+      throw new BadRequestException('sessionId manquant');
+    }
+    if (!message || !message.trim()) {
+      throw new BadRequestException('message manquant');
+    }
+
+    // Ensure candidate exists (avoid leaking session ids to non-candidates)
+    await this.getCandidateRowForUser(userId);
+
+    return await this.callFlaskJson<PortfolioChatMessageResult>(
+      'POST',
+      `/portfolio/${encodeURIComponent(sessionId)}/message`,
+      { message: message.trim() },
+    );
+  }
+
+  async getCandidatePortfolioLongChatState(
+    userId: number,
+    sessionId: string,
+  ): Promise<PortfolioChatStateResult> {
+    if (!userId || Number.isNaN(userId)) {
+      throw new BadRequestException('userId invalide');
+    }
+    if (!sessionId || !sessionId.trim()) {
+      throw new BadRequestException('sessionId manquant');
+    }
+
+    await this.getCandidateRowForUser(userId);
+
+    return await this.callFlaskJson<PortfolioChatStateResult>(
+      'GET',
+      `/portfolio/${encodeURIComponent(sessionId)}/state`,
+    );
+  }
+
+  async runCandidatePortfolioLongPipeline(
+    userId: number,
+    lang?: 'fr' | 'en',
+  ): Promise<PortfolioLongPipelineResult> {
+    if (!userId || Number.isNaN(userId)) {
+      throw new BadRequestException('userId invalide');
+    }
+    const candidate = await this.getCandidateRowForUser(userId);
+    const safeLang: 'fr' | 'en' = lang === 'en' ? 'en' : 'fr';
+
+    // IMPORTANT: This can take a long time (LLM + generation).
+    // In dev, the Next proxy may drop long-lived connections ("Failed to proxy / socket hang up").
+    // We therefore respond immediately and run the pipeline in background.
+    // The frontend can observe progress via:
+    // - GET /dashboard/candidat/score-json
+    // - GET /dashboard/candidat/portfolio-pdf-files
+    setImmediate(() => {
+      (async () => {
+        try {
+          // 1) Trigger scoring A2 (Flask)
+          await this.callFlaskJson<any>(
+            'POST',
+            `/api/scoring/${encodeURIComponent(String(candidate.id))}`,
+            {},
+          );
+        } catch (e: any) {
+          // eslint-disable-next-line no-console
+          console.error('[portfolio-long/run] scoring failed:', e?.message ?? e);
+        }
+
+        try {
+          // 2) Trigger portfolio long generation (Flask)
+          await this.generateCandidatePortfolioLong(userId, safeLang);
+        } catch (e: any) {
+          // eslint-disable-next-line no-console
+          console.error('[portfolio-long/run] generation failed:', e?.message ?? e);
+        }
+      })().catch((e) => {
+        // eslint-disable-next-line no-console
+        console.error('[portfolio-long/run] background task failed:', (e as any)?.message ?? e);
+      });
+    });
+
+    return { success: true, started: true };
+  }
+
+  async generateCandidatePortfolioLong(
+    userId: number,
+    lang?: 'fr' | 'en',
+  ): Promise<GeneratePortfolioResult> {
+    if (!userId || Number.isNaN(userId)) {
+      throw new BadRequestException('userId invalide');
+    }
+
+    const candidate = await this.getCandidateRowForUser(userId);
+    const candidateId = candidate.id as number;
+    const candidateUuid = (candidate as any).id_agent as string | null | undefined;
+    if (!candidateUuid || typeof candidateUuid !== 'string') {
+      throw new BadRequestException('candidate_uuid introuvable (id_agent)');
+    }
+
+    const safeLang: 'fr' | 'en' = lang === 'en' ? 'en' : 'fr';
+
+    try {
+      const result = await this.callFlaskJson<any>('POST', `/portfolio/${encodeURIComponent(candidateUuid)}/generate-html`, {
+        db_candidate_id: candidateId,
+        version: 'long',
+        save_to_minio: true,
+        lang: safeLang,
+      });
+
+      // If Flask returned success, consider it launched
+      return { success: true, message: (result?.message as string) || 'Génération du portfolio long lancée' };
+    } catch (e: any) {
+      throw new BadRequestException(
+        e?.message || 'Erreur lors de la génération du portfolio long',
+      );
+    }
   }
   async getCandidateStats(userId: number): Promise<CandidateDashboardStats> {
     if (!userId || Number.isNaN(userId)) {

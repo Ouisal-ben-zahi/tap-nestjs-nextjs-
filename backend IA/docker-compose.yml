@@ -1,0 +1,17 @@
+services:
+  backend-ia:
+    build:
+      context: ..
+      dockerfile: backend IA/Dockerfile
+    container_name: backend-ia
+    ports:
+      - "5002:5002"
+    env_file:
+      - .env
+    restart: unless-stopped
+    volumes:
+      # Persister les fichiers générés/chargés (optionnel, mais utile sur VPS)
+      - ./uploads:/app/uploads
+      - ./generated:/app/generated
+      - ./corrected_cv:/app/corrected_cv
+      - ./corrected_cv_pdf:/app/corrected_cv_pdf

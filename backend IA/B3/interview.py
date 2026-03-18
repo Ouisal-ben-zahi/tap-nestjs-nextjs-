@@ -26,6 +26,7 @@ from concurrent.futures import ThreadPoolExecutor, as_completed
 from supabase_db import supabase_db
 from supabase_storage import get_supabase_storage
 from candidate_minio_path import get_candidate_minio_prefix
+from TTS.utils.manage import ModelManager
 load_dotenv()
 # =========================
 # CONFIG AUDIO (CRUCIAL)
@@ -53,21 +54,39 @@ whisper_model = whisper.load_model(WHISPER_MODEL)
 # =========================
 # COQUI TTS – VOIX FR (XTTS v2)
 # =========================
-tts = TTS(
-    model_name="tts_models/multilingual/multi-dataset/xtts_v2",
-    progress_bar=False,
-    gpu=False
-)
+
+# Forcer l’acceptation de la licence Coqui dans le process
+os.environ["COQUI_TOS_AGREED"] = "1"
+
+# Monkey‑patch pour bypasser complètement la question de licence dans TTS
+def _always_accept_tos(self, output_path):
+    return True
+
+ModelManager.ask_tos = _always_accept_tos
+
+# Lazy-load du modèle TTS pour éviter de bloquer au démarrage
+_tts = None
 
 # Speaker explicite pour le modèle multi-speaker XTTS v2
 # Utilise le même nom que dans la commande CLI: --speaker_idx "Dionisio Schuyler"
 TTS_SPEAKER = "Dionisio Schuyler"
-print(f"🎤 Speaker TTS sélectionné: {TTS_SPEAKER}")
+
+def get_tts():
+    global _tts
+    if _tts is None:
+        _tts = TTS(
+            model_name="tts_models/multilingual/multi-dataset/xtts_v2",
+            progress_bar=False,
+            gpu=False
+        )
+        print(f"🎤 Speaker TTS sélectionné: {TTS_SPEAKER}")
+    return _tts
 
 # =========================
 # TEXT TO SPEECH
 # =========================
 def speak(text):
+    tts = get_tts()
     text = text.replace("'", "'")
     # Utiliser speaker et language pour le modèle multi-speaker
     tts.tts_to_file(text=text, file_path=AUDIO_OUTPUT, speaker=TTS_SPEAKER, language="fr")

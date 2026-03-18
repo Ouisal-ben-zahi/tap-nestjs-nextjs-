@@ -1,0 +1,33 @@
+# Git / editor
+.git/
+.DS_Store
+.idea/
+.vscode/
+
+# Node / Next
+**/node_modules/
+**/.next/
+**/dist/
+
+# Python caches / envs
+**/__pycache__/
+**/*.pyc
+**/*.pyo
+**/*.pyd
+**/.pytest_cache/
+**/.mypy_cache/
+**/.ruff_cache/
+**/.venv/
+**/venv/
+**/venv1/
+
+# Secrets
+**/.env
+**/.env.*
+
+# Runtime folders
+**/uploads/
+**/generated/
+**/corrected_cv/
+**/corrected_cv_pdf/
+**/audio_sessions/

@@ -7,6 +7,7 @@ import json
 import sys
 import re
 import time
+from urllib.parse import urlparse, unquote
 from concurrent.futures import ThreadPoolExecutor, as_completed
 from datetime import datetime
 from typing import Dict, Optional, Tuple, List
@@ -359,7 +360,41 @@ def get_cv_from_minio(candidate_id: int, use_original_only: bool = False) -> Tup
             print(f"⚠️  Aucun CV trouvé dans fichiers_versions pour candidate_id={candidate_id}")
             return False, None, None
 
-        object_name = cv_path
+        def normalize_object_name(raw: str) -> str:
+            """
+            Normalise une valeur venant de la DB (path ou URL Supabase signée/publique)
+            en "object_name" attendu par Supabase Storage (chemin dans le bucket).
+            """
+            v = str(raw or "").strip()
+            if not v:
+                return v
+
+            # DB sometimes contains full signed/public URLs instead of storage paths.
+            if v.startswith("http://") or v.startswith("https://"):
+                parsed = urlparse(v)
+                path = unquote(parsed.path or "")
+                # Supabase patterns:
+                # - /storage/v1/object/public/<bucket>/<object>
+                # - /storage/v1/object/sign/<bucket>/<object>
+                m = re.search(r"/storage/v1/object/(?:public|sign)/([^/]+)/(.+)$", path)
+                if m:
+                    obj = m.group(2)
+                else:
+                    # Fallback: take the URL path without leading slash
+                    obj = path.lstrip("/")
+                v = obj
+            else:
+                v = unquote(v)
+
+            v = v.lstrip("/")
+            # If someone stored "bucket/object", strip bucket prefix.
+            if storage and getattr(storage, "bucket_name", None):
+                b = str(storage.bucket_name).strip()
+                if b and v.startswith(b + "/"):
+                    v = v[len(b) + 1 :]
+            return v
+
+        object_name = normalize_object_name(cv_path)
 
         # Télécharger depuis Supabase Storage
         success, file_bytes, error = storage.download_file(object_name)
