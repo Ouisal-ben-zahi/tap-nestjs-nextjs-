@@ -10,6 +10,7 @@ import { ArrowUpRight, LogOut, Menu, Settings } from "lucide-react";
 
 interface AppNavbarProps {
   onToggleSidebar: () => void;
+  sidebarOpen: boolean;
 }
 
 export default function AppNavbar({ onToggleSidebar }: AppNavbarProps) {
