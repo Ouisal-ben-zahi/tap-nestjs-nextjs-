@@ -233,3 +233,18 @@ CREATE INDEX password_reset_tokens_token_idx   ON password_reset_tokens (token);
 ALTER TABLE password_reset_tokens
   ADD CONSTRAINT password_reset_tokens_user_fk
   FOREIGN KEY (user_id) REFERENCES users (id) ON DELETE CASCADE;
+
+-- Compatible PostgreSQL (Supabase)
+
+ALTER TABLE jobs
+  ADD COLUMN IF NOT EXISTS cv_url varchar(500) NULL;
+
+ALTER TABLE jobs
+  ADD COLUMN IF NOT EXISTS portfolio_url varchar(500) NULL;
+
+ALTER TABLE jobs
+  ADD COLUMN IF NOT EXISTS talent_card_url varchar(500) NULL;
+
+ALTER TABLE jobs
+  ADD COLUMN IF NOT EXISTS lien_url varchar(500) NULL;
+

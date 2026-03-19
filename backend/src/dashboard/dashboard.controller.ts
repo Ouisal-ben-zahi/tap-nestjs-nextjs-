@@ -1,7 +1,7 @@
 import { Body, Controller, Delete, Get, HttpCode, Param, Post, Query, Req, UploadedFile, UploadedFiles, UseGuards, UseInterceptors } from '@nestjs/common';
 import { AuthGuard } from '@nestjs/passport';
 import { FileFieldsInterceptor, FileInterceptor } from '@nestjs/platform-express';
-import { DashboardService, type RecruiterJobPayload } from './dashboard.service';
+import { DashboardService, type ApplyJobPayload, type RecruiterJobPayload } from './dashboard.service';
 
 @Controller('dashboard')
 export class DashboardController {
@@ -280,6 +280,14 @@ export class DashboardController {
   @Get('jobs')
   async getAllJobsForCandidates() {
     return this.dashboardService.getAllJobsForCandidates();
+  }
+
+  // Candidature à une offre (candidat)
+  @Post('candidat/apply-job')
+  @UseGuards(AuthGuard('jwt'))
+  async applyJobByJwt(@Req() req: any, @Body() body: ApplyJobPayload) {
+    // ApplyJobPayload inclut jobId + chemins de fichiers + lien
+    return this.dashboardService.applyToJob(req.user.sub, body);
   }
 }
 

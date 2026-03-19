@@ -170,3 +170,25 @@ export function useDeleteCvFile() {
     },
   });
 }
+
+export function useApplyToJob() {
+  const queryClient = useQueryClient();
+  const addToast = useUiStore((s) => s.addToast);
+
+  return useMutation({
+    mutationFn: (payload: {
+      jobId: number;
+      cvPath?: string | null;
+      portfolioPath?: string | null;
+      talentCardPath?: string | null;
+      lien?: string | null;
+    }) => candidatService.applyToJob(payload),
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ['candidat', 'applications'] });
+      addToast({ message: 'Candidature envoyée avec succès.', type: 'success' });
+    },
+    onError: () => {
+      addToast({ message: "Erreur lors de l'envoi de la candidature.", type: 'error' });
+    },
+  });
+}

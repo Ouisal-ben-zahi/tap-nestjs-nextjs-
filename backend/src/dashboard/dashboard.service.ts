@@ -154,6 +154,14 @@ export interface PublicJobItem {
   languages: any[] | null;
 }
 
+export interface ApplyJobPayload {
+  jobId: number;
+  cvPath?: string | null;
+  portfolioPath?: string | null;
+  talentCardPath?: string | null;
+  lien?: string | null;
+}
+
 export interface CandidateScoreFromJson {
   candidateId: number | null;
   scoreGlobal: number | null;
@@ -1918,6 +1926,82 @@ export class DashboardService {
     }));
 
     return { jobs };
+  }
+
+  async applyToJob(userId: number, payload: ApplyJobPayload): Promise<{ success: boolean; applicationId: number; status: string }> {
+    if (!userId || Number.isNaN(userId)) {
+      throw new BadRequestException('userId invalide');
+    }
+    if (!payload || !payload.jobId || Number.isNaN(payload.jobId)) {
+      throw new BadRequestException('jobId invalide');
+    }
+
+    const jobId = Number(payload.jobId);
+
+    // Ensure we have a candidate row for this user
+    const candidate = await this.getOrCreateCandidate(userId);
+    const candidateId = candidate.id as number;
+
+    // Store the selected files + link in `note` for now (DB schema currently doesn't have dedicated columns)
+    const notePayload = {
+      lien: payload.lien ?? null,
+      cvPath: payload.cvPath ?? null,
+      portfolioPath: payload.portfolioPath ?? null,
+      talentCardPath: payload.talentCardPath ?? null,
+    };
+    const note = JSON.stringify(notePayload);
+
+    const { data: existing, error: existingError } = await this.supabase
+      .from('candidate_postule')
+      .select('id, status')
+      .eq('candidate_id', candidateId)
+      .eq('job_id', jobId)
+      .maybeSingle();
+
+    if (existingError) {
+      throw new BadRequestException(existingError.message || 'Erreur lors de la recherche candidature');
+    }
+
+    const useTapCv = Boolean(payload.cvPath || payload.portfolioPath || payload.talentCardPath);
+
+    if (existing) {
+      const { data: updated, error: updateError } = await this.supabase
+        .from('candidate_postule')
+        .update({
+          note,
+          use_tap_cv: useTapCv,
+          validate: false,
+          status: 'EN_COURS',
+        })
+        .eq('id', existing.id)
+        .select('id, status')
+        .single();
+
+      if (updateError || !updated) {
+        throw new BadRequestException(updateError?.message || 'Erreur lors de la mise a jour de la candidature');
+      }
+
+      return { success: true, applicationId: updated.id as number, status: (updated.status as string) || 'EN_COURS' };
+    }
+
+    const { data: inserted, error: insertError } = await this.supabase
+      .from('candidate_postule')
+      .insert({
+        job_id: jobId,
+        candidate_id: candidateId,
+        note,
+        validate: false,
+        use_tap_cv: useTapCv,
+        status: 'EN_COURS',
+      })
+      .select('id, status')
+      .single();
+
+    if (insertError || !inserted) {
+      throw new BadRequestException(insertError?.message || "Erreur lors de l'ajout de la candidature");
+    }
+
+    return { success: true, applicationId: inserted.id as number, status: (inserted.status as string) || 'EN_COURS' };
   }
 
   async getCandidateScoreFromJson(

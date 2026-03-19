@@ -7,7 +7,7 @@ import { useCandidatApplications, useCandidatStats, useCandidatPublicJobs } from
 import EmptyState from "@/components/ui/EmptyState";
 import ErrorState from "@/components/ui/ErrorState";
 import { Skeleton } from "@/components/ui/Skeleton";
-import { Users, MapPin, Briefcase, Sparkles } from "lucide-react";
+import { Users, MapPin, Briefcase, Sparkles, Clock } from "lucide-react";
 import { formatRelative, statusBg } from "@/lib/utils";
 import { useDashboardTheme } from "@/hooks/use-dashboard-theme";
 

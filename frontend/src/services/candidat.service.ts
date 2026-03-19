@@ -64,6 +64,17 @@ export const candidatService = {
       }[];
     }>('/dashboard/jobs').then((r) => r.data),
 
+  applyToJob: (payload: {
+    jobId: number;
+    cvPath?: string | null;
+    portfolioPath?: string | null;
+    talentCardPath?: string | null;
+    lien?: string | null;
+  }) =>
+    api
+      .post('/dashboard/candidat/apply-job', payload)
+      .then((r) => r.data as { success: boolean; applicationId: number; status: string }),
+
   uploadCv: (file: File) => {
     const formData = new FormData();
     formData.append('file', file);

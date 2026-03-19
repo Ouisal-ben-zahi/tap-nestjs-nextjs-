@@ -1,9 +1,10 @@
 "use client";
 
+import { useEffect, useMemo, useState } from "react";
 import Link from "next/link";
-import { useParams } from "next/navigation";
+import { useParams, useRouter } from "next/navigation";
 import { useAuth } from "@/hooks/use-auth";
-import { useCandidatPublicJobs } from "@/hooks/use-candidat";
+import { useApplyToJob, useCandidatCvFiles, useCandidatPortfolioPdfs, useCandidatPublicJobs, useCandidatTalentcardFiles } from "@/hooks/use-candidat";
 import EmptyState from "@/components/ui/EmptyState";
 import ErrorState from "@/components/ui/ErrorState";
 import { Skeleton } from "@/components/ui/Skeleton";
@@ -12,12 +13,39 @@ import { ArrowLeft, Briefcase, Clock, MapPin } from "lucide-react";
 import { formatRelative } from "@/lib/utils";
 
 export default function OffreDetailCandidatPage() {
+  const router = useRouter();
   const params = useParams<{ jobId: string }>();
   const jobId = Number(params?.jobId);
   const { isCandidat } = useAuth();
   const jobsQuery = useCandidatPublicJobs();
+  const cvQuery = useCandidatCvFiles();
+  const talentCardQuery = useCandidatTalentcardFiles();
+  const portfolioQuery = useCandidatPortfolioPdfs();
+  const applyToJob = useApplyToJob();
   const theme = useDashboardTheme();
   const isLight = theme === "light";
+
+  const [applyOpen, setApplyOpen] = useState(false);
+  const [cvPath, setCvPath] = useState<string | null>(null);
+  const [portfolioPath, setPortfolioPath] = useState<string | null>(null);
+  const [talentCardPath, setTalentCardPath] = useState<string | null>(null);
+  const [lien, setLien] = useState<string>("");
+
+  const cvFiles = cvQuery.data?.cvFiles ?? [];
+  const talentCardFiles = talentCardQuery.data?.talentcardFiles ?? [];
+  const portfolioFiles = portfolioQuery.data?.portfolioPdfFiles ?? [];
+
+  const shortPortfolioFiles = useMemo(
+    () => portfolioFiles.filter((f: any) => f.type !== "long"),
+    [portfolioFiles],
+  );
+
+  useEffect(() => {
+    if (!applyOpen) return;
+    if (!cvPath && cvFiles.length > 0) setCvPath(cvFiles[0].path);
+    if (!portfolioPath && shortPortfolioFiles.length > 0) setPortfolioPath(shortPortfolioFiles[0].path);
+    if (!talentCardPath && talentCardFiles.length > 0) setTalentCardPath(talentCardFiles[0].path);
+  }, [applyOpen, cvFiles, shortPortfolioFiles, talentCardFiles, cvPath, portfolioPath, talentCardPath]);
 
   if (!isCandidat) {
     return (
@@ -353,12 +381,129 @@ export default function OffreDetailCandidatPage() {
 
           {/* CTA Postuler en bas à droite de la carte */}
           <div className="mt-8 flex justify-end">
-            <button
-              type="button"
-              className="btn-primary btn-sm rounded-full"
-            >
-              Postuler maintenant
-            </button>
+            {!applyOpen ? (
+              <button
+                type="button"
+                className="btn-primary btn-sm rounded-full"
+                onClick={() => router.push(`/app/matching/offres/${jobId}/postuler`)}
+              >
+                Postuler maintenant
+              </button>
+            ) : (
+              <div
+                className={`w-full sm:w-[520px] rounded-2xl border p-5 ${isLight ? "bg-white/60 border-tap-red/20" : "bg-zinc-900/60 border-white/[0.08]"}`}
+              >
+                <div className="flex items-center justify-between gap-3 mb-4">
+                  <h2 className="text-[14px] font-semibold">Formulaire de candidature</h2>
+                  <button
+                    type="button"
+                    className={`text-[13px] px-3 py-1.5 rounded-full border hover:bg-black/5 ${
+                      isLight ? "border-black/10" : "border-white/10 hover:bg-white/5"
+                    }`}
+                    onClick={() => setApplyOpen(false)}
+                  >
+                    Fermer
+                  </button>
+                </div>
+
+                <form
+                  className="space-y-4"
+                  onSubmit={(e) => {
+                    e.preventDefault();
+                    applyToJob.mutate({
+                      jobId,
+                      cvPath,
+                      portfolioPath,
+                      talentCardPath,
+                      lien: lien.trim() || null,
+                    }, {
+                      onSuccess: () => setApplyOpen(false),
+                    });
+                  }}
+                >
+                  <div className="space-y-1">
+                    <label className={`text-[12px] font-semibold ${isLight ? "text-black/70" : "text-white/60"}`}>
+                      CV
+                    </label>
+                    <select
+                      className="input-premium w-full"
+                      value={cvPath ?? ""}
+                      onChange={(e) => setCvPath(e.target.value || null)}
+                      disabled={cvQuery.isLoading || cvFiles.length === 0}
+                    >
+                      {cvQuery.isLoading ? <option value="">Chargement...</option> : null}
+                      {cvFiles.length === 0 ? <option value="">Aucun CV</option> : null}
+                      {cvFiles.map((f) => (
+                        <option key={f.path} value={f.path}>
+                          {f.name}
+                        </option>
+                      ))}
+                    </select>
+                  </div>
+
+                  <div className="space-y-1">
+                    <label className={`text-[12px] font-semibold ${isLight ? "text-black/70" : "text-white/60"}`}>
+                      Portfolio
+                    </label>
+                    <select
+                      className="input-premium w-full"
+                      value={portfolioPath ?? ""}
+                      onChange={(e) => setPortfolioPath(e.target.value || null)}
+                      disabled={portfolioQuery.isLoading || shortPortfolioFiles.length === 0}
+                    >
+                      {portfolioQuery.isLoading ? <option value="">Chargement...</option> : null}
+                      {shortPortfolioFiles.length === 0 ? <option value="">Aucun portfolio</option> : null}
+                      {shortPortfolioFiles.map((f: any) => (
+                        <option key={f.path} value={f.path}>
+                          {f.name}
+                        </option>
+                      ))}
+                    </select>
+                  </div>
+
+                  <div className="space-y-1">
+                    <label className={`text-[12px] font-semibold ${isLight ? "text-black/70" : "text-white/60"}`}>
+                      Talent Card
+                    </label>
+                    <select
+                      className="input-premium w-full"
+                      value={talentCardPath ?? ""}
+                      onChange={(e) => setTalentCardPath(e.target.value || null)}
+                      disabled={talentCardQuery.isLoading || talentCardFiles.length === 0}
+                    >
+                      {talentCardQuery.isLoading ? <option value="">Chargement...</option> : null}
+                      {talentCardFiles.length === 0 ? <option value="">Aucune Talent Card</option> : null}
+                      {talentCardFiles.map((f) => (
+                        <option key={f.path} value={f.path}>
+                          {f.name}
+                        </option>
+                      ))}
+                    </select>
+                  </div>
+
+                  <div className="space-y-1">
+                    <label className={`text-[12px] font-semibold ${isLight ? "text-black/70" : "text-white/60"}`}>
+                      Lien
+                    </label>
+                    <input
+                      type="url"
+                      className="input-premium w-full"
+                      placeholder="https://... (optionnel)"
+                      value={lien}
+                      onChange={(e) => setLien(e.target.value)}
+                    />
+                  </div>
+
+                  <button
+                    type="submit"
+                    className="w-full h-11 rounded-xl bg-tap-red text-white text-[13px] font-semibold hover:bg-tap-red-hover transition disabled:opacity-50 disabled:cursor-not-allowed"
+                    disabled={applyToJob.isPending || !cvPath || !portfolioPath || !talentCardPath}
+                  >
+                    {applyToJob.isPending ? "Envoi..." : "Envoyer la candidature"}
+                  </button>
+                </form>
+              </div>
+            )}
           </div>
         </div>
       </div>
