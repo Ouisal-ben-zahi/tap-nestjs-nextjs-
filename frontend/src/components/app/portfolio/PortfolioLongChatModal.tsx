@@ -2,6 +2,7 @@
 
 import { useEffect, useMemo, useState } from "react";
 import { Briefcase, Loader2, Send, X } from "lucide-react";
+import { useDashboardTheme } from "@/hooks/use-dashboard-theme";
 import {
   useCandidatScore,
   useRunPortfolioLongPipeline,
@@ -19,6 +20,8 @@ export default function PortfolioLongChatModal({ open, onClose }: Props) {
   const sendMessage = useSendPortfolioLongChatMessage();
   const runPipeline = useRunPortfolioLongPipeline();
   const candidatScore = useCandidatScore();
+  const theme = useDashboardTheme();
+  const isLight = theme === "light";
 
   const [sessionId, setSessionId] = useState<string | null>(null);
   const [question, setQuestion] = useState<string | null>(null);
@@ -189,18 +192,43 @@ export default function PortfolioLongChatModal({ open, onClose }: Props) {
 
   return (
     <div className="fixed inset-0 z-50">
-      <div className="absolute inset-0 bg-black/70 backdrop-blur-sm" onClick={busy ? undefined : onClose} />
+      <div
+        className={`absolute inset-0 backdrop-blur-sm ${
+          isLight ? "bg-black/40" : "bg-black/70"
+        }`}
+        onClick={busy ? undefined : onClose}
+      />
 
       <div className="absolute inset-0 flex items-center justify-center p-4">
-        <div className="w-full max-w-[680px] rounded-2xl border border-white/[0.08] bg-[#070707]/95 backdrop-blur-2xl shadow-2xl shadow-black/60 overflow-hidden">
-          <div className="flex items-center justify-between px-5 py-4 border-b border-white/[0.06]">
+        <div
+          className={`w-full max-w-[680px] rounded-2xl overflow-hidden shadow-2xl ${
+            isLight
+              ? "border border-black/10 bg-white"
+              : "border border-white/[0.08] bg-[#070707]/95 shadow-black/60 backdrop-blur-2xl"
+          }`}
+        >
+          <div
+            className={`flex items-center justify-between px-5 py-4 border-b ${
+              isLight ? "border-black/10" : "border-white/[0.06]"
+            }`}
+          >
             <div className="flex items-center gap-3">
               <div className="w-9 h-9 rounded-xl bg-tap-red/10 border border-tap-red/20 flex items-center justify-center">
                 <Briefcase size={16} className="text-tap-red" />
               </div>
               <div>
-                <div className="text-white font-semibold text-[14px]">Portfolio long</div>
-                <div className="text-white/40 text-[12px]">
+                <div
+                  className={`font-semibold text-[14px] ${
+                    isLight ? "text-black" : "text-white"
+                  }`}
+                >
+                  Portfolio long
+                </div>
+                <div
+                  className={`text-[12px] ${
+                    isLight ? "text-black/60" : "text-white/40"
+                  }`}
+                >
                   Répondez aux questions, puis on lance scoring + génération.
                 </div>
               </div>
@@ -208,18 +236,36 @@ export default function PortfolioLongChatModal({ open, onClose }: Props) {
             <button
               onClick={onClose}
               disabled={busy}
-              className="w-9 h-9 flex items-center justify-center rounded-xl text-white/30 hover:text-white hover:bg-white/[0.06] transition disabled:opacity-40 disabled:cursor-not-allowed"
+              className={`w-9 h-9 flex items-center justify-center rounded-xl transition disabled:opacity-40 disabled:cursor-not-allowed ${
+                isLight
+                  ? "text-black/40 hover:text-black hover:bg-black/5"
+                  : "text-white/30 hover:text-white hover:bg-white/[0.06]"
+              }`}
             >
               <X size={16} />
             </button>
           </div>
 
-          <div className="px-5 py-3 border-b border-white/[0.06]">
-            <div className="flex items-center justify-between text-[11px] text-white/35 mb-2">
+          <div
+            className={`px-5 py-3 border-b ${
+              isLight ? "border-black/10" : "border-white/[0.06]"
+            }`}
+          >
+            <div
+              className={`flex items-center justify-between text-[11px] mb-2 ${
+                isLight ? "text-black/45" : "text-white/35"
+              }`}
+            >
               <span>Progression</span>
-              <span className="text-white/45">{progressLabel} • {progress}%</span>
+              <span className={isLight ? "text-black/60" : "text-white/45"}>
+                {progressLabel} • {progress}%
+              </span>
             </div>
-            <div className="h-2 rounded-full bg-white/[0.06] overflow-hidden">
+            <div
+              className={`h-2 rounded-full overflow-hidden ${
+                isLight ? "bg-black/5" : "bg-white/[0.06]"
+              }`}
+            >
               <div
                 className="h-full bg-tap-red transition-[width] duration-300"
                 style={{ width: `${progress}%` }}
@@ -229,14 +275,33 @@ export default function PortfolioLongChatModal({ open, onClose }: Props) {
 
           <div className="px-5 py-5 space-y-4">
             {pipelineInProgress ? (
-              <div className="rounded-xl border border-white/[0.06] bg-white/[0.03] p-6">
+              <div
+                className={`rounded-xl border p-6 ${
+                  isLight
+                    ? "border-black/10 bg-black/[0.02]"
+                    : "border-white/[0.06] bg-white/[0.03]"
+                }`}
+              >
                 <div className="flex items-center gap-3">
-                  <Loader2 size={18} className="animate-spin text-white/70" />
+                  <Loader2
+                    size={18}
+                    className={`animate-spin ${
+                      isLight ? "text-black/70" : "text-white/70"
+                    }`}
+                  />
                   <div>
-                    <div className="text-white/85 text-[13px] font-medium">
+                    <div
+                      className={`text-[13px] font-medium ${
+                        isLight ? "text-black/80" : "text-white/85"
+                      }`}
+                    >
                       Scoring + portfolio long en cours de génération…
                     </div>
-                    <div className="text-white/40 text-[12px] mt-1">
+                    <div
+                      className={`text-[12px] mt-1 ${
+                        isLight ? "text-black/50" : "text-white/40"
+                      }`}
+                    >
                       Vous pouvez fermer cette fenêtre, ça continue en arrière-plan.
                     </div>
                   </div>
@@ -244,46 +309,122 @@ export default function PortfolioLongChatModal({ open, onClose }: Props) {
               </div>
             ) : (
               <>
-                <div className="rounded-xl border border-white/[0.06] bg-white/[0.03] p-4">
+                <div
+                  className={`rounded-xl border p-4 ${
+                    isLight
+                      ? "border-black/10 bg-black/[0.015]"
+                      : "border-white/[0.06] bg-white/[0.03]"
+                  }`}
+                >
                   {startChat.isPending && !sessionId ? (
-                    <div className="flex items-center gap-2 text-white/50 text-[13px]">
+                    <div
+                      className={`flex items-center gap-2 text-[13px] ${
+                        isLight ? "text-black/50" : "text-white/50"
+                      }`}
+                    >
                       <Loader2 size={14} className="animate-spin" />
                       Démarrage du chatbot…
                     </div>
                   ) : question ? (
-                    <div className="text-white/80 text-[13px] leading-relaxed">{question}</div>
+                    <div
+                      className={`text-[13px] leading-relaxed ${
+                        isLight ? "text-black/80" : "text-white/80"
+                      }`}
+                    >
+                      {question}
+                    </div>
                   ) : isComplete ? (
-                    <div className="text-white/70 text-[13px]">Toutes les informations ont été collectées.</div>
+                    <div
+                      className={`text-[13px] ${
+                        isLight ? "text-black/70" : "text-white/70"
+                      }`}
+                    >
+                      Toutes les informations ont été collectées.
+                    </div>
                   ) : (
-                    <div className="text-white/50 text-[13px]">Aucune question disponible.</div>
+                    <div
+                      className={`text-[13px] ${
+                        isLight ? "text-black/50" : "text-white/50"
+                      }`}
+                    >
+                      Aucune question disponible.
+                    </div>
                   )}
 
                   {missingCount !== null && !isComplete && (
-                    <div className="mt-3 text-white/35 text-[12px]">
-                      Champs restants: <span className="text-white/55 font-medium">{missingCount}</span>
+                    <div
+                      className={`mt-3 text-[12px] ${
+                        isLight ? "text-black/45" : "text-white/35"
+                      }`}
+                    >
+                      Champs restants:{" "}
+                      <span
+                        className={`font-medium ${
+                          isLight ? "text-black/70" : "text-white/55"
+                        }`}
+                      >
+                        {missingCount}
+                      </span>
                     </div>
                   )}
                 </div>
 
                 {(pipelineResult?.scoring || scoreGlobal !== null || decision) && (
-                  <div className="rounded-xl border border-white/[0.06] bg-black/30 p-4 space-y-2">
-                    <div className="text-white font-semibold text-[13px]">Résultat du scoring</div>
-                    <div className="text-white/60 text-[13px]">
+                  <div
+                    className={`rounded-xl border p-4 space-y-2 ${
+                      isLight
+                        ? "border-black/10 bg-black/[0.02]"
+                        : "border-white/[0.06] bg-black/30"
+                    }`}
+                  >
+                    <div
+                      className={`font-semibold text-[13px] ${
+                        isLight ? "text-black" : "text-white"
+                      }`}
+                    >
+                      Résultat du scoring
+                    </div>
+                    <div
+                      className={`text-[13px] ${
+                        isLight ? "text-black/70" : "text-white/60"
+                      }`}
+                    >
                       Score global:{" "}
-                      <span className="text-white font-medium">
+                      <span
+                        className={`font-medium ${
+                          isLight ? "text-black" : "text-white"
+                        }`}
+                      >
                         {scoreGlobal !== null && scoreGlobal !== undefined ? Number(scoreGlobal).toFixed(2) : "—"}
                       </span>
                       {decision ? (
                         <>
                           {" "}
-                          • Décision: <span className="text-white font-medium">{String(decision)}</span>
+                          • Décision:{" "}
+                          <span
+                            className={`font-medium ${
+                              isLight ? "text-black" : "text-white"
+                            }`}
+                          >
+                            {String(decision)}
+                          </span>
                         </>
                       ) : null}
                     </div>
                     {generationMessage ? (
-                      <div className="text-white/40 text-[12px]">{generationMessage}</div>
+                      <div
+                        className={`text-[12px] ${
+                          isLight ? "text-black/55" : "text-white/40"
+                        }`}
+                      >
+                        {generationMessage}
+                      </div>
                     ) : pipelineResult?.generation?.success ? (
-                      <div className="text-white/40 text-[12px]">
+                      <div
+                        className={`text-[12px] ${
+                          isLight ? "text-black/55" : "text-white/40"
+                        }`}
+                      >
                         Génération du portfolio long lancée. Le PDF apparaîtra dans la liste dans quelques instants.
                       </div>
                     ) : null}
@@ -302,7 +443,11 @@ export default function PortfolioLongChatModal({ open, onClose }: Props) {
                   }}
                   disabled={busy || !sessionId}
                   placeholder="Votre réponse…"
-                  className="flex-1 h-11 px-4 rounded-xl bg-black/40 border border-white/[0.08] text-white/80 placeholder:text-white/25 text-[13px] outline-none focus:border-white/[0.18] transition disabled:opacity-50"
+                  className={`flex-1 h-11 px-4 rounded-xl text-[13px] outline-none transition disabled:opacity-50 ${
+                    isLight
+                      ? "bg-black/5 border border-black/15 text-black placeholder:text-black/30 focus:border-black/30"
+                      : "bg-black/40 border border-white/[0.08] text-white/80 placeholder:text-white/25 focus:border-white/[0.18]"
+                  }`}
                 />
                 <button
                   onClick={handleSend}
@@ -316,8 +461,16 @@ export default function PortfolioLongChatModal({ open, onClose }: Props) {
             )}
           </div>
 
-          <div className="px-5 py-4 border-t border-white/[0.06] flex items-center justify-between gap-3">
-            <div className="text-white/35 text-[12px]">
+          <div
+            className={`px-5 py-4 border-t flex items-center justify-between gap-3 ${
+              isLight ? "border-black/10" : "border-white/[0.06]"
+            }`}
+          >
+            <div
+              className={`text-[12px] ${
+                isLight ? "text-black/55" : "text-white/35"
+              }`}
+            >
               {pipelineResult
                 ? "Scoring terminé, génération lancée."
                 : isComplete

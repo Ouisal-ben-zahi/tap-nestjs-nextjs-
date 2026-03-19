@@ -135,6 +135,23 @@ export interface PublicJobItem {
   created_at: string | null;
   urgent: boolean;
   location_type: string | null;
+  niveau_attendu: string | null;
+  experience_min: string | null;
+  presence_sur_site: string | null;
+  localisation: string | null;
+  reason: string | null;
+  main_mission: string | null;
+  tasks_other: string | null;
+  disponibilite: string | null;
+  salary_min: number | null;
+  salary_max: number | null;
+  contrat: string | null;
+  niveau_seniorite: string | null;
+  entreprise: string | null;
+  phone: string | null;
+  tasks: any[] | null;
+  skills: any[] | null;
+  languages: any[] | null;
 }
 
 export interface CandidateScoreFromJson {
@@ -1848,7 +1865,7 @@ export class DashboardService {
     const { data, error } = await this.supabase
       .from('jobs')
       .select(
-        'id, title, categorie_profil, created_at, urgent, location_type, status',
+        'id, title, categorie_profil, created_at, urgent, location_type, niveau_attendu, experience_min, presence_sur_site, reason, main_mission, tasks_other, disponibilite, salary_min, salary_max, contrat, niveau_seniorite, entreprise, phone, tasks, skills, languages, status',
       )
       .eq('status', 'ACTIVE')
       .order('created_at', { ascending: false });
@@ -1869,6 +1886,35 @@ export class DashboardService {
         typeof row.location_type === 'string' && row.location_type.trim()
           ? (row.location_type as string)
           : null,
+      niveau_attendu:
+        typeof row.niveau_attendu === 'string' ? (row.niveau_attendu as string) : null,
+      experience_min:
+        typeof row.experience_min === 'string' ? (row.experience_min as string) : null,
+      presence_sur_site:
+        typeof row.presence_sur_site === 'string' ? (row.presence_sur_site as string) : null,
+      localisation: null,
+      reason: typeof row.reason === 'string' ? (row.reason as string) : null,
+      main_mission:
+        typeof row.main_mission === 'string' ? (row.main_mission as string) : null,
+      tasks_other:
+        typeof row.tasks_other === 'string' ? (row.tasks_other as string) : null,
+      disponibilite:
+        typeof row.disponibilite === 'string' ? (row.disponibilite as string) : null,
+      salary_min:
+        typeof row.salary_min === 'number' ? (row.salary_min as number) : null,
+      salary_max:
+        typeof row.salary_max === 'number' ? (row.salary_max as number) : null,
+      contrat: typeof row.contrat === 'string' ? (row.contrat as string) : null,
+      niveau_seniorite:
+        typeof row.niveau_seniorite === 'string'
+          ? (row.niveau_seniorite as string)
+          : null,
+      entreprise:
+        typeof row.entreprise === 'string' ? (row.entreprise as string) : null,
+      phone: typeof row.phone === 'string' ? (row.phone as string) : null,
+      tasks: Array.isArray(row.tasks) ? (row.tasks as any[]) : null,
+      skills: Array.isArray(row.skills) ? (row.skills as any[]) : null,
+      languages: Array.isArray(row.languages) ? (row.languages as any[]) : null,
     }));
 
     return { jobs };

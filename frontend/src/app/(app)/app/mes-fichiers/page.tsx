@@ -233,11 +233,7 @@ export default function MesFichiersPage() {
             </div>
             <button
               onClick={() => setPortfolioLongModalOpen(true)}
-              className={`inline-flex items-center gap-2 px-4 py-2 rounded-lg text-[13px] transition disabled:opacity-50 disabled:cursor-not-allowed ${
-                isLight
-                  ? "bg-white border border-tap-red/40 text-black hover:border-tap-red/70"
-                  : "border border-white/[0.08] bg-zinc-900/40 hover:bg-zinc-900/60 text-white/80 hover:text-white"
-              }`}
+              className="inline-flex items-center gap-2 px-4 py-2 rounded-lg text-[13px] transition bg-tap-red text-white hover:bg-tap-red-hover disabled:opacity-50 disabled:cursor-not-allowed"
             >
               <Briefcase size={14} />
               Générer le portfolio long

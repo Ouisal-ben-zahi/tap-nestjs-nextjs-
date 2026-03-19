@@ -8,7 +8,7 @@ import { useCandidatStats } from "@/hooks/use-candidat";
 import AuthGuard from "@/components/app/AuthGuard";
 import HydrationGate from "@/components/app/HydrationGate";
 import AppSidebar from "@/components/app/AppSidebar";
-import { Menu, ArrowUpRight, Moon, Sun } from "lucide-react";
+import { Menu, ArrowUpRight, Moon, Sun, User } from "lucide-react";
 
 export default function AppLayout({ children }: { children: React.ReactNode }) {
   const [sidebarOpen, setSidebarOpen] = useState(false);
@@ -72,41 +72,52 @@ export default function AppLayout({ children }: { children: React.ReactNode }) {
               <Menu size={18} />
             </button>
 
-            {/* Header fixe du dashboard */}
+            {/* Header fixe du dashboard (comme avant) */}
             <div className="fixed top-0 left-0 right-0 z-30">
               <div
-                className={`flex justify-end items-center gap-3 px-3 py-2 sm:px-6 sm:py-3 rounded-b-2xl ${
-                  theme === "light" ? "bg-white border-b border-black/5" : "bg-[#050505]"
+                className={`flex items-center justify-between px-3 py-2 sm:px-6 sm:py-3 lg:pl-[250px] ${
+                  theme === "light"
+                    ? "bg-white border-b border-black/5"
+                    : "bg-[rgba(12,12,12,0.9)] border-b border-white/10 backdrop-blur-md"
                 }`}
               >
+                {/* Left: Retour au site */}
+                <Link
+                  href="/"
+                  className={`inline-flex items-center gap-2 rounded-full px-3 py-1.5 text-[12px] font-medium transition-colors ${
+                    theme === "light"
+                      ? "text-[rgba(202,27,40,1)] hover:bg-white/60"
+                      : "text-white/70 hover:bg-white/10"
+                  }`}
+                  aria-label="Retour au site"
+                >
+                  <ArrowUpRight size={16} />
+                  <span className="hidden sm:inline">Retour au site</span>
+                </Link>
+
+                {/* Right: theme toggle + email + avatar */}
+                <div className="flex items-center gap-3">
                   <button
                     type="button"
                     onClick={() => setTheme((prev) => (prev === "dark" ? "light" : "dark"))}
                     className={`inline-flex items-center justify-center w-9 h-9 rounded-full transition-colors ${
                       theme === "light"
-                        ? "text-[rgba(202,27,40,1)] hover:bg-black/5"
-                        : "text-white/60 hover:text-white hover:bg-white/20"
+                        ? "text-[rgba(202,27,40,1)] hover:bg-white/60"
+                        : "text-white/60 hover:text-white hover:bg-white/10"
                     }`}
                     aria-label="Basculer mode clair/sombre"
                     title={theme === "dark" ? "Passer en mode clair" : "Passer en mode sombre"}
                   >
                     {theme === "dark" ? <Sun size={16} /> : <Moon size={16} />}
                   </button>
+
                   {user?.email && (
                     <button
                       type="button"
                       onClick={() => setProfileOpen((v) => !v)}
-                      className={`hidden sm:flex items-center gap-2.5 px-3.5 py-2 rounded-full transition-colors ${
-                        theme === "light" ? "hover:bg-black/5" : "hover:bg-white/15"
-                      }`}
+                      className="hidden sm:flex items-center gap-2.5 px-0 py-0 rounded-full transition-colors"
+                      aria-label="Ouvrir le menu profil"
                     >
-                      <span
-                        className={`text-[12px] truncate max-w-[220px] ${
-                          theme === "light" ? "text-[rgba(202,27,40,0.9)]" : "text-white/70"
-                        }`}
-                      >
-                        {user.email}
-                      </span>
                       {avatarUrl ? (
                         <div className="w-7 h-7 rounded-full overflow-hidden bg-black/20 flex items-center justify-center ring-1 ring-tap-red/30">
                           <Image
@@ -124,17 +135,7 @@ export default function AppLayout({ children }: { children: React.ReactNode }) {
                       )}
                     </button>
                   )}
-                  <Link
-                    href="/"
-                    className={`inline-flex items-center justify-center w-9 h-9 rounded-full transition-colors ${
-                      theme === "light"
-                        ? "text-[rgba(202,27,40,0.9)] hover:text-[rgba(202,27,40,1)] hover:bg-black/5"
-                        : "text-white/60 hover:text-white hover:bg-white/20"
-                    }`}
-                    aria-label="Retour au site"
-                  >
-                    <ArrowUpRight size={16} />
-                  </Link>
+                </div>
               </div>
             </div>
 
@@ -146,11 +147,34 @@ export default function AppLayout({ children }: { children: React.ReactNode }) {
                         : "bg-[#050505]/95 border border-white/10 backdrop-blur-xl"
                     }`}
                   >
-                    <div className={`px-4 py-3 ${theme === "light" ? "border-b border-black/10" : "border-b border-white/[0.06]"}`}>
-                      <p className={`text-[12px] truncate ${theme === "light" ? "text-[rgba(202,27,40,0.9)]" : "text-white/80"}`}>{user.email}</p>
-                      <p className={`text-[11px] capitalize ${theme === "light" ? "text-black/45" : "text-white/35"}`}>
-                        {isCandidat ? "Candidat" : "Recruteur"}
-                      </p>
+                    <div className={`px-4 py-3 flex items-start gap-3 ${theme === "light" ? "border-b border-black/10" : "border-b border-white/[0.06]"}`}>
+                      {avatarUrl ? (
+                        <div className="w-8 h-8 rounded-full overflow-hidden bg-black/20 flex items-center justify-center ring-1 ring-tap-red/30">
+                          <Image
+                            src={avatarUrl}
+                            alt={user.email}
+                            width={32}
+                            height={32}
+                            className="w-8 h-8 object-cover"
+                          />
+                        </div>
+                      ) : (
+                        <div
+                          className={`w-8 h-8 rounded-full flex items-center justify-center text-[12px] font-bold uppercase ring-1 ring-tap-red/40 ${
+                            theme === "light" ? "bg-tap-red text-white" : "bg-tap-red text-black"
+                          }`}
+                        >
+                          {initial || "?"}
+                        </div>
+                      )}
+                      <div className="min-w-0">
+                        <p className={`text-[12px] truncate ${theme === "light" ? "text-[rgba(202,27,40,0.9)]" : "text-white/80"}`}>
+                          {user.email}
+                        </p>
+                        <p className={`text-[11px] capitalize ${theme === "light" ? "text-black/45" : "text-white/35"}`}>
+                          {isCandidat ? "Candidat" : "Recruteur"}
+                        </p>
+                      </div>
                     </div>
                     <button
                       type="button"

@@ -7,7 +7,7 @@ import { useCandidatApplications, useCandidatStats, useCandidatPublicJobs } from
 import EmptyState from "@/components/ui/EmptyState";
 import ErrorState from "@/components/ui/ErrorState";
 import { Skeleton } from "@/components/ui/Skeleton";
-import { Users, MapPin, Briefcase, Clock, Sparkles } from "lucide-react";
+import { Users, MapPin, Briefcase, Sparkles } from "lucide-react";
 import { formatRelative, statusBg } from "@/lib/utils";
 import { useDashboardTheme } from "@/hooks/use-dashboard-theme";
 
@@ -150,7 +150,8 @@ export default function MatchingPage() {
                 return (
                   <div
                     key={job.id}
-                    className={`rounded-xl p-5 transition group ${
+                    onClick={() => router.push(`/app/matching/offres/${job.id}`)}
+                    className={`rounded-xl p-5 transition group cursor-pointer ${
                       isLight
                         ? "bg-white border border-tap-red/40 hover:border-tap-red/70"
                         : "bg-zinc-900/50 border border-white/[0.06] hover:border-white/[0.1]"
@@ -176,6 +177,10 @@ export default function MatchingPage() {
                         <span>{job.created_at && formatRelative(job.created_at)}</span>
                         <button
                           type="button"
+                          onClick={(e) => {
+                            e.stopPropagation();
+                            router.push(`/app/matching/offres/${job.id}`);
+                          }}
                           className="btn-primary !py-1.5 !px-3 text-[12px] gap-1"
                         >
                           <Briefcase size={12} />

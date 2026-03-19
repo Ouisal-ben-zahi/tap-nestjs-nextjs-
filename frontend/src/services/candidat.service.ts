@@ -36,7 +36,33 @@ export const candidatService = {
     }),
 
   getPublicJobs: () =>
-    api.get<{ jobs: { id: number; title: string | null; categorie_profil: string | null; created_at: string | null; urgent: boolean; location_type: string | null; }[] }>('/dashboard/jobs').then((r) => r.data),
+    api.get<{
+      jobs: {
+        id: number;
+        title: string | null;
+        categorie_profil: string | null;
+        created_at: string | null;
+        urgent: boolean;
+        location_type: string | null;
+        niveau_attendu: string | null;
+        experience_min: string | null;
+        presence_sur_site: string | null;
+        localisation: string | null;
+        reason: string | null;
+        main_mission: string | null;
+        tasks_other: string | null;
+        disponibilite: string | null;
+        salary_min: number | null;
+        salary_max: number | null;
+        contrat: string | null;
+        niveau_seniorite: string | null;
+        entreprise: string | null;
+        phone: string | null;
+        tasks: any[] | null;
+        skills: any[] | null;
+        languages: any[] | null;
+      }[];
+    }>('/dashboard/jobs').then((r) => r.data),
 
   uploadCv: (file: File) => {
     const formData = new FormData();
