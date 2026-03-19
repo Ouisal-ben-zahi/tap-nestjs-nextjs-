@@ -85,14 +85,7 @@ export default function DashboardPage() {
         <div className="absolute top-[-40px] right-[10%] w-[200px] h-[200px] rounded-full bg-[radial-gradient(circle,rgba(202,27,40,0.04),transparent_60%)] blur-3xl pointer-events-none" />
 
         <div className="relative">
-          <div className="inline-flex items-center gap-2.5 px-5 py-2.5 mb-6 rounded-full bg-tap-red/[0.08] border border-tap-red/15">
-            <Zap size={13} className="text-tap-red" />
-            <span className="text-[10px] uppercase tracking-[2.5px] text-tap-red/80 font-semibold">
-              {isRecruteur ? "Espace recruteur" : "Espace candidat"}
-            </span>
-          </div>
-
-          <h1 className="text-[28px] sm:text-[40px] font-bold text-white tracking-[-0.04em] font-heading leading-tight">
+          <h1 className="text-[28px] sm:text-[40px] font-bold text-white tracking-[-0.04em] font-heading leading-tight mb-2">
             Bienvenue{firstName ? "," : ""}
             {firstName && (
               <span className="bg-gradient-to-r from-white to-white/70 bg-clip-text text-transparent ml-2">
@@ -100,7 +93,7 @@ export default function DashboardPage() {
               </span>
             )}
           </h1>
-          <p className="text-white/45 text-[15px] mt-3 font-light max-w-md">
+          <p className="text-white/45 text-[15px] font-light max-w-md">
             {isRecruteur
               ? "Gérez vos recrutements et trouvez les meilleurs talents."
               : "Explorez vos outils dsfdg IA pour booster votre carrière."}
@@ -109,7 +102,9 @@ export default function DashboardPage() {
       </div>
 
       {/* Live Dashboard */}
-      {isRecruteur ? <RecruteurDashboard /> : <CandidatDashboard />}
+      <div className="mt-14 sm:mt-16">
+        {isRecruteur ? <RecruteurDashboard /> : <CandidatDashboard />}
+      </div>
 
       {/* Separator */}
       <div className="mt-10 mb-6 pt-6 border-t border-white/[0.04]">

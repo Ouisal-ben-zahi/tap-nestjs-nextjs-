@@ -39,7 +39,7 @@ export default function AppLayout({ children }: { children: React.ReactNode }) {
 
         <div className="relative z-10 flex flex-1 h-full overflow-hidden">
           <AppSidebar open={sidebarOpen} onClose={() => setSidebarOpen(false)} />
-          <main className="flex-1 p-5 sm:p-8 lg:p-10 overflow-y-auto overflow-x-hidden relative">
+          <main className="flex-1 p-5 sm:p-8 lg:p-10 pb-20 overflow-y-auto overflow-x-hidden relative">
             {/* Burger mobile (seul en haut à gauche) */}
             <button
               type="button"
@@ -50,10 +50,11 @@ export default function AppLayout({ children }: { children: React.ReactNode }) {
               <Menu size={18} />
             </button>
 
-            {/* Email + avatar + retour site, barre glass fixe en haut du main */}
+            {/* Email + avatar + retour site, fixe en haut du main */}
             {user?.email && (
-              <div className="fixed top-0 left-0 right-0 z-30">
-                <div className="flex justify-end items-center gap-3 px-3 py-2 sm:px-6 sm:py-3 bg-white/10 backdrop-blur-2xl">
+              <>
+                <div className="fixed top-0 left-0 right-0 z-30">
+                  <div className="flex justify-end items-center gap-3 px-3 py-2 sm:px-6 sm:py-3 bg-[#050505] rounded-b-2xl shadow-[0_12px_30px_rgba(0,0,0,0.7)]">
                   <button
                     type="button"
                     onClick={() => setProfileOpen((v) => !v)}
@@ -85,6 +86,7 @@ export default function AppLayout({ children }: { children: React.ReactNode }) {
                   >
                     <ArrowUpRight size={16} />
                   </Link>
+                </div>
                 </div>
 
                 {profileOpen && (
@@ -120,7 +122,9 @@ export default function AppLayout({ children }: { children: React.ReactNode }) {
                     </button>
                   </div>
                 )}
-              </div>
+                {/* Espace sous la barre fixe (margin-bottom visuel) */}
+                <div className="h-[64px] mb-6 sm:mb-8" />
+              </>
             )}
 
             {children}

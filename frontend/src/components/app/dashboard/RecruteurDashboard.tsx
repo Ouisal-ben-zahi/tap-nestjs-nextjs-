@@ -21,23 +21,21 @@ export default function RecruteurDashboard() {
     <div className="space-y-8">
       {/* KPI Cards */}
       <div>
-        <div className="flex items-center gap-3 mb-5">
-          <div className="w-1 h-5 rounded-full bg-tap-red" />
-          <h2 className="text-[13px] uppercase tracking-[2px] text-white/50 font-semibold">Vue d&apos;ensemble</h2>
+        <h2 className="text-[13px] uppercase tracking-[2px] text-white/60 font-semibold">Vue d&apos;ensemble</h2>
+        <div className="mt-4">
+          {overviewQuery.isLoading ? (
+            <div className="grid grid-cols-2 lg:grid-cols-4 gap-3">
+              {Array.from({ length: 4 }).map((_, i) => <StatCardSkeleton key={i} />)}
+            </div>
+          ) : (
+            <div className="grid grid-cols-2 lg:grid-cols-4 gap-3">
+              <StatCard label="Offres publiées" value={overview?.totalJobs ?? 0} icon={Briefcase} color="text-red-500" />
+              <StatCard label="Candidats" value={overview?.totalCandidates ?? 0} icon={Users} color="text-blue-500" />
+              <StatCard label="Candidatures" value={overview?.totalApplications ?? 0} icon={FileText} color="text-green-500" />
+              <StatCard label="Postes urgents" value={overview?.urgentJobs ?? 0} icon={AlertTriangle} color="text-yellow-500" />
+            </div>
+          )}
         </div>
-
-        {overviewQuery.isLoading ? (
-          <div className="grid grid-cols-2 lg:grid-cols-4 gap-3">
-            {Array.from({ length: 4 }).map((_, i) => <StatCardSkeleton key={i} />)}
-          </div>
-        ) : (
-          <div className="grid grid-cols-2 lg:grid-cols-4 gap-3">
-            <StatCard label="Offres publiées" value={overview?.totalJobs ?? 0} icon={Briefcase} color="text-red-500" />
-            <StatCard label="Candidats" value={overview?.totalCandidates ?? 0} icon={Users} color="text-blue-500" />
-            <StatCard label="Candidatures" value={overview?.totalApplications ?? 0} icon={FileText} color="text-green-500" />
-            <StatCard label="Postes urgents" value={overview?.urgentJobs ?? 0} icon={AlertTriangle} color="text-yellow-500" />
-          </div>
-        )}
       </div>
 
       {/* Charts */}
@@ -93,10 +91,8 @@ export default function RecruteurDashboard() {
 
       {/* Candidatures récentes */}
       <div>
-        <div className="flex items-center gap-3 mb-5">
-          <div className="w-1 h-5 rounded-full bg-tap-red" />
-          <h2 className="text-[13px] uppercase tracking-[2px] text-white/50 font-semibold">Candidatures récentes</h2>
-        </div>
+        <h2 className="text-[13px] uppercase tracking-[2px] text-white/60 font-semibold">Candidatures récentes</h2>
+        <div className="mt-4">
 
         {overviewQuery.isLoading ? (
           <div className="space-y-3">{Array.from({ length: 4 }).map((_, i) => <Skeleton key={i} className="h-16 w-full" />)}</div>
@@ -132,18 +128,16 @@ export default function RecruteurDashboard() {
             ))}
           </div>
         )}
+        </div>
       </div>
 
       {/* Alertes */}
       {overview?.alerts && overview.alerts.length > 0 && (
         <div>
-          <div className="flex items-center gap-3 mb-5">
-            <div className="w-1 h-5 rounded-full bg-yellow-500" />
-            <h2 className="text-[13px] uppercase tracking-[2px] text-white/50 font-semibold flex items-center gap-2">
-              <Bell size={13} className="text-yellow-500" /> Alertes
-            </h2>
-          </div>
-          <div className="space-y-2">
+          <h2 className="text-[13px] uppercase tracking-[2px] text-white/60 font-semibold flex items-center gap-2">
+            <Bell size={13} className="text-yellow-500" /> Alertes
+          </h2>
+          <div className="mt-4 space-y-2">
             {overview.alerts.map((alert, i) => (
               <div key={i} className="flex items-start gap-3 bg-yellow-500/[0.05] border border-yellow-500/15 rounded-xl px-5 py-4">
                 <AlertTriangle size={14} className="text-yellow-500 mt-0.5 shrink-0" />
