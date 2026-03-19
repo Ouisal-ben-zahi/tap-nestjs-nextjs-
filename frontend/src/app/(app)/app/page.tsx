@@ -96,10 +96,10 @@ export default function DashboardPage() {
             Bienvenue{firstName ? "," : ""}
             {firstName && (
               <span
-                className={`bg-clip-text text-transparent ml-2 ${
+                className={`ml-2 ${
                   isLight
-                    ? "bg-gradient-to-r from-[rgba(202,27,40,1)] to-[rgba(202,27,40,0.7)]"
-                    : "bg-gradient-to-r from-white to-white/70"
+                    ? "text-[rgba(202,27,40,1)]"
+                    : "text-[rgba(202,27,40,1)]"
                 }`}
               >
                 {firstName}
