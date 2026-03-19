@@ -2,6 +2,7 @@
 
 import { useState } from "react";
 import Link from "next/link";
+import Image from "next/image";
 import { usePathname } from "next/navigation";
 import { useAuth } from "@/hooks/use-auth";
 import { useCandidatStats } from "@/hooks/use-candidat";
@@ -83,9 +84,9 @@ export default function AppSidebar({ open, onClose }: AppSidebarProps) {
       )}
 
       <aside
-        className={`fixed lg:sticky top-0 lg:top-[60px] left-0 h-screen lg:h-[calc(100vh-60px)] ${
+        className={`fixed lg:sticky top-0 lg:top-0 left-0 h-screen lg:h-screen ${
           collapsed ? "w-[80px]" : "w-[250px]"
-        } bg-[#060606]/90 backdrop-blur-xl border-r border-white/[0.05] z-50 flex flex-col transition-transform duration-300 lg:translate-x-0 ${
+        } bg-white/10 backdrop-blur-2xl shadow-[0_0_28px_rgba(0,0,0,0.55)] z-50 flex flex-col transition-transform duration-300 lg:translate-x-0 ${
           open ? "translate-x-0" : "-translate-x-full"
         }`}
       >
@@ -99,8 +100,27 @@ export default function AppSidebar({ open, onClose }: AppSidebarProps) {
           </button>
         </div>
 
-        {/* Desktop collapse / expand button */}
-        <div className="hidden lg:flex items-center justify-end px-3 pt-3">
+        {/* Logo + bouton collapse (desktop) */}
+        <div className="hidden lg:flex items-center justify-between px-3 pt-4 pb-2">
+          <Link href="/app" className="flex items-center justify-center">
+            {collapsed ? (
+              <Image
+                src="/favicon.svg"
+                alt="TAP"
+                width={32}
+                height={32}
+                className="h-7 w-7"
+              />
+            ) : (
+              <Image
+                src="/images/logo-white.svg"
+                alt="TAP"
+                width={110}
+                height={32}
+                className="h-[26px] w-auto"
+              />
+            )}
+          </Link>
           <button
             type="button"
             onClick={() => setCollapsed((v) => !v)}
@@ -111,13 +131,14 @@ export default function AppSidebar({ open, onClose }: AppSidebarProps) {
           </button>
         </div>
 
-        <nav className="flex-1 px-3 py-4 space-y-0.5 overflow-y-auto">
+        <nav className="flex-1 pl-3 pr-0 py-4 space-y-0.5 overflow-y-auto">
           {!collapsed && (
             <div className="px-3 mb-4">
-            <span className="text-[9px] font-bold uppercase tracking-[3px] text-white/25">
-              Navigation
-            </span>
-          </div>
+              <span className="inline-flex items-center gap-2 text-[9px] font-semibold uppercase tracking-[3px] text-white/35">
+                <span className="w-1 h-1 rounded-full bg-tap-red shadow-[0_0_8px_rgba(202,27,40,0.9)]" />
+                Navigation
+              </span>
+            </div>
           )}
           {navItems.map((item) => {
             const isActive = pathname === item.href;
@@ -128,26 +149,20 @@ export default function AppSidebar({ open, onClose }: AppSidebarProps) {
             const disabled = isCandidat && !hasProfile && !isCandidatParam;
 
             const baseClasses = collapsed
-              ? "relative flex items-center justify-center px-3 py-2.5 rounded-xl transition-all duration-300 group"
-              : "relative flex items-center gap-3 px-3 py-2.5 rounded-xl text-[13px] transition-all duration-300 group";
+              ? "relative flex items-center justify-center px-3 py-2.5 rounded-l-full transition-all duration-300 group"
+              : "relative flex items-center gap-3 px-3 py-2.5 rounded-l-full text-[13px] transition-all duration-300 group";
             const activeClasses = isActive
-              ? "bg-tap-red/[0.08] text-tap-red font-medium"
-              : "text-white/45 hover:text-white/70 hover:bg-white/[0.04] font-normal";
+              ? "bg-white/10 text-tap-red font-medium shadow-[0_0_24px_rgba(0,0,0,0.7)]"
+              : "text-white/70 hover:text-white hover:bg-white/5";
             const disabledClasses =
               "opacity-40 cursor-not-allowed hover:bg-transparent hover:text-white/45";
 
             const content = (
               <>
                 {isActive && (
-                  <div className="absolute left-0 top-1/2 -translate-y-1/2 w-[3px] h-[18px] bg-tap-red rounded-r-full shadow-[0_0_8px_rgba(202,27,40,0.5)]" />
+                  <div className="absolute left-0 top-1/2 -translate-y-1/2 w-[3px] h-[18px] bg-tap-red rounded-full shadow-[0_0_12px_rgba(202,27,40,0.8)] animate-pulse" />
                 )}
-                <div
-                  className={`w-8 h-8 rounded-lg flex items-center justify-center transition-all duration-300 ${
-                    isActive
-                      ? "bg-tap-red/10"
-                      : "bg-white/[0.03] group-hover:bg-white/[0.06]"
-                  }`}
-                >
+                <div className="w-8 h-8 flex items-center justify-center transition-colors duration-300">
                   <Icon size={16} strokeWidth={isActive ? 2 : 1.5} />
                 </div>
                 {!collapsed && (
