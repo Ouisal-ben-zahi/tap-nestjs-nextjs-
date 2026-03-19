@@ -1,10 +1,22 @@
+"use client";
+
+import { useDashboardTheme } from "@/hooks/use-dashboard-theme";
+
 export function Skeleton({ className = '' }: { className?: string }) {
-  return <div className={`animate-pulse bg-zinc-800 rounded ${className}`} />;
+  const theme = useDashboardTheme();
+  const isLight = theme === "light";
+  return <div className={`animate-pulse rounded ${isLight ? "bg-black/10" : "bg-zinc-800"} ${className}`} />;
 }
 
 export function StatCardSkeleton() {
+  const theme = useDashboardTheme();
+  const isLight = theme === "light";
   return (
-    <div className="bg-zinc-900/50 border border-zinc-800 rounded-xl p-6">
+    <div
+      className={`rounded-xl p-6 ${
+        isLight ? "bg-white border border-tap-red/40" : "bg-zinc-900/50 border border-zinc-800"
+      }`}
+    >
       <Skeleton className="h-4 w-24 mb-3" />
       <Skeleton className="h-8 w-16 mb-2" />
       <Skeleton className="h-3 w-32" />

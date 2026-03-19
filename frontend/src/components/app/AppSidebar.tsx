@@ -6,6 +6,7 @@ import Image from "next/image";
 import { usePathname } from "next/navigation";
 import { useAuth } from "@/hooks/use-auth";
 import { useCandidatStats } from "@/hooks/use-candidat";
+import { useDashboardTheme } from "@/hooks/use-dashboard-theme";
 import {
   LayoutDashboard,
   FileText,
@@ -57,6 +58,8 @@ export default function AppSidebar({ open, onClose }: AppSidebarProps) {
   const { user, logout } = useAuth();
   const isCandidat = user?.role === "candidat";
   const [collapsed, setCollapsed] = useState(false);
+  const theme = useDashboardTheme();
+  const isLight = theme === "light";
 
   // Pour les candidats, on vérifie si un profil existe en base
   const statsQuery = useCandidatStats();
@@ -86,7 +89,11 @@ export default function AppSidebar({ open, onClose }: AppSidebarProps) {
       <aside
         className={`fixed lg:sticky top-0 lg:top-0 left-0 h-screen lg:h-screen ${
           collapsed ? "w-[80px]" : "w-[250px]"
-        } bg-white/10 backdrop-blur-2xl shadow-[0_0_28px_rgba(0,0,0,0.55)] z-50 flex flex-col transition-transform duration-300 lg:translate-x-0 ${
+        } ${
+          isLight
+            ? "bg-tap-red text-white border-r border-tap-red/60"
+            : "bg-zinc-900/95 backdrop-blur-2xl shadow-[0_0_28px_rgba(0,0,0,0.55)] border-r border-white/[0.08]"
+        } z-50 flex flex-col transition-transform duration-300 lg:translate-x-0 ${
           open ? "translate-x-0" : "-translate-x-full"
         }`}
       >
@@ -94,7 +101,11 @@ export default function AppSidebar({ open, onClose }: AppSidebarProps) {
         <div className="lg:hidden flex items-center justify-end p-3">
           <button
             onClick={onClose}
-            className="w-8 h-8 flex items-center justify-center rounded-lg text-white/30 hover:text-white hover:bg-white/[0.06] transition-colors"
+            className={`w-8 h-8 flex items-center justify-center rounded-lg transition-colors ${
+              isLight
+                ? "text-white/80 hover:bg-white/10"
+                : "text-white/30 hover:text-white hover:bg-white/[0.06]"
+            }`}
           >
             <X size={16} />
           </button>
@@ -124,18 +135,24 @@ export default function AppSidebar({ open, onClose }: AppSidebarProps) {
           <button
             type="button"
             onClick={() => setCollapsed((v) => !v)}
-            className="w-8 h-8 flex items-center justify-center rounded-lg text-white/30 hover:text-white hover:bg-white/[0.06] transition-colors"
+            className={`w-8 h-8 flex items-center justify-center rounded-lg transition-colors ${
+              isLight
+                ? "text-white/80 hover:bg-white/10"
+                : "text-white/30 hover:text-white hover:bg-white/[0.06]"
+            }`}
             aria-label="Basculer la taille de la barre latérale"
           >
             <Menu size={16} />
           </button>
         </div>
 
-        <nav className="flex-1 pl-3 pr-0 py-4 space-y-0.5 overflow-y-auto">
+        <nav className="flex-1 pl-3 pr-0 py-4 space-y-0.5 overflow-y-auto [scrollbar-width:none] [&::-webkit-scrollbar]:hidden">
           {!collapsed && (
             <div className="px-3 mb-4">
-              <span className="inline-flex items-center gap-2 text-[9px] font-semibold uppercase tracking-[3px] text-white/35">
-                <span className="w-1 h-1 rounded-full bg-tap-red shadow-[0_0_8px_rgba(202,27,40,0.9)]" />
+              <span
+                className="inline-flex items-center gap-2 text-[9px] font-semibold uppercase tracking-[3px] text-white/70"
+              >
+                <span className="w-1 h-1 rounded-full bg-white shadow-[0_0_8px_rgba(255,255,255,0.9)]" />
                 Navigation
               </span>
             </div>
@@ -152,27 +169,47 @@ export default function AppSidebar({ open, onClose }: AppSidebarProps) {
               ? "relative flex items-center justify-center px-3 py-2.5 rounded-l-full transition-all duration-300 group"
               : "relative flex items-center gap-3 px-3 py-2.5 rounded-l-full text-[13px] transition-all duration-300 group";
             const activeClasses = isActive
-              ? "bg-white/10 text-tap-red font-medium shadow-[0_0_24px_rgba(0,0,0,0.7)]"
-              : "text-white/70 hover:text-white hover:bg-white/5";
+              ? isLight
+                ? "bg-white text-tap-red font-medium shadow-[0_8px_20px_rgba(0,0,0,0.15)]"
+                : "bg-[#0b0b0d] text-white font-medium shadow-[0_0_24px_rgba(0,0,0,0.45)]"
+              : isLight
+                ? "text-white/80 hover:text-white hover:bg-white/10"
+                : "text-white/70 hover:text-white hover:bg-white/5";
             const disabledClasses =
               "opacity-40 cursor-not-allowed hover:bg-transparent hover:text-white/45";
 
             const content = (
               <>
                 {isActive && (
-                  <div className="absolute left-0 top-1/2 -translate-y-1/2 w-[3px] h-[18px] bg-tap-red rounded-full shadow-[0_0_12px_rgba(202,27,40,0.8)] animate-pulse" />
+                  <div
+                    className={`absolute left-0 top-1/2 -translate-y-1/2 w-[3px] h-[18px] rounded-full animate-pulse ${
+                      isLight
+                        ? "bg-white shadow-[0_0_12px_rgba(255,255,255,0.9)]"
+                        : "bg-tap-red shadow-[0_0_12px_rgba(202,27,40,0.8)]"
+                    }`}
+                  />
                 )}
                 <div className="w-8 h-8 flex items-center justify-center transition-colors duration-300">
-                  <Icon size={16} strokeWidth={isActive ? 2 : 1.5} />
+                  <Icon
+                    size={16}
+                    strokeWidth={isActive ? 2 : 1.5}
+                    className={
+                      isLight
+                        ? isActive
+                          ? "text-tap-red"
+                          : "text-white"
+                        : "text-white"
+                    }
+                  />
                 </div>
                 {!collapsed && (
                   <>
                 <span className="flex-1">{item.label}</span>
                 {disabled && (
-                  <span className="ml-2 text-[10px] uppercase tracking-[1px] text-white/30">
+                  <span className="ml-2 text-[10px] uppercase tracking-[1px] text-white/40">
                     Inactif
                   </span>
-                    )}
+                )}
                   </>
                 )}
               </>
@@ -203,17 +240,31 @@ export default function AppSidebar({ open, onClose }: AppSidebarProps) {
         </nav>
 
         {/* Footer */}
-        <div className="p-3 border-t border-white/[0.05] space-y-2">
+        <div
+          className={`p-3 border-t space-y-2 ${
+            isLight ? "border-white/20" : "border-white/[0.05]"
+          }`}
+        >
           <button
             onClick={handleLogout}
-            className={`w-full flex items-center px-3 py-2.5 rounded-xl text-[12px] text-white/40 hover:text-tap-red/80 hover:bg-tap-red/[0.06] transition-all duration-300 ${
+            className={`w-full flex items-center px-3 py-2.5 rounded-xl text-[12px] transition-all duration-300 ${
               collapsed ? "justify-center" : "gap-2.5"
-            }`}
+            } ${isLight ? "hover:bg-white/10" : "hover:bg-red-500/10"}`}
           >
-            <div className="w-8 h-8 rounded-lg flex items-center justify-center bg-white/[0.03] group-hover:bg-white/[0.06] transition-colors">
-            <LogOut size={14} />
+            <div
+              className={`w-8 h-8 rounded-lg flex items-center justify-center transition-colors ${
+                isLight ? "bg-white/10" : "bg-white/[0.03]"
+              }`}
+            >
+              <LogOut size={14} className={isLight ? "text-white" : "text-white/70"} />
             </div>
-            {!collapsed && <span>Quitter</span>}
+            {!collapsed && (
+              <span
+                className={isLight ? "text-white/80 hover:text-white" : "text-white/40 hover:text-tap-red/80"}
+              >
+                Quitter
+              </span>
+            )}
           </button>
         </div>
       </aside>

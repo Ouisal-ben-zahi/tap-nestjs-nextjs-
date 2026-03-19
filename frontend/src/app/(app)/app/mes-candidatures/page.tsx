@@ -7,18 +7,25 @@ import EmptyState from "@/components/ui/EmptyState";
 import ErrorState from "@/components/ui/ErrorState";
 import { Skeleton } from "@/components/ui/Skeleton";
 import { formatRelative, statusBg } from "@/lib/utils";
+import { useDashboardTheme } from "@/hooks/use-dashboard-theme";
 
 export default function MesCandidaturesPage() {
   const appsQuery = useCandidatApplications();
   const applications = appsQuery.data?.applications || [];
+  const theme = useDashboardTheme();
+  const isLight = theme === "light";
 
   return (
     <div className="space-y-6">
       <div>
-        <h1 className="text-[26px] sm:text-[30px] font-bold text-white tracking-[-0.03em]">
+        <h1
+          className={`text-[26px] sm:text-[30px] font-bold tracking-[-0.03em] ${
+            isLight ? "text-black" : "text-white"
+          }`}
+        >
           Mes candidatures
         </h1>
-        <p className="text-white/50 text-[14px] mt-1">
+        <p className={`text-[14px] mt-1 ${isLight ? "text-black/60" : "text-white/50"}`}>
           Retrouvez ici la liste des offres auxquelles vous avez postulé.
         </p>
       </div>
@@ -50,13 +57,17 @@ export default function MesCandidaturesPage() {
           {applications.map((app) => (
             <div
               key={app.id}
-              className="flex items-center justify-between gap-4 bg-zinc-900/50 border border-white/[0.06] rounded-xl px-5 py-4 hover:border-white/[0.1] transition"
+              className={`flex items-center justify-between gap-4 rounded-xl px-5 py-4 transition ${
+                isLight
+                  ? "bg-white border border-tap-red/40 hover:border-tap-red/70"
+                  : "bg-zinc-900/50 border border-white/[0.06] hover:border-white/[0.1]"
+              }`}
             >
               <div className="flex-1 min-w-0">
-                <p className="text-[14px] font-medium text-white truncate">
+                <p className={`text-[14px] font-medium truncate ${isLight ? "text-black" : "text-white"}`}>
                   {app.jobTitle ?? "Offre sans titre"}
                 </p>
-                <p className="text-[12px] text-white/40">{app.company}</p>
+                <p className={`text-[12px] ${isLight ? "text-black/70" : "text-white/40"}`}>{app.company}</p>
               </div>
               <div className="flex items-center gap-3 shrink-0">
                 <span
@@ -67,7 +78,7 @@ export default function MesCandidaturesPage() {
                   {app.status ?? "Inconnu"}
                 </span>
                 {app.validatedAt && (
-                  <span className="text-[11px] text-white/30">
+                  <span className={`text-[11px] ${isLight ? "text-black/70" : "text-white/30"}`}>
                     {formatRelative(app.validatedAt)}
                   </span>
                 )}

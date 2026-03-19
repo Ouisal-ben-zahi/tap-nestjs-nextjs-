@@ -9,6 +9,7 @@ import ErrorState from "@/components/ui/ErrorState";
 import { Skeleton } from "@/components/ui/Skeleton";
 import { FolderOpen, FileText, Award, Briefcase, Upload } from "lucide-react";
 import PortfolioLongChatModal from "@/components/app/portfolio/PortfolioLongChatModal";
+import { useDashboardTheme } from "@/hooks/use-dashboard-theme";
 
 type Tab = "cv" | "talentcard" | "portfolio";
 
@@ -21,6 +22,8 @@ const tabs: { key: Tab; label: string; icon: typeof FileText }[] = [
 export default function MesFichiersPage() {
   const [activeTab, setActiveTab] = useState<Tab>("cv");
   const { isCandidat } = useAuth();
+  const theme = useDashboardTheme();
+  const isLight = theme === "light";
 
   const cvQuery = useCandidatCvFiles();
   const talentcardQuery = useCandidatTalentcardFiles();
@@ -58,7 +61,7 @@ export default function MesFichiersPage() {
   return (
     <div className="max-w-[1100px] mx-auto">
       {/* Header */}
-      <div className="relative mb-8 pb-8 border-b border-white/[0.04]">
+      <div className={`relative mb-8 pb-8 ${isLight ? "border-b border-black/10" : "border-b border-white/[0.04]"}`}>
         <div className="absolute top-[-80px] left-[-100px] w-[350px] h-[350px] rounded-full bg-[radial-gradient(circle,rgba(202,27,40,0.08),transparent_60%)] blur-3xl pointer-events-none" />
         <div className="relative">
           <div className="inline-flex items-center gap-2.5 px-5 py-2.5 mb-4 rounded-full bg-tap-red/[0.08] border border-tap-red/15">
@@ -67,17 +70,25 @@ export default function MesFichiersPage() {
               Mes fichiers
             </span>
           </div>
-          <h1 className="text-[28px] sm:text-[36px] font-bold text-white tracking-[-0.04em] font-heading">
+          <h1
+            className={`text-[28px] sm:text-[36px] font-bold tracking-[-0.04em] font-heading ${
+              isLight ? "text-black" : "text-white"
+            }`}
+          >
             Documents & fichiers
           </h1>
-          <p className="text-white/45 text-[14px] mt-2 font-light">
+          <p className={`text-[14px] mt-2 font-light ${isLight ? "text-black/60" : "text-white/45"}`}>
             Retrouvez vos CV, talent cards et portfolios générés par l&apos;IA.
           </p>
         </div>
       </div>
 
       {/* Tabs */}
-      <div className="flex gap-1 mb-8 p-1 bg-zinc-900/50 rounded-xl border border-white/[0.06] w-fit">
+      <div
+        className={`flex gap-1 mb-8 p-1 rounded-xl border w-fit ${
+          isLight ? "bg-white border-tap-red/40" : "bg-zinc-900/50 border border-white/[0.06]"
+        }`}
+      >
         {tabs.map((tab) => {
           const Icon = tab.icon;
           return (
@@ -86,8 +97,12 @@ export default function MesFichiersPage() {
               onClick={() => setActiveTab(tab.key)}
               className={`flex items-center gap-2 px-4 py-2.5 rounded-lg text-[13px] transition-all duration-300 ${
                 activeTab === tab.key
-                  ? "bg-tap-red/10 text-tap-red font-medium"
-                  : "text-white/40 hover:text-white/60 hover:bg-white/[0.04]"
+                  ? isLight
+                    ? "bg-tap-red text-white font-medium"
+                    : "bg-tap-red/10 text-tap-red font-medium"
+                  : isLight
+                    ? "text-black/70 hover:bg-black/5"
+                    : "text-white/40 hover:text-white/60 hover:bg-white/[0.04]"
               }`}
             >
               <Icon size={15} />
@@ -107,25 +122,35 @@ export default function MesFichiersPage() {
             onDrop={handleDrop}
             className={`relative border-2 border-dashed rounded-2xl p-8 text-center transition-all duration-300 ${
               dragOver
-                ? "border-tap-red/50 bg-tap-red/5"
-                : "border-white/[0.08] hover:border-white/[0.15] bg-zinc-900/30"
+                ? "border-tap-red/60 bg-tap-red/10"
+                : isLight
+                  ? "border-tap-red/40 bg-white hover:border-tap-red/70"
+                  : "border-white/[0.08] hover:border-white/[0.15] bg-zinc-900/30"
             }`}
           >
             {uploadCv.isPending ? (
               <div className="flex items-center justify-center gap-3">
                 <div className="w-6 h-6 border-2 border-tap-red border-t-transparent rounded-full animate-spin" />
-                <span className="text-white/60 text-sm">Upload en cours...</span>
+                <span className={`${isLight ? "text-black/70" : "text-white/60"} text-sm`}>Upload en cours...</span>
               </div>
             ) : (
               <>
-                <Upload className="w-8 h-8 text-white/20 mx-auto mb-3" />
-                <p className="text-white/50 text-sm mb-1">Glissez votre CV ici ou</p>
-                <label className="inline-flex items-center gap-2 px-4 py-2 bg-tap-red/10 hover:bg-tap-red/20 text-tap-red rounded-lg text-sm cursor-pointer transition">
+                <Upload
+                  className={`w-8 h-8 mx-auto mb-3 ${
+                    isLight ? "text-tap-red" : "text-white/20"
+                  }`}
+                />
+                <p className={`text-sm mb-1 ${isLight ? "text-black/70" : "text-white/50"}`}>
+                  Glissez votre CV ici ou
+                </p>
+                <label
+                  className="inline-flex items-center gap-2 px-4 py-2 bg-tap-red text-white rounded-lg text-sm cursor-pointer transition hover:bg-tap-red-hover"
+                >
                   <Upload size={14} />
                   Choisir un fichier
                   <input type="file" accept=".pdf" onChange={handleFileSelect} className="hidden" />
                 </label>
-                <p className="text-white/25 text-xs mt-2">PDF uniquement</p>
+                <p className={`text-xs mt-2 ${isLight ? "text-black/50" : "text-white/25"}`}>PDF uniquement</p>
               </>
             )}
           </div>
@@ -173,18 +198,22 @@ export default function MesFichiersPage() {
       {/* Portfolio Tab */}
       {activeTab === "portfolio" && (
         <div>
-          <div className="flex items-center justify-between gap-4 mb-5">
-            <div className="text-white/40 text-[13px]">
-              Générez votre portfolio long si vous souhaitez une version détaillée.
+            <div className="flex items-center justify-between gap-4 mb-5">
+              <div className={`text-[13px] ${isLight ? "text-black/70" : "text-white/40"}`}>
+                Générez votre portfolio long si vous souhaitez une version détaillée.
+              </div>
+              <button
+                onClick={() => setPortfolioLongModalOpen(true)}
+                className={`inline-flex items-center gap-2 px-4 py-2 rounded-lg text-[13px] transition disabled:opacity-50 disabled:cursor-not-allowed ${
+                  isLight
+                    ? "bg-white border border-tap-red/40 text-black hover:border-tap-red/70"
+                    : "border border-white/[0.08] bg-zinc-900/40 hover:bg-zinc-900/60 text-white/80 hover:text-white"
+                }`}
+              >
+                <Briefcase size={14} />
+                Générer le portfolio long
+              </button>
             </div>
-            <button
-              onClick={() => setPortfolioLongModalOpen(true)}
-              className="inline-flex items-center gap-2 px-4 py-2 rounded-lg text-[13px] border border-white/[0.08] bg-zinc-900/40 hover:bg-zinc-900/60 text-white/80 hover:text-white transition disabled:opacity-50 disabled:cursor-not-allowed"
-            >
-              <Briefcase size={14} />
-              Générer le portfolio long
-            </button>
-          </div>
 
           {portfolioQuery.isLoading ? (
             <div className="grid gap-3">{Array.from({ length: 3 }).map((_, i) => <Skeleton key={i} className="h-20 w-full" />)}</div>

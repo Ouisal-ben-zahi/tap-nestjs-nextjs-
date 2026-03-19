@@ -8,6 +8,7 @@ import ErrorState from "@/components/ui/ErrorState";
 import { Skeleton } from "@/components/ui/Skeleton";
 import { BarChart3, Upload, FileText, TrendingUp } from "lucide-react";
 import Link from "next/link";
+import { useDashboardTheme } from "@/hooks/use-dashboard-theme";
 
 const DIMENSION_COLORS = [
   "bg-red-500",
@@ -20,6 +21,8 @@ const DIMENSION_COLORS = [
 
 export default function ScoringAppPage() {
   const { isCandidat } = useAuth();
+  const theme = useDashboardTheme();
+  const isLight = theme === "light";
   const statsQuery = useCandidatStats();
   const scoreQuery = useCandidatScore();
 
@@ -60,7 +63,7 @@ export default function ScoringAppPage() {
   return (
     <div className="max-w-[1100px] mx-auto">
       {/* Header */}
-      <div className="relative mb-8 pb-8 border-b border-white/[0.04]">
+      <div className={`relative mb-8 pb-8 ${isLight ? "border-b border-black/10" : "border-b border-white/[0.04]"}`}>
         <div className="absolute top-[-80px] left-[-100px] w-[350px] h-[350px] rounded-full bg-[radial-gradient(circle,rgba(202,27,40,0.08),transparent_60%)] blur-3xl pointer-events-none" />
         <div className="relative">
           <div className="inline-flex items-center gap-2.5 px-5 py-2.5 mb-4 rounded-full bg-tap-red/[0.08] border border-tap-red/15">
@@ -69,10 +72,10 @@ export default function ScoringAppPage() {
               Score d&apos;employabilité
             </span>
           </div>
-          <h1 className="text-[28px] sm:text-[36px] font-bold text-white tracking-[-0.04em] font-heading">
+          <h1 className={`text-[28px] sm:text-[36px] font-bold tracking-[-0.04em] font-heading ${isLight ? "text-black" : "text-white"}`}>
             Votre score
           </h1>
-          <p className="text-white/45 text-[14px] mt-2 font-light">
+          <p className={`text-[14px] mt-2 font-light ${isLight ? "text-black/60" : "text-white/45"}`}>
             Évaluation détaillée de votre profil basée sur le marché de l&apos;emploi marocain.
           </p>
         </div>
@@ -112,25 +115,25 @@ export default function ScoringAppPage() {
         <>
           <div className="grid grid-cols-1 lg:grid-cols-2 gap-8 mb-8">
             {/* Score Ring */}
-            <div className="flex flex-col items-center justify-center py-8 bg-zinc-900/50 border border-white/[0.06] rounded-2xl">
+            <div className={`flex flex-col items-center justify-center py-8 rounded-2xl ${isLight ? "bg-white border border-tap-red/40" : "bg-zinc-900/50 border border-white/[0.06]"}`}>
               <ScoreRing score={score} size={200} label="Score global" />
-              <div className="mt-6 flex items-center gap-2 text-[13px] text-white/40">
+              <div className={`mt-6 flex items-center gap-2 text-[13px] ${isLight ? "text-black/60" : "text-white/40"}`}>
                 <TrendingUp size={14} className="text-green-500" />
                 <span>Basé sur votre activité et votre profil</span>
               </div>
             </div>
 
             {/* Dimensions */}
-            <div className="bg-zinc-900/50 border border-white/[0.06] rounded-2xl p-6 sm:p-8">
-              <h3 className="text-[13px] uppercase tracking-[2px] text-white/50 font-semibold mb-6">Dimensions évaluées</h3>
+            <div className={`rounded-2xl p-6 sm:p-8 ${isLight ? "bg-white border border-tap-red/40" : "bg-zinc-900/50 border border-white/[0.06]"}`}>
+              <h3 className={`text-[13px] uppercase tracking-[2px] font-semibold mb-6 ${isLight ? "text-black" : "text-white/50"}`}>Dimensions évaluées</h3>
               <div className="space-y-5">
                 {dimensions.map((dim) => (
                   <div key={dim.label}>
                     <div className="flex justify-between text-[13px] mb-2">
-                      <span className="text-white/60">{dim.label}</span>
-                      <span className="text-white/80 font-medium">{dim.value}/100</span>
+                      <span className={isLight ? "text-black/70" : "text-white/60"}>{dim.label}</span>
+                      <span className={isLight ? "text-black font-medium" : "text-white/80 font-medium"}>{dim.value}/100</span>
                     </div>
-                    <div className="h-2.5 bg-zinc-800 rounded-full overflow-hidden">
+                    <div className={`h-2.5 rounded-full overflow-hidden ${isLight ? "bg-black/10" : "bg-zinc-800"}`}>
                       <div
                         className={`h-full ${dim.color} rounded-full transition-all duration-1000 ease-out`}
                         style={{ width: `${dim.value}%` }}
@@ -143,17 +146,25 @@ export default function ScoringAppPage() {
           </div>
 
           {/* Tips */}
-          <div className="bg-zinc-900/50 border border-white/[0.06] rounded-2xl p-6">
-            <h3 className="text-[13px] uppercase tracking-[2px] text-white/50 font-semibold mb-4">Conseils pour améliorer votre score</h3>
+          <div className={`rounded-2xl p-6 ${isLight ? "bg-white border border-tap-red/40" : "bg-zinc-900/50 border border-white/[0.06]"}`}>
+            <h3 className={`text-[13px] uppercase tracking-[2px] font-semibold mb-4 ${isLight ? "text-black" : "text-white/50"}`}>Conseils pour améliorer votre score</h3>
             <div className="grid grid-cols-1 sm:grid-cols-3 gap-4">
               {[
                 { text: "Complétez votre profil en uploadant un CV détaillé", href: "/app/analyse-cv" },
                 { text: "Postulez à des offres qui correspondent à votre profil", href: "/app/matching" },
                 { text: "Suivez les formations recommandées par l'IA", href: "/app/formation" },
               ].map((tip, i) => (
-                <Link key={i} href={tip.href} className="flex items-start gap-3 p-4 rounded-xl bg-white/[0.02] border border-white/[0.04] hover:border-white/[0.1] transition group">
+                <Link
+                  key={i}
+                  href={tip.href}
+                  className={`flex items-start gap-3 p-4 rounded-xl transition group ${
+                    isLight
+                      ? "bg-white border border-tap-red/30 hover:border-tap-red/60"
+                      : "bg-white/[0.02] border border-white/[0.04] hover:border-white/[0.1]"
+                  }`}
+                >
                   <span className="w-6 h-6 rounded-full bg-tap-red/10 text-tap-red text-[11px] font-bold flex items-center justify-center shrink-0">{i + 1}</span>
-                  <p className="text-[12px] text-white/50 group-hover:text-white/70 transition-colors leading-relaxed">{tip.text}</p>
+                  <p className={`text-[12px] transition-colors leading-relaxed ${isLight ? "text-black/70 group-hover:text-black" : "text-white/50 group-hover:text-white/70"}`}>{tip.text}</p>
                 </Link>
               ))}
             </div>

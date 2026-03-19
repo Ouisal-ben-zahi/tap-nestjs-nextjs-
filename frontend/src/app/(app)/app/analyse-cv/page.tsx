@@ -9,9 +9,12 @@ import ErrorState from "@/components/ui/ErrorState";
 import { Skeleton } from "@/components/ui/Skeleton";
 import { FileText, Upload, Award, Briefcase, Loader2, ArrowRight } from "lucide-react";
 import Link from "next/link";
+import { useDashboardTheme } from "@/hooks/use-dashboard-theme";
 
 export default function AnalyseCvAppPage() {
   const { isCandidat } = useAuth();
+  const theme = useDashboardTheme();
+  const isLight = theme === "light";
   const cvQuery = useCandidatCvFiles();
   const [polling, setPolling] = useState(false);
   const talentcardQuery = useCandidatTalentcardFiles(polling ? 10000 : false);
@@ -58,7 +61,7 @@ export default function AnalyseCvAppPage() {
   return (
     <div className="max-w-[1100px] mx-auto">
       {/* Header */}
-      <div className="relative mb-8 pb-8 border-b border-white/[0.04]">
+      <div className={`relative mb-8 pb-8 ${isLight ? "border-b border-black/10" : "border-b border-white/[0.04]"}`}>
         <div className="absolute top-[-80px] left-[-100px] w-[350px] h-[350px] rounded-full bg-[radial-gradient(circle,rgba(202,27,40,0.08),transparent_60%)] blur-3xl pointer-events-none" />
         <div className="relative">
           <div className="inline-flex items-center gap-2.5 px-5 py-2.5 mb-4 rounded-full bg-tap-red/[0.08] border border-tap-red/15">
@@ -67,10 +70,10 @@ export default function AnalyseCvAppPage() {
               Analyse CV
             </span>
           </div>
-          <h1 className="text-[28px] sm:text-[36px] font-bold text-white tracking-[-0.04em] font-heading">
+          <h1 className={`text-[28px] sm:text-[36px] font-bold tracking-[-0.04em] font-heading ${isLight ? "text-black" : "text-white"}`}>
             Analyse de votre CV
           </h1>
-          <p className="text-white/45 text-[14px] mt-2 font-light">
+          <p className={`text-[14px] mt-2 font-light ${isLight ? "text-black/60" : "text-white/45"}`}>
             Uploadez votre CV et laissez notre IA extraire compétences, expériences et potentiel.
           </p>
         </div>
@@ -83,19 +86,21 @@ export default function AnalyseCvAppPage() {
         onDrop={handleDrop}
         className={`relative border-2 border-dashed rounded-2xl p-8 text-center transition-all duration-300 mb-8 ${
           dragOver
-            ? "border-tap-red/50 bg-tap-red/5"
-            : "border-white/[0.08] hover:border-white/[0.15] bg-zinc-900/30"
+            ? "border-tap-red/60 bg-tap-red/10"
+            : isLight
+              ? "border-tap-red/40 hover:border-tap-red/70 bg-white"
+              : "border-white/[0.08] hover:border-white/[0.15] bg-zinc-900/30"
         }`}
       >
         {uploadCv.isPending ? (
           <div className="flex items-center justify-center gap-3">
             <div className="w-6 h-6 border-2 border-tap-red border-t-transparent rounded-full animate-spin" />
-            <span className="text-white/60 text-sm">Upload et analyse en cours...</span>
+            <span className={`text-sm ${isLight ? "text-black/70" : "text-white/60"}`}>Upload et analyse en cours...</span>
           </div>
         ) : (
           <>
-            <Upload className="w-8 h-8 text-white/20 mx-auto mb-3" />
-            <p className="text-white/50 text-sm mb-1">Glissez votre CV ici ou</p>
+            <Upload className={`w-8 h-8 mx-auto mb-3 ${isLight ? "text-tap-red" : "text-white/20"}`} />
+            <p className={`text-sm mb-1 ${isLight ? "text-black/70" : "text-white/50"}`}>Glissez votre CV ici ou</p>
             <button
               onClick={() => fileRef.current?.click()}
               className="inline-flex items-center gap-2 px-4 py-2 bg-tap-red/10 hover:bg-tap-red/20 text-tap-red rounded-lg text-sm cursor-pointer transition"
@@ -104,7 +109,7 @@ export default function AnalyseCvAppPage() {
               Choisir un fichier
             </button>
             <input ref={fileRef} type="file" accept=".pdf" onChange={handleFileSelect} className="hidden" />
-            <p className="text-white/25 text-xs mt-2">PDF uniquement</p>
+            <p className={`text-xs mt-2 ${isLight ? "text-black/50" : "text-white/25"}`}>PDF uniquement</p>
           </>
         )}
       </div>
@@ -116,8 +121,8 @@ export default function AnalyseCvAppPage() {
             <Loader2 size={18} className="text-yellow-500 animate-spin" />
           </div>
           <div>
-            <h3 className="text-[14px] font-semibold text-white mb-1">Analyse en cours...</h3>
-            <p className="text-[13px] text-white/45 font-light">
+            <h3 className={`text-[14px] font-semibold mb-1 ${isLight ? "text-black" : "text-white"}`}>Analyse en cours...</h3>
+            <p className={`text-[13px] font-light ${isLight ? "text-black/70" : "text-white/45"}`}>
               Notre IA analyse votre CV. Vos Talent Cards seront disponibles sous peu. Vous pouvez revenir plus tard.
             </p>
           </div>
@@ -128,7 +133,7 @@ export default function AnalyseCvAppPage() {
       <div className="mb-8">
         <div className="flex items-center gap-3 mb-5">
           <div className="w-1 h-5 rounded-full bg-tap-red" />
-          <h2 className="text-[13px] uppercase tracking-[2px] text-white/50 font-semibold">Mes CV</h2>
+          <h2 className={`text-[13px] uppercase tracking-[2px] font-semibold ${isLight ? "text-black" : "text-white/50"}`}>Mes CV</h2>
         </div>
 
         {cvQuery.isLoading ? (
@@ -154,7 +159,7 @@ export default function AnalyseCvAppPage() {
       <div>
         <div className="flex items-center gap-3 mb-5">
           <div className="w-1 h-5 rounded-full bg-blue-500" />
-          <h2 className="text-[13px] uppercase tracking-[2px] text-white/50 font-semibold flex items-center gap-2">
+          <h2 className={`text-[13px] uppercase tracking-[2px] font-semibold flex items-center gap-2 ${isLight ? "text-black" : "text-white/50"}`}>
             <Award size={13} className="text-blue-500" /> Talent Cards
           </h2>
         </div>
@@ -190,7 +195,7 @@ export default function AnalyseCvAppPage() {
       <div className="mt-8">
         <div className="flex items-center gap-3 mb-5">
           <div className="w-1 h-5 rounded-full bg-green-500" />
-          <h2 className="text-[13px] uppercase tracking-[2px] text-white/50 font-semibold flex items-center gap-2">
+          <h2 className={`text-[13px] uppercase tracking-[2px] font-semibold flex items-center gap-2 ${isLight ? "text-black" : "text-white/50"}`}>
             <Briefcase size={13} className="text-green-500" /> Portfolio
           </h2>
         </div>
@@ -219,7 +224,7 @@ export default function AnalyseCvAppPage() {
 
       {/* Link to scoring */}
       {hasTalentCards && (
-        <div className="mt-8 pt-6 border-t border-white/[0.04]">
+        <div className={`mt-8 pt-6 ${isLight ? "border-t border-black/10" : "border-t border-white/[0.04]"}`}>
           <Link href="/app/scoring" className="inline-flex items-center gap-2 text-tap-red hover:text-tap-red-hover text-[13px] font-medium transition-colors group">
             Voir votre score d&apos;employabilité
             <ArrowRight size={14} className="group-hover:translate-x-1 transition-transform" />

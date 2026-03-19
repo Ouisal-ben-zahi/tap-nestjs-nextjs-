@@ -10,6 +10,7 @@ import { Skeleton } from "@/components/ui/Skeleton";
 import { Briefcase, Plus, X, Send, MapPin, Clock, DollarSign, Users, ChevronDown, CheckCircle2, CircleSlash2 } from "lucide-react";
 import { formatDate } from "@/lib/utils";
 import type { JobPayload } from "@/types/recruteur";
+import { useDashboardTheme } from "@/hooks/use-dashboard-theme";
 
 const CATEGORIES = ["Développement", "Design", "Marketing", "Commercial", "Finance", "RH", "Ingénierie", "Autre"];
 const NIVEAUX = ["Junior", "Intermédiaire", "Senior", "Lead", "Manager"];
@@ -89,6 +90,8 @@ export default function OffresPage() {
   const [city, setCity] = useState<string>("");
   const [countryOpen, setCountryOpen] = useState(false);
   const [cityOpen, setCityOpen] = useState(false);
+  const theme = useDashboardTheme();
+  const isLight = theme === "light";
 
   if (!isRecruteur) {
     return (
@@ -123,7 +126,7 @@ export default function OffresPage() {
   return (
     <div className="max-w-[1100px] mx-auto">
       {/* Header */}
-      <div className="relative mb-8 pb-8 border-b border-white/[0.04]">
+      <div className={`relative mb-8 pb-8 ${isLight ? "border-b border-black/10" : "border-b border-white/[0.04]"}`}>
         <div className="absolute top-[-80px] left-[-100px] w-[350px] h-[350px] rounded-full bg-[radial-gradient(circle,rgba(202,27,40,0.08),transparent_60%)] blur-3xl pointer-events-none" />
         <div className="relative flex items-start justify-between">
           <div>
@@ -133,10 +136,14 @@ export default function OffresPage() {
                 Mes offres
               </span>
             </div>
-            <h1 className="text-[28px] sm:text-[36px] font-bold text-white tracking-[-0.04em] font-heading">
+            <h1
+              className={`text-[28px] sm:text-[36px] font-bold tracking-[-0.04em] font-heading ${
+                isLight ? "text-black" : "text-white"
+              }`}
+            >
               Offres d&apos;emploi
             </h1>
-            <p className="text-white/45 text-[14px] mt-2 font-light">
+            <p className={`text-[14px] mt-2 font-light ${isLight ? "text-black/60" : "text-white/45"}`}>
               Créez et gérez vos offres. Les candidats sont matchés par l&apos;IA.
             </p>
           </div>
@@ -152,11 +159,20 @@ export default function OffresPage() {
 
       {/* Job Form */}
       {showForm && (
-        <form onSubmit={handleSubmit} className="bg-zinc-900/50 border border-white/[0.06] rounded-2xl p-6 sm:p-8 mb-8 space-y-5">
+        <form
+          onSubmit={handleSubmit}
+          className={`rounded-2xl p-6 sm:p-8 mb-8 space-y-5 ${
+            isLight ? "bg-white border border-tap-red/40" : "bg-zinc-900/50 border border-white/[0.06]"
+          }`}
+        >
           <div className="grid grid-cols-1 sm:grid-cols-2 gap-5">
             {/* Titre sur toute la largeur */}
             <div className="sm:col-span-2">
-              <label className="block text-[10px] font-semibold uppercase tracking-[2px] text-white/40 mb-2">
+              <label
+                className={`block text-[10px] font-semibold uppercase tracking-[2px] mb-2 ${
+                  isLight ? "text-black/70" : "text-white/40"
+                }`}
+              >
                 Titre du poste
               </label>
               <input
@@ -170,7 +186,11 @@ export default function OffresPage() {
             
             {/* Identité entreprise */}
             <div>
-              <label className="block text-[10px] font-semibold uppercase tracking-[2px] text-white/40 mb-2">
+              <label
+                className={`block text-[10px] font-semibold uppercase tracking-[2px] mb-2 ${
+                  isLight ? "text-black/70" : "text-white/40"
+                }`}
+              >
                 Entreprise
               </label>
               <input
@@ -182,7 +202,11 @@ export default function OffresPage() {
             </div>
 
             <div>
-              <label className="block text-[10px] font-semibold uppercase tracking-[2px] text-white/40 mb-2">
+              <label
+                className={`block text-[10px] font-semibold uppercase tracking-[2px] mb-2 ${
+                  isLight ? "text-black/70" : "text-white/40"
+                }`}
+              >
                 Téléphone (optionnel)
               </label>
               <input
@@ -197,7 +221,11 @@ export default function OffresPage() {
             <div className="sm:col-span-2 grid grid-cols-1 sm:grid-cols-2 gap-4">
               {/* Pays */}
               <div className="relative">
-                <label className="block text-[10px] font-semibold uppercase tracking-[2px] text-white/40 mb-2">
+                <label
+                  className={`block text-[10px] font-semibold uppercase tracking-[2px] mb-2 ${
+                    isLight ? "text-black/70" : "text-white/40"
+                  }`}
+                >
                   Pays
                 </label>
                 <button
@@ -206,12 +234,16 @@ export default function OffresPage() {
                     setCountryOpen((v) => !v);
                     setCityOpen(false);
                   }}
-                  className="input-premium w-full flex items-center justify-between cursor-pointer text-left bg-white/[0.03] hover:bg-white/[0.06] border border-white/[0.08] rounded-xl"
+                  className={`input-premium w-full flex items-center justify-between cursor-pointer text-left rounded-xl ${
+                    isLight
+                      ? "bg-white border border-black/10 hover:border-tap-red/40"
+                      : "bg-white/[0.03] hover:bg-white/[0.06] border border-white/[0.08]"
+                  }`}
                 >
-                  <span className="text-[13px] text-white/80 truncate">
+                  <span className={`text-[13px] truncate ${isLight ? "text-black" : "text-white/80"}`}>
                     {country || "Sélectionnez un pays"}
                   </span>
-                  <ChevronDown size={14} className="text-white/45" />
+                  <ChevronDown size={14} className={isLight ? "text-black/60" : "text-white/45"} />
                 </button>
 
                 {countryOpen && (
@@ -245,7 +277,11 @@ export default function OffresPage() {
 
               {/* Ville */}
               <div className="relative">
-                <label className="block text-[10px] font-semibold uppercase tracking-[2px] text-white/40 mb-2">
+                <label
+                  className={`block text-[10px] font-semibold uppercase tracking-[2px] mb-2 ${
+                    isLight ? "text-black/70" : "text-white/40"
+                  }`}
+                >
                   Ville
                 </label>
                 <button
@@ -257,17 +293,21 @@ export default function OffresPage() {
                   }}
                   className={`input-premium w-full flex items-center justify-between cursor-pointer text-left rounded-xl border ${
                     country
-                      ? "bg-white/[0.03] hover:bg-white/[0.06] border-white/[0.08]"
-                      : "bg-white/[0.01] border-white/[0.04] text-white/30 cursor-not-allowed"
+                      ? isLight
+                        ? "bg-white border border-black/10 hover:border-tap-red/40"
+                        : "bg-white/[0.03] hover:bg-white/[0.06] border-white/[0.08]"
+                      : isLight
+                        ? "bg-white border border-black/10 text-black/40 cursor-not-allowed"
+                        : "bg-white/[0.01] border-white/[0.04] text-white/30 cursor-not-allowed"
                   }`}
                   disabled={!country}
                 >
-                  <span className="text-[13px] truncate">
+                  <span className={`text-[13px] truncate ${isLight ? "text-black" : ""}`}>
                     {country
                       ? city || "Sélectionnez une ville"
                       : "Choisissez un pays d’abord"}
                   </span>
-                  <ChevronDown size={14} className="text-white/45" />
+                  <ChevronDown size={14} className={isLight ? "text-black/60" : "text-white/45"} />
                 </button>
 
                 {country && cityOpen && (
@@ -301,7 +341,11 @@ export default function OffresPage() {
 
             {/* Type de poste */}
             <div className="relative">
-              <label className="block text-[10px] font-semibold uppercase tracking-[2px] text-white/40 mb-2">
+              <label
+                className={`block text-[10px] font-semibold uppercase tracking-[2px] mb-2 ${
+                  isLight ? "text-black/70" : "text-white/40"
+                }`}
+              >
                 Contrat
               </label>
               <button
@@ -311,12 +355,16 @@ export default function OffresPage() {
                   setCategorieOpen(false);
                   setNiveauOpen(false);
                 }}
-                className="input-premium w-full flex items-center justify-between cursor-pointer text-left bg-white/[0.03] hover:bg-white/[0.06] border border-white/[0.08] rounded-xl"
+                  className={`input-premium w-full flex items-center justify-between cursor-pointer text-left rounded-xl ${
+                    isLight
+                      ? "bg-white border border-black/10 hover:border-tap-red/40"
+                      : "bg-white/[0.03] hover:bg-white/[0.06] border border-white/[0.08]"
+                  }`}
               >
-                <span className="text-[13px] text-white/80 truncate">
+                <span className={`text-[13px] truncate ${isLight ? "text-black" : "text-white/80"}`}>
                   {form.contrat ?? ""}
                 </span>
-                <ChevronDown size={14} className="text-white/45" />
+                <ChevronDown size={14} className={isLight ? "text-black/60" : "text-white/45"} />
               </button>
 
               {contratOpen && (
@@ -348,7 +396,11 @@ export default function OffresPage() {
             </div>
 
             <div className="relative">
-              <label className="block text-[10px] font-semibold uppercase tracking-[2px] text-white/40 mb-2">
+              <label
+                className={`block text-[10px] font-semibold uppercase tracking-[2px] mb-2 ${
+                  isLight ? "text-black/70" : "text-white/40"
+                }`}
+              >
                 Catégorie
               </label>
               <button
@@ -360,10 +412,10 @@ export default function OffresPage() {
                 }}
                 className="input-premium w-full flex items-center justify-between cursor-pointer text-left bg-white/[0.03] hover:bg-white/[0.06] border border-white/[0.08] rounded-xl"
               >
-                <span className="text-[13px] text-white/80 truncate">
+                <span className={`text-[13px] truncate ${isLight ? "text-black" : "text-white/80"}`}>
                   {form.categorie_profil}
                 </span>
-                <ChevronDown size={14} className="text-white/45" />
+                <ChevronDown size={14} className={isLight ? "text-black/60" : "text-white/45"} />
               </button>
 
               {categorieOpen && (
@@ -396,7 +448,11 @@ export default function OffresPage() {
 
             {/* Niveau + Expérience minimum */}
             <div className="relative">
-              <label className="block text-[10px] font-semibold uppercase tracking-[2px] text-white/40 mb-2">
+              <label
+                className={`block text-[10px] font-semibold uppercase tracking-[2px] mb-2 ${
+                  isLight ? "text-black/70" : "text-white/40"
+                }`}
+              >
                 Niveau
               </label>
               <button
@@ -408,10 +464,10 @@ export default function OffresPage() {
                 }}
                 className="input-premium w-full flex items-center justify-between cursor-pointer text-left bg-white/[0.03] hover:bg-white/[0.06] border border-white/[0.08] rounded-xl"
               >
-                <span className="text-[13px] text-white/80 truncate">
+                <span className={`text-[13px] truncate ${isLight ? "text-black" : "text-white/80"}`}>
                   {form.niveau_seniorite ?? ""}
                 </span>
-                <ChevronDown size={14} className="text-white/45" />
+                <ChevronDown size={14} className={isLight ? "text-black/60" : "text-white/45"} />
               </button>
 
               {niveauOpen && (
@@ -443,7 +499,11 @@ export default function OffresPage() {
             </div>
 
             <div>
-              <label className="block text-[10px] font-semibold uppercase tracking-[2px] text-white/40 mb-2">
+              <label
+                className={`block text-[10px] font-semibold uppercase tracking-[2px] mb-2 ${
+                  isLight ? "text-black/70" : "text-white/40"
+                }`}
+              >
                 Expérience minimum
               </label>
               <input
@@ -456,7 +516,11 @@ export default function OffresPage() {
 
             {/* Présence sur site + Disponibilité */}
             <div className="relative">
-              <label className="block text-[10px] font-semibold uppercase tracking-[2px] text-white/40 mb-2">
+              <label
+                className={`block text-[10px] font-semibold uppercase tracking-[2px] mb-2 ${
+                  isLight ? "text-black/70" : "text-white/40"
+                }`}
+              >
                 Présence sur site
               </label>
               <button
@@ -502,7 +566,11 @@ export default function OffresPage() {
             </div>
 
             <div className="relative">
-              <label className="block text-[10px] font-semibold uppercase tracking-[2px] text-white/40 mb-2">
+              <label
+                className={`block text-[10px] font-semibold uppercase tracking-[2px] mb-2 ${
+                  isLight ? "text-black/70" : "text-white/40"
+                }`}
+              >
                 Disponibilité
               </label>
               <button
@@ -549,7 +617,11 @@ export default function OffresPage() {
 
             {/* Salaire min | Salaire max */}
             <div>
-              <label className="block text-[10px] font-semibold uppercase tracking-[2px] text-white/40 mb-2">
+              <label
+                className={`block text-[10px] font-semibold uppercase tracking-[2px] mb-2 ${
+                  isLight ? "text-black/70" : "text-white/40"
+                }`}
+              >
                 Salaire min (MAD)
               </label>
               <input
@@ -620,8 +692,10 @@ export default function OffresPage() {
                 onClick={() => update("urgent", !form.urgent)}
                 className={`flex items-center gap-2 px-4 py-2.5 rounded-xl border text-[13px] transition-all ${
                   form.urgent
-                    ? "bg-red-500/10 border-red-500/25 text-red-400"
-                    : "bg-white/[0.03] border-white/[0.08] text-white/40 hover:border-white/[0.12]"
+                    ? "bg-red-500/10 border-red-500/25 text-red-600"
+                    : isLight
+                      ? "bg-white border border-black/10 text-black/60 hover:border-tap-red/40"
+                      : "bg-white/[0.03] border-white/[0.08] text-white/40 hover:border-white/[0.12]"
                 }`}
               >
                 <Clock size={14} />
@@ -686,23 +760,34 @@ export default function OffresPage() {
             return (
               <div
                 key={job.id}
-                className="bg-zinc-900/50 border border-white/[0.06] rounded-xl p-5 hover:border-white/[0.1] transition group"
+                className={`rounded-xl p-5 transition group ${
+                  isLight
+                    ? "bg-white border border-tap-red/40 hover:border-tap-red/70"
+                    : "bg-zinc-900/50 border border-white/[0.06] hover:border-white/[0.1]"
+                }`}
               >
                 <div className="flex items-start justify-between gap-4">
                   {/* Colonne gauche : titre + 2 icônes */}
                   <div className="flex-1 min-w-0">
-                    <h3 className="text-[15px] font-semibold text-white truncate">
+                    <h3 className={`text-[15px] font-semibold truncate ${isLight ? "text-black" : "text-white"}`}>
                       {titre}
                     </h3>
 
                     {/* 2 icônes sous le titre : localisation + candidatures */}
-                    <div className="mt-2 flex flex-wrap items-center gap-3 text-[12px] text-white/50">
+                    <div
+                      className={`mt-2 flex flex-wrap items-center gap-3 text-[12px] ${
+                        isLight ? "text-black/70" : "text-white/50"
+                      }`}
+                    >
                       {/* Localisation avec tooltip au hover */}
                       <button
                         type="button"
                         className="relative group flex items-center gap-2"
                       >
-                        <MapPin size={14} className="text-white/60 group-hover:text-white" />
+                        <MapPin
+                          size={14}
+                          className={isLight ? "text-black/70 group-hover:text-black" : "text-white/60 group-hover:text-white"}
+                        />
                         <span className="sr-only">Localisation</span>
                         <span className="pointer-events-none absolute -bottom-7 left-1/2 -translate-x-1/2 whitespace-nowrap rounded-md bg-black px-2 py-1 text-[11px] text-white/90 opacity-0 group-hover:opacity-100 group-hover:translate-y-0 translate-y-1 transition-all">
                           {localisation || "Localisation non renseignée"}
@@ -711,8 +796,8 @@ export default function OffresPage() {
 
                       {/* Icône + nombre de candidatures juste à côté */}
                       <div className="flex items-center gap-2">
-                        <Users size={14} className="text-white/60" />
-                        <span className="text-white/70">
+                        <Users size={14} className={isLight ? "text-black/70" : "text-white/60"} />
+                        <span className={isLight ? "text-black/80" : "text-white/70"}>
                           {(job.applicationCount ?? 0)} candidature
                           {(job.applicationCount ?? 0) !== 1 ? "s" : ""}
                         </span>
@@ -721,7 +806,11 @@ export default function OffresPage() {
                   </div>
 
                   {/* Colonne droite : statut + date + urgence */}
-                  <div className="text-right shrink-0 flex flex-col items-end gap-1 text-[11px] text-white/35">
+                  <div
+                    className={`text-right shrink-0 flex flex-col items-end gap-1 text-[11px] ${
+                      isLight ? "text-black/60" : "text-white/35"
+                    }`}
+                  >
                     {/* Bouton statut ACTIVE / INACTIVE */}
                     <button
                       type="button"

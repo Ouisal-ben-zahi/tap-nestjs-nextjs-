@@ -9,6 +9,7 @@ import ErrorState from "@/components/ui/ErrorState";
 import { Skeleton } from "@/components/ui/Skeleton";
 import { Users, MapPin, Briefcase, Clock, Sparkles } from "lucide-react";
 import { formatRelative, statusBg } from "@/lib/utils";
+import { useDashboardTheme } from "@/hooks/use-dashboard-theme";
 
 export default function MatchingPage() {
   const router = useRouter();
@@ -16,6 +17,8 @@ export default function MatchingPage() {
   const statsQuery = useCandidatStats();
   const appsQuery = useCandidatApplications();
   const jobsQuery = useCandidatPublicJobs();
+  const theme = useDashboardTheme();
+  const isLight = theme === "light";
 
   const stats = statsQuery.data;
   const hasProfile = stats?.candidateId !== null && stats?.candidateId !== undefined;
@@ -65,7 +68,7 @@ export default function MatchingPage() {
 
   return (
     <div className="max-w-[1100px] mx-auto">
-      <div className="relative mb-8 pb-8 border-b border-white/[0.04]">
+      <div className={`relative mb-8 pb-8 ${isLight ? "border-b border-black/10" : "border-b border-white/[0.04]"}`}>
         <div className="absolute top-[-80px] left-[-100px] w-[350px] h-[350px] rounded-full bg-[radial-gradient(circle,rgba(16,185,129,0.08),transparent_60%)] blur-3xl pointer-events-none" />
         <div className="relative">
           <div className="inline-flex items-center gap-2.5 px-5 py-2.5 mb-4 rounded-full bg-emerald-500/[0.08] border border-emerald-500/15">
@@ -74,10 +77,10 @@ export default function MatchingPage() {
               Matching intelligent
             </span>
           </div>
-          <h1 className="text-[28px] sm:text-[36px] font-bold text-white tracking-[-0.04em] font-heading">
+          <h1 className={`text-[28px] sm:text-[36px] font-bold tracking-[-0.04em] font-heading ${isLight ? "text-black" : "text-white"}`}>
             Offres qui vous correspondent
           </h1>
-          <p className="text-white/45 text-[14px] mt-2 font-light">
+          <p className={`text-[14px] mt-2 font-light ${isLight ? "text-black/60" : "text-white/45"}`}>
             Notre IA analyse votre profil et vous connecte aux offres les plus pertinentes.
           </p>
         </div>
@@ -89,8 +92,8 @@ export default function MatchingPage() {
             <Sparkles size={18} className="text-emerald-500" />
           </div>
           <div>
-            <h3 className="text-[14px] font-semibold text-white mb-1">Matching IA actif</h3>
-            <p className="text-[13px] text-white/45 font-light">
+            <h3 className={`text-[14px] font-semibold mb-1 ${isLight ? "text-black" : "text-white"}`}>Matching IA actif</h3>
+            <p className={`text-[13px] font-light ${isLight ? "text-black/70" : "text-white/45"}`}>
               Notre algorithme analyse votre profil en continu et vous propose les offres les plus adaptées.
             </p>
           </div>
@@ -98,17 +101,17 @@ export default function MatchingPage() {
 
         {stats && (
           <div className="grid grid-cols-3 gap-3 mb-8">
-            <div className="bg-zinc-900/50 border border-white/[0.06] rounded-xl p-4 text-center">
-              <p className="text-2xl font-bold text-white">{stats.applications}</p>
-              <p className="text-[11px] text-white/40 mt-1">Candidatures</p>
+            <div className={`rounded-xl p-4 text-center ${isLight ? "bg-white border border-tap-red/40" : "bg-zinc-900/50 border border-white/[0.06]"}`}>
+              <p className={`text-2xl font-bold ${isLight ? "text-black" : "text-white"}`}>{stats.applications}</p>
+              <p className={`text-[11px] mt-1 ${isLight ? "text-black/60" : "text-white/40"}`}>Candidatures</p>
             </div>
-            <div className="bg-zinc-900/50 border border-white/[0.06] rounded-xl p-4 text-center">
-              <p className="text-2xl font-bold text-white">{stats.statusAccepted}</p>
-              <p className="text-[11px] text-white/40 mt-1">Acceptées</p>
+            <div className={`rounded-xl p-4 text-center ${isLight ? "bg-white border border-tap-red/40" : "bg-zinc-900/50 border border-white/[0.06]"}`}>
+              <p className={`text-2xl font-bold ${isLight ? "text-black" : "text-white"}`}>{stats.statusAccepted}</p>
+              <p className={`text-[11px] mt-1 ${isLight ? "text-black/60" : "text-white/40"}`}>Acceptées</p>
             </div>
-            <div className="bg-zinc-900/50 border border-white/[0.06] rounded-xl p-4 text-center">
-              <p className="text-2xl font-bold text-white">{stats.interviews}</p>
-              <p className="text-[11px] text-white/40 mt-1">Entretiens</p>
+            <div className={`rounded-xl p-4 text-center ${isLight ? "bg-white border border-tap-red/40" : "bg-zinc-900/50 border border-white/[0.06]"}`}>
+              <p className={`text-2xl font-bold ${isLight ? "text-black" : "text-white"}`}>{stats.interviews}</p>
+              <p className={`text-[11px] mt-1 ${isLight ? "text-black/60" : "text-white/40"}`}>Entretiens</p>
             </div>
           </div>
         )}
@@ -117,7 +120,7 @@ export default function MatchingPage() {
         <div className="mb-10">
           <div className="flex items-center gap-3 mb-5">
             <div className="w-1 h-5 rounded-full bg-emerald-500" />
-            <h2 className="text-[13px] uppercase tracking-[2px] text-white/50 font-semibold">
+            <h2 className={`text-[13px] uppercase tracking-[2px] font-semibold ${isLight ? "text-black" : "text-white/50"}`}>
               Offres disponibles
             </h2>
           </div>
@@ -147,15 +150,19 @@ export default function MatchingPage() {
                 return (
                   <div
                     key={job.id}
-                    className="bg-zinc-900/50 border border-white/[0.06] rounded-xl p-5 hover:border-white/[0.1] transition group"
+                    className={`rounded-xl p-5 transition group ${
+                      isLight
+                        ? "bg-white border border-tap-red/40 hover:border-tap-red/70"
+                        : "bg-zinc-900/50 border border-white/[0.06] hover:border-white/[0.1]"
+                    }`}
                   >
                     <div className="flex items-start justify-between gap-4">
                       <div className="flex-1 min-w-0">
-                        <h3 className="text-[15px] font-semibold text-white truncate">
+                        <h3 className={`text-[15px] font-semibold truncate ${isLight ? "text-black" : "text-white"}`}>
                           {job.title ?? "Offre sans titre"}
                         </h3>
 
-                        <div className="mt-2 flex items-center gap-3 text-[12px] text-white/50">
+                        <div className={`mt-2 flex items-center gap-3 text-[12px] ${isLight ? "text-black/70" : "text-white/50"}`}>
                           {localisation && (
                             <span className="flex items-center gap-1">
                               <MapPin size={12} />
@@ -165,7 +172,7 @@ export default function MatchingPage() {
                         </div>
                       </div>
 
-                      <div className="text-right shrink-0 flex flex-col items-end gap-2 text-[11px] text-white/35">
+                      <div className={`text-right shrink-0 flex flex-col items-end gap-2 text-[11px] ${isLight ? "text-black/60" : "text-white/35"}`}>
                         <span>{job.created_at && formatRelative(job.created_at)}</span>
                         <button
                           type="button"
@@ -187,7 +194,7 @@ export default function MatchingPage() {
         <div>
           <div className="flex items-center gap-3 mb-5">
             <div className="w-1 h-5 rounded-full bg-emerald-500" />
-            <h2 className="text-[13px] uppercase tracking-[2px] text-white/50 font-semibold">
+            <h2 className={`text-[13px] uppercase tracking-[2px] font-semibold ${isLight ? "text-black" : "text-white/50"}`}>
               Vos candidatures
             </h2>
           </div>
@@ -211,12 +218,16 @@ export default function MatchingPage() {
               {apps.map((app) => (
                 <div
                   key={app.id}
-                  className="bg-zinc-900/50 border border-white/[0.06] rounded-xl p-5 hover:border-white/[0.1] transition"
+                  className={`rounded-xl p-5 transition ${
+                    isLight
+                      ? "bg-white border border-tap-red/40 hover:border-tap-red/70"
+                      : "bg-zinc-900/50 border border-white/[0.06] hover:border-white/[0.1]"
+                  }`}
                 >
                   <div className="flex items-start justify-between gap-4">
                     <div className="flex-1 min-w-0">
                       <div className="flex items-center gap-3 mb-2">
-                        <h3 className="text-[15px] font-semibold text-white truncate">
+                        <h3 className={`text-[15px] font-semibold truncate ${isLight ? "text-black" : "text-white"}`}>
                           {app.jobTitle ?? "Offre sans titre"}
                         </h3>
                         <span
@@ -227,7 +238,7 @@ export default function MatchingPage() {
                           {app.status ?? "Inconnu"}
                         </span>
                       </div>
-                      <div className="flex flex-wrap items-center gap-3 text-[12px] text-white/40">
+                      <div className={`flex flex-wrap items-center gap-3 text-[12px] ${isLight ? "text-black/60" : "text-white/40"}`}>
                         <span className="flex items-center gap-1">
                           <Briefcase size={12} />
                           {app.company}

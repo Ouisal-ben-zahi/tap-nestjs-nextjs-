@@ -23,6 +23,7 @@ import {
   Zap,
 } from "lucide-react";
 import type { LucideIcon } from "lucide-react";
+import { useDashboardTheme } from "@/hooks/use-dashboard-theme";
 
 interface Feature {
   href: string;
@@ -56,6 +57,8 @@ export default function DashboardPage() {
   const statsQuery = useCandidatStats();
   const features = isRecruteur ? recruteurFeatures : candidatFeatures;
   const firstName = user?.email?.split("@")[0] || "";
+  const theme = useDashboardTheme();
+  const isLight = theme === "light";
 
   // Si candidat connecté mais aucun profil candidat en base, rediriger vers onboarding
   useEffect(() => {
@@ -80,20 +83,30 @@ export default function DashboardPage() {
   return (
     <div className="max-w-[1100px] mx-auto">
       {/* Hero header */}
-      <div className="relative mb-10 pb-8 border-b border-white/[0.04]">
+      <div className={`relative mb-10 pb-8 ${isLight ? "border-b border-black/10" : "border-b border-white/[0.04]"}`}>
         <div className="absolute top-[-80px] left-[-100px] w-[350px] h-[350px] rounded-full bg-[radial-gradient(circle,rgba(202,27,40,0.08),transparent_60%)] blur-3xl pointer-events-none" />
         <div className="absolute top-[-40px] right-[10%] w-[200px] h-[200px] rounded-full bg-[radial-gradient(circle,rgba(202,27,40,0.04),transparent_60%)] blur-3xl pointer-events-none" />
 
         <div className="relative">
-          <h1 className="text-[28px] sm:text-[40px] font-bold text-white tracking-[-0.04em] font-heading leading-tight mb-2">
+          <h1
+            className={`text-[28px] sm:text-[40px] font-bold tracking-[-0.04em] font-heading leading-tight mb-2 ${
+              isLight ? "text-[rgba(35,35,35,1)]" : "text-white"
+            }`}
+          >
             Bienvenue{firstName ? "," : ""}
             {firstName && (
-              <span className="bg-gradient-to-r from-white to-white/70 bg-clip-text text-transparent ml-2">
+              <span
+                className={`bg-clip-text text-transparent ml-2 ${
+                  isLight
+                    ? "bg-gradient-to-r from-[rgba(202,27,40,1)] to-[rgba(202,27,40,0.7)]"
+                    : "bg-gradient-to-r from-white to-white/70"
+                }`}
+              >
                 {firstName}
               </span>
             )}
           </h1>
-          <p className="text-white/45 text-[15px] font-light max-w-md">
+          <p className={`text-[15px] font-light max-w-md ${isLight ? "text-black/55" : "text-white/45"}`}>
             {isRecruteur
               ? "Gérez vos recrutements et trouvez les meilleurs talents."
               : "Explorez vos outils dsfdg IA pour booster votre carrière."}
@@ -107,10 +120,10 @@ export default function DashboardPage() {
       </div>
 
       {/* Separator */}
-      <div className="mt-10 mb-6 pt-6 border-t border-white/[0.04]">
+      <div className={`mt-10 mb-6 pt-6 ${isLight ? "border-t border-black/10" : "border-t border-white/[0.04]"}`}>
         <div className="flex items-center gap-3">
           <div className="w-1 h-5 rounded-full bg-tap-red" />
-          <h2 className="text-[13px] uppercase tracking-[2px] text-white/50 font-semibold">
+          <h2 className={`text-[13px] uppercase tracking-[2px] font-semibold ${isLight ? "text-black/60" : "text-white/50"}`}>
             {isRecruteur ? "Outils de recrutement" : "Accès rapide"}
           </h2>
         </div>
@@ -124,7 +137,11 @@ export default function DashboardPage() {
             <Link
               key={feature.href}
               href={feature.href}
-              className="group bg-zinc-900/50 border border-white/[0.06] rounded-xl p-4 hover:border-white/[0.12] hover:bg-white/[0.03] transition-all duration-300 flex flex-col items-center gap-3 text-center"
+              className={`group rounded-xl p-4 transition-all duration-300 flex flex-col items-center gap-3 text-center ${
+                isLight
+                  ? "bg-white border border-tap-red/40 hover:border-tap-red/70 hover:bg-white"
+                  : "bg-zinc-900/50 border border-white/[0.06] hover:border-white/[0.12] hover:bg-white/[0.03]"
+              }`}
             >
               <div
                 className="w-9 h-9 rounded-lg flex items-center justify-center border transition-all duration-300 group-hover:scale-110"
@@ -132,7 +149,11 @@ export default function DashboardPage() {
               >
                 <Icon size={16} strokeWidth={1.5} style={{ color: `${feature.color}99` }} />
               </div>
-              <span className="text-[11px] font-medium text-white/50 group-hover:text-white/70 transition-colors">
+              <span
+                className={`text-[11px] font-medium transition-colors ${
+                  isLight ? "text-black group-hover:text-black" : "text-white/50 group-hover:text-white/70"
+                }`}
+              >
                 {feature.title}
               </span>
             </Link>
@@ -141,9 +162,9 @@ export default function DashboardPage() {
       </div>
 
       {/* Bottom */}
-      <div className="mt-10 pt-8 border-t border-white/[0.04] flex items-center gap-3">
+      <div className={`mt-10 pt-8 flex items-center gap-3 ${isLight ? "border-t border-black/10" : "border-t border-white/[0.04]"}`}>
         <Sparkles size={13} className="text-tap-red/50" />
-        <p className="text-[12px] text-white/30 font-light">
+        <p className={`text-[12px] font-light ${isLight ? "text-black/40" : "text-white/30"}`}>
           Propulsé par l&apos;intelligence artificielle — TAP {new Date().getFullYear()}
         </p>
       </div>
