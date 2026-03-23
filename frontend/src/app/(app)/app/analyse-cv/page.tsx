@@ -38,6 +38,7 @@ export default function AnalyseCvAppPage() {
   const [progressToastId, setProgressToastId] = useState<string | null>(null);
   const progressRef = useRef(0);
   const startedAtRef = useRef<number | null>(null);
+  const progressToastIdRef = useRef<string | null>(null);
 
   const handleDrop = useCallback((e: React.DragEvent) => {
     e.preventDefault();
@@ -96,6 +97,10 @@ export default function AnalyseCvAppPage() {
     });
     setProgressToastId(id);
   }, [uploadCv.isPending, addToast, progressToastId]);
+
+  useEffect(() => {
+    progressToastIdRef.current = progressToastId;
+  }, [progressToastId]);
 
   useEffect(() => {
     if (!progressToastId) return;
@@ -179,10 +184,6 @@ export default function AnalyseCvAppPage() {
 
       if (target === 100 && progressRef.current >= 100) {
         window.clearInterval(tick);
-        window.setTimeout(() => {
-          removeToast(progressToastId);
-          setProgressToastId(null);
-        }, 2000);
       }
     }, 250);
 
@@ -225,11 +226,22 @@ export default function AnalyseCvAppPage() {
   // Stop polling once both talent cards AND portfolios are available after a re-upload
   useEffect(() => {
     if (isRegenerating && hasTalentCards && portfolioShortReady) {
-      setPolling(false);
-      uploadCv.setRegeneration(false);
-      setRegenDone(true);
-      const t = window.setTimeout(() => setRegenDone(false), 5000);
-      return () => window.clearTimeout(t);
+      const graceMs = 12000;
+      const tStop = window.setTimeout(() => {
+        setPolling(false);
+        uploadCv.setRegeneration(false);
+        setRegenDone(true);
+
+        // On retire le toast seulement une fois la “grâce” passée.
+        const toastId = progressToastIdRef.current;
+        if (toastId) removeToast(toastId);
+        setProgressToastId(null);
+
+        const t = window.setTimeout(() => setRegenDone(false), 5000);
+        // pas de retour cleanup ici (timeout interne)
+        void t;
+      }, graceMs);
+      return () => window.clearTimeout(tStop);
     }
   // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [isRegenerating, hasTalentCards, portfolioShortReady]);
@@ -237,10 +249,19 @@ export default function AnalyseCvAppPage() {
   // Stop polling for first-time analysis once BOTH talent cards AND portfolios appear
   useEffect(() => {
     if (!uploadCv.isRegeneration && polling && hasTalentCards && portfolioShortReady) {
-      setPolling(false);
-      setAnalysisDone(true);
-      const t = window.setTimeout(() => setAnalysisDone(false), 5000);
-      return () => window.clearTimeout(t);
+      const graceMs = 12000;
+      const tStop = window.setTimeout(() => {
+        setPolling(false);
+        setAnalysisDone(true);
+
+        const toastId = progressToastIdRef.current;
+        if (toastId) removeToast(toastId);
+        setProgressToastId(null);
+
+        const t = window.setTimeout(() => setAnalysisDone(false), 5000);
+        void t;
+      }, graceMs);
+      return () => window.clearTimeout(tStop);
     }
   // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [hasTalentCards, portfolioShortReady, polling, uploadCv.isRegeneration]);
