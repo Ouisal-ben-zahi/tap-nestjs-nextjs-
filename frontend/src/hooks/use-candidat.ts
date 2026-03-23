@@ -1,14 +1,24 @@
 'use client';
 
+import { useState, useRef } from 'react';
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
 import { candidatService } from '@/services/candidat.service';
 import { useUiStore } from '@/stores/ui';
 import axios from 'axios';
+import { useAuthStore } from '@/stores/auth';
 
-export function useCandidatStats() {
+function useAuthEnabled() {
+  const isHydrated = useAuthStore((s) => s.isHydrated);
+  const user = useAuthStore((s) => s.user);
+  return Boolean(isHydrated && user);
+}
+
+export function useCandidatStats(enabled?: boolean) {
+  const authEnabled = useAuthEnabled();
   return useQuery({
     queryKey: ['candidat', 'stats'],
     queryFn: candidatService.getStats,
+    enabled: enabled ?? authEnabled,
   });
 }
 
@@ -26,17 +36,22 @@ export function useCandidatPortfolio() {
   });
 }
 
-export function useCandidatApplications() {
+export function useCandidatApplications(enabled?: boolean) {
+  const authEnabled = useAuthEnabled();
   return useQuery({
     queryKey: ['candidat', 'applications'],
     queryFn: candidatService.getApplications,
+    enabled: enabled ?? authEnabled,
   });
 }
 
-export function useCandidatPublicJobs() {
+export function useCandidatMatchingJobs(enabled?: boolean) {
+  const authEnabled = useAuthEnabled();
   return useQuery({
-    queryKey: ['candidat', 'public-jobs'],
-    queryFn: candidatService.getPublicJobs,
+    queryKey: ['candidat', 'matching-jobs'],
+    queryFn: candidatService.getMatchingJobs,
+    staleTime: 5 * 60 * 1000, // 5 min — l'embedding ne change pas souvent
+    enabled: enabled ?? authEnabled,
   });
 }
 
@@ -55,10 +70,11 @@ export function useCandidatTalentcardFiles(refetchInterval?: number | false) {
   });
 }
 
-export function useCandidatPortfolioPdfs() {
+export function useCandidatPortfolioPdfs(refetchInterval?: number | false) {
   return useQuery({
     queryKey: ['candidat', 'portfolio-pdfs'],
     queryFn: candidatService.getPortfolioPdfFiles,
+    refetchInterval,
   });
 }
 
@@ -138,21 +154,49 @@ export function useRunPortfolioLongPipeline() {
   });
 }
 
+/**
+ * Upload CV hook.
+ * Exposes `isRegeneration` (true when the candidate already had files before
+ * the upload) so the page can show the right status banner.
+ * Also exposes `setRegeneration` so the page can clear the flag once polling
+ * detects that all files have been refreshed.
+ */
 export function useUploadCv() {
   const queryClient = useQueryClient();
   const addToast = useUiStore((s) => s.addToast);
+  const [isRegeneration, setRegeneration] = useState(false);
+  // Ref to read the flag synchronously inside mutation callbacks
+  const isRegenerationRef = useRef(false);
 
-  return useMutation({
+  const mutation = useMutation({
     mutationFn: candidatService.uploadCv,
+    onMutate: () => {
+      // Snapshot whether the candidate already had talent-card files before upload
+      const existing = queryClient.getQueryData<{ talentcardFiles?: unknown[] }>([
+        'candidat',
+        'talentcard-files',
+      ]);
+      const hadFiles = (existing?.talentcardFiles?.length ?? 0) > 0;
+      isRegenerationRef.current = hadFiles;
+      if (hadFiles) setRegeneration(true);
+    },
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ['candidat', 'cv-files'] });
       queryClient.invalidateQueries({ queryKey: ['candidat', 'talentcard-files'] });
-      addToast({ message: 'CV uploadé avec succès — analyse IA en cours...', type: 'success' });
+      queryClient.invalidateQueries({ queryKey: ['candidat', 'portfolio-pdfs'] });
+      const msg = isRegenerationRef.current
+        ? 'CV importé — régénération de tous les fichiers en cours…'
+        : 'CV uploadé avec succès — analyse IA en cours…';
+      addToast({ message: msg, type: 'success' });
     },
     onError: () => {
-      addToast({ message: 'Erreur lors de l\'upload du CV', type: 'error' });
+      isRegenerationRef.current = false;
+      setRegeneration(false);
+      addToast({ message: "Erreur lors de l'upload du CV", type: 'error' });
     },
   });
+
+  return { ...mutation, isRegeneration, setRegeneration };
 }
 
 export function useDeleteCvFile() {

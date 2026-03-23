@@ -3,7 +3,7 @@
 import { useEffect } from "react";
 import { useRouter } from "next/navigation";
 import { useAuth } from "@/hooks/use-auth";
-import { useCandidatApplications, useCandidatStats, useCandidatPublicJobs } from "@/hooks/use-candidat";
+import { useCandidatApplications, useCandidatStats, useCandidatMatchingJobs } from "@/hooks/use-candidat";
 import EmptyState from "@/components/ui/EmptyState";
 import ErrorState from "@/components/ui/ErrorState";
 import { Skeleton } from "@/components/ui/Skeleton";
@@ -13,12 +13,20 @@ import { useDashboardTheme } from "@/hooks/use-dashboard-theme";
 
 export default function MatchingPage() {
   const router = useRouter();
+<<<<<<< Updated upstream
   const { isCandidat } = useAuth();
   const statsQuery = useCandidatStats();
   const appsQuery = useCandidatApplications();
   const jobsQuery = useCandidatPublicJobs();
   const theme = useDashboardTheme();
   const isLight = theme === "light";
+=======
+  const { isCandidat, isHydrated } = useAuth();
+  const enabled = Boolean(isCandidat && isHydrated);
+  const statsQuery = useCandidatStats(enabled);
+  const appsQuery = useCandidatApplications(enabled);
+  const jobsQuery = useCandidatMatchingJobs(enabled);
+>>>>>>> Stashed changes
 
   const stats = statsQuery.data;
   const hasProfile = stats?.candidateId !== null && stats?.candidateId !== undefined;
@@ -116,13 +124,28 @@ export default function MatchingPage() {
           </div>
         )}
 
-        {/* Offres publiques actives */}
+        {/* Offres matchées par IA */}
         <div className="mb-10">
+<<<<<<< Updated upstream
           <div className="flex items-center gap-3 mb-5">
             <div className="w-1 h-5 rounded-full bg-emerald-500" />
             <h2 className={`text-[13px] uppercase tracking-[2px] font-semibold ${isLight ? "text-black" : "text-white/50"}`}>
               Offres disponibles
             </h2>
+=======
+          <div className="flex items-center justify-between mb-5">
+            <div className="flex items-center gap-3">
+              <div className="w-1 h-5 rounded-full bg-emerald-500" />
+              <h2 className="text-[13px] uppercase tracking-[2px] text-white/50 font-semibold">
+                Offres recommandées par l'IA
+              </h2>
+            </div>
+            {jobsQuery.data?.jobs?.length ? (
+              <span className="text-[11px] text-emerald-500/70 font-medium">
+                {jobsQuery.data.jobs.length} offre{jobsQuery.data.jobs.length > 1 ? "s" : ""} matchée{jobsQuery.data.jobs.length > 1 ? "s" : ""}
+              </span>
+            ) : null}
+>>>>>>> Stashed changes
           </div>
 
           {jobsQuery.isLoading ? (
@@ -132,12 +155,19 @@ export default function MatchingPage() {
               ))}
             </div>
           ) : jobsQuery.isError ? (
-            <ErrorState onRetry={() => jobsQuery.refetch()} />
+            <ErrorState
+              onRetry={() => jobsQuery.refetch()}
+              message={String(
+                (jobsQuery.error as any)?.response?.data?.message ??
+                  (jobsQuery.error as any)?.message ??
+                  "Une erreur est survenue",
+              )}
+            />
           ) : !jobsQuery.data?.jobs?.length ? (
             <EmptyState
-              icon={<Briefcase className="w-10 h-10" />}
-              title="Aucune offre active"
-              description="Revenez bientôt, de nouvelles offres seront publiées."
+              icon={<Sparkles className="w-10 h-10" />}
+              title="Aucune offre matchée pour l'instant"
+              description="L'IA n'a pas encore trouvé d'offres suffisamment proches de votre profil. Revenez bientôt."
             />
           ) : (
             <div className="space-y-3">
@@ -146,10 +176,18 @@ export default function MatchingPage() {
                   typeof job.location_type === "string" && job.location_type.trim()
                     ? job.location_type
                     : null;
+                const scorePct = Math.round((job.score ?? 0) * 100);
+                const scoreColor =
+                  scorePct >= 85
+                    ? "text-emerald-400 border-emerald-500/30 bg-emerald-500/10"
+                    : scorePct >= 70
+                    ? "text-amber-400 border-amber-500/30 bg-amber-500/10"
+                    : "text-white/50 border-white/10 bg-white/5";
 
                 return (
                   <div
                     key={job.id}
+<<<<<<< Updated upstream
                     onClick={() => router.push(`/app/matching/offres/${job.id}`)}
                     className={`rounded-xl p-5 transition group cursor-pointer ${
                       isLight
@@ -164,6 +202,28 @@ export default function MatchingPage() {
                         </h3>
 
                         <div className={`mt-2 flex items-center gap-3 text-[12px] ${isLight ? "text-black/70" : "text-white/50"}`}>
+=======
+                    className="bg-zinc-900/50 border border-white/[0.06] rounded-xl p-5 hover:border-emerald-500/20 transition group"
+                  >
+                    <div className="flex items-start justify-between gap-4">
+                      <div className="flex-1 min-w-0">
+                        <div className="flex items-center gap-2.5 flex-wrap mb-1.5">
+                          <h3 className="text-[15px] font-semibold text-white truncate">
+                            {job.title ?? "Offre sans titre"}
+                          </h3>
+                          {job.categorie_profil && (
+                            <span className="text-[11px] px-2 py-0.5 rounded-full bg-white/[0.05] border border-white/[0.08] text-white/45 shrink-0">
+                              {job.categorie_profil}
+                            </span>
+                          )}
+                          {job.urgent && (
+                            <span className="text-[11px] px-2 py-0.5 rounded-full bg-red-500/10 border border-red-500/20 text-red-400 shrink-0">
+                              Urgent
+                            </span>
+                          )}
+                        </div>
+                        <div className="mt-1 flex items-center gap-3 text-[12px] text-white/45">
+>>>>>>> Stashed changes
                           {localisation && (
                             <span className="flex items-center gap-1">
                               <MapPin size={12} />
@@ -173,8 +233,19 @@ export default function MatchingPage() {
                         </div>
                       </div>
 
+<<<<<<< Updated upstream
                       <div className={`text-right shrink-0 flex flex-col items-end gap-2 text-[11px] ${isLight ? "text-black/60" : "text-white/35"}`}>
                         <span>{job.created_at && formatRelative(job.created_at)}</span>
+=======
+                      <div className="shrink-0 flex flex-col items-end gap-2">
+                        {/* Score IA */}
+                        <span className={`text-[12px] font-semibold px-2.5 py-1 rounded-full border ${scoreColor}`}>
+                          {scorePct}% match
+                        </span>
+                        <span className="text-[11px] text-white/30">
+                          {job.created_at && formatRelative(job.created_at)}
+                        </span>
+>>>>>>> Stashed changes
                         <button
                           type="button"
                           onClick={(e) => {
@@ -211,7 +282,14 @@ export default function MatchingPage() {
               ))}
             </div>
           ) : appsQuery.isError ? (
-            <ErrorState onRetry={() => appsQuery.refetch()} />
+            <ErrorState
+              onRetry={() => appsQuery.refetch()}
+              message={String(
+                (appsQuery.error as any)?.response?.data?.message ??
+                  (appsQuery.error as any)?.message ??
+                  "Une erreur est survenue",
+              )}
+            />
           ) : apps.length === 0 ? (
             <EmptyState
               icon={<Briefcase className="w-10 h-10" />}

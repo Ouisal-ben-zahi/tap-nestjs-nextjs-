@@ -7,7 +7,7 @@ import FileCard from "@/components/ui/FileCard";
 import EmptyState from "@/components/ui/EmptyState";
 import ErrorState from "@/components/ui/ErrorState";
 import { Skeleton } from "@/components/ui/Skeleton";
-import { FileText, Upload, Award, Briefcase, Loader2, ArrowRight } from "lucide-react";
+import { FileText, Upload, Award, Briefcase, Loader2, ArrowRight, RefreshCw, CheckCircle2 } from "lucide-react";
 import Link from "next/link";
 import { useDashboardTheme } from "@/hooks/use-dashboard-theme";
 
@@ -16,9 +16,16 @@ export default function AnalyseCvAppPage() {
   const theme = useDashboardTheme();
   const isLight = theme === "light";
   const cvQuery = useCandidatCvFiles();
+
+  // polling: true during first-time analysis OR regeneration after re-upload
   const [polling, setPolling] = useState(false);
+  // regenDone: briefly shown after regeneration completes
+  const [regenDone, setRegenDone] = useState(false);
+  // analysisDone: briefly shown after first-time analysis completes
+  const [analysisDone, setAnalysisDone] = useState(false);
+
   const talentcardQuery = useCandidatTalentcardFiles(polling ? 10000 : false);
-  const portfolioQuery = useCandidatPortfolioPdfs();
+  const portfolioQuery = useCandidatPortfolioPdfs(polling ? 10000 : false);
   const uploadCv = useUploadCv();
   const deleteCv = useDeleteCvFile();
   const [dragOver, setDragOver] = useState(false);
@@ -39,6 +46,15 @@ export default function AnalyseCvAppPage() {
     e.target.value = "";
   }, [uploadCv]);
 
+  // Start polling as soon as an upload is triggered
+  useEffect(() => {
+    if (uploadCv.isPending || uploadCv.isSuccess) {
+      setPolling(true);
+      setRegenDone(false);
+      setAnalysisDone(false);
+    }
+  }, [uploadCv.isPending, uploadCv.isSuccess]);
+
   if (!isCandidat) {
     return (
       <EmptyState
@@ -51,12 +67,41 @@ export default function AnalyseCvAppPage() {
 
   const hasCvs = (cvQuery.data?.cvFiles?.length ?? 0) > 0;
   const hasTalentCards = (talentcardQuery.data?.talentcardFiles?.length ?? 0) > 0;
-  const isAnalyzing = hasCvs && !hasTalentCards && !talentcardQuery.isLoading;
+  const hasPortfolios = (portfolioQuery.data?.portfolioPdfFiles?.length ?? 0) > 0;
 
-  // Auto-poll talent cards every 10s while AI analysis is in progress
+  // First-time analysis: CV present but talent cards OR portfolios not yet generated
+  const isAnalyzing =
+    polling &&
+    !uploadCv.isRegeneration &&
+    hasCvs &&
+    !(hasTalentCards && hasPortfolios) &&
+    !talentcardQuery.isLoading;
+
+  // Regeneration: re-upload in progress, files not yet refreshed
+  const isRegenerating = uploadCv.isRegeneration && polling;
+
+  // Stop polling once both talent cards AND portfolios are available after a re-upload
   useEffect(() => {
-    setPolling(isAnalyzing);
-  }, [isAnalyzing]);
+    if (isRegenerating && hasTalentCards && hasPortfolios) {
+      setPolling(false);
+      uploadCv.setRegeneration(false);
+      setRegenDone(true);
+      const t = window.setTimeout(() => setRegenDone(false), 5000);
+      return () => window.clearTimeout(t);
+    }
+  // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [isRegenerating, hasTalentCards, hasPortfolios]);
+
+  // Stop polling for first-time analysis once BOTH talent cards AND portfolios appear
+  useEffect(() => {
+    if (!uploadCv.isRegeneration && polling && hasTalentCards && hasPortfolios) {
+      setPolling(false);
+      setAnalysisDone(true);
+      const t = window.setTimeout(() => setAnalysisDone(false), 5000);
+      return () => window.clearTimeout(t);
+    }
+  // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [hasTalentCards, hasPortfolios, polling, uploadCv.isRegeneration]);
 
   return (
     <div className="max-w-[1100px] mx-auto">
@@ -114,16 +159,67 @@ export default function AnalyseCvAppPage() {
         )}
       </div>
 
-      {/* Analyzing Banner */}
+      {/* First-time analysis — in progress */}
       {isAnalyzing && (
         <div className="bg-yellow-500/[0.06] border border-yellow-500/15 rounded-2xl p-6 mb-8 flex items-start gap-4">
           <div className="w-10 h-10 rounded-xl bg-yellow-500/10 border border-yellow-500/20 flex items-center justify-center shrink-0">
             <Loader2 size={18} className="text-yellow-500 animate-spin" />
           </div>
           <div>
+<<<<<<< Updated upstream
             <h3 className={`text-[14px] font-semibold mb-1 ${isLight ? "text-black" : "text-white"}`}>Analyse en cours...</h3>
             <p className={`text-[13px] font-light ${isLight ? "text-black/70" : "text-white/45"}`}>
               Notre IA analyse votre CV. Vos Talent Cards seront disponibles sous peu. Vous pouvez revenir plus tard.
+=======
+            <h3 className="text-[14px] font-semibold text-white mb-1">Analyse en cours…</h3>
+            <p className="text-[13px] text-white/45 font-light">
+              Notre IA analyse votre CV et génère vos Talent Cards et portfolios. Cette opération peut prendre quelques minutes. Vous pouvez revenir plus tard.
+            </p>
+          </div>
+        </div>
+      )}
+
+      {/* First-time analysis — done */}
+      {analysisDone && (
+        <div className="bg-green-500/[0.06] border border-green-500/15 rounded-2xl p-6 mb-8 flex items-start gap-4">
+          <div className="w-10 h-10 rounded-xl bg-green-500/10 border border-green-500/20 flex items-center justify-center shrink-0">
+            <CheckCircle2 size={18} className="text-green-400" />
+          </div>
+          <div>
+            <h3 className="text-[14px] font-semibold text-white mb-1">Analyse terminée ✓</h3>
+            <p className="text-[13px] text-white/45 font-light">
+              Vos Talent Cards et portfolios ont été générés avec succès.
+            </p>
+          </div>
+        </div>
+      )}
+
+      {/* Regeneration in-progress banner */}
+      {isRegenerating && (
+        <div className="bg-blue-500/[0.06] border border-blue-500/15 rounded-2xl p-6 mb-8 flex items-start gap-4">
+          <div className="w-10 h-10 rounded-xl bg-blue-500/10 border border-blue-500/20 flex items-center justify-center shrink-0">
+            <RefreshCw size={18} className="text-blue-400 animate-spin" />
+          </div>
+          <div>
+            <h3 className="text-[14px] font-semibold text-white mb-1">Régénération en cours…</h3>
+            <p className="text-[13px] text-white/45 font-light">
+              Votre nouveau CV est en cours d&apos;analyse. Toutes vos Talent Cards et portfolios seront mis à jour automatiquement. Vous pouvez revenir plus tard.
+            </p>
+          </div>
+        </div>
+      )}
+
+      {/* Regeneration done banner */}
+      {regenDone && (
+        <div className="bg-green-500/[0.06] border border-green-500/15 rounded-2xl p-6 mb-8 flex items-start gap-4">
+          <div className="w-10 h-10 rounded-xl bg-green-500/10 border border-green-500/20 flex items-center justify-center shrink-0">
+            <CheckCircle2 size={18} className="text-green-400" />
+          </div>
+          <div>
+            <h3 className="text-[14px] font-semibold text-white mb-1">Régénération terminée ✓</h3>
+            <p className="text-[13px] text-white/45 font-light">
+              Tous vos fichiers ont été mis à jour avec les données de votre nouveau CV.
+>>>>>>> Stashed changes
             </p>
           </div>
         </div>

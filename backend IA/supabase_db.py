@@ -4,7 +4,8 @@ from dotenv import load_dotenv
 from supabase import Client, create_client
 
 
-load_dotenv()
+# Prioriser les valeurs du .env local du projet.
+load_dotenv(override=True)
 
 
 def _create_supabase_client() -> Client | None:

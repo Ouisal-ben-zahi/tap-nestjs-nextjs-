@@ -9,6 +9,22 @@ import type {
   CandidatScore,
 } from '@/types/candidat';
 
+/** Jobs listés côté dashboard (optionnel `score` quand un endpoint IA de matching existera). */
+type DashboardJobsResponse = {
+  jobs: Array<{
+    id: number;
+    title: string | null;
+    categorie_profil: string | null;
+    created_at: string | null;
+    urgent: boolean;
+    location_type: string | null;
+    score?: number | null;
+  }>;
+};
+
+const fetchDashboardJobs = () =>
+  api.get<DashboardJobsResponse>('/dashboard/jobs').then((r) => r.data);
+
 export const candidatService = {
   getStats: () =>
     api.get<CandidatStats>('/dashboard/candidat/stats').then((r) => r.data),
@@ -35,6 +51,7 @@ export const candidatService = {
       return { portfolioPdfFiles: [...short, ...long] };
     }),
 
+<<<<<<< Updated upstream
   getPublicJobs: () =>
     api.get<{
       jobs: {
@@ -74,6 +91,12 @@ export const candidatService = {
     api
       .post('/dashboard/candidat/apply-job', payload)
       .then((r) => r.data as { success: boolean; applicationId: number; status: string }),
+=======
+  getPublicJobs: () => fetchDashboardJobs(),
+
+  /** Même source que les offres publiques pour l’instant ; `queryFn` requis par React Query. */
+  getMatchingJobs: () => fetchDashboardJobs(),
+>>>>>>> Stashed changes
 
   uploadCv: (file: File) => {
     const formData = new FormData();

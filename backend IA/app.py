@@ -1,8 +1,15 @@
+from dotenv import load_dotenv
+import os
+
+# Charger le .env EN PREMIER, avant tout import de module local,
+# pour que os.getenv() soit disponible dès l'initialisation des modules.
+# override=True: le .env du projet doit primer sur les variables User/Machine Windows.
+load_dotenv(override=True)
+
 from flask import Flask, request, jsonify, send_file, redirect
 from flask_cors import CORS
 import glob
 import json
-import os
 import re
 import requests
 import threading
@@ -11,7 +18,6 @@ from io import BytesIO
 from zipfile import ZipFile
 from datetime import datetime
 from jinja2 import Template
-from dotenv import load_dotenv
 from A1.generate_talent import generate_talent_card
 from A1.insert_data import insert_talent_card, generate_unique_id_agent, create_candidate_record
 from A1.talent_html import generate_and_save_talent_card_html
@@ -36,9 +42,6 @@ from services.embedding_service import (
     embedding_to_json,
     parse_embedding,
 )
-
-
-load_dotenv()
 
 app = Flask(__name__)
 # Autoriser l'en-tête Authorization pour les requêtes cross-origin (login puis GET /auth/me/files)
@@ -80,7 +83,10 @@ CV_HTML_TEMPLATE_PATHS = [
 
 # Timestamp de dernière génération du PDF portfolio par (db_candidate_id, version) — pour que la prévisualisation affiche le nouveau PDF après régénération
 import time as _time
+import threading as _threading
 _portfolio_pdf_generated_at = {}
+_portfolio_pdf_lock = _threading.Lock()  # thread-safe pour accès multi-workers
+_portfolio_pdf_jobs_in_progress = set()  # (db_candidate_id, version, lang)
 
 
 def _load_talentcard_from_db(db_candidate_id):
@@ -321,6 +327,72 @@ def _build_candidate_embedding_text_from_talentcard(talentcard_data: dict) -> st
     return " | ".join([p for p in parts if p])
 
 
+def _build_job_embedding_text_from_payload(data: dict) -> str:
+    """
+    Texte sémantique pour l'embedding d'une offre (RETRIEVAL_DOCUMENT),
+    aligné sur les champs envoyés par le backend Nest (createRecruiterJob).
+    """
+    if not data:
+        return ""
+    keys_order = (
+        "title",
+        "categorie_profil",
+        "niveau_attendu",
+        "niveau_seniorite",
+        "experience_min",
+        "contrat",
+        "entreprise",
+        "presence_sur_site",
+        "localisation",
+        "location_type",
+        "disponibilite",
+        "reason",
+        "main_mission",
+        "tasks_other",
+    )
+    parts = []
+    for k in keys_order:
+        v = data.get(k)
+        if v is not None and str(v).strip():
+            parts.append(str(v).strip())
+    return " | ".join(parts)
+
+
+@app.route("/api/offres/embed", methods=["POST"])
+def embed_job_offer():
+    """
+    Génère l'embedding Gemini d'une offre **avant** insertion en base (appelé par Nest).
+
+    Body JSON : champs offre (title, categorie_profil, main_mission, localisation, …).
+
+    Réponse 200 : { "embedding": [float, ...] }
+    """
+    try:
+        data = request.get_json(silent=True) or {}
+        text = _build_job_embedding_text_from_payload(data)
+        if not text.strip():
+            return (
+                jsonify({"error": "Texte offre insuffisant pour générer un embedding"}),
+                400,
+            )
+        vec = generer_embedding(text, task_type="RETRIEVAL_DOCUMENT")
+        if not vec:
+            return (
+                jsonify(
+                    {
+                        "error": "Échec génération embedding (vérifier GEMINI_API_KEY / modèle Gemini)"
+                    }
+                ),
+                503,
+            )
+        return jsonify({"embedding": vec})
+    except Exception as e:
+        import traceback
+
+        traceback.print_exc()
+        return jsonify({"error": str(e)}), 500
+
+
 @app.route('/api/offres/matching/<int:db_candidate_id>', methods=['GET'])
 def match_offers_for_candidate(db_candidate_id: int):
     """
@@ -490,6 +562,83 @@ def _get_candidate_image_url(db_candidate_id: int) -> str | None:
     """
     result = _get_candidate_info(db_candidate_id, ['image_minio_url'])
     return result.get('image_minio_url')
+
+
+def _delete_old_cv_files(db_candidate_id: int, old_candidate_uuid: str | None, minio_prefix: str) -> None:
+    """
+    Supprime les anciens fichiers CV d'un candidat dans Supabase Storage avant un re-import,
+    puis réinitialise les URLs dans fichiers_versions pour invalider la vérification d'idempotence.
+
+    Cible storage :
+      - CV original brut    : cv_cv_*.pdf  (tous les fichiers qui matchent le pattern)
+      - CV corrigé FR/EN    : cv_{uuid}.pdf / cv_{uuid}_en.pdf
+      - HTML corrigé FR/EN  : cv_{uuid}.html / cv_{uuid}_en.html
+      - JSON corrigé FR/EN  : corrected_data_{uuid}.json / corrected_data_{uuid}_en.json
+    Non supprimé ici : image.png (profil), talentcard, portfolio — ils sont régénérés séparément.
+
+    Réinitialisation DB (critique) :
+      - corrected_json_minio_url  → None
+      - corrected_pdf_minio_url   → None
+      - cv_ancienne_url           → None
+    Sans ça, la vérification d'idempotence dans /correctedcv/generate détecterait
+    des URLs orphelines et tenterait de télécharger des fichiers supprimés (→ 404).
+    """
+    try:
+        storage = get_supabase_storage()
+        if not storage or not storage.client:
+            return
+
+        files_to_delete = []
+
+        # 1) Fichiers nommés avec l'UUID connu
+        if old_candidate_uuid:
+            _uuid = old_candidate_uuid
+            files_to_delete += [
+                f"{minio_prefix}cv_{_uuid}.pdf",
+                f"{minio_prefix}cv_{_uuid}_en.pdf",
+                f"{minio_prefix}cv_{_uuid}.html",
+                f"{minio_prefix}cv_{_uuid}_en.html",
+                f"{minio_prefix}corrected_data_{_uuid}.json",
+                f"{minio_prefix}corrected_data_{_uuid}_en.json",
+            ]
+
+        # 2) CV originaux bruts (pattern cv_cv_*.pdf) — on liste le dossier pour trouver tous
+        folder = minio_prefix.rstrip("/")
+        listed = storage.list_files(folder)
+        for item in listed:
+            fname = item.get("name", "") if isinstance(item, dict) else str(item)
+            if fname.startswith("cv_cv_") and fname.endswith(".pdf"):
+                files_to_delete.append(f"{minio_prefix}{fname}")
+
+        # Dédoublonner
+        files_to_delete = list(dict.fromkeys(files_to_delete))
+
+        deleted_count = 0
+        for obj in files_to_delete:
+            ok, _ = storage.delete_file(obj)
+            if ok:
+                deleted_count += 1
+                print(f"🗑️ [Re-import] Ancien fichier CV supprimé: {obj}")
+        if deleted_count:
+            print(f"🗑️ [Re-import] {deleted_count} ancien(s) fichier(s) CV supprimé(s) pour candidat {db_candidate_id}")
+
+    except Exception as e:
+        print(f"⚠️ [Re-import] Erreur suppression anciens CV Storage (non bloquant): {e}")
+
+    # CRITIQUE : réinitialiser les URLs dans fichiers_versions pour que la vérification
+    # d'idempotence ne croie pas que les fichiers supprimés existent encore.
+    # Sans ça → /correctedcv/generate retourne immédiatement "existe déjà" et tente
+    # de télécharger des fichiers inexistants → 404 répétés + portfolio sans contexte CV.
+    try:
+        if supabase_db is not None:
+            supabase_db.table("fichiers_versions").update({
+                "corrected_json_minio_url": None,
+                "corrected_pdf_minio_url": None,
+                "cv_ancienne_url": None,
+            }).eq("candidate_id", db_candidate_id).execute()
+            print(f"🔄 [Re-import] URLs CV réinitialisées dans fichiers_versions pour candidat {db_candidate_id}")
+    except Exception as e:
+        print(f"⚠️ [Re-import] Erreur réinitialisation fichiers_versions (non bloquant): {e}")
 
 
 def _upload_to_minio_with_logging(minio_storage, file_bytes: bytes, object_name: str, content_type: str = None) -> tuple[bool, str | None, str | None]:
@@ -903,16 +1052,25 @@ def _generate_corrected_cv_from_talentcard(
         agent_explanation = result_agent2_fr.get("agent_explanation", "")
 
         # Générer un PDF temporaire (sans stockage persistant sur disque)
+        # Sur Windows, NamedTemporaryFile garde le fichier ouvert → Playwright ne peut pas écrire.
+        # On utilise mkstemp puis on ferme le fd pour libérer le chemin.
         pdf_converted = False
         pdf_bytes = None
         if os.path.exists(out_html_path):
-            with tempfile.NamedTemporaryFile(suffix=".pdf", delete=True) as tmp_pdf:
-                pdf_converted = _convert_cv_html_to_pdf(out_html_path, tmp_pdf.name)
+            fd, tmp_pdf_path = tempfile.mkstemp(suffix=".pdf")
+            os.close(fd)
+            try:
+                pdf_converted = _convert_cv_html_to_pdf(out_html_path, tmp_pdf_path)
                 if not pdf_converted:
                     print(f"⚠️  Conversion CV HTML -> PDF échouée pour {out_html_path}")
-                elif os.path.exists(tmp_pdf.name):
-                    with open(tmp_pdf.name, "rb") as f:
+                elif os.path.exists(tmp_pdf_path):
+                    with open(tmp_pdf_path, "rb") as f:
                         pdf_bytes = f.read()
+            finally:
+                try:
+                    os.unlink(tmp_pdf_path)
+                except Exception:
+                    pass
 
         storage = get_supabase_storage()
         minio_prefix = get_candidate_minio_prefix(db_candidate_id)
@@ -986,15 +1144,22 @@ def _generate_corrected_cv_from_talentcard(
                             None, json_bytes_en, object_name_json_en, content_type="application/json"
                         )
 
-                    # Générer PDF EN à partir du HTML EN
+                    # Générer PDF EN à partir du HTML EN (mkstemp pour éviter Permission denied sur Windows)
                     pdf_bytes_en = None
                     pdf_en_converted = False
-                    with tempfile.NamedTemporaryFile(suffix=".pdf", delete=True) as tmp_pdf_en:
-                        if os.path.exists(out_html_en):
-                            pdf_en_converted = _convert_cv_html_to_pdf(out_html_en, tmp_pdf_en.name)
-                            if pdf_en_converted and os.path.exists(tmp_pdf_en.name):
-                                with open(tmp_pdf_en.name, "rb") as f:
+                    if os.path.exists(out_html_en):
+                        fd_en, tmp_pdf_en_path = tempfile.mkstemp(suffix=".pdf")
+                        os.close(fd_en)
+                        try:
+                            pdf_en_converted = _convert_cv_html_to_pdf(out_html_en, tmp_pdf_en_path)
+                            if pdf_en_converted and os.path.exists(tmp_pdf_en_path):
+                                with open(tmp_pdf_en_path, "rb") as f:
                                     pdf_bytes_en = f.read()
+                        finally:
+                            try:
+                                os.unlink(tmp_pdf_en_path)
+                            except Exception:
+                                pass
 
                     if pdf_en_converted and pdf_bytes_en:
                         object_name_en = f"{minio_prefix}cv_{candidate_uuid}_en.pdf"
@@ -1025,19 +1190,23 @@ def _generate_corrected_cv_from_talentcard(
                 object_name_pdf = f"{minio_prefix}cv_{candidate_uuid}.pdf"
                 object_name_json = f"{minio_prefix}corrected_data_{candidate_uuid}.json"
 
-                payload = {
-                    "candidate_id": db_candidate_id,
+                fv_cv_update = {
                     "candidate_uuid": candidate_uuid,
                     "corrected_json_minio_url": object_name_json[:500],
                     "corrected_pdf_minio_url": object_name_pdf[:500],
                 }
 
-                # Contrainte UNIQUE (candidate_id,candidate_uuid) dans Supabase :
-                # on peut utiliser un upsert propre.
-                supabase_db.table("fichiers_versions").upsert(
-                    payload,
-                    on_conflict="candidate_id,candidate_uuid",
-                ).execute()
+                # UPDATE par candidate_id seul pour éviter un doublon si l'UUID
+                # a changé entre deux imports de CV.
+                cv_update_result = supabase_db.table("fichiers_versions").update(
+                    fv_cv_update
+                ).eq("candidate_id", db_candidate_id).execute()
+
+                if not cv_update_result.data:
+                    # Aucune ligne existante → insertion initiale
+                    fv_cv_update["candidate_id"] = db_candidate_id
+                    supabase_db.table("fichiers_versions").insert(fv_cv_update).execute()
+
                 print(f"✅ fichiers_versions synchronisé dans Supabase pour candidate_id={db_candidate_id}, candidate_uuid={candidate_uuid}")
             except Exception as e:
                 print(f"⚠️  Erreur synchro fichiers_versions dans Supabase: {e}")
@@ -1071,6 +1240,7 @@ def process_candidate():
     # Si l'appel provient du backend Nest, on reçoit `existing_candidate_id`.
     # Dans ce cas, on NE doit PAS créer un nouveau candidat : on réutilise celui déjà créé côté Nest.
     existing_candidate_id = (request.form.get("existing_candidate_id") or "").strip()
+    candidate_uuid = None
 
     # Récupérer l'utilisateur connecté (optionnel) pour lier le candidat dès la création
     # Utilise get_optional_user_from_request pour supporter Authorization ET form auth_token (multipart)
@@ -1078,6 +1248,7 @@ def process_candidate():
 
     db_candidate_id = None
     id_agent = None
+    _existing_form_fields = None  # champs formulaire du candidat existant (re-import uniquement)
 
     if existing_candidate_id:
         try:
@@ -1088,11 +1259,16 @@ def process_candidate():
         if supabase_db is None:
             return jsonify({"error": "Supabase DB non configuré"}), 500
 
-        # Charger le candidat existant
+        # Charger le candidat existant (inclut les champs formulaire pour les préserver)
         try:
             resp = (
                 supabase_db.table("candidates")
-                .select("id, id_agent, user_id")
+                .select(
+                    "id, id_agent, user_id, candidate_uuid, "
+                    "categorie_profil, pays_cible, pret_a_relocater, "
+                    "disponibilite, salaire_minimum, type_contrat, "
+                    "constraints, search_criteria"
+                )
                 .eq("id", db_candidate_id)
                 .limit(1)
                 .execute()
@@ -1106,6 +1282,20 @@ def process_candidate():
             return jsonify({"error": f"Candidat {db_candidate_id} introuvable"}), 404
 
         id_agent = (candidate_row.get("id_agent") or "").strip() if isinstance(candidate_row.get("id_agent"), str) else candidate_row.get("id_agent")
+        candidate_uuid = (candidate_row.get("candidate_uuid") or "").strip() if isinstance(candidate_row.get("candidate_uuid"), str) else None
+
+        # Mémoriser les champs remplis via le formulaire d'onboarding pour ne pas les écraser
+        # lors du re-import. Ces valeurs seront réinjectées dans talentcard_data après l'analyse IA.
+        _existing_form_fields = {
+            "categorie_profil": candidate_row.get("categorie_profil"),
+            "pays_cible": candidate_row.get("pays_cible"),
+            "pret_a_relocater": candidate_row.get("pret_a_relocater"),
+            "disponibilite": candidate_row.get("disponibilite"),
+            "salaire_minimum": candidate_row.get("salaire_minimum"),
+            "type_contrat": candidate_row.get("type_contrat"),
+            "constraints": candidate_row.get("constraints"),
+            "search_criteria": candidate_row.get("search_criteria"),
+        }
 
         # Si l'utilisateur est connu côté Flask et que la ligne n'a pas de user_id, on la lie
         try:
@@ -1141,7 +1331,10 @@ def process_candidate():
             print(f"❌ Erreur lors de la création de l'enregistrement candidat: {e}")
             return jsonify({"error": f"Erreur lors de la création de l'enregistrement candidat: {e}"}), 500
     
-    candidate_uuid = str(uuid.uuid4())
+    # IMPORTANT: en mode update d'un candidat existant, conserver le même candidate_uuid
+    # pour régénérer/écraser les mêmes fichiers et mettre à jour la même ligne fichiers_versions.
+    if not candidate_uuid:
+        candidate_uuid = str(uuid.uuid4())
     
     cv_file = request.files.get("cv_file")
     cv_content = b""
@@ -1250,11 +1443,20 @@ def process_candidate():
     if not result:
         return jsonify({"error": "Échec de génération de la Talent Card"}), 500
 
-    # Priorité au domaine choisi dans le formulaire (et non à l'agent)
+    # Catégorie/domaine pour ce run:
+    # 1) domaine formulaire courant si fourni
+    # 2) sinon, en re-import, catégorie existante en base (préserver onboarding)
+    # 3) sinon fallback agent
     selected_domaine = (form_info.get("domaine_activite") or "").strip()
-    if selected_domaine:
-        result["talentcard"]["domaine_activite"] = selected_domaine
-        result["talentcard"]["categorie_profil"] = selected_domaine
+    existing_domaine = (
+        (_existing_form_fields or {}).get("categorie_profil")
+        if isinstance(_existing_form_fields, dict)
+        else None
+    )
+    effective_domaine = selected_domaine or (str(existing_domaine).strip() if existing_domaine else "")
+    if effective_domaine:
+        result["talentcard"]["domaine_activite"] = effective_domaine
+        result["talentcard"]["categorie_profil"] = effective_domaine
 
     # Upload CV et image vers le stockage Supabase
     minio_urls = {
@@ -1264,7 +1466,17 @@ def process_candidate():
         'talentcard_pdf_url': None,
     }
 
-    minio_prefix = get_candidate_minio_prefix(db_candidate_id, result["talentcard"].get("categorie_profil"))
+    # IMPORTANT: ne jamais retomber sur "autre" en re-import si le candidat a déjà une catégorie.
+    category_for_storage = (
+        effective_domaine
+        or (result["talentcard"].get("categorie_profil") or "").strip()
+    )
+    minio_prefix = get_candidate_minio_prefix(db_candidate_id, category_for_storage or None)
+
+    # Re-import : supprimer les anciens fichiers CV avant d'uploader le nouveau
+    if existing_candidate_id and cv_content:
+        _delete_old_cv_files(db_candidate_id, candidate_uuid, minio_prefix)
+
     if cv_content and cv_file:
         cv_filename = cv_file.filename or 'cv.pdf'
         cv_object_name = f"{minio_prefix}cv_{cv_filename}"
@@ -1288,42 +1500,71 @@ def process_candidate():
         if success:
             minio_urls['image_url'] = url
 
-    # Mise à jour de l'enregistrement en base de données avec les données complètes
     talentcard_data = result["talentcard"]
-    # Priorité aux liens saisis dans le formulaire (LinkedIn, GitHub)
+
+    # ── Liens sociaux : priorité au formulaire, sinon valeur extraite par l'IA ──
     if form_info.get("linkedin_url"):
         talentcard_data["linkedin"] = (form_info.get("linkedin_url") or "").strip()
     if form_info.get("github_url"):
         talentcard_data["github"] = (form_info.get("github_url") or "").strip()
     if form_info.get("behance_url"):
         talentcard_data["behance"] = (form_info.get("behance_url") or "").strip()
-    # Pays cible : depuis le formulaire (target_country) pour persistance en base
-    if form_info.get("target_country"):
-        pays_cible = (form_info.get("target_country") or "").strip()
-        if pays_cible:
-            talentcard_data["pays_cible"] = pays_cible
-            talentcard_data["target_country"] = pays_cible
-    # Prêt à relocaliser : depuis le formulaire pour persistance en base
-    if form_info.get("pret_a_relocater") is not None:
-        pret = (form_info.get("pret_a_relocater") or "").strip()
-        if pret:
-            talentcard_data["pret_a_relocater"] = pret[:100]
-    # Niveau de séniorité : formulaire (seniority_level) ou JSON IA (niveau de seniorite)
+
     niveau = (form_info.get("seniority_level") or "").strip() or talentcard_data.get("niveau de seniorite") or talentcard_data.get("niveau_seniorite")
     if niveau:
         talentcard_data["niveau_seniorite"] = (niveau if isinstance(niveau, str) else str(niveau))[:100]
-    # Exigences / pré-requis et critères de recherche : depuis le formulaire pour persistance en base
-    if form_info.get("constraints") is not None:
-        talentcard_data["constraints"] = (form_info.get("constraints") or "").strip() or None
-    if form_info.get("search_criteria") is not None:
-        talentcard_data["search_criteria"] = (form_info.get("search_criteria") or "").strip() or None
-    if form_info.get("salaire_minimum") is not None:
-        talentcard_data["salaire_minimum"] = (form_info.get("salaire_minimum") or "").strip() or None
-    if form_info.get("domaine_activite") is not None:
-        selected_domaine = (form_info.get("domaine_activite") or "").strip()
-        if selected_domaine:
-            talentcard_data["domaine_activite"] = selected_domaine
-            talentcard_data["categorie_profil"] = selected_domaine
+
+   
+    def _form_or_existing(form_key, existing_key=None):
+        """Retourne la valeur du formulaire si présente, sinon celle de la DB existante."""
+        form_val = form_info.get(form_key)
+        if form_val is not None and str(form_val).strip():
+            return str(form_val).strip()
+        if _existing_form_fields:
+            return _existing_form_fields.get(existing_key or form_key)
+        return None
+
+    pays_cible_val = _form_or_existing("target_country", "pays_cible")
+    if pays_cible_val:
+        talentcard_data["pays_cible"] = pays_cible_val
+        talentcard_data["target_country"] = pays_cible_val
+
+    pret_val = _form_or_existing("pret_a_relocater")
+    if pret_val:
+        talentcard_data["pret_a_relocater"] = pret_val[:100]
+
+    constraints_val = _form_or_existing("constraints")
+    if constraints_val is not None:
+        talentcard_data["constraints"] = constraints_val or None
+
+    search_val = _form_or_existing("search_criteria")
+    if search_val is not None:
+        talentcard_data["search_criteria"] = search_val or None
+
+    salaire_val = _form_or_existing("salaire_minimum")
+    if salaire_val is not None:
+        talentcard_data["salaire_minimum"] = salaire_val or None
+
+    disponibilite_val = _form_or_existing("disponibilite")
+    if disponibilite_val:
+        talentcard_data["disponibilite"] = disponibilite_val
+
+    # type_contrat : formulaire prioritaire, sinon valeur DB existante
+    type_contrat_form = form_info.get("type_contrat")
+    if type_contrat_form:
+        talentcard_data["type_contrat"] = type_contrat_form
+    elif _existing_form_fields and _existing_form_fields.get("type_contrat"):
+        talentcard_data["type_contrat"] = _existing_form_fields["type_contrat"]
+
+    # categorie_profil : le formulaire (domaine_activite) est prioritaire ;
+    # en re-import sans formulaire, on conserve la catégorie déjà en base.
+    domaine_form = (form_info.get("domaine_activite") or "").strip()
+    if domaine_form:
+        talentcard_data["domaine_activite"] = domaine_form
+        talentcard_data["categorie_profil"] = domaine_form
+    elif _existing_form_fields and _existing_form_fields.get("categorie_profil"):
+        # Conserver la catégorie existante — ne pas la laisser écraser par l'IA
+        talentcard_data["categorie_profil"] = _existing_form_fields["categorie_profil"]
     # Sauvegarder l'output brut de l'agent A1 (le JSON qui est envoyé à l'agent B1) dans le stockage
     talentcard_json_path = None
     try:
@@ -2833,11 +3074,18 @@ def enrich_corrected_cv(candidate_uuid):
 
             pdf_converted = False
             pdf_bytes = None
-            with tempfile.NamedTemporaryFile(suffix=".pdf", delete=True) as tmp_pdf:
-                pdf_converted = _convert_cv_html_to_pdf(out_html_path, tmp_pdf.name)
-                if pdf_converted and os.path.exists(tmp_pdf.name):
-                    with open(tmp_pdf.name, "rb") as f:
+            fd, tmp_pdf_path = tempfile.mkstemp(suffix=".pdf")
+            os.close(fd)
+            try:
+                pdf_converted = _convert_cv_html_to_pdf(out_html_path, tmp_pdf_path)
+                if pdf_converted and os.path.exists(tmp_pdf_path):
+                    with open(tmp_pdf_path, "rb") as f:
                         pdf_bytes = f.read()
+            finally:
+                try:
+                    os.unlink(tmp_pdf_path)
+                except Exception:
+                    pass
 
             try:
                 with open(out_html_path, "rb") as f:
@@ -4862,7 +5110,8 @@ def get_portfolio_html(candidate_uuid, version):
                     )
                     
                     if pdf_success:
-                        _portfolio_pdf_generated_at[(db_candidate_id, "one-page")] = _time.time()
+                        with _portfolio_pdf_lock:
+                            _portfolio_pdf_generated_at[(db_candidate_id, "one-page")] = _time.time()
                         print(f"✅ [PDF Thread One-Page] PDF généré avec succès: {pdf_url}")
                         # Sauvegarder l'URL du PDF dans la base de données si la colonne existe
                         try:
@@ -4929,9 +5178,19 @@ def generate_portfolio_html_endpoint(candidate_uuid):
         db_candidate_id = data.get("db_candidate_id")
         version = data.get("version", "one-page")
         save_to_minio = data.get("save_to_minio", True)
-        lang = (data.get("lang") or "fr").strip().lower()
+        lang_raw = data.get("lang")
+        lang_explicit = isinstance(lang_raw, str) and bool(lang_raw.strip())
+        lang = (lang_raw or "fr").strip().lower()
         if lang not in ("fr", "en"):
             lang = "fr"
+        # Par défaut:
+        # - si la langue n'est pas explicite, générer aussi l'autre langue (comportement historique)
+        # - si la langue est explicite, ne pas relancer automatiquement l'autre langue
+        auto_generate_other_lang = data.get("auto_generate_other_lang")
+        if auto_generate_other_lang is None:
+            auto_generate_other_lang = not lang_explicit
+        else:
+            auto_generate_other_lang = bool(auto_generate_other_lang)
         
         if not db_candidate_id:
             return jsonify({"error": "db_candidate_id est requis"}), 400
@@ -5043,20 +5302,26 @@ def generate_portfolio_html_endpoint(candidate_uuid):
                     except Exception:
                         return None
 
-                payload = {
-                    "candidate_id": db_candidate_id,
-                    "candidate_uuid": candidate_uuid,
-                }
                 storage_path = _extract_storage_path_for_portfolio(pdf_url_to_save)
-                if version_to_save == "one-page":
-                    payload["one_page_pdf_url"] = (storage_path or "")[:500]
-                else:
-                    payload["long_pdf_url"] = (storage_path or "")[:500]
+                col_name = "one_page_pdf_url" if version_to_save == "one-page" else "long_pdf_url"
+                update_data = {col_name: (storage_path or "")[:500]}
 
-                supabase_db.table("fichiers_versions").upsert(
-                    payload,
-                    on_conflict="candidate_id,candidate_uuid",
-                ).execute()
+                # Update the existing row by candidate_id alone (row was already created
+                # during CV correction with the real candidate_uuid — using upsert on
+                # (candidate_id, candidate_uuid) would insert a duplicate if the UUID in
+                # the request differs from the one stored).
+                result = supabase_db.table("fichiers_versions").update(
+                    update_data
+                ).eq("candidate_id", db_candidate_id).execute()
+
+                # Fallback: if no row existed yet, insert one
+                if not result.data:
+                    update_data["candidate_id"] = db_candidate_id
+                    update_data["candidate_uuid"] = candidate_uuid
+                    supabase_db.table("fichiers_versions").upsert(
+                        update_data,
+                        on_conflict="candidate_id,candidate_uuid",
+                    ).execute()
                 print(
                     f"✅ {version_to_save} portfolio PDF URL synchronisé dans Supabase "
                     f"pour candidate_id={db_candidate_id}, candidate_uuid={candidate_uuid}"
@@ -5082,8 +5347,9 @@ def generate_portfolio_html_endpoint(candidate_uuid):
                         lang=lang
                     )
                     if pdf_success:
-                        _portfolio_pdf_generated_at[(db_candidate_id, version, lang)] = _time.time()
-                        _portfolio_pdf_generated_at[(db_candidate_id, version)] = _time.time()  # rétrocompat
+                        with _portfolio_pdf_lock:
+                            _portfolio_pdf_generated_at[(db_candidate_id, version, lang)] = _time.time()
+                            _portfolio_pdf_generated_at[(db_candidate_id, version)] = _time.time()  # rétrocompat
                         print(f"✅ [PDF] PDF généré et uploadé: {pdf_url}")
                         # Sauvegarder l'URL du PDF dans fichiers_versions
                         _save_portfolio_pdf_url(pdf_url, version)
@@ -5093,9 +5359,20 @@ def generate_portfolio_html_endpoint(candidate_uuid):
                     print(f"❌ [PDF] Exception: {e}")
                     import traceback
                     traceback.print_exc()
+                finally:
+                    with _portfolio_pdf_lock:
+                        _portfolio_pdf_jobs_in_progress.discard((db_candidate_id, version, lang))
 
-            threading.Thread(target=_generate_pdf_background, daemon=True).start()
-            print(f"🔄 [PDF] Thread de génération PDF lancé (version={version}, lang={lang})")
+            with _portfolio_pdf_lock:
+                _pdf_job_key = (db_candidate_id, version, lang)
+                _pdf_already_running = _pdf_job_key in _portfolio_pdf_jobs_in_progress
+                if not _pdf_already_running:
+                    _portfolio_pdf_jobs_in_progress.add(_pdf_job_key)
+            if _pdf_already_running:
+                print(f"ℹ️ [PDF] Génération déjà en cours, thread non relancé (version={version}, lang={lang})")
+            else:
+                threading.Thread(target=_generate_pdf_background, daemon=True).start()
+                print(f"🔄 [PDF] Thread de génération PDF lancé (version={version}, lang={lang})")
         except Exception as e:
             print(f"⚠️ [PDF] Démarrage thread PDF échoué: {e}")
 
@@ -5142,7 +5419,8 @@ def generate_portfolio_html_endpoint(candidate_uuid):
                     lang=_other_lang
                 )
                 if pdf_success:
-                    _portfolio_pdf_generated_at[(db_candidate_id, version, _other_lang)] = _time2.time()
+                    with _portfolio_pdf_lock:
+                        _portfolio_pdf_generated_at[(db_candidate_id, version, _other_lang)] = _time2.time()
                     print(f"✅ [PDF] PDF {_other_lang} généré et uploadé: {pdf_url_other}")
                     # Sauvegarder l'URL du PDF (on ne garde qu'une URL, peu importe la langue)
                     _save_portfolio_pdf_url(pdf_url_other, version)
@@ -5152,11 +5430,25 @@ def generate_portfolio_html_endpoint(candidate_uuid):
                 print(f"❌ [PDF] Exception génération autre langue ({_other_lang}): {e2}")
                 import traceback
                 traceback.print_exc()
-        try:
-            threading.Thread(target=_generate_other_lang_background, daemon=True).start()
-            print(f"🔄 [PDF] Thread autre langue ({_other_lang}, version={version}) lancé")
-        except Exception as e2:
-            print(f"⚠️ [PDF] Démarrage thread autre langue échoué: {e2}")
+            finally:
+                with _portfolio_pdf_lock:
+                    _portfolio_pdf_jobs_in_progress.discard((db_candidate_id, version, _other_lang))
+        if auto_generate_other_lang:
+            try:
+                with _portfolio_pdf_lock:
+                    _other_job_key = (db_candidate_id, version, _other_lang)
+                    _other_already_running = _other_job_key in _portfolio_pdf_jobs_in_progress
+                    if not _other_already_running:
+                        _portfolio_pdf_jobs_in_progress.add(_other_job_key)
+                if _other_already_running:
+                    print(f"ℹ️ [PDF] Thread autre langue déjà en cours ({_other_lang}, version={version}), non relancé")
+                else:
+                    threading.Thread(target=_generate_other_lang_background, daemon=True).start()
+                    print(f"🔄 [PDF] Thread autre langue ({_other_lang}, version={version}) lancé")
+            except Exception as e2:
+                print(f"⚠️ [PDF] Démarrage thread autre langue échoué: {e2}")
+        else:
+            print(f"ℹ️ [PDF] Auto-génération autre langue désactivée (lang explicite={lang_explicit})")
         
         return jsonify({
             "success": True,
@@ -5201,16 +5493,12 @@ def get_portfolio_pdf_status(candidate_uuid):
         lang_suffix = f"_{lang}" if lang else ""
         key = (db_candidate_id, version, lang) if lang else (db_candidate_id, version)
         key_legacy = (db_candidate_id, version)
-        if key in _portfolio_pdf_generated_at:
-            return jsonify({
-                "ready": True,
-                "generated_at": _portfolio_pdf_generated_at[key]
-            })
-        if not lang and key_legacy in _portfolio_pdf_generated_at:
-            return jsonify({
-                "ready": True,
-                "generated_at": _portfolio_pdf_generated_at[key_legacy]
-            })
+        with _portfolio_pdf_lock:
+            _ts = _portfolio_pdf_generated_at.get(key) or (
+                _portfolio_pdf_generated_at.get(key_legacy) if not lang else None
+            )
+        if _ts is not None:
+            return jsonify({"ready": True, "generated_at": _ts})
         storage = get_supabase_storage()
         if not storage or not storage.client:
             return jsonify({"ready": False, "error": "Supabase Storage non initialisé"}), 503
@@ -5400,7 +5688,8 @@ def get_portfolio_pdf(candidate_uuid):
             'Expires': '0'
         }
         key = (db_candidate_id, version, lang) if lang else (db_candidate_id, version)
-        gen_at = _portfolio_pdf_generated_at.get(key) or _portfolio_pdf_generated_at.get((db_candidate_id, version))
+        with _portfolio_pdf_lock:
+            gen_at = _portfolio_pdf_generated_at.get(key) or _portfolio_pdf_generated_at.get((db_candidate_id, version))
         if gen_at is not None:
             headers['X-PDF-Generated-At'] = str(int(gen_at))
         return Response(pdf_bytes, mimetype='application/pdf', headers=headers)
@@ -6867,4 +7156,4 @@ def scoring_candidate(db_candidate_id):
 
 if __name__ == "__main__":
 
-    app.run(debug=True, host='0.0.0.0', port=5002)
+    app.run(host="0.0.0.0", port=5002, debug=True, use_reloader=False)

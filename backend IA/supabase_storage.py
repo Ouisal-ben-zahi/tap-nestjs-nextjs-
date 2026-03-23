@@ -9,7 +9,8 @@ from typing import Optional, Tuple
 from dotenv import load_dotenv
 from supabase import Client, create_client
 
-load_dotenv()
+# Prioriser les valeurs du .env local du projet.
+load_dotenv(override=True)
 
 # Configuration Supabase depuis les variables d'environnement
 SUPABASE_URL = os.getenv("supabase_url")
@@ -176,6 +177,28 @@ class SupabaseStorage:
             error_msg = f"Erreur Supabase lors de la suppression: {e}"
             print(f"❌ {error_msg}")
             return False, error_msg
+
+    def list_files(self, folder_path: str) -> list:
+        """
+        Liste les fichiers dans un dossier du bucket.
+
+        Args:
+            folder_path: Chemin du dossier (ex: "candidates/Data science/51")
+
+        Returns:
+            Liste de dicts avec au minimum {"name": str}
+        """
+        if not self.client or not self.bucket_name:
+            return []
+        try:
+            storage = self.client.storage.from_(self.bucket_name)
+            result = storage.list(folder_path)
+            if isinstance(result, list):
+                return result
+            return []
+        except Exception as e:
+            print(f"❌ Erreur listage Supabase Storage ({folder_path}): {e}")
+            return []
 
     def get_file_url(self, object_name: str) -> Optional[str]:
         """

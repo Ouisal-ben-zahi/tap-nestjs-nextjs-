@@ -253,15 +253,25 @@ export class DashboardService {
     return created;
   }
 
-  private getFlaskBaseUrl(): string {
+  /** Base URL Flask optionnelle (ex. création d’offre sans IA en local). */
+  private tryGetFlaskBaseUrl(): string | null {
     const flaskUrl = this.config.get<string>('FLASK_AI_URL');
-    if (!flaskUrl) {
-      throw new BadRequestException('FLASK_AI_URL non configuré');
+    if (!flaskUrl || !String(flaskUrl).trim()) {
+      return null;
     }
-    return flaskUrl.replace(/\/$/, '');
+    return String(flaskUrl).replace(/\/$/, '');
   }
 
-  private async callFlaskJson<T>(
+  private getFlaskBaseUrl(): string {
+    const base = this.tryGetFlaskBaseUrl();
+    if (!base) {
+      throw new BadRequestException('FLASK_AI_URL non configuré');
+    }
+    return base;
+  }
+
+  private async callFlaskJsonWithBase<T>(
+    base: string,
     method: 'GET' | 'POST',
     path: string,
     body?: any,
@@ -272,7 +282,6 @@ export class DashboardService {
       const https = require('https');
       const { URL } = require('url');
 
-      const base = this.getFlaskBaseUrl();
       const url = new URL(base + path);
       const transport = url.protocol === 'https:' ? https : http;
 
@@ -334,6 +343,69 @@ export class DashboardService {
     } catch (e: any) {
       throw new BadRequestException(e?.message || 'Erreur appel Flask');
     }
+  }
+
+  private async callFlaskJson<T>(
+    method: 'GET' | 'POST',
+    path: string,
+    body?: any,
+    timeoutMs: number = 300000,
+  ): Promise<T> {
+    return this.callFlaskJsonWithBase<T>(
+      this.getFlaskBaseUrl(),
+      method,
+      path,
+      body,
+      timeoutMs,
+    );
+  }
+
+  /**
+   * Appelle le backend IA pour générer l’embedding document d’une offre (matching sémantique).
+   * Si FLASK_AI_URL n’est pas défini, retourne null (insertion avec embedding vide, dev local).
+   */
+  private async fetchJobEmbeddingFromFlask(
+    payload: RecruiterJobPayload,
+  ): Promise<number[] | null> {
+    const base = this.tryGetFlaskBaseUrl();
+    if (!base) {
+      return null;
+    }
+
+    const embedPayload = {
+      title: payload.title,
+      categorie_profil: payload.categorie_profil ?? null,
+      niveau_attendu: payload.niveau_attendu ?? null,
+      experience_min: payload.experience_min ?? null,
+      presence_sur_site: payload.presence_sur_site ?? null,
+      localisation:
+        typeof payload.localisation === 'string' && payload.localisation.trim()
+          ? payload.localisation.trim()
+          : null,
+      reason: payload.reason ?? null,
+      main_mission: payload.main_mission ?? null,
+      tasks_other: payload.tasks_other ?? null,
+      disponibilite: payload.disponibilite ?? null,
+      contrat: payload.contrat ?? null,
+      niveau_seniorite: payload.niveau_seniorite ?? null,
+      entreprise: payload.entreprise ?? null,
+    };
+
+    const res = await this.callFlaskJsonWithBase<{ embedding?: number[] }>(
+      base,
+      'POST',
+      '/api/offres/embed',
+      embedPayload,
+      120_000,
+    );
+
+    const emb = res?.embedding;
+    if (!Array.isArray(emb) || emb.length === 0) {
+      throw new BadRequestException(
+        "L'IA n'a pas pu générer l'embedding de l'offre. Vérifiez le serveur Flask (GEMINI_API_KEY, /api/offres/embed).",
+      );
+    }
+    return emb;
   }
 
   private async getCandidateRowForUser(
@@ -503,7 +575,7 @@ export class DashboardService {
     }
   }
   async getCandidateStats(userId: number): Promise<CandidateDashboardStats> {
-    if (!userId || Number.isNaN(userId)) {
+    if (userId === null || userId === undefined || Number.isNaN(userId)) {
       throw new BadRequestException('userId invalide');
     }
 
@@ -679,7 +751,7 @@ export class DashboardService {
   async getCandidateApplications(
     userId: number,
   ): Promise<{ applications: CandidateApplicationItem[] }> {
-    if (!userId || Number.isNaN(userId)) {
+    if (userId === null || userId === undefined || Number.isNaN(userId)) {
       throw new BadRequestException('userId invalide');
     }
 
@@ -1308,6 +1380,53 @@ export class DashboardService {
     const safeName = `cv_${Date.now()}.pdf`;
     const path = `${basePath}/${safeName}`;
 
+    // Nettoyage préventif: garder un seul CV "source" par candidat dans le Storage.
+    // Avant d'uploader le nouveau CV, on supprime les anciens fichiers cv*.pdf.
+    try {
+      const { data: existingCvFiles, error: existingCvFilesError } =
+        await this.supabase.storage.from('tap_files').list(basePath, {
+          limit: 100,
+        });
+
+      if (!existingCvFilesError && existingCvFiles?.length) {
+        const oldCvPaths = existingCvFiles
+          .filter((f: any) => {
+            if (typeof f?.name !== 'string') return false;
+            const n = f.name.toLowerCase();
+            // Supprimer seulement les CV "source" uploadés par Nest:
+            // format: cv_<timestamp>.pdf (ex: cv_1710848123456.pdf)
+            // On NE supprime PAS les CV corrigés IA:
+            // - cv_<candidate_uuid>.pdf
+            // - cv_<candidate_uuid>_en.pdf
+            return /^cv_\d+\.pdf$/.test(n);
+          })
+          .map((f: any) => `${basePath}/${f.name}`);
+
+        if (oldCvPaths.length) {
+          const { error: removeError } = await this.supabase.storage
+            .from('tap_files')
+            .remove(oldCvPaths);
+          if (removeError) {
+            // Non bloquant: on continue, l'upload du nouveau CV reste prioritaire.
+            console.warn(
+              '[CV] Suppression anciens CV échouée pour candidat ' +
+                candidateId +
+                ': ' +
+                removeError.message,
+            );
+          }
+        }
+      }
+    } catch (cleanupErr) {
+      // Non bloquant: en cas d'erreur de listing/suppression, on n'interrompt pas l'upload.
+      console.warn(
+        '[CV] Nettoyage anciens CV ignoré pour candidat ' +
+          candidateId +
+          ': ' +
+          (cleanupErr as any)?.message,
+      );
+    }
+
     const { error: uploadError } = await this.supabase.storage
       .from('tap_files')
       .upload(path, file.buffer, {
@@ -1533,6 +1652,21 @@ export class DashboardService {
       throw new BadRequestException('Le titre du poste est obligatoire');
     }
 
+    const locationType =
+      typeof payload.localisation === 'string' && payload.localisation.trim()
+        ? payload.localisation.trim()
+        : null;
+
+    let embedding: number[] | Record<string, never> = {};
+    const vector = await this.fetchJobEmbeddingFromFlask({
+      ...payload,
+      title,
+      localisation: locationType ?? payload.localisation,
+    });
+    if (vector !== null) {
+      embedding = vector;
+    }
+
     const bodyToInsert: any = {
       title,
       categorie_profil: payload.categorie_profil ?? null,
@@ -1550,13 +1684,8 @@ export class DashboardService {
       niveau_seniorite: payload.niveau_seniorite ?? null,
       entreprise: payload.entreprise ?? null,
       phone: payload.phone ?? null,
-      location_type:
-        typeof payload.localisation === 'string' &&
-        payload.localisation.trim()
-          ? payload.localisation.trim()
-          : null,
-      // Champ obligatoire côté BDD (jsonb NOT NULL) : on met un objet vide par défaut
-      embedding: {},
+      location_type: locationType,
+      embedding,
       user_id: userId,
     };
 

@@ -179,6 +179,45 @@ def insert_talent_card(
     if supabase_db is None:
         raise RuntimeError("Supabase DB non configuré pour insert_talent_card")
 
+    # Retry sur les erreurs de connexion réseau (WinError 10054, ConnectionReset, etc.)
+    # Le client httpx sous-jacent réouvre automatiquement la connexion sur la prochaine tentative.
+    _max_retries = 3
+    _last_err = None
+    for _attempt in range(_max_retries):
+        try:
+            return _insert_talent_card_once(
+                data, minio_urls=minio_urls, candidate_id=candidate_id, candidate_uuid=candidate_uuid
+            )
+        except Exception as _e:
+            _last_err = _e
+            err_str = str(_e).lower()
+            _is_conn_err = (
+                "10054" in str(_e)
+                or "connection" in err_str
+                or "remote" in err_str
+                or "reset" in err_str
+                or "eof" in err_str
+                or "broken pipe" in err_str
+            )
+            if _is_conn_err and _attempt < _max_retries - 1:
+                import time as _t
+                print(f"⚠️  insert_talent_card: erreur connexion (tentative {_attempt + 1}/{_max_retries}), retry dans 2s… ({_e})")
+                _t.sleep(2)
+                continue
+            raise
+    raise _last_err  # ne devrait jamais être atteint
+
+
+def _insert_talent_card_once(
+    data: dict,
+    minio_urls: dict = None,
+    candidate_id: int = None,
+    candidate_uuid: str | None = None,
+):
+    """Logique interne d'insert_talent_card (une seule tentative)."""
+    if minio_urls is None:
+        minio_urls = {}
+
     try:
         # Nettoyer et convertir les valeurs
         annees_exp = _clean_annees_experience(data.get("annees_experience"))
@@ -224,14 +263,11 @@ def insert_talent_card(
             minio_urls.get("talentcard_pdf_url"), max_length=500
         )
 
-        # Préparer le payload candidat pour Supabase
-        categorie = raw_categorie
-        payload_candidate = {
-            "id_agent": _clean_string_value(data.get("id_agent"), max_length=9),
+        cv_extracted_fields = {
             "nom": _clean_string_value(data.get("nom"), max_length=100),
             "prenom": _clean_string_value(data.get("prenom"), max_length=100),
             "titre_profil": titre_profil,
-            "categorie_profil": categorie,
+            "categorie_profil": raw_categorie,
             "ville": _clean_string_value(data.get("ville"), max_length=100),
             "pays": _clean_string_value(data.get("pays"), max_length=100),
             "linkedin": _clean_string_value(data.get("linkedin"), max_length=255),
@@ -240,41 +276,88 @@ def insert_talent_card(
             "email": _clean_string_value(data.get("email"), max_length=255),
             "phone": _clean_string_value(data.get("phone"), max_length=20),
             "annees_experience": annees_exp,
-            "disponibilite": _clean_string_value(data.get("disponibilite"), max_length=50),
-            "pret_a_relocater": _clean_string_value(data.get("pret_a_relocater"), max_length=10),
             "niveau_seniorite": _clean_string_value(
                 data.get("niveau_seniorite") or data.get("niveau de seniorite"), max_length=100
             ),
-            "pays_cible": _clean_string_value(
-                data.get("pays_cible") or data.get("target_country"), max_length=255
-            ),
             "resume_bref": _clean_string_value(data.get("resume_bref"), max_length=10000),
-            "constraints": _clean_string_value(data.get("constraints"), max_length=10000),
-            "search_criteria": _clean_string_value(data.get("search_criteria"), max_length=10000),
-            "salaire_minimum": _clean_string_value(data.get("salaire_minimum"), max_length=50),
-            # On stocke le chemin d'objet Storage (pas l'URL HTTP complète)
             "image_minio_url": (
                 (_extract_storage_path_from_url(image_url_to_save) or "")[:500]
                 if image_url_to_save
                 else None
             ),
             "embedding": embedding_json,
-            "type_contrat": (type_contrat_db_value or "")[:255]
-            if type_contrat_db_value
-            else None,
         }
 
-        # Nettoyer les clés None pour ne pas écraser des valeurs côté Supabase
-        payload_candidate = {k: v for k, v in payload_candidate.items() if v is not None}
+        form_only_fields = {
+            "disponibilite": _clean_string_value(data.get("disponibilite"), max_length=50),
+            "pret_a_relocater": _clean_string_value(data.get("pret_a_relocater"), max_length=10),
+            "pays_cible": _clean_string_value(
+                data.get("pays_cible") or data.get("target_country"), max_length=255
+            ),
+            "constraints": _clean_string_value(data.get("constraints"), max_length=10000),
+            "search_criteria": _clean_string_value(data.get("search_criteria"), max_length=10000),
+            "salaire_minimum": _clean_string_value(data.get("salaire_minimum"), max_length=50),
+            "type_contrat": (type_contrat_db_value or "")[:255] if type_contrat_db_value else None,
+        }
 
         if candidate_id:
-            # Mise à jour existante
-            payload_candidate["id"] = candidate_id
-            op = supabase_db.table("candidates").upsert(payload_candidate, on_conflict="id")
+            try:
+                existing_resp = (
+                    supabase_db.table("candidates")
+                    .select(
+                        "categorie_profil, pays_cible, pret_a_relocater, disponibilite, "
+                        "salaire_minimum, search_criteria, constraints, type_contrat, "
+                        "linkedin, github"
+                    )
+                    .eq("id", int(candidate_id))
+                    .limit(1)
+                    .execute()
+                )
+                existing_row = existing_resp.data[0] if existing_resp.data else {}
+            except Exception:
+                existing_row = {}
+
+            protected_fields = [
+                "categorie_profil",
+                "pays_cible",
+                "pret_a_relocater",
+                "disponibilite",
+                "salaire_minimum",
+                "search_criteria",
+                "constraints",
+                "type_contrat",
+                "linkedin",
+                "github",
+            ]
+
+            payload_candidate = {k: v for k, v in cv_extracted_fields.items() if v is not None}
+            payload_candidate["id_agent"] = _clean_string_value(data.get("id_agent"), max_length=9)
+            payload_candidate = {k: v for k, v in payload_candidate.items() if v is not None}
+
+            incoming_form_fields = {k: v for k, v in form_only_fields.items() if v is not None}
+            payload_candidate.update(incoming_form_fields)
+
+            for field in protected_fields:
+                current_val = payload_candidate.get(field)
+                has_current = (
+                    current_val is not None
+                    and (not isinstance(current_val, str) or current_val.strip() != "")
+                )
+                if (not has_current) and existing_row.get(field) is not None:
+                    payload_candidate[field] = existing_row.get(field)
+
+            op = (
+                supabase_db.table("candidates")
+                .update(payload_candidate)
+                .eq("id", int(candidate_id))
+            )
             resp = op.execute()
-            print(f"✅ Candidat {candidate_id} mis à jour dans Supabase (insert_talent_card)")
+            print(f"✅ Candidat {candidate_id} mis à jour (champs formulaire préservés) dans Supabase")
         else:
-            # Insertion d'un nouveau candidat
+            # Création initiale : tous les champs sont inclus.
+            payload_candidate = {**cv_extracted_fields, **form_only_fields}
+            payload_candidate["id_agent"] = _clean_string_value(data.get("id_agent"), max_length=9)
+            payload_candidate = {k: v for k, v in payload_candidate.items() if v is not None}
             op = supabase_db.table("candidates").insert(payload_candidate)
             resp = op.execute()
             if not resp.data:
@@ -284,33 +367,31 @@ def insert_talent_card(
 
         # Gestion des URLs de fichiers dans fichiers_versions
         if any([cv_url_to_save, talentcard_url_to_save, talentcard_pdf_url_to_save]):
-            db_candidate_uuid = candidate_uuid
-            if not db_candidate_uuid:
-                # Si aucun UUID fourni, on n'enregistre que la partie candidate_id
-                db_candidate_uuid = None
+            db_candidate_uuid = candidate_uuid or None
 
-            fv_payload = {
-                "candidate_id": int(candidate_id),
-            }
+            # Colonnes à mettre à jour
+            fv_update: dict = {}
             if db_candidate_uuid:
-                fv_payload["candidate_uuid"] = db_candidate_uuid
-
+                fv_update["candidate_uuid"] = db_candidate_uuid
             if cv_url_to_save:
-                fv_payload["cv_ancienne_url"] = cv_url_to_save[:500]
-
+                fv_update["cv_ancienne_url"] = cv_url_to_save[:500]
             tc_storage_path = _extract_storage_path_from_url(
                 talentcard_pdf_url_to_save or talentcard_url_to_save
             )
             if tc_storage_path:
-                fv_payload["talent_card_url"] = tc_storage_path[:500]
+                fv_update["talent_card_url"] = tc_storage_path[:500]
 
-            if db_candidate_uuid:
-                # Contrainte UNIQUE (candidate_id, candidate_uuid)
-                supabase_db.table("fichiers_versions").upsert(
-                    fv_payload, on_conflict="candidate_id,candidate_uuid"
-                ).execute()
-            else:
-                supabase_db.table("fichiers_versions").insert(fv_payload).execute()
+            # UPDATE par candidate_id seul : évite de créer une 2e ligne si l'UUID
+            # a changé entre deux imports de CV (le upsert sur (candidate_id,candidate_uuid)
+            # créait un doublon quand l'UUID différait).
+            update_result = supabase_db.table("fichiers_versions").update(
+                fv_update
+            ).eq("candidate_id", int(candidate_id)).execute()
+
+            if not update_result.data:
+                # Aucune ligne existante → insertion initiale
+                fv_insert = {"candidate_id": int(candidate_id), **fv_update}
+                supabase_db.table("fichiers_versions").insert(fv_insert).execute()
 
             print(
                 f"✅ fichiers_versions synchronisé dans Supabase pour candidate_id={candidate_id}, "

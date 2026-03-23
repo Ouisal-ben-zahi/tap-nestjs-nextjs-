@@ -298,6 +298,9 @@ def generate_talent_card(
         print("❌ GOOGLE_API_KEY manquant")
         return None
 
+    # Log masqué pour confirmer la clé réellement utilisée (sans exposer le secret).
+    masked = f"...{api_key[-6:]}" if len(api_key) >= 6 else "***"
+    print(f"🔑 Gemini API key utilisée: {masked}")
     genai.configure(api_key=api_key)
 
     lang = (lang or "fr").lower()
