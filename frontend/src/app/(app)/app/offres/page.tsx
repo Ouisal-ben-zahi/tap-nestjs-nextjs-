@@ -11,10 +11,18 @@ import { Briefcase, Plus, X, Send, MapPin, Clock, DollarSign, Users, ChevronDown
 import { formatDate } from "@/lib/utils";
 import type { JobPayload } from "@/types/recruteur";
 import { useDashboardTheme } from "@/hooks/use-dashboard-theme";
+import { DOMAINE_VALUES } from "@/constants/domaines";
 
-const CATEGORIES = ["Développement", "Design", "Marketing", "Commercial", "Finance", "RH", "Ingénierie", "Autre"];
+const CATEGORIES = DOMAINE_VALUES;
 const NIVEAUX = ["Junior", "Intermédiaire", "Senior", "Lead", "Manager"];
 const CONTRATS = ["CDI", "CDD", "Stage", "Freelance", "Alternance"];
+const NIVEAUX_ETUDE = ["Bac", "Bac+2", "Bac+3", "Bac+5", "Bac+8"];
+const SOFT_SKILLS = ["Autonomie", "Communication", "Organisation", "Teamwork", "Learning", "Rigueur"];
+const SKILL_LEVELS = ["Debutant", "Intermediaire", "Avance"];
+const SKILL_PRIORITIES = ["Indispensable", "Apprecie"];
+const LANGUAGE_LEVELS = ["Debutant", "Intermediaire", "Courant"];
+const LANGUAGE_IMPORTANCE = ["Indispensable", "Apprecie"];
+
 
 // Liste courte de pays principaux pour le recrutement
 const COUNTRIES = [
@@ -37,7 +45,59 @@ const COUNTRIES = [
 
 // Villes principales seulement par pays
 const CITIES_BY_COUNTRY: Record<string, string[]> = {
-  Maroc: ["Casablanca", "Rabat", "Marrakech", "Tanger", "Fès", "Autre"],
+  Maroc: [ "Agadir",
+    "Ain El Aouda",
+    "Ait Melloul",
+    "Al Hoceima",
+    "Azrou",
+    "Beni Mellal",
+    "Berkane",
+    "Berrechid",
+    "Bouskoura",
+    "Bouznika",
+    "Casablanca",
+    "Chefchaouen",
+    "Dakhla",
+    "El Jadida",
+    "Errachidia",
+    "Essaouira",
+    "Fes",
+    "Figuig",
+    "Guelmim",
+    "Ifrane",
+    "Inezgane",
+    "Kenitra",
+    "Khemisset",
+    "Khouribga",
+    "Ksar El Kebir",
+    "Laayoune",
+    "Larache",
+    "Marrakech",
+    "Martil",
+    "Meknes",
+    "Midelt",
+    "Mohammedia",
+    "Nador",
+    "Ouarzazate",
+    "Oujda",
+    "Rabat",
+    "Safi",
+    "Sale",
+    "Sefrou",
+    "Settat",
+    "Sidi Bennour",
+    "Sidi Kacem",
+    "Sidi Slimane",
+    "Tanger",
+    "Taza",
+    "Temara",
+    "Tetouan",
+    "Tinghir",
+    "Tiznit",
+    "Youssoufia",
+    "Zagora",
+    "Zemamra",
+    "Autre",],
   France: ["Paris", "Lyon", "Marseille", "Toulouse", "Lille", "Autre"],
   Belgique: ["Bruxelles", "Anvers", "Gand", "Autre"],
   Suisse: ["Genève", "Lausanne", "Zurich", "Autre"],
@@ -56,7 +116,7 @@ const CITIES_BY_COUNTRY: Record<string, string[]> = {
 
 const emptyForm: JobPayload = {
   title: "",
-  categorie_profil: "Développement",
+  categorie_profil: "Developpement logiciel / Software engineering",
   niveau_attendu: null,
   experience_min: "",
   presence_sur_site: "",
@@ -88,6 +148,14 @@ export default function OffresPage() {
   const [dispoOpen, setDispoOpen] = useState(false);
   const [country, setCountry] = useState<string>("");
   const [city, setCity] = useState<string>("");
+  const [selectedCities, setSelectedCities] = useState<string[]>([]);
+  const [softSkills, setSoftSkills] = useState<string[]>([]);
+  const [skills, setSkills] = useState<{ name: string; level: string; priority: string }[]>([
+    { name: "", level: "Debutant", priority: "Indispensable" },
+  ]);
+  const [languages, setLanguages] = useState<{ name: string; level: string; importance: string }[]>([
+    { name: "", level: "Debutant", importance: "Indispensable" },
+  ]);
   const [countryOpen, setCountryOpen] = useState(false);
   const [cityOpen, setCityOpen] = useState(false);
   const theme = useDashboardTheme();
@@ -107,21 +175,61 @@ export default function OffresPage() {
     e.preventDefault();
 
     const localisationFromSelectors =
-      city && country ? `${city}, ${country}` : undefined;
+      selectedCities.length > 0
+        ? selectedCities.join(", ")
+        : city && country
+          ? `${city}, ${country}`
+          : undefined;
 
     const payload: JobPayload = {
       ...form,
       localisation: localisationFromSelectors ?? form.localisation ?? "",
+      soft_skills: softSkills,
+      skills: skills.filter((s) => s.name.trim() !== ""),
+      languages: languages.filter((l) => l.name.trim() !== ""),
     };
 
     await createJob.mutateAsync(payload);
     setForm(emptyForm);
     setCountry("");
     setCity("");
+    setSelectedCities([]);
+    setSoftSkills([]);
+    setSkills([{ name: "", level: "Debutant", priority: "Indispensable" }]);
+    setLanguages([{ name: "", level: "Debutant", importance: "Indispensable" }]);
     setShowForm(false);
   };
 
   const update = (field: keyof JobPayload, value: any) => setForm((f) => ({ ...f, [field]: value }));
+  const toggleSoftSkill = (skill: string) => {
+    setSoftSkills((prev) => {
+      if (prev.includes(skill)) return prev.filter((s) => s !== skill);
+      if (prev.length >= 5) return prev;
+      return [...prev, skill];
+    });
+  };
+  const updateLanguage = (index: number, field: "name" | "level" | "importance", value: string) => {
+    setLanguages((prev) => {
+      const next = [...prev];
+      next[index] = { ...next[index], [field]: value };
+      return next;
+    });
+  };
+  const addLanguage = () =>
+    setLanguages((prev) => [...prev, { name: "", level: "Debutant", importance: "Indispensable" }]);
+  const removeLanguage = (index: number) =>
+    setLanguages((prev) => prev.filter((_, i) => i !== index));
+  const updateSkill = (index: number, field: "name" | "level" | "priority", value: string) => {
+    setSkills((prev) => {
+      const next = [...prev];
+      next[index] = { ...next[index], [field]: value };
+      return next;
+    });
+  };
+  const addSkill = () =>
+    setSkills((prev) => [...prev, { name: "", level: "Debutant", priority: "Indispensable" }]);
+  const removeSkill = (index: number) =>
+    setSkills((prev) => prev.filter((_, i) => i !== index));
 
   return (
     <div className="max-w-[1100px] mx-auto">
@@ -446,6 +554,28 @@ export default function OffresPage() {
               )}
             </div>
 
+            <div>
+              <label
+                className={`block text-[10px] font-semibold uppercase tracking-[2px] mb-2 ${
+                  isLight ? "text-black/70" : "text-white/40"
+                }`}
+              >
+                Niveau d&apos;etude attendu
+              </label>
+              <select
+                value={form.niveau_attendu ?? ""}
+                onChange={(e) => update("niveau_attendu", e.target.value)}
+                className="input-premium"
+              >
+                <option value="">-- Selectionner --</option>
+                {NIVEAUX_ETUDE.map((niveau) => (
+                  <option key={niveau} value={niveau}>
+                    {niveau}
+                  </option>
+                ))}
+              </select>
+            </div>
+
             {/* Niveau + Expérience minimum */}
             <div className="relative">
               <label
@@ -514,6 +644,8 @@ export default function OffresPage() {
               />
             </div>
 
+            
+
             {/* Présence sur site + Disponibilité */}
             <div className="relative">
               <label
@@ -540,7 +672,7 @@ export default function OffresPage() {
               {presenceOpen && (
                 <div className="absolute left-0 top-full mt-2 w-full bg-[#050505]/95 border border-white/[0.08] rounded-2xl shadow-lg backdrop-blur-xl overflow-hidden z-50">
                   <div>
-                    {["Sur site", "Hybride", "Remote"].map((p) => {
+                    {["Obligatoire", "A distance seulement", "Hybride", "Remote"].map((p) => {
                       const active = form.presence_sur_site === p;
                       return (
                         <button
@@ -590,7 +722,7 @@ export default function OffresPage() {
               {dispoOpen && (
                 <div className="absolute left-0 top-full mt-2 w-full bg-[#050505]/95 border border-white/[0.08] rounded-2xl shadow-lg backdrop-blur-xl overflow-hidden z-50">
                   <div>
-                    {["Immédiate", "1 mois", "2 mois et plus", "Autre"].map((d) => {
+                    {["Immediate", "1 mois", "2 mois et plus", "A preciser", "Autre"].map((d) => {
                       const active = form.disponibilite === d;
                       return (
                         <button
@@ -684,6 +816,205 @@ export default function OffresPage() {
                 className="input-premium min-h-[80px] resize-y"
                 placeholder="Listez les tâches complémentaires, outils, stack, etc."
               />
+            </div>
+
+            <div className="sm:col-span-2 space-y-3">
+              <label
+                className={`block text-[10px] font-semibold uppercase tracking-[2px] ${
+                  isLight ? "text-black/70" : "text-white/40"
+                }`}
+              >
+                Competences techniques
+              </label>
+              {skills.map((skill, index) => (
+                <div key={index} className="grid grid-cols-1 sm:grid-cols-12 gap-3 items-end">
+                  <div className="sm:col-span-5">
+                    <label className={`block text-[10px] mb-2 ${isLight ? "text-black/60" : "text-white/40"}`}>
+                      Competence
+                    </label>
+                    <input
+                      type="text"
+                      value={skill.name}
+                      onChange={(e) => updateSkill(index, "name", e.target.value)}
+                      className="input-premium"
+                      placeholder="ex: Python"
+                    />
+                  </div>
+                  <div className="sm:col-span-3">
+                    <label className={`block text-[10px] mb-2 ${isLight ? "text-black/60" : "text-white/40"}`}>
+                      Niveau
+                    </label>
+                    <select
+                      value={skill.level}
+                      onChange={(e) => updateSkill(index, "level", e.target.value)}
+                      className="input-premium"
+                    >
+                      {SKILL_LEVELS.map((level) => (
+                        <option key={level} value={level}>
+                          {level}
+                        </option>
+                      ))}
+                    </select>
+                  </div>
+                  <div className="sm:col-span-3">
+                    <label className={`block text-[10px] mb-2 ${isLight ? "text-black/60" : "text-white/40"}`}>
+                      Priorite
+                    </label>
+                    <select
+                      value={skill.priority}
+                      onChange={(e) => updateSkill(index, "priority", e.target.value)}
+                      className="input-premium"
+                    >
+                      {SKILL_PRIORITIES.map((priority) => (
+                        <option key={priority} value={priority}>
+                          {priority}
+                        </option>
+                      ))}
+                    </select>
+                  </div>
+                  <div className="sm:col-span-1">
+                    {skills.length > 1 && (
+                      <button
+                        type="button"
+                        onClick={() => removeSkill(index)}
+                        className="w-full px-3 py-2 rounded-lg border border-red-500/30 text-red-500 hover:bg-red-500/10"
+                      >
+                        X
+                      </button>
+                    )}
+                  </div>
+                </div>
+              ))}
+              <button
+                type="button"
+                onClick={addSkill}
+                className={`px-3 py-2 rounded-lg border text-[12px] ${
+                  isLight
+                    ? "border-black/10 text-black/70 hover:border-tap-red/40"
+                    : "border-white/[0.12] text-white/70 hover:border-white/[0.24]"
+                }`}
+              >
+                + Ajouter une competence
+              </button>
+            </div>
+
+            <div className="sm:col-span-2">
+              <label
+                className={`block text-[10px] font-semibold uppercase tracking-[2px] mb-2 ${
+                  isLight ? "text-black/70" : "text-white/40"
+                }`}
+              >
+                Soft skills (max 5)
+              </label>
+              <div className="grid grid-cols-2 sm:grid-cols-3 gap-2">
+                {SOFT_SKILLS.map((skill) => {
+                  const checked = softSkills.includes(skill);
+                  return (
+                    <label
+                      key={skill}
+                      className={`flex items-center gap-2 rounded-lg border px-3 py-2 text-[12px] cursor-pointer ${
+                        checked
+                          ? "border-red-500/40 bg-red-500/10"
+                          : isLight
+                            ? "border-black/10 bg-white"
+                            : "border-white/[0.08] bg-white/[0.02]"
+                      }`}
+                    >
+                      <input
+                        type="checkbox"
+                        checked={checked}
+                        onChange={() => toggleSoftSkill(skill)}
+                        className="accent-red-600"
+                      />
+                      <span className={isLight ? "text-black/80" : "text-white/80"}>{skill}</span>
+                    </label>
+                  );
+                })}
+              </div>
+            </div>
+
+            <div className="sm:col-span-2 space-y-3">
+              <label
+                className={`block text-[10px] font-semibold uppercase tracking-[2px] ${
+                  isLight ? "text-black/70" : "text-white/40"
+                }`}
+              >
+                Langues
+              </label>
+              {languages.map((language, index) => (
+                <div key={index} className="grid grid-cols-1 sm:grid-cols-12 gap-3 items-end">
+                  <div className="sm:col-span-5">
+                    <label className={`block text-[10px] mb-2 ${isLight ? "text-black/60" : "text-white/40"}`}>
+                      Langue
+                    </label>
+                    <select
+                      value={language.name}
+                      onChange={(e) => updateLanguage(index, "name", e.target.value)}
+                      className="input-premium"
+                    >
+                      <option value="">-- Selectionner --</option>
+                      <option value="Francais">Francais</option>
+                      <option value="Anglais">Anglais</option>
+                      <option value="Espagnol">Espagnol</option>
+                      <option value="Arabe">Arabe</option>
+                    </select>
+                  </div>
+                  <div className="sm:col-span-3">
+                    <label className={`block text-[10px] mb-2 ${isLight ? "text-black/60" : "text-white/40"}`}>
+                      Niveau
+                    </label>
+                    <select
+                      value={language.level}
+                      onChange={(e) => updateLanguage(index, "level", e.target.value)}
+                      className="input-premium"
+                    >
+                      {LANGUAGE_LEVELS.map((level) => (
+                        <option key={level} value={level}>
+                          {level}
+                        </option>
+                      ))}
+                    </select>
+                  </div>
+                  <div className="sm:col-span-3">
+                    <label className={`block text-[10px] mb-2 ${isLight ? "text-black/60" : "text-white/40"}`}>
+                      Importance
+                    </label>
+                    <select
+                      value={language.importance}
+                      onChange={(e) => updateLanguage(index, "importance", e.target.value)}
+                      className="input-premium"
+                    >
+                      {LANGUAGE_IMPORTANCE.map((importance) => (
+                        <option key={importance} value={importance}>
+                          {importance}
+                        </option>
+                      ))}
+                    </select>
+                  </div>
+                  <div className="sm:col-span-1">
+                    {languages.length > 1 && (
+                      <button
+                        type="button"
+                        onClick={() => removeLanguage(index)}
+                        className="w-full px-3 py-2 rounded-lg border border-red-500/30 text-red-500 hover:bg-red-500/10"
+                      >
+                        X
+                      </button>
+                    )}
+                  </div>
+                </div>
+              ))}
+              <button
+                type="button"
+                onClick={addLanguage}
+                className={`px-3 py-2 rounded-lg border text-[12px] ${
+                  isLight
+                    ? "border-black/10 text-black/70 hover:border-tap-red/40"
+                    : "border-white/[0.12] text-white/70 hover:border-white/[0.24]"
+                }`}
+              >
+                + Ajouter une langue
+              </button>
             </div>
 
             <div className="flex items-center gap-3">

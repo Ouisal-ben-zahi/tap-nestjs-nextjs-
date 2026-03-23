@@ -7,6 +7,7 @@ import { useAuth } from "@/hooks/use-auth";
 import EmptyState from "@/components/ui/EmptyState";
 import api from "@/lib/api";
 import DropdownSelect from "@/components/app/DropdownSelect";
+import { DOMAINE_GROUPS } from "@/constants/domaines";
 
 type OtherLink = { type: string; url: string };
 
@@ -91,138 +92,6 @@ const RELOCATION_GROUPS: DropdownGroup[] = [
     options: [
       { value: "Oui", label: "Oui" },
       { value: "Non", label: "Non" },
-    ],
-  },
-];
-
-const DOMAINE_GROUPS: DropdownGroup[] = [
-  {
-    label: "Informatique & Technologies (IT)",
-    options: [
-      { value: "Développement logiciel / Software engineering", label: "Développement logiciel / Software engineering" },
-      { value: "Développement web", label: "Développement web" },
-      { value: "Réseaux informatiques", label: "Réseaux informatiques" },
-      { value: "Cybersécurité", label: "Cybersécurité" },
-      { value: "Cloud computing", label: "Cloud computing" },
-      { value: "DevOps", label: "DevOps" },
-      { value: "Architecture logicielle", label: "Architecture logicielle" },
-    ],
-  },
-  {
-    label: "Intelligence artificielle & Data",
-    options: [
-      { value: "Data science", label: "Data science" },
-      { value: "Analyse de données", label: "Analyse de données" },
-      {
-        value: "Intelligence artificielle & Machine learning",
-        label: "Intelligence artificielle & Machine learning",
-      },
-      { value: "Business Intelligence (BI)", label: "Business Intelligence (BI)" },
-      { value: "ERP & CRM", label: "ERP & CRM" },
-    ],
-  },
-  {
-    label: "Marketing & Communication",
-    options: [
-      { value: "Marketing digital", label: "Marketing digital" },
-      { value: "Community management", label: "Community management" },
-      { value: "SEO / SEA", label: "SEO / SEA" },
-      { value: "Content marketing", label: "Content marketing" },
-      {
-        value: "Branding & communication corporate",
-        label: "Branding & communication corporate",
-      },
-      { value: "Relations publiques (RP)", label: "Relations publiques (RP)" },
-      { value: "Email marketing", label: "Email marketing" },
-      { value: "Growth marketing", label: "Growth marketing" },
-    ],
-  },
-  {
-    label: "Finance, Comptabilité & Banque",
-    options: [
-      { value: "Comptabilité générale", label: "Comptabilité générale" },
-      { value: "Audit & contrôle de gestion", label: "Audit & contrôle de gestion" },
-      { value: "Finance d’entreprise", label: "Finance d’entreprise" },
-      { value: "Analyse financière", label: "Analyse financière" },
-      { value: "Banque & gestion de portefeuille", label: "Banque & gestion de portefeuille" },
-      { value: "Fiscalité", label: "Fiscalité" },
-      { value: "Trésorerie", label: "Trésorerie" },
-      { value: "Assurance", label: "Assurance" },
-    ],
-  },
-  {
-    label: "Commerce & Vente",
-    options: [
-      { value: "Vente terrain", label: "Vente terrain" },
-      { value: "Vente en magasin / retail", label: "Vente en magasin / retail" },
-      { value: "Business development", label: "Business development" },
-      { value: "Gestion grands comptes", label: "Gestion grands comptes" },
-      { value: "E-commerce", label: "E-commerce" },
-      { value: "Relation client", label: "Relation client" },
-      { value: "Négociation commerciale", label: "Négociation commerciale" },
-      { value: "Avant-vente / presales", label: "Avant-vente / presales" },
-    ],
-  },
-  {
-    label: "Transport & Automobile",
-    options: [
-      { value: "Logistique transport", label: "Logistique transport" },
-      { value: "Maintenance automobile", label: "Maintenance automobile" },
-      { value: "Gestion flotte véhicules", label: "Gestion flotte véhicules" },
-      { value: "Transport international", label: "Transport international" },
-      { value: "Exploitation transport", label: "Exploitation transport" },
-      { value: "Mécanique automobile", label: "Mécanique automobile" },
-      { value: "Diagnostic technique", label: "Diagnostic technique" },
-    ],
-  },
-  {
-    label: "Télécommunications",
-    options: [
-      { value: "Réseaux télécom", label: "Réseaux télécom" },
-      { value: "Support télécom", label: "Support télécom" },
-      { value: "Fibre optique", label: "Fibre optique" },
-      { value: "Radio & mobile (4G/5G)", label: "Radio & mobile (4G/5G)" },
-      {
-        value: "VoIP & communications unifiées",
-        label: "VoIP & communications unifiées",
-      },
-      { value: "Infrastructure télécom", label: "Infrastructure télécom" },
-    ],
-  },
-  {
-    label: "Immobilier",
-    options: [
-      { value: "Transaction immobilière", label: "Transaction immobilière" },
-      { value: "Gestion locative", label: "Gestion locative" },
-      { value: "Syndic", label: "Syndic" },
-      { value: "Promotion immobilière", label: "Promotion immobilière" },
-      { value: "Expertise immobilière", label: "Expertise immobilière" },
-      { value: "Négociation immobilière", label: "Négociation immobilière" },
-    ],
-  },
-  {
-    label: "Média, Design & Création",
-    options: [
-      { value: "Design graphique", label: "Design graphique" },
-      { value: "UI / UX design", label: "UI / UX design" },
-      { value: "Motion design", label: "Motion design" },
-      { value: "Montage vidéo", label: "Montage vidéo" },
-      { value: "Photographie", label: "Photographie" },
-      { value: "Illustration", label: "Illustration" },
-      { value: "Production média", label: "Production média" },
-      { value: "Direction artistique", label: "Direction artistique" },
-    ],
-  },
-  {
-    label: "Logistique & Supply chain",
-    options: [
-      { value: "Gestion des stocks", label: "Gestion des stocks" },
-      { value: "Planification & approvisionnement", label: "Planification & approvisionnement" },
-      { value: "Transport & distribution", label: "Transport & distribution" },
-      { value: "Supply chain management", label: "Supply chain management" },
-      { value: "Import / Export", label: "Import / Export" },
-      { value: "Gestion d’entrepôt", label: "Gestion d’entrepôt" },
-      { value: "Procurement / achats", label: "Procurement / achats" },
     ],
   },
 ];
@@ -754,12 +623,12 @@ export default function OnboardingCandidatPage() {
                 <option value="">Sélectionner...</option>
 
                 <optgroup label="Informatique & Technologies (IT)">
-                  <option value="Développement logiciel / Software engineering">
+                  <option value="Developpement logiciel / Software engineering">
                     Développement logiciel / Software engineering
                   </option>
-                  <option value="Développement web">Développement web</option>
-                  <option value="Réseaux informatiques">Réseaux informatiques</option>
-                  <option value="Cybersécurité">Cybersécurité</option>
+                  <option value="Developpement web">Développement web</option>
+                  <option value="Reseaux informatiques">Réseaux informatiques</option>
+                  <option value="Cybersecurite">Cybersécurité</option>
                   <option value="Cloud computing">Cloud computing</option>
                   <option value="DevOps">DevOps</option>
                   <option value="Architecture logicielle">Architecture logicielle</option>
@@ -767,7 +636,7 @@ export default function OnboardingCandidatPage() {
 
                 <optgroup label="Intelligence artificielle & Data">
                   <option value="Data science">Data science</option>
-                  <option value="Analyse de données">Analyse de données</option>
+                  <option value="Analyse de donnees">Analyse de données</option>
                   <option value="Intelligence artificielle & Machine learning">
                     Intelligence artificielle & Machine learning
                   </option>
@@ -793,17 +662,17 @@ export default function OnboardingCandidatPage() {
                 </optgroup>
 
                 <optgroup label="Finance, Comptabilité & Banque">
-                  <option value="Comptabilité générale">Comptabilité générale</option>
-                  <option value="Audit & contrôle de gestion">
+                  <option value="Comptabilite generale">Comptabilité générale</option>
+                  <option value="Audit & controle de gestion">
                     Audit & contrôle de gestion
                   </option>
-                  <option value="Finance d’entreprise">Finance d’entreprise</option>
-                  <option value="Analyse financière">Analyse financière</option>
+                  <option value="Finance d'entreprise">Finance d’entreprise</option>
+                  <option value="Analyse financiere">Analyse financière</option>
                   <option value="Banque & gestion de portefeuille">
                     Banque & gestion de portefeuille
                   </option>
-                  <option value="Fiscalité">Fiscalité</option>
-                  <option value="Trésorerie">Trésorerie</option>
+                  <option value="Fiscalite">Fiscalité</option>
+                  <option value="Tresorerie">Trésorerie</option>
                   <option value="Assurance">Assurance</option>
                 </optgroup>
 
@@ -816,50 +685,50 @@ export default function OnboardingCandidatPage() {
                   <option value="Gestion grands comptes">Gestion grands comptes</option>
                   <option value="E-commerce">E-commerce</option>
                   <option value="Relation client">Relation client</option>
-                  <option value="Négociation commerciale">Négociation commerciale</option>
+                  <option value="Negociation commerciale">Négociation commerciale</option>
                   <option value="Avant-vente / presales">Avant-vente / presales</option>
                 </optgroup>
 
                 <optgroup label="Transport & Automobile">
                   <option value="Logistique transport">Logistique transport</option>
                   <option value="Maintenance automobile">Maintenance automobile</option>
-                  <option value="Gestion flotte véhicules">
+                  <option value="Gestion flotte vehicules">
                     Gestion flotte véhicules
                   </option>
                   <option value="Transport international">Transport international</option>
                   <option value="Exploitation transport">Exploitation transport</option>
-                  <option value="Mécanique automobile">Mécanique automobile</option>
+                  <option value="Mecanique automobile">Mécanique automobile</option>
                   <option value="Diagnostic technique">Diagnostic technique</option>
                 </optgroup>
 
                 <optgroup label="Télécommunications">
-                  <option value="Réseaux télécom">Réseaux télécom</option>
-                  <option value="Support télécom">Support télécom</option>
+                  <option value="Reseaux telecom">Réseaux télécom</option>
+                  <option value="Support telecom">Support télécom</option>
                   <option value="Fibre optique">Fibre optique</option>
                   <option value="Radio & mobile (4G/5G)">Radio & mobile (4G/5G)</option>
-                  <option value="VoIP & communications unifiées">
+                  <option value="VoIP & communications unifiees">
                     VoIP & communications unifiées
                   </option>
-                  <option value="Infrastructure télécom">Infrastructure télécom</option>
+                  <option value="Infrastructure telecom">Infrastructure télécom</option>
                 </optgroup>
 
                 <optgroup label="Immobilier">
-                  <option value="Transaction immobilière">Transaction immobilière</option>
+                  <option value="Transaction immobiliere">Transaction immobilière</option>
                   <option value="Gestion locative">Gestion locative</option>
                   <option value="Syndic">Syndic</option>
-                  <option value="Promotion immobilière">Promotion immobilière</option>
-                  <option value="Expertise immobilière">Expertise immobilière</option>
-                  <option value="Négociation immobilière">Négociation immobilière</option>
+                  <option value="Promotion immobiliere">Promotion immobilière</option>
+                  <option value="Expertise immobiliere">Expertise immobilière</option>
+                  <option value="Negociation immobiliere">Négociation immobilière</option>
                 </optgroup>
 
                 <optgroup label="Média, Design & Création">
                   <option value="Design graphique">Design graphique</option>
                   <option value="UI / UX design">UI / UX design</option>
                   <option value="Motion design">Motion design</option>
-                  <option value="Montage vidéo">Montage vidéo</option>
+                  <option value="Montage video">Montage vidéo</option>
                   <option value="Photographie">Photographie</option>
                   <option value="Illustration">Illustration</option>
-                  <option value="Production média">Production média</option>
+                  <option value="Production media">Production média</option>
                   <option value="Direction artistique">Direction artistique</option>
                 </optgroup>
 
@@ -871,9 +740,11 @@ export default function OnboardingCandidatPage() {
                   <option value="Transport & distribution">Transport & distribution</option>
                   <option value="Supply chain management">Supply chain management</option>
                   <option value="Import / Export">Import / Export</option>
-                  <option value="Gestion d’entrepôt">Gestion d’entrepôt</option>
+                  <option value="Gestion d'entrepot">Gestion d’entrepôt</option>
                   <option value="Procurement / achats">Procurement / achats</option>
                 </optgroup>
+
+                <optgroup label="Autres"> <option value="Autre">Autre</option> </optgroup>
               </select>
             </div>
           </div>

@@ -475,8 +475,8 @@ def match_offers_for_candidate(db_candidate_id: int):
             sim = calculer_similarite(candidate_embedding, job_embedding)
             if sim is None:
                 continue
-            # Seuil de similarité assoupli pour proposer plus d'offres pertinentes
-            if sim <= 0.50:
+            # Règle métier: ne retourner que les offres strictement > 60%.
+            if sim <= 0.60:
                 continue
             job_with_score = {}
             for k, v in job.items():
@@ -1706,7 +1706,18 @@ def process_candidate():
             except Exception as e:
                 print(f"⚠️  Erreur génération CV corrigé depuis /process: {e}")
 
-            # 2) Portfolio one-page FR + EN (HTML + PDF en background)
+            # 2) Scoring A2 (idempotent)
+            try:
+                with current_app.test_request_context(
+                    f"/api/scoring/{int(db_candidate_id)}",
+                    method="POST",
+                    json={},
+                ):
+                    scoring_candidate(str(int(db_candidate_id)))
+            except Exception as e:
+                print(f"⚠️  Erreur lancement scoring A2 depuis /process: {e}")
+
+            # 3) Portfolio one-page FR + EN (HTML + PDF en background)
             try:
                 for _lang in ("fr", "en"):
                     with current_app.test_request_context(

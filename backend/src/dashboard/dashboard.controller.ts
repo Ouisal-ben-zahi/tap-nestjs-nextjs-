@@ -13,43 +13,50 @@ export class DashboardController {
   @Get('candidat/stats')
   @UseGuards(AuthGuard('jwt'))
   async getCandidateStatsByJwt(@Req() req: any) {
-    return this.dashboardService.getCandidateStats(req.user.sub);
+    const userId = await this.dashboardService.resolveJwtUserId(req?.user);
+    return this.dashboardService.getCandidateStats(userId);
   }
 
   @Get('candidat/score-json')
   @UseGuards(AuthGuard('jwt'))
   async getCandidateScoreByJwt(@Req() req: any) {
-    return this.dashboardService.getCandidateScoreFromJsonByUser(req.user.sub);
+    const userId = await this.dashboardService.resolveJwtUserId(req?.user);
+    return this.dashboardService.getCandidateScoreFromJsonByUser(userId);
   }
 
   @Get('candidat/portfolio')
   @UseGuards(AuthGuard('jwt'))
   async getCandidatePortfolioByJwt(@Req() req: any) {
-    return this.dashboardService.getCandidatePortfolio(req.user.sub);
+    const userId = await this.dashboardService.resolveJwtUserId(req?.user);
+    return this.dashboardService.getCandidatePortfolio(userId);
   }
 
   @Get('candidat/applications')
   @UseGuards(AuthGuard('jwt'))
   async getCandidateApplicationsByJwt(@Req() req: any) {
-    return this.dashboardService.getCandidateApplications(req.user.sub);
+    const userId = await this.dashboardService.resolveJwtUserId(req?.user);
+    return this.dashboardService.getCandidateApplications(userId);
   }
 
   @Get('candidat/cv-files')
   @UseGuards(AuthGuard('jwt'))
   async getCandidateCvFilesByJwt(@Req() req: any) {
-    return this.dashboardService.getCandidateCvFiles(req.user.sub);
+    const userId = await this.dashboardService.resolveJwtUserId(req?.user);
+    return this.dashboardService.getCandidateCvFiles(userId);
   }
 
   @Get('candidat/talentcard-files')
   @UseGuards(AuthGuard('jwt'))
   async getCandidateTalentcardFilesByJwt(@Req() req: any) {
-    return this.dashboardService.getCandidateTalentcardFiles(req.user.sub);
+    const userId = await this.dashboardService.resolveJwtUserId(req?.user);
+    return this.dashboardService.getCandidateTalentcardFiles(userId);
   }
 
   @Get('candidat/portfolio-pdf-files')
   @UseGuards(AuthGuard('jwt'))
   async getCandidatePortfolioPdfFilesByJwt(@Req() req: any) {
-    return this.dashboardService.getCandidatePortfolioPdfFiles(req.user.sub);
+    const userId = await this.dashboardService.resolveJwtUserId(req?.user);
+    return this.dashboardService.getCandidatePortfolioPdfFiles(userId);
   }
 
   @Post('candidat/generate-portfolio-long')
@@ -58,7 +65,8 @@ export class DashboardController {
     @Req() req: any,
     @Body() body: { lang?: 'fr' | 'en' },
   ) {
-    return this.dashboardService.generateCandidatePortfolioLong(req.user.sub, body?.lang);
+    const userId = await this.dashboardService.resolveJwtUserId(req?.user);
+    return this.dashboardService.generateCandidatePortfolioLong(userId, body?.lang);
   }
 
   // === Portfolio long flow (chatbot → scoring → generation) ===
@@ -69,7 +77,8 @@ export class DashboardController {
     @Req() req: any,
     @Body() body: { lang?: 'fr' | 'en' },
   ) {
-    return (this.dashboardService as any).startCandidatePortfolioLongChat(req.user.sub, body?.lang);
+    const userId = await this.dashboardService.resolveJwtUserId(req?.user);
+    return (this.dashboardService as any).startCandidatePortfolioLongChat(userId, body?.lang);
   }
 
   @Post('candidat/portfolio-long/:sessionId/message')
@@ -79,7 +88,8 @@ export class DashboardController {
     @Param('sessionId') sessionId: string,
     @Body() body: { message: string },
   ) {
-    return (this.dashboardService as any).sendCandidatePortfolioLongChatMessage(req.user.sub, sessionId, body?.message);
+    const userId = await this.dashboardService.resolveJwtUserId(req?.user);
+    return (this.dashboardService as any).sendCandidatePortfolioLongChatMessage(userId, sessionId, body?.message);
   }
 
   @Get('candidat/portfolio-long/:sessionId/state')
@@ -88,7 +98,8 @@ export class DashboardController {
     @Req() req: any,
     @Param('sessionId') sessionId: string,
   ) {
-    return (this.dashboardService as any).getCandidatePortfolioLongChatState(req.user.sub, sessionId);
+    const userId = await this.dashboardService.resolveJwtUserId(req?.user);
+    return (this.dashboardService as any).getCandidatePortfolioLongChatState(userId, sessionId);
   }
 
   @Post('candidat/portfolio-long/run')
@@ -98,7 +109,8 @@ export class DashboardController {
     @Req() req: any,
     @Body() body: { lang?: 'fr' | 'en' },
   ) {
-    return (this.dashboardService as any).runCandidatePortfolioLongPipeline(req.user.sub, body?.lang);
+    const userId = await this.dashboardService.resolveJwtUserId(req?.user);
+    return (this.dashboardService as any).runCandidatePortfolioLongPipeline(userId, body?.lang);
   }
 
   @Post('candidat/upload-cv')
@@ -115,9 +127,10 @@ export class DashboardController {
     files: { file?: any[]; img_file?: any[] },
     @Body() body: Record<string, any>,
   ) {
+    const userId = await this.dashboardService.resolveJwtUserId(req?.user);
     const cvFile = files?.file?.[0];
     const imgFile = files?.img_file?.[0];
-    return this.dashboardService.uploadCandidateCv(req.user.sub, cvFile, {
+    return this.dashboardService.uploadCandidateCv(userId, cvFile, {
       onboarding: body,
       imgFile,
     });
@@ -130,13 +143,15 @@ export class DashboardController {
     @Req() req: any,
     @UploadedFile() file: any,
   ) {
-    return this.dashboardService.checkCvHasPhoto(req.user.sub, file);
+    const userId = await this.dashboardService.resolveJwtUserId(req?.user);
+    return this.dashboardService.checkCvHasPhoto(userId, file);
   }
 
   @Delete("candidat/cv-file")
   @UseGuards(AuthGuard("jwt"))
   async deleteCandidateCvFileByJwt(@Req() req: any, @Query("path") path: string) {
-    await this.dashboardService.deleteCandidateCvFile(req.user.sub, path);
+    const userId = await this.dashboardService.resolveJwtUserId(req?.user);
+    await this.dashboardService.deleteCandidateCvFile(userId, path);
     return { success: true };
   
   }
@@ -165,19 +180,22 @@ export class DashboardController {
   @Get('recruteur/jobs')
   @UseGuards(AuthGuard('jwt'))
   async getRecruiterJobsByJwt(@Req() req: any) {
-    return this.dashboardService.getRecruiterJobsWithCounts(req.user.sub);
+    const userId = await this.dashboardService.resolveJwtUserId(req?.user);
+    return this.dashboardService.getRecruiterJobsWithCounts(userId);
   }
 
   @Post('recruteur/jobs')
   @UseGuards(AuthGuard('jwt'))
   async createRecruiterJobByJwt(@Req() req: any, @Body() body: RecruiterJobPayload) {
-    return this.dashboardService.createRecruiterJob(req.user.sub, body);
+    const userId = await this.dashboardService.resolveJwtUserId(req?.user);
+    return this.dashboardService.createRecruiterJob(userId, body);
   }
 
   @Get('recruteur/overview')
   @UseGuards(AuthGuard('jwt'))
   async getRecruiterOverviewByJwt(@Req() req: any) {
-    return this.dashboardService.getRecruiterOverview(req.user.sub);
+    const userId = await this.dashboardService.resolveJwtUserId(req?.user);
+    return this.dashboardService.getRecruiterOverview(userId);
   }
 
   @Post('recruteur/jobs/:jobId/status')
@@ -187,9 +205,10 @@ export class DashboardController {
     @Param('jobId') jobId: string,
     @Body() body: { status: 'ACTIVE' | 'INACTIVE' },
   ) {
+    const userId = await this.dashboardService.resolveJwtUserId(req?.user);
     const id = Number.parseInt(jobId, 10);
     return this.dashboardService.updateRecruiterJobStatus(
-      req.user.sub,
+      userId,
       id,
       body.status,
     );
@@ -197,37 +216,37 @@ export class DashboardController {
 
   // === Legacy routes with userId in URL ===
 
-  @Get('candidat/:userId')
+  @Get('candidat/user/:userId')
   async getCandidateDashboard(@Param('userId') userId: string) {
     const id = Number.parseInt(userId, 10);
     return this.dashboardService.getCandidateStats(id);
   }
 
-  @Get('candidat/:userId/portfolio')
+  @Get('candidat/user/:userId/portfolio')
   async getCandidatePortfolio(@Param('userId') userId: string) {
     const id = Number.parseInt(userId, 10);
     return this.dashboardService.getCandidatePortfolio(id);
   }
 
-  @Get('candidat/:userId/applications')
+  @Get('candidat/user/:userId/applications')
   async getCandidateApplications(@Param('userId') userId: string) {
     const id = Number.parseInt(userId, 10);
     return this.dashboardService.getCandidateApplications(id);
   }
 
-  @Get('candidat/:userId/cv-files')
+  @Get('candidat/user/:userId/cv-files')
   async getCandidateCvFiles(@Param('userId') userId: string) {
     const id = Number.parseInt(userId, 10);
     return this.dashboardService.getCandidateCvFiles(id);
   }
 
-  @Get('candidat/:userId/talentcard-files')
+  @Get('candidat/user/:userId/talentcard-files')
   async getCandidateTalentcardFiles(@Param('userId') userId: string) {
     const id = Number.parseInt(userId, 10);
     return this.dashboardService.getCandidateTalentcardFiles(id);
   }
 
-  @Get('candidat/:userId/portfolio-pdf-files')
+  @Get('candidat/user/:userId/portfolio-pdf-files')
   async getCandidatePortfolioPdfFiles(@Param('userId') userId: string) {
     const id = Number.parseInt(userId, 10);
     return this.dashboardService.getCandidatePortfolioPdfFiles(id);
@@ -265,7 +284,7 @@ export class DashboardController {
     return this.dashboardService.getCandidatePortfolioPdfFilesByCandidateId(id);
   }
 
-  @Post('candidat/:userId/upload-cv')
+  @Post('candidat/user/:userId/upload-cv')
   @UseInterceptors(FileInterceptor('file'))
   async uploadCandidateCv(
     @Param('userId') userId: string,
@@ -302,12 +321,30 @@ export class DashboardController {
     return this.dashboardService.getAllJobsForCandidates();
   }
 
+  // Offres recommandées côté candidat (matching IA par embeddings)
+  @Get('candidat/matching-jobs')
+  @UseGuards(AuthGuard('jwt'))
+  async getCandidateMatchingJobsByJwt(@Req() req: any) {
+    try {
+      return await this.dashboardService.getCandidateMatchingJobs(req?.user);
+    } catch {
+      return { jobs: [] };
+    }
+  }
+
+  @Get('candidat/debug-identity')
+  @UseGuards(AuthGuard('jwt'))
+  async getCandidateDebugIdentityByJwt(@Req() req: any) {
+    return this.dashboardService.debugCandidateIdentity(req?.user);
+  }
+
   // Candidature à une offre (candidat)
   @Post('candidat/apply-job')
   @UseGuards(AuthGuard('jwt'))
   async applyJobByJwt(@Req() req: any, @Body() body: ApplyJobPayload) {
     // ApplyJobPayload inclut jobId + chemins de fichiers + lien
-    return this.dashboardService.applyToJob(req.user.sub, body);
+    const userId = await this.dashboardService.resolveJwtUserId(req?.user);
+    return this.dashboardService.applyToJob(userId, body);
   }
 }
 

@@ -4,6 +4,7 @@ export interface RecruiterJobPayload {
   niveau_attendu?: string | null;
   experience_min?: string | null;
   presence_sur_site?: string | null;
+  localisation?: string | null;
   reason?: string | null;
   main_mission?: string | null;
   tasks_other?: string | null;
@@ -14,6 +15,10 @@ export interface RecruiterJobPayload {
   contrat?: string | null;
   niveau_seniorite?: string | null;
   entreprise?: string | null;
+  phone?: string | null;
+  soft_skills?: string[] | null;
+  skills?: { name: string; level: string; priority: string }[] | null;
+  languages?: { name: string; level: string; importance: string }[] | null;
 }
 
 export interface RecruiterOverviewStats {

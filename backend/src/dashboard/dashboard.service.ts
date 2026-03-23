@@ -60,6 +60,9 @@ export interface RecruiterJobPayload {
   niveau_seniorite?: string | null;
   entreprise?: string | null;
   phone?: string | null;
+  soft_skills?: string[] | null;
+  skills?: { name: string; level: string; priority: string }[] | null;
+  languages?: { name: string; level: string; importance: string }[] | null;
 }
 
 export interface CandidatePortfolioPdfFiles {
@@ -152,6 +155,7 @@ export interface PublicJobItem {
   tasks: any[] | null;
   skills: any[] | null;
   languages: any[] | null;
+  score?: number | null;
 }
 
 export interface ApplyJobPayload {
@@ -218,6 +222,84 @@ export class DashboardService {
     return candidate as { id: number; created_at: string };
   }
 
+  private async resolveUserId(
+    userRef: number | string | { sub?: unknown; id?: unknown; userId?: unknown; email?: unknown } | null | undefined,
+  ): Promise<number> {
+    const extractNumeric = (value: unknown): number | null => {
+      if (typeof value === 'number' && Number.isFinite(value)) return value;
+      if (typeof value === 'string') {
+        const n = Number.parseInt(value, 10);
+        if (Number.isFinite(n)) return n;
+      }
+      return null;
+    };
+
+    const direct =
+      extractNumeric(userRef) ??
+      (typeof userRef === 'object' && userRef !== null
+        ? extractNumeric((userRef as any).sub) ??
+          extractNumeric((userRef as any).id) ??
+          extractNumeric((userRef as any).userId)
+        : null);
+
+    if (direct) return direct;
+
+    const email =
+      typeof userRef === 'string' && userRef.includes('@')
+        ? userRef
+        : typeof userRef === 'object' && userRef !== null && typeof (userRef as any).email === 'string'
+          ? (userRef as any).email
+          : null;
+
+    if (!email) {
+      throw new BadRequestException('userId invalide');
+    }
+
+    const { data, error } = await this.supabase
+      .from('users')
+      .select('id')
+      .eq('email', email.toLowerCase().trim())
+      .limit(1)
+      .maybeSingle();
+
+    if (error || !data?.id) {
+      throw new BadRequestException('userId invalide');
+    }
+    return Number(data.id);
+  }
+
+  private extractEmailFromUserRef(
+    userRef:
+      | number
+      | string
+      | { sub?: unknown; id?: unknown; userId?: unknown; email?: unknown }
+      | null
+      | undefined,
+  ): string | null {
+    const email =
+      typeof userRef === 'string' && userRef.includes('@')
+        ? userRef
+        : typeof userRef === 'object' &&
+            userRef !== null &&
+            typeof (userRef as any).email === 'string'
+          ? (userRef as any).email
+          : null;
+    if (!email) return null;
+    const normalized = email.toLowerCase().trim();
+    return normalized || null;
+  }
+
+  async resolveJwtUserId(
+    userRef:
+      | number
+      | string
+      | { sub?: unknown; id?: unknown; userId?: unknown; email?: unknown }
+      | null
+      | undefined,
+  ): Promise<number> {
+    return this.resolveUserId(userRef);
+  }
+
 
   private async getOrCreateCandidate(userId: number): Promise<{ id: number; categorie_profil: string | null }> {
     const { data: existing } = await this.supabase
@@ -255,7 +337,9 @@ export class DashboardService {
 
   /** Base URL Flask optionnelle (ex. création d’offre sans IA en local). */
   private tryGetFlaskBaseUrl(): string | null {
-    const flaskUrl = this.config.get<string>('FLASK_AI_URL');
+    const flaskUrl =
+      this.config.get<string>('FLASK_AI_URL') ||
+      this.config.get<string>('NEXT_PUBLIC_FLASK_AI_URL');
     if (!flaskUrl || !String(flaskUrl).trim()) {
       return null;
     }
@@ -362,14 +446,16 @@ export class DashboardService {
 
   /**
    * Appelle le backend IA pour générer l’embedding document d’une offre (matching sémantique).
-   * Si FLASK_AI_URL n’est pas défini, retourne null (insertion avec embedding vide, dev local).
+   * L'embedding est requis pour la création d'offre côté recruteur.
    */
   private async fetchJobEmbeddingFromFlask(
     payload: RecruiterJobPayload,
-  ): Promise<number[] | null> {
+  ): Promise<number[]> {
     const base = this.tryGetFlaskBaseUrl();
     if (!base) {
-      return null;
+      throw new BadRequestException(
+        'FLASK_AI_URL non configuré (ou NEXT_PUBLIC_FLASK_AI_URL). Impossible de générer l’embedding de l’offre.',
+      );
     }
 
     const embedPayload = {
@@ -1461,7 +1547,8 @@ export class DashboardService {
 
     // Fire-and-forget: trigger Flask AI analysis
     const flaskUrl = this.config.get<string>('FLASK_AI_URL');
-    if (flaskUrl) {
+    const normalizedFlaskBase = flaskUrl ? String(flaskUrl).replace(/\/$/, '') : null;
+    if (normalizedFlaskBase) {
       try {
         const FormData = require('form-data');
         const http = require('http');
@@ -1524,7 +1611,7 @@ export class DashboardService {
           form.append('img_file', imgFile.buffer, { filename, contentType });
         }
 
-        const parsed = new URL(flaskUrl + '/process');
+        const parsed = new URL(normalizedFlaskBase + '/process');
         const transport = parsed.protocol === 'https:' ? https : http;
         const req = transport.request(
           {
@@ -1541,6 +1628,27 @@ export class DashboardService {
             res.on('end', () => {
               if (res.statusCode >= 200 && res.statusCode < 300) {
                 console.log('[AI] Analyse lancee pour candidat ' + candidateId);
+                // Enchaîner automatiquement le scoring après la fin du pipeline /process.
+                void this
+                  .callFlaskJsonWithBase<any>(
+                    normalizedFlaskBase,
+                    'POST',
+                    `/api/scoring/${encodeURIComponent(String(candidateId))}`,
+                    {},
+                  )
+                  .then(() => {
+                    console.log(
+                      '[AI] Scoring lance pour candidat ' + candidateId,
+                    );
+                  })
+                  .catch((scoringErr: any) => {
+                    console.error(
+                      '[AI] Echec lancement scoring pour candidat ' +
+                        candidateId +
+                        ': ' +
+                        (scoringErr?.message ?? scoringErr),
+                    );
+                  });
               } else {
                 console.error('[AI] Erreur ' + res.statusCode + ' pour candidat ' + candidateId + ': ' + body);
               }
@@ -1657,15 +1765,11 @@ export class DashboardService {
         ? payload.localisation.trim()
         : null;
 
-    let embedding: number[] | Record<string, never> = {};
-    const vector = await this.fetchJobEmbeddingFromFlask({
+    const embedding = await this.fetchJobEmbeddingFromFlask({
       ...payload,
       title,
       localisation: locationType ?? payload.localisation,
     });
-    if (vector !== null) {
-      embedding = vector;
-    }
 
     const bodyToInsert: any = {
       title,
@@ -1684,6 +1788,9 @@ export class DashboardService {
       niveau_seniorite: payload.niveau_seniorite ?? null,
       entreprise: payload.entreprise ?? null,
       phone: payload.phone ?? null,
+      soft_skills: Array.isArray(payload.soft_skills) ? payload.soft_skills : null,
+      skills: Array.isArray(payload.skills) ? payload.skills : null,
+      languages: Array.isArray(payload.languages) ? payload.languages : null,
       location_type: locationType,
       embedding,
       user_id: userId,
@@ -1998,6 +2105,242 @@ export class DashboardService {
     };
   }
 
+  async getCandidateMatchingJobs(
+    userId: number | string | { sub?: unknown; id?: unknown; userId?: unknown; email?: unknown } | null | undefined,
+  ): Promise<{ jobs: PublicJobItem[] }> {
+    let normalizedUserId: number | null = null;
+    try {
+      normalizedUserId = await this.resolveUserId(userId);
+    } catch {
+      normalizedUserId = null;
+    }
+
+    let candidate:
+      | { id: number; created_at: string }
+      | { id: number; created_at?: string }
+      | null = null;
+
+    if (normalizedUserId) {
+      candidate = await this.getCandidateIdForUser(normalizedUserId);
+    }
+
+    // Fallback robuste: certains anciens profils peuvent avoir user_id manquant,
+    // mais email candidat rempli. On tente alors une résolution par email JWT.
+    if (!candidate) {
+      const email = this.extractEmailFromUserRef(userId);
+      if (email) {
+        const { data: candidateByEmail } = await this.supabase
+          .from('candidates')
+          .select('id, created_at')
+          .eq('email', email)
+          .order('created_at', { ascending: true })
+          .limit(1)
+          .maybeSingle();
+        if (candidateByEmail) {
+          candidate = {
+            id: Number((candidateByEmail as any).id),
+            created_at: (candidateByEmail as any).created_at as string,
+          };
+        }
+      }
+    }
+
+    if (!candidate?.id) {
+      return { jobs: [] };
+    }
+
+    let rows: any[] = [];
+    try {
+      const data = await this.callFlaskJson<{ jobs?: any[] }>(
+        'GET',
+        `/api/offres/matching/${encodeURIComponent(String(candidate.id))}`,
+        undefined,
+        120_000,
+      );
+      rows = Array.isArray(data?.jobs) ? data.jobs : [];
+    } catch {
+      rows = [];
+    }
+    const jobsFromAi: PublicJobItem[] = rows
+      .map((row: any) => ({
+      id: Number(row?.id),
+      title: (row?.title as string | null) ?? null,
+      categorie_profil: (row?.categorie_profil as string | null) ?? null,
+      created_at: (row?.created_at as string | null) ?? null,
+      urgent: Boolean(row?.urgent),
+      location_type: (row?.location_type as string | null) ?? null,
+      niveau_attendu: (row?.niveau_attendu as string | null) ?? null,
+      experience_min: (row?.experience_min as string | null) ?? null,
+      presence_sur_site: (row?.presence_sur_site as string | null) ?? null,
+      localisation: (row?.localisation as string | null) ?? null,
+      reason: (row?.reason as string | null) ?? null,
+      main_mission: (row?.main_mission as string | null) ?? null,
+      tasks_other: (row?.tasks_other as string | null) ?? null,
+      disponibilite: (row?.disponibilite as string | null) ?? null,
+      salary_min:
+        typeof row?.salary_min === 'number' ? (row.salary_min as number) : null,
+      salary_max:
+        typeof row?.salary_max === 'number' ? (row.salary_max as number) : null,
+      contrat: (row?.contrat as string | null) ?? null,
+      niveau_seniorite: (row?.niveau_seniorite as string | null) ?? null,
+      entreprise: (row?.entreprise as string | null) ?? null,
+      phone: (row?.phone as string | null) ?? null,
+      tasks: Array.isArray(row?.tasks) ? row.tasks : null,
+      skills: Array.isArray(row?.skills) ? row.skills : null,
+      languages: Array.isArray(row?.languages) ? row.languages : null,
+      score: typeof row?.score === 'number' ? row.score : null,
+      }))
+      .filter((job) => typeof job.score === 'number' && job.score > 0.7);
+
+    if (jobsFromAi.length > 0) {
+      return { jobs: jobsFromAi };
+    }
+
+    // Fallback métier: si l'IA ne retourne rien, proposer les offres actives
+    // du même domaine que le candidat pour éviter une page vide.
+    const { data: candidateRow, error: candidateErr } = await this.supabase
+      .from('candidates')
+      .select('categorie_profil')
+      .eq('id', candidate.id)
+      .limit(1)
+      .maybeSingle();
+
+    if (candidateErr) {
+      return { jobs: [] };
+    }
+
+    const candidateCategory = String(
+      (candidateRow as any)?.categorie_profil ?? '',
+    ).trim();
+    if (!candidateCategory) {
+      return { jobs: [] };
+    }
+
+    const { data: jobsRaw, error: jobsErr } = await this.supabase
+      .from('jobs')
+      .select(
+        'id, title, categorie_profil, created_at, urgent, location_type, niveau_attendu, experience_min, presence_sur_site, localisation, reason, main_mission, tasks_other, disponibilite, salary_min, salary_max, contrat, niveau_seniorite, entreprise, phone, tasks, skills, languages, status',
+      )
+      .eq('status', 'ACTIVE')
+      .order('created_at', { ascending: false });
+
+    if (jobsErr) {
+      return { jobs: [] };
+    }
+
+    const norm = (v: unknown) =>
+      String(v ?? '')
+        .toLowerCase()
+        .normalize('NFD')
+        .replace(/[\u0300-\u036f]/g, '')
+        .trim();
+
+    const candidateNorm = norm(candidateCategory);
+    const fallbackJobs: PublicJobItem[] = (jobsRaw ?? [])
+      .filter((row: any) => norm(row?.categorie_profil) === candidateNorm)
+      .slice(0, 20)
+      .map((row: any) => ({
+        id: Number(row?.id),
+        title: (row?.title as string | null) ?? null,
+        categorie_profil: (row?.categorie_profil as string | null) ?? null,
+        created_at: (row?.created_at as string | null) ?? null,
+        urgent: Boolean(row?.urgent),
+        location_type: (row?.location_type as string | null) ?? null,
+        niveau_attendu: (row?.niveau_attendu as string | null) ?? null,
+        experience_min: (row?.experience_min as string | null) ?? null,
+        presence_sur_site: (row?.presence_sur_site as string | null) ?? null,
+        localisation: (row?.localisation as string | null) ?? null,
+        reason: (row?.reason as string | null) ?? null,
+        main_mission: (row?.main_mission as string | null) ?? null,
+        tasks_other: (row?.tasks_other as string | null) ?? null,
+        disponibilite: (row?.disponibilite as string | null) ?? null,
+        salary_min:
+          typeof row?.salary_min === 'number' ? (row.salary_min as number) : null,
+        salary_max:
+          typeof row?.salary_max === 'number' ? (row.salary_max as number) : null,
+        contrat: (row?.contrat as string | null) ?? null,
+        niveau_seniorite: (row?.niveau_seniorite as string | null) ?? null,
+        entreprise: (row?.entreprise as string | null) ?? null,
+        phone: (row?.phone as string | null) ?? null,
+        tasks: Array.isArray(row?.tasks) ? row.tasks : null,
+        skills: Array.isArray(row?.skills) ? row.skills : null,
+        languages: Array.isArray(row?.languages) ? row.languages : null,
+        // Fallback "matching domaine" conservé, avec un score conforme au seuil UI.
+        score: 0.72,
+      }));
+
+    return { jobs: fallbackJobs };
+  }
+
+  async debugCandidateIdentity(
+    userRef: number | string | { sub?: unknown; id?: unknown; userId?: unknown; email?: unknown } | null | undefined,
+  ): Promise<{
+    rawUser: any;
+    resolvedUserId: number | null;
+    resolveError: string | null;
+    candidateFound: boolean;
+    candidateId: number | null;
+    candidateCategory: string | null;
+  }> {
+    const rawUser =
+      typeof userRef === 'object' && userRef !== null
+        ? {
+            sub: (userRef as any).sub ?? null,
+            id: (userRef as any).id ?? null,
+            userId: (userRef as any).userId ?? null,
+            email: (userRef as any).email ?? null,
+            role: (userRef as any).role ?? null,
+          }
+        : userRef;
+
+    let resolvedUserId: number | null = null;
+    let resolveError: string | null = null;
+    try {
+      resolvedUserId = await this.resolveUserId(userRef as any);
+    } catch (e: any) {
+      resolveError = e?.message ?? 'resolveUserId failed';
+    }
+
+    if (!resolvedUserId) {
+      return {
+        rawUser,
+        resolvedUserId: null,
+        resolveError,
+        candidateFound: false,
+        candidateId: null,
+        candidateCategory: null,
+      };
+    }
+
+    const { data: candidate, error } = await this.supabase
+      .from('candidates')
+      .select('id, categorie_profil')
+      .eq('user_id', resolvedUserId)
+      .order('created_at', { ascending: true })
+      .limit(1)
+      .maybeSingle();
+
+    if (error || !candidate) {
+      return {
+        rawUser,
+        resolvedUserId,
+        resolveError,
+        candidateFound: false,
+        candidateId: null,
+        candidateCategory: null,
+      };
+    }
+
+    return {
+      rawUser,
+      resolvedUserId,
+      resolveError,
+      candidateFound: true,
+      candidateId: Number((candidate as any).id),
+      candidateCategory: String((candidate as any).categorie_profil ?? ''),
+    };
+  }
+
   async getAllJobsForCandidates(): Promise<{ jobs: PublicJobItem[] }> {
     const { data, error } = await this.supabase
       .from('jobs')
@@ -2272,23 +2615,63 @@ export class DashboardService {
 
     const dims: { id: string; label: string; score: number }[] = [];
     const dimSrc = parsed?.scores?.dimensions ?? {};
+    const dimsById = new Map<string, { id: string; label: string; score: number }>();
 
-    const pushDim = (id: string, label: string) => {
-      const d = dimSrc[id];
-      if (!d || typeof d.score !== 'number') return;
-      dims.push({
+    const upsertDim = (id: string, label: string, score: unknown) => {
+      if (typeof score !== 'number') return;
+      dimsById.set(id, {
         id,
         label,
-        score: d.score as number,
+        score,
       });
     };
 
-    pushDim('hard_skills_fit', 'Hard skills fit');
-    pushDim('preuves_impact', 'Preuves d’impact');
-    pushDim('rarete_marche', 'Rareté marché');
-    pushDim('coherence_parcours', 'Cohérence parcours');
-    pushDim('stabilite_risque', 'Stabilité / risque');
-    pushDim('communication_clarte', 'Clarté de communication');
+    // Source 1: formats avec objet dimensions.
+    // Format A2 actuel: impact, hard_skills_depth, coherence, rarete_marche, stabilite, communication.
+    upsertDim('preuves_impact', 'Preuves d’impact', dimSrc?.impact?.score);
+    upsertDim('hard_skills_fit', 'Hard skills fit', dimSrc?.hard_skills_depth?.score);
+    upsertDim('coherence_parcours', 'Cohérence parcours', dimSrc?.coherence?.score);
+    upsertDim('rarete_marche', 'Rareté marché', dimSrc?.rarete_marche?.score);
+    upsertDim('stabilite_risque', 'Stabilité / risque', dimSrc?.stabilite?.score);
+    upsertDim('communication_clarte', 'Clarté de communication', dimSrc?.communication?.score);
+
+    // Format historique alternatif.
+    upsertDim('hard_skills_fit', 'Hard skills fit', dimSrc?.hard_skills_fit?.score);
+    upsertDim('preuves_impact', 'Preuves d’impact', dimSrc?.preuves_impact?.score);
+    upsertDim('rarete_marche', 'Rareté marché', dimSrc?.rarete_marche?.score);
+    upsertDim('coherence_parcours', 'Cohérence parcours', dimSrc?.coherence_parcours?.score);
+    upsertDim('stabilite_risque', 'Stabilité / risque', dimSrc?.stabilite_risque?.score);
+    upsertDim('communication_clarte', 'Clarté de communication', dimSrc?.communication_clarte?.score);
+
+    // Source 2: champs dim_* aplatis (souvent présents dans le scoring actuel).
+    upsertDim('preuves_impact', 'Preuves d’impact', parsed?.scores?.dim_impact);
+    upsertDim('hard_skills_fit', 'Hard skills fit', parsed?.scores?.dim_hard_skills_depth);
+    upsertDim('coherence_parcours', 'Cohérence parcours', parsed?.scores?.dim_coherence);
+    upsertDim('rarete_marche', 'Rareté marché', parsed?.scores?.dim_rarete_marche);
+    upsertDim('stabilite_risque', 'Stabilité / risque', parsed?.scores?.dim_stabilite);
+    upsertDim('communication_clarte', 'Clarté de communication', parsed?.scores?.dim_communication);
+
+    dims.push(
+      ...(Array.from(dimsById.values()).sort(
+        (a, b) =>
+          [
+            'hard_skills_fit',
+            'preuves_impact',
+            'rarete_marche',
+            'coherence_parcours',
+            'stabilite_risque',
+            'communication_clarte',
+          ].indexOf(a.id) -
+          [
+            'hard_skills_fit',
+            'preuves_impact',
+            'rarete_marche',
+            'coherence_parcours',
+            'stabilite_risque',
+            'communication_clarte',
+          ].indexOf(b.id),
+      )),
+    );
 
     const skills: {
       name: string;

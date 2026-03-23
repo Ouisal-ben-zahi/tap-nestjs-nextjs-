@@ -16,6 +16,17 @@ export interface RecruiterJobPayload {
     niveau_seniorite?: string | null;
     entreprise?: string | null;
     phone?: string | null;
+    soft_skills?: string[] | null;
+    skills?: {
+        name: string;
+        level: string;
+        priority: string;
+    }[] | null;
+    languages?: {
+        name: string;
+        level: string;
+        importance: string;
+    }[] | null;
 }
 export interface RecruiterOverviewStats {
     totalJobs: number;

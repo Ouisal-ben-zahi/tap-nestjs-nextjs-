@@ -394,17 +394,71 @@ Retourne UNIQUEMENT le JSON, sans markdown ni texte supplémentaire."""
                 "communication_densite_score": scoring_result["communication_densite_score"],
             }
 
-            resp = supabase_db.table("score").insert(sup_score).execute()
-            score_id: Optional[int] = None
-            if resp.data:
+            def _insert_score_with_pk_recovery(payload: Dict[str, Any]):
+                """
+                Insert robuste:
+                - tentative insert standard
+                - si séquence PK désynchronisée (score_pkey), retry avec id = max(id)+1
+                """
                 try:
+                    return supabase_db.table("score").insert(payload).execute()
+                except Exception as insert_err:
+                    err_text = str(insert_err)
+                    if "score_pkey" not in err_text:
+                        raise
+
+                    # Séquence id désynchronisée: fallback avec id explicite
+                    latest = (
+                        supabase_db.table("score")
+                        .select("id")
+                        .order("id", desc=True)
+                        .limit(1)
+                        .execute()
+                    )
+                    max_id = 0
+                    if latest.data:
+                        try:
+                            max_id = int(latest.data[0].get("id") or 0)
+                        except Exception:
+                            max_id = 0
+
+                    payload_with_id = dict(payload)
+                    payload_with_id["id"] = max_id + 1
+                    return supabase_db.table("score").insert(payload_with_id).execute()
+
+            # 3. Update si un score existe déjà pour ce candidat, sinon insert
+            existing_score = (
+                supabase_db.table("score")
+                .select("id")
+                .eq("candidate_id", candidate_id)
+                .order("id", desc=True)
+                .limit(1)
+                .execute()
+            )
+
+            score_id: Optional[int] = None
+            if existing_score.data:
+                existing_id = existing_score.data[0].get("id")
+                if existing_id is not None:
+                    resp = (
+                        supabase_db.table("score")
+                        .update(sup_score)
+                        .eq("id", existing_id)
+                        .execute()
+                    )
+                    score_id = existing_id
+                else:
+                    resp = _insert_score_with_pk_recovery(sup_score)
+                    if resp.data:
+                        score_id = resp.data[0].get("id")
+            else:
+                resp = _insert_score_with_pk_recovery(sup_score)
+                if resp.data:
                     score_id = resp.data[0].get("id")
-                except Exception:
-                    score_id = None
 
             print(
-                f"Scores sauvegardés dans Supabase"
-                f" (ID: {score_id}, Global: {scoring_result['score_global']}/100)"
+                f"Score sauvegardé dans Supabase"
+                f" (candidate_id: {candidate_id}, ID: {score_id}, Global: {scoring_result['score_global']}/100)"
             )
 
             return llm_eval_id, score_id, projection_id

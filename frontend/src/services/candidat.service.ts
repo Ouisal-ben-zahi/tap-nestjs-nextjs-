@@ -9,7 +9,7 @@ import type {
   CandidatScore,
 } from '@/types/candidat';
 
-/** Jobs listés côté dashboard (optionnel `score` quand un endpoint IA de matching existera). */
+/** Jobs listés côté dashboard (et scoring optionnel pour le matching IA). */
 type DashboardJobsResponse = {
   jobs: Array<{
     id: number;
@@ -24,6 +24,23 @@ type DashboardJobsResponse = {
 
 const fetchDashboardJobs = () =>
   api.get<DashboardJobsResponse>('/dashboard/jobs').then((r) => r.data);
+
+const fetchMatchingJobs = () =>
+  api
+    .get<DashboardJobsResponse>('/dashboard/candidat/matching-jobs')
+    .then((r) => r.data)
+    .catch((error) => {
+      if (typeof window !== 'undefined') {
+        // Keep UI resilient while backend identity/matching stabilizes.
+        // We still log for debugging without breaking the page.
+        // eslint-disable-next-line no-console
+        console.warn('[matching-jobs] fallback to empty list:', {
+          status: error?.response?.status ?? null,
+          message: error?.response?.data?.message ?? error?.message ?? 'unknown',
+        });
+      }
+      return { jobs: [] } as DashboardJobsResponse;
+    });
 
 export const candidatService = {
   getStats: () =>
@@ -91,8 +108,12 @@ export const candidatService = {
       .post('/dashboard/candidat/apply-job', payload)
       .then((r) => r.data as { success: boolean; applicationId: number; status: string }),
 
+<<<<<<< Updated upstream
   /** Même source que les offres publiques pour l’instant ; utile pour la page “matching”. */
   getMatchingJobs: () => fetchDashboardJobs(),
+=======
+  getMatchingJobs: () => fetchMatchingJobs(),
+>>>>>>> Stashed changes
 
   uploadCv: (file: File) => {
     const formData = new FormData();

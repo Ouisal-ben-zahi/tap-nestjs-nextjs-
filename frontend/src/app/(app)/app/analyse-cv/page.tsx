@@ -378,6 +378,7 @@ export default function AnalyseCvAppPage() {
               </p>
             </div>
           </div>
+<<<<<<< Updated upstream
 
           {/* Proposition “luxe” (pendant l'analyse uniquement) */}
           <div className="bg-gradient-to-r from-amber-500/[0.08] via-emerald-500/[0.07] to-sky-500/[0.04] border border-white/[0.08] rounded-2xl p-6 mb-8 flex items-start gap-4 animate-pulse">
@@ -393,6 +394,13 @@ export default function AnalyseCvAppPage() {
                 Astuce : quand l’analyse est terminée, cliquez sur “Voir votre score d&apos;employabilité” pour accéder aux recommandations.
               </p>
             </div>
+=======
+          <div>
+            <h3 className={`text-[14px] font-semibold mb-1 ${isLight ? "text-black" : "text-white"}`}>Analyse en cours...</h3>
+            <p className={`text-[13px] font-light ${isLight ? "text-black/70" : "text-white/45"}`}>
+              Notre IA analyse votre CV et génère vos Talent Cards et portfolios. Cette opération peut prendre quelques minutes. Vous pouvez revenir plus tard.
+            </p>
+>>>>>>> Stashed changes
           </div>
         </>
       )}
@@ -404,8 +412,8 @@ export default function AnalyseCvAppPage() {
             <CheckCircle2 size={18} className="text-green-400" />
           </div>
           <div>
-            <h3 className="text-[14px] font-semibold text-white mb-1">Analyse terminée ✓</h3>
-            <p className="text-[13px] text-white/45 font-light">
+            <h3 className={`text-[14px] font-semibold mb-1 ${isLight ? "text-black" : "text-white"}`}>Analyse terminée ✓</h3>
+            <p className={`text-[13px] font-light ${isLight ? "text-black/70" : "text-white/45"}`}>
               Vos Talent Cards et portfolios ont été générés avec succès.
             </p>
           </div>
@@ -419,8 +427,8 @@ export default function AnalyseCvAppPage() {
             <RefreshCw size={18} className="text-blue-400 animate-spin" />
           </div>
           <div>
-            <h3 className="text-[14px] font-semibold text-white mb-1">Régénération en cours…</h3>
-            <p className="text-[13px] text-white/45 font-light">
+            <h3 className={`text-[14px] font-semibold mb-1 ${isLight ? "text-black" : "text-white"}`}>Régénération en cours...</h3>
+            <p className={`text-[13px] font-light ${isLight ? "text-black/70" : "text-white/45"}`}>
               Votre nouveau CV est en cours d&apos;analyse. Toutes vos Talent Cards et portfolios seront mis à jour automatiquement. Vous pouvez revenir plus tard.
             </p>
           </div>
@@ -434,8 +442,8 @@ export default function AnalyseCvAppPage() {
             <CheckCircle2 size={18} className="text-green-400" />
           </div>
           <div>
-            <h3 className="text-[14px] font-semibold text-white mb-1">Régénération terminée ✓</h3>
-            <p className="text-[13px] text-white/45 font-light">
+            <h3 className={`text-[14px] font-semibold mb-1 ${isLight ? "text-black" : "text-white"}`}>Régénération terminée ✓</h3>
+            <p className={`text-[13px] font-light ${isLight ? "text-black/70" : "text-white/45"}`}>
               Tous vos fichiers ont été mis à jour avec les données de votre nouveau CV.
             </p>
           </div>
