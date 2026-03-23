@@ -130,6 +130,7 @@ const sections = [
 export default function ConditionsContent() {
   return (
     <LegalPageLayout
+      badge="CGU"
       title={<>Conditions <span className="font-bold text-glow text-tap-red">d&apos;utilisation</span></>}
       subtitle="Les règles qui régissent l'utilisation de la plateforme TAP."
       sections={sections}
