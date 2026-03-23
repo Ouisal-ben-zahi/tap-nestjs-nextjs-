@@ -69,6 +69,16 @@ export default function AnalyseCvAppPage() {
   const hasPortfolioShort = portfolioFiles.some((f) => f.type === "short");
   const hasPortfolios = hasPortfolioShort;
 
+  const portfolioShortFiles = portfolioFiles.filter((f) => f.type === "short");
+  const portfolioShortCount = portfolioShortFiles.length;
+  const portfolioShortMaxUpdatedAtMs = Math.max(
+    0,
+    ...portfolioShortFiles.map((f) => (f.updatedAt ? new Date(f.updatedAt).getTime() : 0)),
+  );
+  const [portfolioShortReady, setPortfolioShortReady] = useState(false);
+  const portfolioShortSigRef = useRef<string | null>(null);
+  const portfolioShortStableSinceRef = useRef<number | null>(null);
+
   // Toast avec barre de progression pour l'analyse/génération (estimation via polling fichiers)
   useEffect(() => {
     if (!uploadCv.isPending) return;
@@ -100,6 +110,28 @@ export default function AnalyseCvAppPage() {
       const startedAt = startedAtRef.current ?? Date.now();
       const elapsedSeconds = Math.max(0, Math.round((Date.now() - startedAt) / 1000));
 
+      // “Prêt” = portfolio short existe et sa signature (count + max updatedAt) est stable 2s.
+      const STABLE_MS = 2000;
+      const sig = portfolioShortCount > 0 ? `${portfolioShortCount}|${portfolioShortMaxUpdatedAtMs}` : null;
+
+      let isPortfolioShortStableNow = false;
+      if (!sig) {
+        portfolioShortSigRef.current = null;
+        portfolioShortStableSinceRef.current = null;
+        isPortfolioShortStableNow = false;
+        if (portfolioShortReady) setPortfolioShortReady(false);
+      } else if (portfolioShortSigRef.current !== sig) {
+        portfolioShortSigRef.current = sig;
+        portfolioShortStableSinceRef.current = Date.now();
+        isPortfolioShortStableNow = false;
+        if (portfolioShortReady) setPortfolioShortReady(false);
+      } else {
+        const stableSince = portfolioShortStableSinceRef.current;
+        const stableFor = stableSince ? Date.now() - stableSince : 0;
+        isPortfolioShortStableNow = stableFor >= STABLE_MS;
+        if (isPortfolioShortStableNow && !portfolioShortReady) setPortfolioShortReady(true);
+      }
+
       // Détermination “stages” via disponibilité des fichiers
       let target = 10;
       let label = "Upload du CV & analyse IA";
@@ -111,6 +143,9 @@ export default function AnalyseCvAppPage() {
         } else if (!hasPortfolioShort) {
           target = 85;
           label = uploadCv.isRegeneration ? "Régénération du portfolio court" : "Génération du portfolio court";
+        } else if (!isPortfolioShortStableNow) {
+          target = 98;
+          label = "Finalisation du portfolio court…";
         } else {
           target = 100;
           label = uploadCv.isRegeneration ? "Régénération terminée" : "Génération terminée";
@@ -154,6 +189,8 @@ export default function AnalyseCvAppPage() {
     polling,
     hasTalentCards,
     hasPortfolioShort,
+    portfolioShortCount,
+    portfolioShortMaxUpdatedAtMs,
   ]);
 
   if (!isCandidat) {
@@ -171,7 +208,7 @@ export default function AnalyseCvAppPage() {
     polling &&
     !uploadCv.isRegeneration &&
     hasCvs &&
-    !(hasTalentCards && hasPortfolioShort) &&
+    !(hasTalentCards && portfolioShortReady) &&
     !talentcardQuery.isLoading;
 
   // Regeneration: re-upload in progress, files not yet refreshed
@@ -179,7 +216,7 @@ export default function AnalyseCvAppPage() {
 
   // Stop polling once both talent cards AND portfolios are available after a re-upload
   useEffect(() => {
-    if (isRegenerating && hasTalentCards && hasPortfolioShort) {
+    if (isRegenerating && hasTalentCards && portfolioShortReady) {
       setPolling(false);
       uploadCv.setRegeneration(false);
       setRegenDone(true);
@@ -187,18 +224,18 @@ export default function AnalyseCvAppPage() {
       return () => window.clearTimeout(t);
     }
   // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [isRegenerating, hasTalentCards, hasPortfolioShort]);
+  }, [isRegenerating, hasTalentCards, portfolioShortReady]);
 
   // Stop polling for first-time analysis once BOTH talent cards AND portfolios appear
   useEffect(() => {
-    if (!uploadCv.isRegeneration && polling && hasTalentCards && hasPortfolioShort) {
+    if (!uploadCv.isRegeneration && polling && hasTalentCards && portfolioShortReady) {
       setPolling(false);
       setAnalysisDone(true);
       const t = window.setTimeout(() => setAnalysisDone(false), 5000);
       return () => window.clearTimeout(t);
     }
   // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [hasTalentCards, hasPortfolioShort, polling, uploadCv.isRegeneration]);
+  }, [hasTalentCards, portfolioShortReady, polling, uploadCv.isRegeneration]);
 
   return (
     <div className="max-w-[1100px] mx-auto">
