@@ -102,8 +102,13 @@ export default function AnalyseCvAppPage() {
   );
   const portfolioShortMaxSize = Math.max(0, ...portfolioShortFiles.map((f) => (typeof f.size === "number" ? f.size : 0)));
   const [portfolioShortReady, setPortfolioShortReady] = useState(false);
+  const portfolioShortReadyRef = useRef(portfolioShortReady);
   const portfolioShortSigRef = useRef<string | null>(null);
   const portfolioShortStableSinceRef = useRef<number | null>(null);
+
+  useEffect(() => {
+    portfolioShortReadyRef.current = portfolioShortReady;
+  }, [portfolioShortReady]);
 
   // Snapshot “au début” de la génération (pour éviter de considérer des fichiers déjà existants)
   const initialTalentSigRef = useRef<string | null>(null);
@@ -128,7 +133,10 @@ export default function AnalyseCvAppPage() {
     progressRef.current = 5;
     const id = addToast({
       type: "info",
-      duration: 60000, // on retire manuellement à la fin
+      // IMPORTANT: on retire manuellement à la fin, mais le store supprime aussi
+      // automatiquement après `duration`. On met une durée très longue pour éviter
+      // que le toast disparaisse avant la fin de génération du portfolio court.
+      duration: 600000, // 10 minutes
       message: "Génération en cours…",
       progress: 5,
       progressLabel: "Upload du CV & analyse IA",
@@ -156,7 +164,7 @@ export default function AnalyseCvAppPage() {
 
       // “Prêt” = portfolio short existe et sa signature (count + max updatedAt + max size)
       // est stable suffisamment longtemps (pour éviter “terminé” trop tôt).
-      const STABLE_MS = 6000;
+      const STABLE_MS = 12000;
       const sig =
         portfolioShortCount > 0
           ? `${portfolioShortCount}|${portfolioShortMaxUpdatedAtMs}|${portfolioShortMaxSize}`
@@ -170,17 +178,21 @@ export default function AnalyseCvAppPage() {
         portfolioShortSigRef.current = null;
         portfolioShortStableSinceRef.current = null;
         isPortfolioShortStableNow = false;
-        if (portfolioShortReady) setPortfolioShortReady(false);
       } else if (portfolioShortSigRef.current !== sig) {
         portfolioShortSigRef.current = sig;
         portfolioShortStableSinceRef.current = Date.now();
         isPortfolioShortStableNow = false;
-        if (portfolioShortReady) setPortfolioShortReady(false);
       } else {
         const stableSince = portfolioShortStableSinceRef.current;
         const stableFor = stableSince ? Date.now() - stableSince : 0;
         isPortfolioShortStableNow = stableFor >= STABLE_MS;
-        if (isPortfolioShortStableNow && !portfolioShortReady) setPortfolioShortReady(true);
+      }
+
+      // Sync d'état robuste (évite un "ready" qui reste bloqué grâce au stale closure)
+      if (isPortfolioShortStableNow && !portfolioShortReadyRef.current) {
+        setPortfolioShortReady(true);
+      } else if (!isPortfolioShortStableNow && portfolioShortReadyRef.current) {
+        setPortfolioShortReady(false);
       }
 
       // Détermination “stages” via disponibilité des fichiers
@@ -268,7 +280,7 @@ export default function AnalyseCvAppPage() {
   // Stop polling once both talent cards AND portfolios are available after a re-upload
   useEffect(() => {
     if (isRegenerating && hasTalentCards && portfolioShortReady) {
-      const graceMs = 12000;
+      const graceMs = 20000;
       const tStop = window.setTimeout(() => {
         setPolling(false);
         uploadCv.setRegeneration(false);
@@ -291,7 +303,7 @@ export default function AnalyseCvAppPage() {
   // Stop polling for first-time analysis once BOTH talent cards AND portfolios appear
   useEffect(() => {
     if (!uploadCv.isRegeneration && polling && hasTalentCards && portfolioShortReady) {
-      const graceMs = 12000;
+      const graceMs = 20000;
       const tStop = window.setTimeout(() => {
         setPolling(false);
         setAnalysisDone(true);
