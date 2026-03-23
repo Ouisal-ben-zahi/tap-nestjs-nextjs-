@@ -1,7 +1,35 @@
 "use client";
 
-import { Target, Lightbulb, BarChart3, BookOpen, FileCheck, Users, Building2, ArrowRight, CheckCircle2, Sparkles, GraduationCap, TrendingUp } from "lucide-react";
+import { Target, Lightbulb, BarChart3, BookOpen, FileCheck, Users, Building2, ArrowRight, CheckCircle2, TrendingUp } from "lucide-react";
 import { useScrollReveal } from "@/hooks/useScrollReveal";
+import { ProcessDiamond, type ProcessStep } from "@/components/ProcessDiamond";
+
+const pillarSteps: ProcessStep[] = [
+  {
+    icon: BarChart3,
+    title: "Diagnostic précis",
+    label: "DIAGNOSTIC",
+    desc: "Analyse complète de l'employabilité via un scoring multi-critères piloté par l'IA.",
+  },
+  {
+    icon: BookOpen,
+    title: "Micro-learning",
+    label: "MICRO-LEARNING",
+    desc: "Formations ciblées sur les écarts terrain pour combler les lacunes identifiées.",
+  },
+  {
+    icon: FileCheck,
+    title: "Portfolio vivant",
+    label: "PORTFOLIO",
+    desc: "Un portfolio de compétences dynamique qui évolue avec chaque formation complétée.",
+  },
+  {
+    icon: TrendingUp,
+    title: "Score transparent",
+    label: "SCORE",
+    desc: "Notation objective et transparente pour candidats et recruteurs.",
+  },
+];
 
 export default function AProposContent() {
   const containerRef = useScrollReveal();
@@ -107,7 +135,7 @@ export default function AProposContent() {
         </div>
       </section>
 
-      {/* 4 Piliers — Timeline circles */}
+      {/* 4 Piliers — même présentation que « Le processus » (cartes losange) */}
       <section className="py-12 sm:py-20 bg-black relative overflow-hidden">
         <div className="absolute top-[20%] right-[-150px] w-[500px] h-[500px] rounded-full bg-[radial-gradient(circle,rgba(202,27,40,0.03),transparent_60%)] blur-3xl" />
         <div className="max-w-[1300px] w-[88%] mx-auto relative z-10">
@@ -123,36 +151,51 @@ export default function AProposContent() {
           </div>
 
           <div className="relative">
-            {/* Connecting line — desktop */}
-            <div className="hidden lg:block absolute top-[52px] left-[calc(12.5%+20px)] right-[calc(12.5%+20px)] h-[1px]">
-              <div className="reveal-scale-x w-full h-full bg-gradient-to-r from-tap-red/30 via-tap-red/10 to-tap-red/30 origin-left" />
-            </div>
+            <div className="w-full overflow-visible px-0 py-2 sm:py-3">
+              <div className="reveal-stagger reveal-stagger-processus hidden lg:grid w-full grid-cols-[repeat(4,minmax(0,1fr))] items-start gap-x-0 py-2 px-0">
+                {pillarSteps.map((step, i) => {
+                  const isLow = i % 2 === 1;
+                  return (
+                    <div
+                      key={step.label}
+                      className={`reveal-item flex min-w-0 max-w-full flex-col items-center justify-center ${
+                        isLow ? "mt-[40px] xl:mt-[48px]" : ""
+                      }`}
+                    >
+                      <ProcessDiamond step={step} index={i} size="fill" />
+                    </div>
+                  );
+                })}
+              </div>
 
-            <div className="reveal-stagger grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-8 sm:gap-5">
-              {[
-                { icon: BarChart3, title: "Diagnostic précis", desc: "Analyse complète de l'employabilité via un scoring multi-critères piloté par l'IA." },
-                { icon: BookOpen, title: "Micro-learning", desc: "Formations ciblées sur les écarts terrain pour combler les lacunes identifiées." },
-                { icon: FileCheck, title: "Portfolio vivant", desc: "Un portfolio de compétences dynamique qui évolue avec chaque formation complétée." },
-                { icon: TrendingUp, title: "Score transparent", desc: "Notation objective et transparente pour candidats et recruteurs." },
-              ].map((pillar, i) => (
-                <div
-                  key={i}
-                  className="reveal-item group relative flex flex-col items-center text-center"
-                >
-                  <div className="relative mb-6">
-                    <div className="w-[104px] h-[104px] rounded-full bg-white/[0.02] border border-white/[0.06] flex items-center justify-center group-hover:border-tap-red/20 transition-colors duration-500">
-                      <div className="w-[72px] h-[72px] rounded-full bg-tap-red/[0.08] flex items-center justify-center group-hover:bg-tap-red/15 transition-colors duration-500">
-                        <pillar.icon size={28} className="text-tap-red" strokeWidth={1.5} />
+              <div className="hidden md:flex lg:hidden justify-center w-full overflow-x-auto overflow-y-visible py-4 [scrollbar-width:none] [&::-webkit-scrollbar]:hidden">
+                <div className="reveal-stagger reveal-stagger-processus flex min-h-[240px] w-max max-w-full items-start justify-center gap-x-0 px-0">
+                  {pillarSteps.map((step, i) => {
+                    const isLow = i % 2 === 1;
+                    return (
+                      <div
+                        key={step.label}
+                        className={`reveal-item flex w-[min(44vw,11rem)] min-w-0 max-w-[11rem] shrink-0 flex-col items-center ${
+                          isLow ? "mt-[32px]" : "mt-0"
+                        }`}
+                      >
+                        <ProcessDiamond step={step} index={i} size="fill" />
                       </div>
-                    </div>
-                    <div className="absolute -top-1 -right-1 w-8 h-8 rounded-full bg-tap-red/20 border border-tap-red/30 flex items-center justify-center">
-                      <span className="text-[11px] font-bold text-tap-red">0{i + 1}</span>
-                    </div>
-                  </div>
-                  <h3 className="text-[17px] sm:text-[18px] font-bold text-white mb-2.5 tracking-[-0.01em]">{pillar.title}</h3>
-                  <p className="text-[13px] text-white/35 leading-[1.7] font-light max-w-[260px]">{pillar.desc}</p>
+                    );
+                  })}
                 </div>
-              ))}
+              </div>
+
+              <div className="reveal-stagger reveal-stagger-processus md:hidden flex flex-col items-center gap-3 py-3">
+                {pillarSteps.map((step, i) => (
+                  <div
+                    key={step.label}
+                    className={`reveal-item w-full flex justify-center ${i % 2 === 1 ? "pl-4" : "pr-4"}`}
+                  >
+                    <ProcessDiamond step={step} index={i} size="md" />
+                  </div>
+                ))}
+              </div>
             </div>
           </div>
         </div>
