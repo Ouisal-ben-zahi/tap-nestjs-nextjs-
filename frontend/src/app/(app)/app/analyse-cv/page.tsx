@@ -141,11 +141,14 @@ export default function AnalyseCvAppPage() {
           target = 60;
           label = uploadCv.isRegeneration ? "Régénération des Talent Cards" : "Génération du CV & des Talent Cards";
         } else if (!hasPortfolioShort) {
-          target = 85;
-          label = uploadCv.isRegeneration ? "Régénération du portfolio court" : "Génération du portfolio court";
+          // On évite d'afficher 85 tant que la one-page n'est pas encore stable.
+          target = 75;
+          label = uploadCv.isRegeneration
+            ? "Régénération du portfolio one-page (court)…"
+            : "Génération du portfolio one-page (court)…";
         } else if (!isPortfolioShortStableNow) {
-          target = 98;
-          label = "Finalisation du portfolio court…";
+          target = 92;
+          label = "One-page en cours de génération…";
         } else {
           target = 100;
           label = uploadCv.isRegeneration ? "Régénération terminée" : "Génération terminée";
