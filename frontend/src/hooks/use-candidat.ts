@@ -60,11 +60,7 @@ export function useCandidatPublicJobs(enabled?: boolean) {
   return useQuery({
     queryKey: ['candidat', 'public-jobs'],
     queryFn: candidatService.getPublicJobs,
-<<<<<<< Updated upstream
     staleTime: 5 * 60 * 1000,
-=======
-    staleTime: 60 * 1000,
->>>>>>> Stashed changes
     enabled: enabled ?? authEnabled,
   });
 }

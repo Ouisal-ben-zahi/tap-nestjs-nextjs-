@@ -165,16 +165,12 @@ export default function MatchingPage() {
                 return (
                   <div
                     key={job.id}
-<<<<<<< Updated upstream
-                    className="bg-zinc-900/50 border border-white/[0.06] rounded-xl p-5 hover:border-emerald-500/20 transition group"
-=======
                     onClick={() => router.push(`/app/matching/offres/${job.id}`)}
                     className={`rounded-xl p-5 transition group cursor-pointer ${
                       isLight
                         ? "bg-white border border-tap-red/40 hover:border-tap-red/70"
                         : "bg-zinc-900/50 border border-white/[0.06] hover:border-white/[0.1]"
                     }`}
->>>>>>> Stashed changes
                   >
                     <div className="flex items-start justify-between gap-4">
                       <div className="flex-1 min-w-0">
@@ -193,11 +189,7 @@ export default function MatchingPage() {
                             </span>
                           )}
                         </div>
-<<<<<<< Updated upstream
-                        <div className="mt-1 flex items-center gap-3 text-[12px] text-white/45">
-=======
                         <div className={`mt-1 flex items-center gap-3 text-[12px] ${isLight ? "text-black/70" : "text-white/45"}`}>
->>>>>>> Stashed changes
                           {localisation && (
                             <span className="flex items-center gap-1">
                               <MapPin size={12} />
