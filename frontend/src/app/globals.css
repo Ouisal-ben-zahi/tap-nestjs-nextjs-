@@ -372,6 +372,40 @@ input.input-premium:-webkit-autofill:focus {
   }
 }
 
+/* ═══ Processus — même fond que .card-solid (#0C0C0C) ═══ */
+.processus-card-premium {
+  position: relative;
+  isolation: isolate;
+  background: #0c0c0c;
+  border: 1px solid rgba(255, 255, 255, 0.07);
+  box-shadow: 0 2px 16px rgba(0, 0, 0, 0.3);
+  transform: rotate(45deg);
+  transition:
+    transform 0.5s cubic-bezier(0.22, 1, 0.36, 1),
+    box-shadow 0.5s cubic-bezier(0.22, 1, 0.36, 1),
+    border-color 0.45s ease;
+}
+
+.processus-card-inner {
+  position: relative;
+  z-index: 1;
+}
+
+.group:hover .processus-card-premium {
+  border-color: rgba(202, 27, 40, 0.15);
+  box-shadow: 0 8px 40px rgba(0, 0, 0, 0.5), 0 0 0 1px rgba(202, 27, 40, 0.06);
+  transform: rotate(45deg) translateY(-3px);
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .processus-card-premium {
+    transition: border-color 0.3s ease, box-shadow 0.3s ease;
+  }
+  .group:hover .processus-card-premium {
+    transform: rotate(45deg);
+  }
+}
+
 /* ═══ Floating orb ═══ */
 @keyframes float {
   0%, 100% { transform: translateY(0) scale(1); }

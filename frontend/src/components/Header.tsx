@@ -31,6 +31,7 @@ export default function Header() {
 
   useEffect(() => {
     const onScroll = () => setScrolled(window.scrollY > 30);
+    onScroll();
     window.addEventListener("scroll", onScroll, { passive: true });
     return () => window.removeEventListener("scroll", onScroll);
   }, []);
@@ -61,7 +62,11 @@ export default function Header() {
         .bar { transition: transform 0.45s cubic-bezier(.22,1,.36,1), opacity 0.3s ease, width 0.3s ease; }
       `}</style>
 
-      <header className="header-font fixed top-0 left-0 right-0 z-50">
+      <header
+        className={`header-font fixed left-0 right-0 z-50 transition-[top] duration-500 ease-[cubic-bezier(.22,1,.36,1)] ${
+          scrolled ? "top-0" : "top-3 sm:top-4"
+        }`}
+      >
         {/* ── Desktop / Shared bar ── */}
         <div
           className={`mx-auto transition-all duration-500 ${
@@ -203,7 +208,7 @@ export default function Header() {
                 <>
                   <Link
                     href="/connexion"
-                    className="inline-flex items-center px-4 py-2 rounded-full border border-white/40 bg-transparent text-[10px] font-semibold uppercase tracking-[1.5px] text-white/50 hover:text-red-500 hover:border-red-500 transition-colors duration-300"
+                    className="inline-flex items-center px-4 py-2 rounded-full border border-white/40 bg-transparent text-[10px] font-semibold uppercase tracking-[1.5px] text-white/50 hover:border-transparent hover:bg-[#CA1B28] hover:text-white transition-colors duration-300"
                   >
                     Connexion
                   </Link>
@@ -368,7 +373,7 @@ export default function Header() {
                   <Link
                     href="/connexion"
                     onClick={() => setMenuOpen(false)}
-                    className="flex-1 bg-transparent border border-white/40 rounded-full text-center py-2.5 text-[11px] uppercase tracking-[1.5px] text-white/50 hover:text-red-500 hover:border-red-500 transition-colors font-medium"
+                    className="flex-1 bg-transparent border border-white/40 rounded-full text-center py-2.5 text-[11px] uppercase tracking-[1.5px] text-white/50 hover:border-transparent hover:bg-[#CA1B28] hover:text-white transition-colors font-medium"
                   >
                     Connexion
                   </Link>

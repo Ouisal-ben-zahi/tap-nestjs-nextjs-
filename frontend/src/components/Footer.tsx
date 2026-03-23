@@ -35,13 +35,8 @@ export default function Footer() {
   return (
     <footer
       ref={containerRef}
-      className="relative bg-transparent backdrop-blur-2xl border-t border-white/[0.10] overflow-hidden rounded-t-2xl"
+      className="relative bg-transparent backdrop-blur-2xl overflow-hidden rounded-t-2xl"
     >
-      {/* Separator */}
-      <div className="max-w-[1300px] w-full px-5 sm:w-[88%] sm:px-0 mx-auto">
-        <div className="h-[1px] bg-gradient-to-r from-transparent via-white/[0.06] to-transparent" />
-      </div>
-
       {/* Main footer */}
       <div className="max-w-[1300px] w-full px-5 sm:w-[88%] sm:px-0 mx-auto py-12 sm:py-16">
         {/* Mobile: logo/description full width + accordions */}
@@ -88,7 +83,7 @@ export default function Footer() {
                   className="w-full flex items-center justify-between py-3"
                   aria-expanded={openSection === item.key}
                 >
-                  <span className="text-[12px] font-extrabold uppercase tracking-[2.5px] text-tap-red">
+                  <span className="text-[13px] sm:text-[14px] font-extrabold uppercase tracking-[2.2px] sm:tracking-[2.5px] text-tap-red">
                     {item.title}
                   </span>
                   <ChevronDown
@@ -253,7 +248,7 @@ export default function Footer() {
 
           {/* Navigation */}
           <div>
-            <h4 className="text-[11px] sm:text-[12px] font-extrabold uppercase tracking-[2.5px] text-tap-red mb-4 sm:mb-5">Navigation</h4>
+            <h4 className="text-[12px] sm:text-[13px] md:text-[14px] font-extrabold uppercase tracking-[2.2px] sm:tracking-[2.5px] text-tap-red mb-4 sm:mb-5">Navigation</h4>
             <ul className="flex flex-col gap-2.5 sm:gap-3">
               {footerLinks.navigation.map((link) => (
                 <li key={link.label}>
@@ -272,7 +267,7 @@ export default function Footer() {
 
           {/* Produit */}
           <div>
-            <h4 className="text-[11px] sm:text-[12px] font-extrabold uppercase tracking-[2.5px] text-tap-red mb-4 sm:mb-5">Produit</h4>
+            <h4 className="text-[12px] sm:text-[13px] md:text-[14px] font-extrabold uppercase tracking-[2.2px] sm:tracking-[2.5px] text-tap-red mb-4 sm:mb-5">Produit</h4>
             <ul className="flex flex-col gap-2.5 sm:gap-3">
               {footerLinks.produit.map((link) => (
                 <li key={link.label}>
@@ -286,7 +281,7 @@ export default function Footer() {
 
           {/* Légal */}
           <div>
-            <h4 className="text-[11px] sm:text-[12px] font-extrabold uppercase tracking-[2.5px] text-tap-red mb-4 sm:mb-5">Légal</h4>
+            <h4 className="text-[12px] sm:text-[13px] md:text-[14px] font-extrabold uppercase tracking-[2.2px] sm:tracking-[2.5px] text-tap-red mb-4 sm:mb-5">Légal</h4>
             <ul className="flex flex-wrap gap-x-4 gap-y-2 sm:flex-col sm:gap-3">
               {footerLinks.legal.map((link) => (
                 <li key={link.label}>
@@ -300,7 +295,7 @@ export default function Footer() {
 
           {/* Contact */}
           <div className="text-center sm:text-left">
-            <h4 className="text-[11px] sm:text-[12px] font-extrabold uppercase tracking-[2.5px] text-tap-red mb-4 sm:mb-5">
+            <h4 className="text-[12px] sm:text-[13px] md:text-[14px] font-extrabold uppercase tracking-[2.2px] sm:tracking-[2.5px] text-tap-red mb-4 sm:mb-5">
               Contact
             </h4>
             <div className="flex flex-col gap-3 items-start">
@@ -345,7 +340,6 @@ export default function Footer() {
       </div>
 
       {/* Bottom bar */}
-      <div className="h-[1px] bg-gradient-to-r from-transparent via-white/[0.04] to-transparent" />
       <div className="max-w-[1300px] w-full px-5 sm:w-[88%] sm:px-0 mx-auto py-6 flex flex-col md:flex-row md:items-center md:justify-center gap-2 md:gap-4 text-center">
         <p className="text-[12px] text-white/25 tracking-[0.5px]">
           &copy; {new Date().getFullYear()} TAP — Tous droits réservés.{" "}

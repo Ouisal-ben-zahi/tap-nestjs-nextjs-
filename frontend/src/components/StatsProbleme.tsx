@@ -2,7 +2,7 @@
 
 import type { ComponentType } from "react";
 import { useEffect, useMemo, useState } from "react";
-import { AlertTriangle, EyeOff, UserX, FileText, SearchX, Sparkles } from "lucide-react";
+import { AlertTriangle, EyeOff, UserX, FileText, SearchX } from "lucide-react";
 import { useScrollReveal } from "@/hooks/useScrollReveal";
 
 type ProblemCard = {
@@ -61,8 +61,8 @@ export default function StatsProbleme() {
   const [paused, setPaused] = useState(false);
 
   const stepPx = useMemo(() => {
-    if (typeof window === "undefined") return 340;
-    return window.innerWidth < 640 ? 260 : window.innerWidth < 1024 ? 310 : 340;
+    if (typeof window === "undefined") return 300;
+    return window.innerWidth < 640 ? 240 : window.innerWidth < 1024 ? 280 : 300;
   }, []);
 
   useEffect(() => {
@@ -113,7 +113,7 @@ export default function StatsProbleme() {
           </button>
 
           <div
-            className="relative mx-auto mt-0 sm:mt-1 h-[360px] sm:h-[400px] overflow-visible"
+            className="relative mx-auto mt-0 sm:mt-1 h-[420px] sm:h-[460px] overflow-visible"
             onMouseEnter={() => setPaused(true)}
             onMouseLeave={() => setPaused(false)}
           >
@@ -138,12 +138,12 @@ export default function StatsProbleme() {
                   key={card.title}
                   className={[
                     "absolute left-1/2 top-1/2",
+                    "flex w-[min(280px,86vw)] flex-col aspect-[3/4]",
                     "rounded-2xl overflow-hidden",
-                    "bg-[#0A0A0A] border-l border-r border-white/[0.06]",
                     "transition-[transform,opacity,filter] duration-700 ease-[cubic-bezier(.22,1,.36,1)]",
                     isActive
-                      ? "shadow-[0_0_70px_rgba(202,27,40,0.18)] border-l-tap-red/60 border-r-tap-red/60"
-                      : "pointer-events-none",
+                      ? "bg-[#0C0C0C] border-l border-r border-[#CA1B28] shadow-[0_2px_16px_rgba(0,0,0,0.3)]"
+                      : "bg-[#0A0A0A] border-l border-r border-white/[0.06] pointer-events-none",
                     "will-change-transform",
                   ].join(" ")}
                   style={{
@@ -151,27 +151,26 @@ export default function StatsProbleme() {
                     opacity,
                     filter: `blur(${blur}px)`,
                     zIndex,
-                    width: "min(92vw, 390px)",
                     // Empêche tout impact visuel quand on n'est pas dans le "slot" visible
                     visibility: showCard ? "visible" : "hidden",
                   }}
                 >
-                  <div
-                    className={[
-                      "absolute inset-0 opacity-70",
-                      card.accent === "red" ? "bg-[radial-gradient(circle_at_30%_20%,rgba(202,27,40,0.18),transparent_50%)]" : "bg-[radial-gradient(circle_at_30%_20%,rgba(255,255,255,0.10),transparent_50%)]",
-                    ].join(" ")}
-                  />
-                  <div className="absolute top-0 left-0 right-0 h-[120px] bg-gradient-to-b from-tap-red/[0.06] to-transparent pointer-events-none" />
-                  <div className="relative p-6 sm:p-8 text-center">
-                    <div
-                      className={[
-                        "w-12 h-12 rounded-xl flex items-center justify-center mx-auto mb-5",
-                        // Icône premium: même couleur partout (bg + border)
-                        "bg-tap-red/[0.10] border border-tap-red/15",
-                      ].join(" ")}
-                    >
-                      <card.icon size={22} className="text-tap-red" strokeWidth={1.5} />
+                  {!isActive && (
+                    <>
+                      <div
+                        className={[
+                          "absolute inset-0 opacity-70",
+                          card.accent === "red"
+                            ? "bg-[radial-gradient(circle_at_30%_20%,rgba(202,27,40,0.18),transparent_50%)]"
+                            : "bg-[radial-gradient(circle_at_30%_20%,rgba(255,255,255,0.10),transparent_50%)]",
+                        ].join(" ")}
+                      />
+                      <div className="absolute top-0 left-0 right-0 h-[120px] bg-gradient-to-b from-tap-red/[0.06] to-transparent pointer-events-none" />
+                    </>
+                  )}
+                  <div className="relative flex flex-1 flex-col justify-center p-6 sm:p-7 text-center min-h-0">
+                    <div className="mb-4 sm:mb-5 mx-auto flex h-11 w-11 shrink-0 items-center justify-center rounded-full border border-white/[0.08] bg-white/[0.04] sm:h-12 sm:w-12">
+                      <card.icon className="text-tap-red" strokeWidth={1.2} size={22} />
                     </div>
                     <h3 className="text-[16px] sm:text-[17px] font-bold text-white tracking-[-0.01em] mb-2">
                       {card.title}

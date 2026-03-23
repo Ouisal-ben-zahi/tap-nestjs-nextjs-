@@ -326,12 +326,6 @@ export default function AnalyseCvAppPage() {
       <div className={`relative mb-8 pb-8 ${isLight ? "border-b border-black/10" : "border-b border-white/[0.04]"}`}>
         <div className="absolute top-[-80px] left-[-100px] w-[350px] h-[350px] rounded-full bg-[radial-gradient(circle,rgba(202,27,40,0.08),transparent_60%)] blur-3xl pointer-events-none" />
         <div className="relative">
-          <div className="inline-flex items-center gap-2.5 px-5 py-2.5 mb-4 rounded-full bg-tap-red/[0.08] border border-tap-red/15">
-            <FileText size={13} className="text-tap-red" />
-            <span className="text-[10px] uppercase tracking-[2.5px] text-tap-red/80 font-semibold">
-              Analyse CV
-            </span>
-          </div>
           <h1 className={`text-[28px] sm:text-[36px] font-bold tracking-[-0.04em] font-heading ${isLight ? "text-black" : "text-white"}`}>
             Analyse de votre CV
           </h1>

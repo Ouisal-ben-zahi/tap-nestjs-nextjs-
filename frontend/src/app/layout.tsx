@@ -85,6 +85,13 @@ export default function RootLayout({
 .reveal-stagger.revealed>.reveal-item:nth-child(4){transition-delay:.34s}
 .reveal-stagger.revealed>.reveal-item:nth-child(5){transition-delay:.42s}
 .reveal-stagger.revealed>.reveal-item:nth-child(6){transition-delay:.5s}
+.reveal-stagger-processus>.reveal-item{transform:translateY(22px);transition:opacity .65s cubic-bezier(.25,.1,.25,1),transform .65s cubic-bezier(.25,.1,.25,1)}
+.reveal-stagger-processus.revealed>.reveal-item:nth-child(1){transition-delay:.06s}
+.reveal-stagger-processus.revealed>.reveal-item:nth-child(2){transition-delay:.16s}
+.reveal-stagger-processus.revealed>.reveal-item:nth-child(3){transition-delay:.26s}
+.reveal-stagger-processus.revealed>.reveal-item:nth-child(4){transition-delay:.36s}
+.reveal-stagger-processus.revealed>.reveal-item:nth-child(5){transition-delay:.46s}
+.reveal-stagger-processus.revealed>.reveal-item:nth-child(6){transition-delay:.56s}
 ` }} />
         <script
           type="application/ld+json"

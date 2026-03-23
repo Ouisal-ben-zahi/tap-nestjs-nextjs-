@@ -8,20 +8,20 @@ export default function PourQuiRecruteursTalents() {
 
   return (
     <section className="relative py-10 sm:py-16 bg-black overflow-hidden" ref={containerRef}>
-      <div className="max-w-[1300px] w-[88%] mx-auto relative z-10">
+      <div className="w-[90%] max-w-[1300px] mx-auto relative z-10">
       {/* Audience section */}
-        <div className="reveal text-center mb-6 sm:mb-10">
-        <span className="inline-flex items-center gap-2 sm:gap-3 text-[9px] sm:text-[10px] uppercase tracking-[2px] sm:tracking-[3px] text-tap-red font-semibold mb-4 sm:mb-5">
-          <span className="reveal-scale-x w-6 h-[1px] bg-tap-red origin-right" />
-          Pour qui ?
-          <span className="reveal-scale-x w-6 h-[1px] bg-tap-red origin-left" />
-        </span>
-        <h2 className="font-heading text-[26px] sm:text-[32px] md:text-[44px] lg:text-[52px] font-extralight text-white tracking-[-0.03em] leading-[1.1] mb-4 sm:mb-5">
-          Recruteurs <span className="font-bold">&</span> Talents
-        </h2>
-        <p className="text-[15px] text-white/40 max-w-[520px] mx-auto leading-[1.7] font-light">
-          TAP aligne les besoins des recruteurs et les compétences des talents grâce à une évaluation IA claire et objective.
-        </p>
+        <div className="reveal text-center mb-2 sm:mb-4">
+          <span className="inline-flex items-center gap-3 text-[10px] uppercase tracking-[3px] text-tap-red font-semibold mb-5">
+            <span className="reveal-scale-x w-6 h-[1px] bg-tap-red origin-right" />
+            TAP
+            <span className="reveal-scale-x w-6 h-[1px] bg-tap-red origin-left" />
+          </span>
+          <h2 className="font-heading text-[26px] sm:text-[32px] md:text-[44px] lg:text-[52px] font-extralight text-white tracking-[-0.03em] leading-[1.1] mb-4 sm:mb-5">
+            Recruteurs <span className="font-bold">&</span> Talents
+          </h2>
+          <p className="text-[15px] text-white/40 max-w-[520px] mx-auto leading-[1.7] font-light mb-6 sm:mb-10">
+            TAP aligne les besoins des recruteurs et les compétences des talents grâce à une évaluation IA claire et objective.
+          </p>
         </div>
 
       {/* Audience cards */}

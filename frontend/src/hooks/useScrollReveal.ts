@@ -73,7 +73,12 @@ export function useScrollReveal() {
     const el = ref.current;
     if (!el) return;
 
-    const targets = el.querySelectorAll(SELECTOR);
+    /* Les .reveal-item sous .reveal-stagger sont animés par le parent (délais CSS) : ne pas les cibler ici, sinon les styles inline écrasent la cascade. */
+    const targets = Array.from(el.querySelectorAll(SELECTOR)).filter((node) => {
+      if (!(node instanceof HTMLElement)) return false;
+      if (node.classList.contains("reveal-item") && node.closest(".reveal-stagger")) return false;
+      return true;
+    });
     if (targets.length === 0) return;
 
     const vh = window.innerHeight;
@@ -105,13 +110,13 @@ export function useScrollReveal() {
       }
     });
 
-    // Scroll fallback
+    // Scroll fallback (même logique que l’observer : styles inline cohérents pour .reveal-stagger)
     const onScroll = () => {
       const currentVh = window.innerHeight;
       targets.forEach((t) => {
         if (t.classList.contains("revealed")) return;
         if (t.getBoundingClientRect().top < currentVh - 50) {
-          t.classList.add("revealed");
+          revealWithAnimation(t);
         }
       });
     };

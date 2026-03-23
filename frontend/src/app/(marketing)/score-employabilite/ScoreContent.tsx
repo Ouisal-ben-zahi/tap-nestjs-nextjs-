@@ -71,17 +71,6 @@ export default function ScoreContent() {
         </div>
 
         <div className="relative z-10 w-[88%] max-w-[1300px] mx-auto pb-14 sm:pb-20 pt-[140px] sm:pt-[180px]">
-          <div
-            className="hero-fade-in inline-flex items-center gap-2 sm:gap-2.5 px-4 sm:px-5 py-2 sm:py-2.5 mb-6 sm:mb-8 glass rounded-full"
-            style={{ animationDelay: "0.2s" }}
-          >
-            <span className="relative w-2 h-2">
-              <span className="absolute inset-0 bg-tap-red rounded-full animate-ping opacity-75" />
-              <span className="relative block w-2 h-2 bg-tap-red rounded-full" />
-            </span>
-            <span className="text-[9px] sm:text-[10px] uppercase tracking-[2px] sm:tracking-[2.5px] text-white/60 font-medium">Produit</span>
-          </div>
-
           <h1
             className="hero-fade-in font-heading text-[22px] sm:text-[38px] md:text-[52px] lg:text-[66px] font-extralight text-white tracking-[-0.03em] mb-4 sm:mb-5 leading-[1.05]"
             style={{ animationDelay: "0.3s" }}

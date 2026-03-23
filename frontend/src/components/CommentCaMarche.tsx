@@ -1,15 +1,115 @@
 "use client";
 
-import { UserPlus, ScanSearch, Rocket, Building2, ArrowRight } from "lucide-react";
+import {
+  UserPlus,
+  ScanSearch,
+  Rocket,
+  Building2,
+  Target,
+  ArrowRight,
+  type LucideIcon,
+} from "lucide-react";
 import { useScrollReveal } from "@/hooks/useScrollReveal";
 import FaqHome from "@/components/FaqHome";
 
-const steps = [
-  { icon: UserPlus, title: "Inscription", desc: "Créez votre profil candidat en quelques minutes et uploadez votre CV." },
-  { icon: ScanSearch, title: "Analyse IA", desc: "Notre IA identifie vos forces, compétences et axes d'amélioration." },
-  { icon: Rocket, title: "Formation", desc: "Micro-learning ciblé et personnalisé pour monter en compétence rapidement." },
-  { icon: Building2, title: "Matching", desc: "Votre profil validé rencontre les recruteurs qui embauchent au Maroc." },
+type ProcessStep = {
+  icon: LucideIcon;
+  title: string;
+  label: string;
+  desc: string;
+};
+
+/** Contenu aligné sur la page : 90% de largeur, plafonné à 1300px (voir wrapper principal ci-dessous). */
+const SECTION_MAX = "w-[90%] max-w-[1300px] mx-auto";
+
+const steps: ProcessStep[] = [
+  {
+    icon: UserPlus,
+    title: "Inscription",
+    label: "INSCRIPTION",
+    desc: "Créez votre profil et uploadez votre CV en quelques minutes.",
+  },
+  {
+    icon: ScanSearch,
+    title: "Analyse IA",
+    label: "ANALYSE IA",
+    desc: "L’IA identifie vos forces, compétences et axes d’amélioration.",
+  },
+  {
+    icon: Rocket,
+    title: "Formation",
+    label: "FORMATION",
+    desc: "Micro-learning ciblé pour monter en compétence rapidement.",
+  },
+  {
+    icon: Building2,
+    title: "Matching",
+    label: "MATCHING",
+    desc: "Votre profil rejoint les talents visibles par les recruteurs.",
+  },
+  {
+    icon: Target,
+    title: "Objectif",
+    label: "OBJECTIF",
+    desc: "Décisions plus sûres : moins de risque, plus de rétention.",
+  },
 ];
+
+function ProcessDiamond({
+  step,
+  index,
+  size = "md",
+}: {
+  step: ProcessStep;
+  index: number;
+  /** fill = occupe la cellule (grille 90% / 5) · sm/md = tailles fixes */
+  size?: "md" | "sm" | "fill";
+}) {
+  const Icon = step.icon;
+  /* fill : limité à la cellule (grille 5 col.) pour ne pas casser la largeur du conteneur */
+  const box =
+    size === "fill"
+      ? "mx-auto aspect-square w-full min-w-0 max-w-full"
+      : size === "sm"
+        ? "w-[min(188px,82vw)] h-[min(188px,82vw)] lg:w-[176px] lg:h-[176px]"
+        : "w-[min(240px,88vw)] h-[min(240px,88vw)] sm:w-[240px] sm:h-[240px]";
+  const iconSize = size === "fill" ? 30 : size === "sm" ? 26 : 30;
+  const numClass =
+    size === "fill"
+      ? "text-[46px] sm:text-[50px] lg:text-[54px]"
+      : "text-[46px] sm:text-[50px]";
+  const titleClass =
+    size === "fill" ? "text-[12px] sm:text-[13px] lg:text-[14px]" : "text-[13px] sm:text-[14px]";
+  const descClass = size === "fill" ? "text-[10px] sm:text-[11px] lg:text-[12px]" : "text-[10px] sm:text-[11px] lg:text-[12px]";
+  return (
+    <div
+      className="group relative flex flex-col items-center justify-center"
+      role="article"
+      aria-label={`Étape ${index + 1} — ${step.title}`}
+    >
+      <div className={`relative z-[1] ${box} rounded-[1.15rem] processus-card-premium`}>
+        <div className="processus-card-inner absolute inset-0 -rotate-45 flex flex-col items-center justify-center px-3.5 py-3 sm:px-5 sm:py-4">
+          <div className="mb-2.5 sm:mb-3 flex h-11 w-11 sm:h-12 sm:w-12 shrink-0 items-center justify-center rounded-full border border-white/[0.08] bg-white/[0.04]">
+            <Icon className="text-tap-red" strokeWidth={1.2} size={iconSize} />
+          </div>
+          <div className="flex w-full max-w-[94%] items-start gap-2">
+            <span
+              className={`${numClass} shrink-0 tabular-nums font-semibold leading-[0.82] text-tap-red`}
+            >
+              {index + 1}
+            </span>
+            <div className="min-w-0 flex-1 pt-0.5 text-left">
+              <h3 className={`${titleClass} font-bold uppercase tracking-[0.18em] text-white leading-tight`}>
+                {step.label}
+              </h3>
+              <p className={`${descClass} mt-1.5 leading-[1.55] font-light text-white/[0.48]`}>{step.desc}</p>
+            </div>
+          </div>
+        </div>
+      </div>
+    </div>
+  );
+}
 
 export default function CommentCaMarche() {
   const containerRef = useScrollReveal();
@@ -19,84 +119,71 @@ export default function CommentCaMarche() {
       <div className="absolute bottom-0 left-[30%] w-[500px] h-[350px] rounded-full bg-[radial-gradient(ellipse,rgba(202,27,40,0.03),transparent_60%)] blur-3xl floating-orb" style={{ animationDuration: "9s" }} />
       <div className="absolute top-[10%] right-[-100px] w-[400px] h-[400px] rounded-full bg-[radial-gradient(circle,rgba(202,27,40,0.025),transparent_60%)] blur-3xl" />
 
-      <div className="max-w-[1300px] w-[88%] mx-auto relative z-10">
-        <div className="text-center mb-12 sm:mb-20 relative">
-          {/* Tag standard */}
-          <span className="inline-flex items-center gap-2 sm:gap-3 text-[9px] sm:text-[10px] uppercase tracking-[2px] sm:tracking-[3px] text-tap-red font-semibold mb-4 sm:mb-5">
-            <span className="w-6 h-[1px] bg-tap-red" />
+      <div className={`${SECTION_MAX} relative z-10`}>
+        <div className="reveal text-center mb-12 sm:mb-20 relative">
+          <span className="mb-4 sm:mb-5 inline-flex items-center gap-2.5 sm:gap-3 text-[9px] sm:text-[10px] font-semibold uppercase tracking-[0.28em] text-tap-red">
+            <span className="h-px w-7 bg-gradient-to-r from-transparent to-tap-red/90 sm:w-10" />
             Le processus
-            <span className="w-6 h-[1px] bg-tap-red" />
+            <span className="h-px w-7 bg-gradient-to-l from-transparent to-tap-red/90 sm:w-10" />
           </span>
-          <h2 className="font-heading text-[26px] sm:text-[32px] md:text-[44px] lg:text-[56px] font-extralight text-white tracking-[-0.03em] leading-[1.08]">
+          <h2 className="font-heading text-[26px] sm:text-[32px] md:text-[44px] lg:text-[56px] font-extralight tracking-[-0.03em] leading-[1.06] text-white">
             Comment ça <span className="font-bold">marche</span>
           </h2>
+          <p className="mx-auto mt-4 max-w-[34rem] text-[13px] sm:text-[14px] font-light leading-[1.65] text-white/38">
+            Un parcours clair en cinq étapes — de l’inscription aux décisions les plus justes.
+          </p>
+          <div className="mx-auto mt-6 h-px w-20 bg-gradient-to-r from-transparent via-white/15 to-transparent sm:mt-7 sm:w-28" />
         </div>
 
-        {/* Processus steps */}
+        {/* Processus — 90% écran max 1300px, 5 colonnes alignées, cartes plus grandes */}
         <div className="relative mb-14 sm:mb-24">
-          {/* Desktop / Horizontal */}
-          <div className="hidden lg:block relative">
-            <div className="relative z-10 flex justify-between gap-6">
-              {steps.map((step, i) => (
-                <div
-                  key={i}
-                  className="group relative rounded-2xl bg-[#0A0A0A]/55 border border-transparent overflow-hidden w-[210px] px-6 py-6 flex flex-col items-center text-center transition-transform duration-500 ease-[cubic-bezier(.22,1,.36,1)] group-hover:-translate-y-1 group-hover:scale-[1.01] group-hover:bg-transparent reveal-item reveal-fade"
-                  style={{ transitionDelay: `${i * 120}ms` }}
-                >
-                  {/* Premium hover overlays */}
-                  <div className="absolute inset-0 opacity-0 transition-opacity duration-500 pointer-events-none bg-[radial-gradient(circle_at_25%_0%,rgba(202,27,40,0.35),transparent_55%)] blur-[2px] mix-blend-screen" />
-                  <div className="luxury-sweep absolute inset-0 bg-[linear-gradient(90deg,transparent_0%,rgba(202,27,40,0.35)_45%,rgba(255,255,255,0.14)_55%,transparent_100%)]" />
-
-                  <div className="relative mb-6">
-                    <div className="processus-icon-pulse w-[104px] h-[104px] rounded-full bg-white/[0.02] border border-white/[0.06] flex items-center justify-center group-hover:border-tap-red/20 transition-colors duration-500">
-                      <div className="w-[72px] h-[72px] rounded-full bg-tap-red/[0.08] flex items-center justify-center group-hover:bg-tap-red/15 transition-colors duration-500">
-                        <step.icon size={28} className="text-tap-red" strokeWidth={1.5} />
-                      </div>
-                    </div>
-                    <div className="processus-number-pulse absolute -top-1 -right-1 w-8 h-8 rounded-full bg-tap-red/20 border border-tap-red/30 flex items-center justify-center">
-                      <span className="text-[11px] font-bold text-tap-red">0{i + 1}</span>
-                    </div>
+          <div className="w-full overflow-visible px-0 py-6 sm:py-8">
+            {/* Desktop — entrée en cascade au scroll */}
+            <div className="reveal-stagger reveal-stagger-processus hidden lg:grid w-full grid-cols-[repeat(5,minmax(0,1fr))] items-start gap-x-0 py-4 px-0">
+              {steps.map((step, i) => {
+                const isLow = i % 2 === 1;
+                return (
+                  <div
+                    key={step.label}
+                    className={`reveal-item flex min-w-0 max-w-full flex-col items-center justify-center ${
+                      isLow ? "mt-[64px] xl:mt-[72px]" : ""
+                    }`}
+                  >
+                    <ProcessDiamond step={step} index={i} size="fill" />
                   </div>
-                  <h3 className="text-[17px] sm:text-[18px] font-bold text-white mb-2.5 tracking-[-0.01em] group-hover:text-tap-red transition-colors duration-300">
-                    {step.title}
-                  </h3>
-                  <p className="text-[13px] text-white/35 leading-[1.7] font-light max-w-[260px] group-hover:text-white/45 transition-colors duration-300">
-                    {step.desc}
-                  </p>
-                </div>
-              ))}
+                );
+              })}
             </div>
-          </div>
 
-          {/* Mobile / Vertical */}
-          <div className="lg:hidden relative">
-            <div className="relative z-10 flex flex-col items-center gap-10">
+            {/* Tablette */}
+            <div className="hidden md:flex lg:hidden justify-center w-full overflow-x-auto overflow-y-visible py-6 [scrollbar-width:none] [&::-webkit-scrollbar]:hidden">
+              <div className="reveal-stagger reveal-stagger-processus flex min-h-[280px] w-max max-w-full items-start justify-center gap-x-0 px-0">
+                {steps.map((step, i) => {
+                  const isLow = i % 2 === 1;
+                  return (
+                    <div
+                      key={step.label}
+                      className={`reveal-item flex w-[min(46vw,11rem)] min-w-0 max-w-[11rem] shrink-0 flex-col items-center ${
+                        isLow ? "mt-[48px]" : "mt-0"
+                      }`}
+                    >
+                      <ProcessDiamond step={step} index={i} size="fill" />
+                    </div>
+                  );
+                })}
+              </div>
+            </div>
+
+            {/* Mobile */}
+            <div className="reveal-stagger reveal-stagger-processus md:hidden flex flex-col items-center gap-5 py-4">
               {steps.map((step, i) => (
                 <div
-                  key={i}
-                  className="group relative rounded-2xl bg-[#0A0A0A]/55 border border-transparent overflow-hidden px-6 py-6 w-full max-w-[360px] flex flex-col items-center text-center transition-transform duration-500 ease-[cubic-bezier(.22,1,.36,1)] group-hover:-translate-y-1 group-hover:scale-[1.01] group-hover:bg-transparent reveal-item reveal-fade"
-                  style={{ transitionDelay: `${i * 120}ms` }}
+                  key={step.label}
+                  className={`reveal-item w-full flex justify-center ${
+                    i % 2 === 1 ? "pl-6" : "pr-6"
+                  }`}
                 >
-                  {/* Premium hover overlays */}
-                  <div className="absolute inset-0 opacity-0 transition-opacity duration-500 pointer-events-none bg-[radial-gradient(circle_at_25%_0%,rgba(202,27,40,0.35),transparent_55%)] blur-[2px] mix-blend-screen" />
-                  <div className="luxury-sweep absolute inset-0 bg-[linear-gradient(90deg,transparent_0%,rgba(202,27,40,0.35)_45%,rgba(255,255,255,0.14)_55%,transparent_100%)]" />
-
-                  <div className="relative mb-6">
-                    <div className="processus-icon-pulse w-[104px] h-[104px] rounded-full bg-white/[0.02] border border-white/[0.06] flex items-center justify-center group-hover:border-tap-red/20 transition-colors duration-500">
-                      <div className="w-[72px] h-[72px] rounded-full bg-tap-red/[0.08] flex items-center justify-center group-hover:bg-tap-red/15 transition-colors duration-500">
-                        <step.icon size={28} className="text-tap-red" strokeWidth={1.5} />
-                      </div>
-                    </div>
-                    <div className="processus-number-pulse absolute -top-1 -right-1 w-8 h-8 rounded-full bg-tap-red/20 border border-tap-red/30 flex items-center justify-center">
-                      <span className="text-[11px] font-bold text-tap-red">0{i + 1}</span>
-                    </div>
-                  </div>
-                  <h3 className="text-[17px] sm:text-[18px] font-bold text-white mb-2.5 tracking-[-0.01em] group-hover:text-tap-red transition-colors duration-300">
-                    {step.title}
-                  </h3>
-                  <p className="text-[13px] text-white/35 leading-[1.7] font-light max-w-[280px] group-hover:text-white/45 transition-colors duration-300">
-                    {step.desc}
-                  </p>
+                  <ProcessDiamond step={step} index={i} size="md" />
                 </div>
               ))}
             </div>
@@ -107,7 +194,7 @@ export default function CommentCaMarche() {
         <FaqHome />
 
         {/* CTA Banner */}
-        <div className="reveal group cta-animated-border relative rounded-2xl sm:rounded-3xl overflow-hidden border border-white/[0.06] bg-[#0A0A0A] shadow-[0_0_60px_rgba(202,27,40,0.12)] transition-all duration-500 hover:border-tap-red/25 hover:-translate-y-1 hover:scale-[1.01] hover:shadow-[0_0_80px_rgba(202,27,40,0.18),0_18px_70px_rgba(0,0,0,0.65)]">
+        <div className="reveal group cta-animated-border relative rounded-2xl sm:rounded-3xl overflow-hidden border border-white/[0.06] bg-[#0A0A0A]">
           {/* Superposition fond image (premium) */}
           <div className="absolute inset-0 bg-[url('/images/bgsections.jpg')] bg-no-repeat bg-center bg-[length:120%_auto] opacity-30 pointer-events-none" />
           <div className="absolute inset-0 bg-black/55 pointer-events-none" />

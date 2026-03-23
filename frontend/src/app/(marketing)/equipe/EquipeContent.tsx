@@ -1,7 +1,6 @@
 "use client";
 
-import Link from "next/link";
-import { ArrowUpRight, ArrowRight, Linkedin, CheckCircle2 } from "lucide-react";
+import { ArrowUpRight, Linkedin, CheckCircle2 } from "lucide-react";
 import { useScrollReveal } from "@/hooks/useScrollReveal";
 
 const founders = [
@@ -69,17 +68,6 @@ export default function EquipeContent() {
         </div>
 
         <div className="relative z-10 w-[88%] max-w-[1300px] mx-auto pb-14 sm:pb-20 pt-[140px] sm:pt-[180px]">
-          <div
-            className="hero-fade-in inline-flex items-center gap-2 sm:gap-2.5 px-4 sm:px-5 py-2 sm:py-2.5 mb-6 sm:mb-8 glass rounded-full"
-            style={{ animationDelay: "0.2s" }}
-          >
-            <span className="relative w-2 h-2">
-              <span className="absolute inset-0 bg-tap-red rounded-full animate-ping opacity-75" />
-              <span className="relative block w-2 h-2 bg-tap-red rounded-full" />
-            </span>
-            <span className="text-[9px] sm:text-[10px] uppercase tracking-[2px] sm:tracking-[2.5px] text-white/60 font-medium">L&apos;équipe</span>
-          </div>
-
           <h1
             className="hero-fade-in font-heading text-[22px] sm:text-[38px] md:text-[52px] lg:text-[66px] font-extralight text-white tracking-[-0.03em] mb-4 sm:mb-5 leading-[1.05]"
             style={{ animationDelay: "0.3s" }}
@@ -257,51 +245,6 @@ export default function EquipeContent() {
                 </div>
               </div>
             ))}
-          </div>
-        </div>
-      </section>
-
-      {/* CTA */}
-      <section className="py-8 sm:py-12 bg-transparent relative overflow-hidden">
-        <div className="absolute inset-0 bg-gradient-to-b from-tap-red/[0.02] to-transparent pointer-events-none" />
-        <div className="max-w-[1300px] w-[88%] mx-auto relative z-10">
-          <div className="reveal group cta-animated-border relative rounded-2xl sm:rounded-3xl overflow-hidden border border-white/[0.06] bg-[#0A0A0A] shadow-[0_0_60px_rgba(202,27,40,0.12)] transition-all duration-500 hover:border-tap-red/25 hover:-translate-y-1 hover:scale-[1.01] hover:shadow-[0_0_80px_rgba(202,27,40,0.18),0_18px_70px_rgba(0,0,0,0.65)]">
-            {/* Superposition fond image (premium) */}
-            <div className="absolute inset-0 bg-[url('/images/bgsections.jpg')] bg-no-repeat bg-center bg-[length:120%_auto] opacity-30 pointer-events-none" />
-            <div className="absolute inset-0 bg-black/55 pointer-events-none" />
-
-            {/* Glow accent */}
-            <div className="absolute inset-0 opacity-0 group-hover:opacity-100 transition-opacity duration-500 pointer-events-none">
-              <div className="absolute -top-20 left-1/2 -translate-x-1/2 w-[420px] h-[200px] bg-[radial-gradient(circle,rgba(202,27,40,0.35),transparent_60%)] blur-2xl mix-blend-screen" />
-            </div>
-
-            {/* Accent gradient */}
-            <div className="absolute top-0 left-0 right-0 h-[140px] bg-gradient-to-b from-tap-red/[0.18] to-transparent pointer-events-none" />
-
-            {/* Orbes flottants */}
-            <div
-              className="absolute -top-8 -left-8 w-[180px] h-[180px] rounded-full bg-[radial-gradient(circle,rgba(202,27,40,0.12),transparent_60%)] blur-2xl floating-orb pointer-events-none"
-              style={{ animationDuration: "9s" }}
-            />
-            <div className="absolute bottom-[-110px] right-[-130px] w-[300px] h-[300px] rounded-full bg-[radial-gradient(circle,rgba(202,27,40,0.08),transparent_60%)] blur-3xl pointer-events-none" />
-
-            <div className="relative z-10 p-7 sm:p-12 lg:p-16 text-center">
-              <h3 className="font-heading text-[22px] sm:text-[26px] md:text-[36px] lg:text-[44px] font-extralight text-white mb-3 sm:mb-4 tracking-[-0.03em] leading-[1.1]">
-                Rejoignez <span className="font-bold">l&apos;aventure</span>
-              </h3>
-              <p className="text-[14px] text-white/40 mb-8 font-light max-w-[520px] mx-auto leading-[1.7]">
-                Une équipe passionnée qui révolutionne l&apos;employabilité au Maroc.
-              </p>
-              <div className="flex gap-3 flex-wrap justify-center">
-                <a href="https://demo.tap-hr.com/" target="_blank" rel="noopener noreferrer" className="btn-primary group">
-                  Découvrir TAP
-                  <ArrowRight size={14} className="transition-transform duration-300 group-hover:translate-x-1" />
-                </a>
-                <Link href="/inscription" className="btn-secondary">
-                  Créer mon profil
-                </Link>
-              </div>
-            </div>
           </div>
         </div>
       </section>

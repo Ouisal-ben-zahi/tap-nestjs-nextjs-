@@ -1,69 +1,74 @@
 "use client";
 
 import { useScrollReveal } from "@/hooks/useScrollReveal";
-import { ChevronDown, Users, Building2 } from "lucide-react";
+import { Minus, Plus } from "lucide-react";
 import { useState } from "react";
 
 const candidateFaqs = [
   {
-    question: "TAP, c'est pour quels candidats ?",
+    question:
+      "À qui s’adresse TAP en tant que candidat : profils juniors, reconversion ou profils plus expérimentés ?",
     answer:
-      "Jeunes diplômés, profils en reconversion ou en recherche d'un premier poste au Maroc, qui veulent prouver leurs compétences au-delà du CV.",
+      "TAP s’adresse à tout candidat qui cherche un emploi au Maroc et veut être évalué de façon plus juste qu’avec un CV seul : jeunes diplômés, personnes en reconversion, profils en recherche d’un premier poste ou d’une nouvelle opportunité. L’objectif est de rendre visibles vos compétences réelles, vos forces et votre potentiel, même lorsque votre parcours est atypique ou encore peu connu des recruteurs. En centralisant analyse, score et parcours d’apprentissage, TAP vous aide à présenter un profil structuré et comparable, là où le papier ou le format classique du CV ne suffit pas.",
   },
   {
-    question: "Que fait l’IA avec mon CV ?",
+    question:
+      "Concrètement, que fait l’intelligence artificielle avec mon CV une fois que je l’ai envoyé ?",
     answer:
-      "L’IA lit votre CV, identifie vos compétences, vos expériences et vos forces, puis calcule un score d’employabilité et vous propose un parcours de micro-learning.",
+      "L’IA analyse le contenu de votre CV (formations, expériences, compétences déclarées, mots-clés, cohérence du parcours) pour en extraire des signaux utiles : ce qui ressort vraiment de votre profil, ce qui mérite d’être creusé, et où se situent les écarts par rapport aux attentes du marché. Sur cette base, la plateforme calcule un score d’employabilité et des indicateurs par dimension (technique, transversal, adéquation aux métiers ciblés, etc.). Ensuite, TAP vous oriente vers des modules de micro-learning ciblés pour renforcer les points identifiés comme prioritaires, afin que votre profil gagne en clarté et en crédibilité aux yeux des recruteurs.",
   },
   {
-    question: "Est-ce que TAP est payant pour moi ?",
+    question:
+      "L’utilisation de TAP est-elle payante pour les candidats, et quels services sont inclus sans frais ?",
     answer:
-      "Non. Pour les candidats, TAP est 100 % gratuit : analyse du CV, score d’employabilité et recommandations de formation.",
+      "Pour les candidats, TAP est entièrement gratuit : aucun abonnement ni frais caché pour l’analyse de votre CV, l’accès à votre score d’employabilité et aux recommandations de formation associées. L’idée est de démocratiser l’accès à une évaluation structurée et à un accompagnement orienté emploi, sans barrière financière. Les fonctionnalités payantes éventuelles côté plateforme concernent plutôt les entreprises et les recruteurs qui utilisent TAP pour sourcer et comparer des talents.",
   },
   {
-    question: "Comment je suis mis en relation avec les entreprises ?",
+    question:
+      "Comment suis-je mis en relation avec les entreprises, et à quel moment mon profil devient-il visible pour les recruteurs ?",
     answer:
-      "Une fois votre profil analysé et renforcé par la formation, vous apparaissez dans la base de talents validés, accessible aux recruteurs.",
+      "Après analyse de votre CV et renforcement via le parcours de micro-learning proposé, votre profil peut être intégré à la base de talents validés par TAP, consultable par les recruteurs partenaires. Vous n’êtes pas « mis en relation » au hasard : les entreprises accèdent à des profils structurés, notés et comparables (Talents Cards), ce qui facilite le matching avec leurs besoins réels. Le moment exact où vous apparaissez dépend de la complétude de votre dossier et des critères de validation de la plateforme ; l’objectif est que les recruteurs voient un profil cohérent, à jour et aligné avec les attentes du marché.",
   },
 ];
 
 const companyFaqs = [
   {
-    question: "Quel type d’entreprises utilise TAP ?",
+    question:
+      "Quels types d’entreprises et de secteurs utilisent TAP pour recruter au Maroc ?",
     answer:
-      "PME, grands groupes et recruteurs qui recrutent au Maroc et veulent des profils mieux évalués, plus opérationnels dès le jour 1.",
+      "TAP s’adresse aux PME, aux grands groupes et à tout service de recrutement qui embauche au Maroc et souhaite gagner du temps sur le tri des CV tout en montant en qualité de présélection. Les secteurs peuvent varier (services, industrie, tech, retail, etc.) : ce qui compte, c’est le besoin de profils mieux qualifiés « sur le papier et en compétences », avec une vision standardisée du potentiel. TAP ne remplace pas votre marque employeur ni vos entretiens, mais aide à repérer plus vite les candidats dont le profil a été analysé et noté de manière homogène.",
   },
   {
-    question: "Comment fonctionne le scoring pour les entreprises ?",
+    question:
+      "Comment le scoring fonctionne-t-il côté entreprise, et à quoi servent les sous-scores pour décider ?",
     answer:
-      "Chaque talent dispose d’un score global et de sous-scores par critère (technique, soft skills, adéquation marché…) pour aider à la décision.",
+      "Chaque talent disposant d’une Talents Card se voit attribuer un score global, complété par des sous-scores selon des critères explicites : par exemple compétences techniques, soft skills, adéquation avec les métiers ou secteurs visés, et cohérence du parcours. Ces indicateurs permettent de comparer des profils entre eux sur une même échelle, plutôt que de se fier uniquement à des CV aux formats différents. Les équipes RH et les managers peuvent ainsi prioriser les candidats en fonction des priorités du poste (profondeur technique, adaptabilité, etc.) et documenter leurs choix à partir de données structurées, pas seulement d’une impression de lecture.",
   },
   {
-    question: "Comment accède-t-on aux Talents Cards ?",
+    question:
+      "Comment les recruteurs accèdent-ils aux Talents Cards, et en quoi diffèrent-elles d’un CV classique ?",
     answer:
-      "Les recruteurs se connectent à la plateforme TAP et explorent des Talents Cards notées de 0 à 100, comparables entre elles.",
+      "Les recruteurs se connectent à l’espace entreprise de TAP et parcourent des Talents Cards : des fiches synthétiques où chaque candidat est noté sur une échelle commune (par exemple de 0 à 100), avec des critères décomposés et comparables d’un profil à l’autre. Contrairement à un CV PDF, la Talents Card met l’accent sur ce qui a été analysé et validé par le parcours TAP (parcours, score, axes de développement suivis), ce qui réduit le bruit et accélère la phase de présélection. L’objectif est d’offrir une base de talents « lisible » pour la décision, tout en laissant la suite du processus (entretiens, tests, offre) à votre organisation.",
   },
   {
-    question: "Est-ce que TAP remplace mon processus RH ?",
+    question:
+      "TAP remplace-t-il notre processus RH et nos outils de recrutement existants ?",
     answer:
-      "Non, TAP vient en amont pour qualifier les profils, réduire le temps de tri et sécuriser vos décisions à l’aide de la donnée et de l’IA.",
+      "Non. TAP se positionne en amont : qualification des profils, réduction du volume à traiter manuellement et meilleure lisibilité des compétences grâce à la donnée et à l’IA. Vos processus internes (entretiens, panel, outil ATS, onboarding) restent les vôtres ; TAP apporte une couche d’évaluation homogène et des Talents Cards pour sécuriser les premières décisions et gagner du temps. En résumé, TAP complète votre dispositif en améliorant la qualité du funnel d’entrée, sans se substituer à la relation humaine ni à la gouvernance RH de votre entreprise.",
   },
 ];
 
+const allFaqs = [...candidateFaqs, ...companyFaqs];
+
+const INITIAL_VISIBLE = 5;
+
 export default function FaqHome() {
   const containerRef = useScrollReveal();
-  const [activeTab, setActiveTab] = useState<"candidates" | "companies">("candidates");
-  const [openIndex, setOpenIndex] = useState<number | null>(0);
+  const [openIndex, setOpenIndex] = useState<number | null>(null);
+  const [showAll, setShowAll] = useState(false);
 
-  const displayedFaqs = (() => {
-    if (activeTab === "candidates") {
-      return candidateFaqs.slice(0, 5);
-    }
-    if (activeTab === "companies") {
-      return companyFaqs.slice(0, 5);
-    }
-    return candidateFaqs.slice(0, 5);
-  })();
+  const displayedFaqs = showAll ? allFaqs : allFaqs.slice(0, INITIAL_VISIBLE);
+  const hasMore = allFaqs.length > INITIAL_VISIBLE;
 
   return (
     <section ref={containerRef} className="relative py-10 sm:py-16 bg-black overflow-hidden">
@@ -85,110 +90,70 @@ export default function FaqHome() {
           </p>
         </div>
 
-        {/* Barre Candidat / Recruteur */}
-        <div className="reveal flex justify-center mb-7 sm:mb-9">
-          <div className="inline-flex items-center gap-1.5 sm:gap-2 rounded-full bg-[#050505]/90 backdrop-blur-xl border border-white/[0.08] px-2 py-1.5 shadow-[0_10px_30px_rgba(0,0,0,0.45)]">
-            <button
-              type="button"
-              onClick={() => {
-                setActiveTab("candidates");
-                setOpenIndex(0);
-              }}
-              className={`inline-flex items-center gap-1.5 px-3 sm:px-4 py-1.5 rounded-full text-[11px] sm:text-[12px] font-semibold tracking-[1.2px] uppercase transition-all duration-200 ${
-                activeTab === "candidates"
-                  ? "bg-white text-black shadow-[0_0_0_1px_rgba(255,255,255,0.4)]"
-                  : "text-white/55 hover:text-white"
-              }`}
-            >
-              <Users size={13} className={activeTab === "candidates" ? "text-[#D61D27]" : "text-white/50"} />
-              Candidat
-            </button>
-            <button
-              type="button"
-              onClick={() => {
-                setActiveTab("companies");
-                setOpenIndex(0);
-              }}
-              className={`inline-flex items-center gap-1.5 px-3 sm:px-4 py-1.5 rounded-full text-[11px] sm:text-[12px] font-semibold tracking-[1.2px] uppercase transition-all duration-200 ${
-                activeTab === "companies"
-                  ? "bg-white text-black shadow-[0_0_0_1px_rgba(255,255,255,0.4)]"
-                  : "text-white/55 hover:text-white"
-              }`}
-            >
-              <Building2 size={13} className={activeTab === "companies" ? "text-[#D61D27]" : "text-white/50"} />
-              Recruteur
-            </button>
-          </div>
-        </div>
-
-        {/* Liste des questions */}
-        <div className="reveal-stagger w-full flex flex-col gap-3.5">
+        <div className="reveal-stagger w-full flex flex-col gap-3.5 sm:gap-4">
           {displayedFaqs.map((item, index) => {
             const isOpen = index === openIndex;
             return (
-              <button
-                key={`${activeTab}-${item.question}`}
-                type="button"
-                onClick={() => setOpenIndex(isOpen ? null : index)}
-                aria-expanded={isOpen}
-                className={[
-                  "reveal-item text-left group relative rounded-2xl border bg-[#050505]/95 mx-1 sm:mx-2",
-                  // Effet “luxe” uniquement quand la FAQ est ouverte (pas sur le hover)
-                  "overflow-hidden",
-                  "before:content-[''] before:absolute before:inset-0 before:-z-10 before:opacity-0 before:transition-opacity before:duration-300 before:bg-[radial-gradient(circle_at_top_left,rgba(214,29,39,0.35),transparent_55%)]",
-                  "px-4 sm:px-5 md:px-6 py-3.5 sm:py-4",
-                  // Hover luxe: transition simple, sans “border animée” premium
-                  "border-white/[0.06] transition-colors duration-200 ease-out",
-                  "hover:border-tap-red/25 hover:bg-white/[0.02]",
-                  "focus:outline-none focus-visible:ring-2 focus-visible:ring-tap-red/60 focus-visible:ring-offset-2 focus-visible:ring-offset-black",
-                  "shadow-[0_0_0_1px_rgba(255,255,255,0.02)] transition-shadow duration-300 will-change-transform",
-                  "transition-transform duration-200 ease-out",
-                  "hover:-translate-y-px hover:shadow-[0_0_0_1px_rgba(255,255,255,0.06),0_0_18px_rgba(214,29,39,0.10)]",
-                  isOpen
-                    ? "border-tap-red/20 before:opacity-100 shadow-[0_0_0_1px_rgba(214,29,39,0.22),0_0_30px_rgba(214,29,39,0.14)]"
-                    : "",
-                ].join(" ")}
+              <div
+                key={item.question}
+                className="reveal-item mx-1 sm:mx-2 flex overflow-hidden rounded-xl bg-[#0C0C0C] shadow-[0_2px_16px_rgba(0,0,0,0.3)]"
               >
-                <div className="flex items-center gap-3 sm:gap-4">
-                  <div className="flex-1 min-w-0 relative z-[1]">
-                    <div className="flex items-start justify-between gap-3">
-                      <p className="text-[13px] sm:text-[15px] font-bold text-white leading-[1.5]">
-                        {item.question}
-                      </p>
-                      <span
-                        className={[
-                          "shrink-0 w-7 h-7 rounded-full flex items-center justify-center transition-all duration-300",
-                          isOpen ? "bg-tap-red/10 border-tap-red/40" : "bg-white/[0.03] border-white/[0.06]",
-                        ].join(" ")}
-                      >
-                        <ChevronDown
-                          size={14}
-                          className={`text-white/60 transition-transform duration-300 ${isOpen ? "rotate-180" : "rotate-0"}`}
-                        />
-                      </span>
-                    </div>
-                    <div
-                      className={`overflow-hidden transition-[max-height,opacity,margin-top] duration-300 ease-out ${
-                        isOpen ? "max-h-40 opacity-100 mt-2.5" : "max-h-0 opacity-0 mt-0"
-                      }`}
-                    >
-                      <p
-                        className={[
-                          "text-[12px] sm:text-[13px] leading-[1.7] font-light",
-                          isOpen ? "text-white/65" : "text-white/45",
-                        ].join(" ")}
-                      >
+                <div className="w-1 shrink-0 bg-[#CA1B28]" aria-hidden />
+                <div className="min-w-0 flex-1 flex flex-col">
+                  <button
+                    type="button"
+                    onClick={() => setOpenIndex(isOpen ? null : index)}
+                    aria-expanded={isOpen}
+                    className={[
+                      "group w-full flex items-center justify-between gap-4 text-left py-4 pl-4 pr-4 sm:pl-5 sm:pr-5 transition-colors duration-300",
+                      "focus:outline-none focus-visible:ring-2 focus-visible:ring-[#CA1B28]/50 focus-visible:ring-inset rounded-none",
+                      "hover:bg-white/[0.04]",
+                    ].join(" ")}
+                  >
+                    <p className="text-[13px] sm:text-[15px] font-medium leading-[1.55] text-white/85">
+                      {item.question}
+                    </p>
+                    <span className="shrink-0 flex h-8 w-8 items-center justify-center text-[#CA1B28] transition-transform duration-300">
+                      {isOpen ? (
+                        <Minus size={20} strokeWidth={2} className="text-[#CA1B28]" aria-hidden />
+                      ) : (
+                        <Plus size={20} strokeWidth={2} className="text-[#CA1B28]" aria-hidden />
+                      )}
+                    </span>
+                  </button>
+
+                  <div
+                    className={`overflow-hidden transition-[max-height,opacity] duration-300 ease-out ${
+                      isOpen ? "max-h-[min(52rem,85vh)] opacity-100" : "max-h-0 opacity-0"
+                    }`}
+                  >
+                    <div className="bg-[#0C0C0C] px-4 sm:px-5 py-4 sm:py-5">
+                      <p className="text-[12px] sm:text-[13px] leading-[1.75] font-light text-white/60">
                         {item.answer}
                       </p>
                     </div>
                   </div>
                 </div>
-              </button>
+              </div>
             );
           })}
         </div>
+
+        {hasMore && (
+          <div className="reveal flex justify-center mt-8 sm:mt-10">
+            <button
+              type="button"
+              onClick={() => {
+                setShowAll((v) => !v);
+                setOpenIndex(null);
+              }}
+              className="btn-primary btn-sm"
+            >
+              {showAll ? "Voir moins" : "Voir plus"}
+            </button>
+          </div>
+        )}
       </div>
     </section>
   );
 }
-

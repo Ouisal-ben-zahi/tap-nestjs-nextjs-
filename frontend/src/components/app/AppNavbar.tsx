@@ -65,13 +65,13 @@ export default function AppNavbar({ onToggleSidebar }: AppNavbarProps) {
           <button
             type="button"
             onClick={toggleProfileMenu}
-            className="hidden sm:flex items-center gap-2.5 px-3.5 py-2 rounded-xl hover:bg-white/[0.06] transition-colors"
+            className="group flex items-center gap-2.5 px-2.5 sm:px-3.5 py-2 rounded-xl border border-white/20 hover:border-tap-red/70 hover:bg-white/[0.06] transition-all duration-300 hover:shadow-[0_0_18px_rgba(202,27,40,0.22)]"
           >
-            <span className="text-[12px] text-white/45 truncate max-w-[160px] text-left">
+            <span className="hidden sm:block text-[12px] text-white/45 truncate max-w-[160px] text-left">
               {user.email}
             </span>
             {avatarUrl ? (
-              <div className="w-7 h-7 rounded-full overflow-hidden bg-black/20 flex items-center justify-center ring-1 ring-tap-red/30">
+              <div className="w-7 h-7 rounded-full overflow-hidden bg-black/20 flex items-center justify-center ring-1 ring-tap-red/30 group-hover:ring-tap-red/80 group-hover:scale-105 transition-all duration-300">
                 <Image
                   src={avatarUrl}
                   alt={user.email}
@@ -81,7 +81,7 @@ export default function AppNavbar({ onToggleSidebar }: AppNavbarProps) {
                 />
               </div>
             ) : (
-              <div className="w-7 h-7 rounded-full bg-tap-red flex items-center justify-center text-[11px] font-bold text-white uppercase ring-1 ring-tap-red/40">
+              <div className="w-7 h-7 rounded-full bg-tap-red flex items-center justify-center text-[11px] font-bold text-white uppercase ring-1 ring-tap-red/40 group-hover:ring-tap-red/90 group-hover:scale-105 transition-all duration-300">
                 {initial || "?"}
               </div>
             )}

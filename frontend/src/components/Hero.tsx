@@ -2,7 +2,7 @@
 
 import { useState, useEffect, lazy, Suspense } from "react";
 import Link from "next/link";
-import { ArrowRight, Sparkles } from "lucide-react";
+import { ArrowRight } from "lucide-react";
 
 const AfricaMap = lazy(() => import("@/components/AfricaMap"));
 
@@ -41,15 +41,6 @@ export default function Hero() {
       )}
 
       <div className="relative z-[3] w-[88%] max-w-[1300px] mx-auto pt-[140px] sm:pt-[180px] pb-10 sm:pb-16">
-        <div className="hero-fade-in" style={{ animationDelay: "0.1s" }}>
-          <div className="inline-flex items-center gap-2 sm:gap-2.5 px-4 sm:px-5 py-2 sm:py-2.5 mb-8 sm:mb-10 glass rounded-full">
-            <Sparkles size={12} className="text-tap-red shrink-0" />
-            <span className="text-[9px] sm:text-[10px] uppercase tracking-[2px] sm:tracking-[2.5px] text-white/60 font-medium whitespace-nowrap">
-              Plateforme IA — Maroc
-            </span>
-          </div>
-        </div>
-
         <h1 className="max-w-[900px]">
           <div className="hero-fade-in" style={{ animationDelay: "0.2s" }}>
             <span className="block font-heading text-[20px] sm:text-[38px] md:text-[52px] lg:text-[72px] xl:text-[82px] leading-[1.1] sm:leading-[1.05] tracking-[-0.03em] mb-2">
