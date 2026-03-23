@@ -141,6 +141,26 @@ export class DashboardController {
   
   }
 
+  @Delete("candidat/talentcard-file")
+  @UseGuards(AuthGuard("jwt"))
+  async deleteCandidateTalentcardFileByJwt(
+    @Req() req: any,
+    @Query("path") path: string,
+  ) {
+    await this.dashboardService.deleteCandidateTalentcardFile(req.user.sub, path);
+    return { success: true };
+  }
+
+  @Delete("candidat/portfolio-pdf-file")
+  @UseGuards(AuthGuard("jwt"))
+  async deleteCandidatePortfolioPdfFileByJwt(
+    @Req() req: any,
+    @Query("path") path: string,
+  ) {
+    await this.dashboardService.deleteCandidatePortfolioPdfFile(req.user.sub, path);
+    return { success: true };
+  }
+
 
   @Get('recruteur/jobs')
   @UseGuards(AuthGuard('jwt'))

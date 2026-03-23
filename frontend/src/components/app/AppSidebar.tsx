@@ -91,8 +91,8 @@ export default function AppSidebar({ open, onClose }: AppSidebarProps) {
           collapsed ? "w-[80px]" : "w-[250px]"
         } ${
           isLight
-            ? "bg-tap-red text-white border-r border-tap-red/60"
-            : "bg-zinc-900/95 backdrop-blur-2xl shadow-[0_0_28px_rgba(0,0,0,0.55)] border-r border-white/[0.08]"
+            ? "bg-tap-red text-white"
+            : "bg-zinc-900/95 backdrop-blur-2xl shadow-[0_0_28px_rgba(0,0,0,0.55)]"
         } z-50 flex flex-col transition-transform duration-300 lg:translate-x-0 ${
           open ? "translate-x-0" : "-translate-x-full"
         }`}
@@ -147,16 +147,15 @@ export default function AppSidebar({ open, onClose }: AppSidebarProps) {
         </div>
 
         <nav className="flex-1 pl-3 pr-0 py-4 space-y-0.5 overflow-y-auto [scrollbar-width:none] [&::-webkit-scrollbar]:hidden">
-          {!collapsed && (
-            <div className="px-3 mb-4">
-              <span
-                className="inline-flex items-center gap-2 text-[9px] font-semibold uppercase tracking-[3px] text-white/70"
-              >
-                <span className="w-1 h-1 rounded-full bg-white shadow-[0_0_8px_rgba(255,255,255,0.9)]" />
-                Navigation
-              </span>
-            </div>
-          )}
+          <div className={`px-3 mb-4 ${collapsed ? "flex items-center justify-center" : ""}`}>
+            <span
+              className="inline-flex items-center gap-2 text-[9px] font-semibold uppercase tracking-[3px] text-white/70 whitespace-nowrap"
+              title="Navigation"
+            >
+              <span className="w-1 h-1 rounded-full bg-white shadow-[0_0_8px_rgba(255,255,255,0.9)]" />
+              Navigation
+            </span>
+          </div>
           {navItems.map((item) => {
             const isActive = pathname === item.href;
             const Icon = item.icon;
@@ -241,9 +240,7 @@ export default function AppSidebar({ open, onClose }: AppSidebarProps) {
 
         {/* Footer */}
         <div
-          className={`p-3 border-t space-y-2 ${
-            isLight ? "border-white/20" : "border-white/[0.05]"
-          }`}
+          className="p-3 space-y-2"
         >
           <button
             onClick={handleLogout}

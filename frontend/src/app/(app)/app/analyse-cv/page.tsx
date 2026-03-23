@@ -2,12 +2,20 @@
 
 import { useState, useCallback, useRef, useEffect } from "react";
 import { useAuth } from "@/hooks/use-auth";
-import { useCandidatCvFiles, useCandidatTalentcardFiles, useCandidatPortfolioPdfs, useUploadCv, useDeleteCvFile } from "@/hooks/use-candidat";
+import {
+  useCandidatCvFiles,
+  useCandidatTalentcardFiles,
+  useCandidatPortfolioPdfs,
+  useUploadCv,
+  useDeleteCvFile,
+  useDeleteTalentcardFile,
+  useDeletePortfolioPdfFile,
+} from "@/hooks/use-candidat";
 import FileCard from "@/components/ui/FileCard";
 import EmptyState from "@/components/ui/EmptyState";
 import ErrorState from "@/components/ui/ErrorState";
 import { Skeleton } from "@/components/ui/Skeleton";
-import { FileText, Upload, Award, Briefcase, Loader2, ArrowRight, RefreshCw, CheckCircle2 } from "lucide-react";
+import { FileText, Upload, Award, Briefcase, Loader2, ArrowRight, RefreshCw, CheckCircle2, Sparkles } from "lucide-react";
 import Link from "next/link";
 import { useDashboardTheme } from "@/hooks/use-dashboard-theme";
 import { useUiStore } from "@/stores/ui";
@@ -29,6 +37,8 @@ export default function AnalyseCvAppPage() {
   const portfolioQuery = useCandidatPortfolioPdfs(polling ? 10000 : false);
   const uploadCv = useUploadCv();
   const deleteCv = useDeleteCvFile();
+  const deleteTalentcard = useDeleteTalentcardFile();
+  const deletePortfolioPdf = useDeletePortfolioPdfFile();
   const [dragOver, setDragOver] = useState(false);
   const fileRef = useRef<HTMLInputElement>(null);
 
@@ -356,17 +366,35 @@ export default function AnalyseCvAppPage() {
 
       {/* First-time analysis — in progress */}
       {isAnalyzing && (
-        <div className="bg-yellow-500/[0.06] border border-yellow-500/15 rounded-2xl p-6 mb-8 flex items-start gap-4">
-          <div className="w-10 h-10 rounded-xl bg-yellow-500/10 border border-yellow-500/20 flex items-center justify-center shrink-0">
-            <Loader2 size={18} className="text-yellow-500 animate-spin" />
+        <>
+          <div className="bg-yellow-500/[0.06] border border-yellow-500/15 rounded-2xl p-6 mb-8 flex items-start gap-4">
+            <div className="w-10 h-10 rounded-xl bg-yellow-500/10 border border-yellow-500/20 flex items-center justify-center shrink-0">
+              <Loader2 size={18} className="text-yellow-500 animate-spin" />
+            </div>
+            <div>
+              <h3 className="text-[14px] font-semibold text-white mb-1">Analyse en cours…</h3>
+              <p className="text-[13px] text-white/45 font-light">
+                Notre IA analyse votre CV et génère vos Talent Cards et portfolios. Cette opération peut prendre quelques minutes. Vous pouvez revenir plus tard.
+              </p>
+            </div>
           </div>
-          <div>
-            <h3 className="text-[14px] font-semibold text-white mb-1">Analyse en cours…</h3>
-            <p className="text-[13px] text-white/45 font-light">
-              Notre IA analyse votre CV et génère vos Talent Cards et portfolios. Cette opération peut prendre quelques minutes. Vous pouvez revenir plus tard.
-            </p>
+
+          {/* Proposition “luxe” (pendant l'analyse uniquement) */}
+          <div className="bg-gradient-to-r from-amber-500/[0.08] via-emerald-500/[0.07] to-sky-500/[0.04] border border-white/[0.08] rounded-2xl p-6 mb-8 flex items-start gap-4 animate-pulse">
+            <div className="w-10 h-10 rounded-xl bg-white/[0.06] border border-white/[0.12] flex items-center justify-center shrink-0">
+              <Sparkles size={18} className="text-amber-300" />
+            </div>
+            <div>
+              <h3 className="text-[14px] font-semibold text-white mb-1">Proposition de luxe</h3>
+              <p className="text-[13px] text-white/45 font-light">
+                Pendant l'analyse, notre mode premium prépare une recommandation “best match” plus ciblée pour vos prochaines candidatures.
+              </p>
+              <p className="text-[12px] text-white/35 font-light mt-2">
+                Astuce : quand l’analyse est terminée, cliquez sur “Voir votre score d&apos;employabilité” pour accéder aux recommandations.
+              </p>
+            </div>
           </div>
-        </div>
+        </>
       )}
 
       {/* First-time analysis — done */}
@@ -470,7 +498,7 @@ export default function AnalyseCvAppPage() {
         ) : (
           <div className="grid gap-3">
             {talentcardQuery.data.talentcardFiles.map((file, i) => (
-              <FileCard key={i} {...file} />
+              <FileCard key={i} {...file} onDelete={(path) => deleteTalentcard.mutate(path)} />
             ))}
           </div>
         )}
@@ -501,7 +529,7 @@ export default function AnalyseCvAppPage() {
         ) : (
           <div className="grid gap-3">
             {portfolioQuery.data.portfolioPdfFiles.map((file, i) => (
-              <FileCard key={i} {...file} />
+              <FileCard key={i} {...file} onDelete={(path) => deletePortfolioPdf.mutate(path)} />
             ))}
           </div>
         )}

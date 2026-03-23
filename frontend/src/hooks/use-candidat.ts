@@ -219,8 +219,55 @@ export function useDeleteCvFile() {
       queryClient.invalidateQueries({ queryKey: ['candidat', 'cv-files'] });
       addToast({ message: 'CV supprimé', type: 'success' });
     },
-    onError: () => {
-      addToast({ message: 'Erreur lors de la suppression', type: 'error' });
+    onError: (error: unknown) => {
+      const message = axios.isAxiosError(error)
+        ? (error.response?.data?.message ??
+            error.response?.data?.error ??
+            error.message) 
+        : (error as any)?.message ?? 'Erreur lors de la suppression';
+      addToast({ message: String(message), type: 'error' });
+    },
+  });
+}
+
+export function useDeleteTalentcardFile() {
+  const queryClient = useQueryClient();
+  const addToast = useUiStore((s) => s.addToast);
+
+  return useMutation({
+    mutationFn: candidatService.deleteTalentcardFile,
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ['candidat', 'talentcard-files'] });
+      addToast({ message: 'Talent Card supprimée', type: 'success' });
+    },
+    onError: (error: unknown) => {
+      const message = axios.isAxiosError(error)
+        ? (error.response?.data?.message ??
+            error.response?.data?.error ??
+            error.message)
+        : (error as any)?.message ?? 'Erreur lors de la suppression';
+      addToast({ message: String(message), type: 'error' });
+    },
+  });
+}
+
+export function useDeletePortfolioPdfFile() {
+  const queryClient = useQueryClient();
+  const addToast = useUiStore((s) => s.addToast);
+
+  return useMutation({
+    mutationFn: candidatService.deletePortfolioPdfFile,
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ['candidat', 'portfolio-pdfs'] });
+      addToast({ message: 'Portfolio supprimé', type: 'success' });
+    },
+    onError: (error: unknown) => {
+      const message = axios.isAxiosError(error)
+        ? (error.response?.data?.message ??
+            error.response?.data?.error ??
+            error.message)
+        : (error as any)?.message ?? 'Erreur lors de la suppression';
+      addToast({ message: String(message), type: 'error' });
     },
   });
 }

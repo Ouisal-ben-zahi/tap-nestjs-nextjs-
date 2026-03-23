@@ -2392,4 +2392,92 @@ export class DashboardService {
       throw new BadRequestException(error.message || 'Erreur lors de la suppression');
     }
   }
+
+  async deleteCandidateTalentcardFile(userId: number, filePath: string): Promise<void> {
+    if (!userId || Number.isNaN(userId)) {
+      throw new BadRequestException('userId invalide');
+    }
+    if (!filePath) {
+      throw new BadRequestException('Chemin du fichier manquant');
+    }
+
+    const { data: candidate } = await this.supabase
+      .from('candidates')
+      .select('id, categorie_profil')
+      .eq('user_id', userId)
+      .order('created_at', { ascending: true })
+      .limit(1)
+      .maybeSingle();
+
+    if (!candidate) {
+      throw new BadRequestException('Aucun profil candidat associé');
+    }
+
+    const category = (candidate.categorie_profil as string | null) || 'Autres';
+    const candidateId = candidate.id as number;
+    const expectedPrefix = `candidates/${category}/${candidateId}/`;
+
+    if (!filePath.startsWith(expectedPrefix)) {
+      throw new BadRequestException('Acces non autorise a ce fichier');
+    }
+
+    const fileName = filePath.slice(expectedPrefix.length).toLowerCase();
+    // Validation "large" : éviter les faux rejets si les fichiers portent des suffixes (_fr/_en).
+    const isTalentcard = fileName.includes('talentcard') && fileName.endsWith('.pdf');
+    if (!isTalentcard) {
+      throw new BadRequestException('Type de fichier invalide pour Talent Card');
+    }
+
+    const { error } = await this.supabase.storage
+      .from('tap_files')
+      .remove([filePath]);
+
+    if (error) {
+      throw new BadRequestException(error.message || 'Erreur lors de la suppression');
+    }
+  }
+
+  async deleteCandidatePortfolioPdfFile(userId: number, filePath: string): Promise<void> {
+    if (!userId || Number.isNaN(userId)) {
+      throw new BadRequestException('userId invalide');
+    }
+    if (!filePath) {
+      throw new BadRequestException('Chemin du fichier manquant');
+    }
+
+    const { data: candidate } = await this.supabase
+      .from('candidates')
+      .select('id, categorie_profil')
+      .eq('user_id', userId)
+      .order('created_at', { ascending: true })
+      .limit(1)
+      .maybeSingle();
+
+    if (!candidate) {
+      throw new BadRequestException('Aucun profil candidat associé');
+    }
+
+    const category = (candidate.categorie_profil as string | null) || 'Autres';
+    const candidateId = candidate.id as number;
+    const expectedPrefix = `candidates/${category}/${candidateId}/`;
+
+    if (!filePath.startsWith(expectedPrefix)) {
+      throw new BadRequestException('Acces non autorise a ce fichier');
+    }
+
+    const fileName = filePath.slice(expectedPrefix.length).toLowerCase();
+    // Validation "large" : certains noms peuvent contenir des suffixes (one-page/long, fr/en…).
+    const isPortfolioPdf = fileName.includes('portfolio') && fileName.endsWith('.pdf');
+    if (!isPortfolioPdf) {
+      throw new BadRequestException('Type de fichier invalide pour Portfolio PDF');
+    }
+
+    const { error } = await this.supabase.storage
+      .from('tap_files')
+      .remove([filePath]);
+
+    if (error) {
+      throw new BadRequestException(error.message || 'Erreur lors de la suppression');
+    }
+  }
 }

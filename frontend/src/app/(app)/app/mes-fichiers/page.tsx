@@ -2,7 +2,7 @@
 
 import { useState, useCallback } from "react";
 import { useAuth } from "@/hooks/use-auth";
-import { useCandidatCvFiles, useCandidatTalentcardFiles, useCandidatPortfolioPdfs, useUploadCv, useDeleteCvFile } from "@/hooks/use-candidat";
+import { useCandidatCvFiles, useCandidatTalentcardFiles, useCandidatPortfolioPdfs, useUploadCv, useDeleteCvFile, useDeleteTalentcardFile, useDeletePortfolioPdfFile } from "@/hooks/use-candidat";
 import FileCard from "@/components/ui/FileCard";
 import EmptyState from "@/components/ui/EmptyState";
 import ErrorState from "@/components/ui/ErrorState";
@@ -30,7 +30,9 @@ export default function MesFichiersPage() {
   const talentcardQuery = useCandidatTalentcardFiles();
   const portfolioQuery = useCandidatPortfolioPdfs();
   const uploadCv = useUploadCv();
-  const deleteFile = useDeleteCvFile();
+  const deleteCv = useDeleteCvFile();
+  const deleteTalentcard = useDeleteTalentcardFile();
+  const deletePortfolioPdf = useDeletePortfolioPdfFile();
   const [portfolioLongModalOpen, setPortfolioLongModalOpen] = useState(false);
 
   const [dragOver, setDragOver] = useState(false);
@@ -171,7 +173,7 @@ export default function MesFichiersPage() {
           ) : (
             <div className="grid gap-3">
               {cvQuery.data.cvFiles.map((file, i) => (
-                <FileCard key={i} {...file} onDelete={(path) => deleteFile.mutate(path)} />
+                <FileCard key={i} {...file} onDelete={(path) => deleteCv.mutate(path)} />
               ))}
             </div>
           )}
@@ -194,7 +196,7 @@ export default function MesFichiersPage() {
           ) : (
             <div className="grid gap-3">
               {talentcardQuery.data.talentcardFiles.map((file, i) => (
-                <FileCard key={i} {...file} onDelete={(path) => deleteFile.mutate(path)} />
+                <FileCard key={i} {...file} onDelete={(path) => deleteTalentcard.mutate(path)} />
               ))}
             </div>
           )}
@@ -217,7 +219,7 @@ export default function MesFichiersPage() {
           ) : (
             <div className="grid gap-3">
               {shortPortfolioFiles.map((file, i) => (
-                <FileCard key={i} {...file} type={file.type} onDelete={(path) => deleteFile.mutate(path)} />
+                <FileCard key={i} {...file} type={file.type} onDelete={(path) => deletePortfolioPdf.mutate(path)} />
               ))}
             </div>
           )}
@@ -253,7 +255,7 @@ export default function MesFichiersPage() {
           ) : (
             <div className="grid gap-3">
               {longPortfolioFiles.map((file, i) => (
-                <FileCard key={i} {...file} type={file.type} onDelete={(path) => deleteFile.mutate(path)} />
+                <FileCard key={i} {...file} type={file.type} onDelete={(path) => deletePortfolioPdf.mutate(path)} />
               ))}
             </div>
           )}

@@ -127,4 +127,14 @@ export const candidatService = {
 
   deleteCvFile: (path: string) =>
     api.delete('/dashboard/candidat/cv-file', { params: { path } }).then((r) => r.data),
+
+  deleteTalentcardFile: (path: string) =>
+    api
+      .delete('/dashboard/candidat/talentcard-file', { params: { path } })
+      .then((r) => r.data),
+
+  deletePortfolioPdfFile: (path: string) =>
+    api
+      .delete('/dashboard/candidat/portfolio-pdf-file', { params: { path } })
+      .then((r) => r.data),
 };
