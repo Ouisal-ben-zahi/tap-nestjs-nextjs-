@@ -623,8 +623,8 @@ export default function OnboardingCandidatPage() {
                 <option value="">Sélectionner...</option>
 
                 <optgroup label="Informatique & Technologies (IT)">
-                  <option value="Developpement logiciel / Software engineering">
-                    Développement logiciel / Software engineering
+                  <option value="Developpement logiciel - Software engineering">
+                    Développement logiciel - Software engineering
                   </option>
                   <option value="Developpement web">Développement web</option>
                   <option value="Reseaux informatiques">Réseaux informatiques</option>
@@ -649,7 +649,7 @@ export default function OnboardingCandidatPage() {
                 <optgroup label="Marketing & Communication">
                   <option value="Marketing digital">Marketing digital</option>
                   <option value="Community management">Community management</option>
-                  <option value="SEO / SEA">SEO / SEA</option>
+                  <option value="SEO - SEA">SEO - SEA</option>
                   <option value="Content marketing">Content marketing</option>
                   <option value="Branding & communication corporate">
                     Branding & communication corporate
@@ -678,15 +678,15 @@ export default function OnboardingCandidatPage() {
 
                 <optgroup label="Commerce & Vente">
                   <option value="Vente terrain">Vente terrain</option>
-                  <option value="Vente en magasin / retail">
-                    Vente en magasin / retail
+                  <option value="Vente en magasin - retail">
+                    Vente en magasin - retail
                   </option>
                   <option value="Business development">Business development</option>
                   <option value="Gestion grands comptes">Gestion grands comptes</option>
                   <option value="E-commerce">E-commerce</option>
                   <option value="Relation client">Relation client</option>
                   <option value="Negociation commerciale">Négociation commerciale</option>
-                  <option value="Avant-vente / presales">Avant-vente / presales</option>
+                  <option value="Avant-vente - presales">Avant-vente - presales</option>
                 </optgroup>
 
                 <optgroup label="Transport & Automobile">
@@ -723,7 +723,7 @@ export default function OnboardingCandidatPage() {
 
                 <optgroup label="Média, Design & Création">
                   <option value="Design graphique">Design graphique</option>
-                  <option value="UI / UX design">UI / UX design</option>
+                  <option value="UI - UX design">UI - UX design</option>
                   <option value="Motion design">Motion design</option>
                   <option value="Montage video">Montage vidéo</option>
                   <option value="Photographie">Photographie</option>
@@ -739,9 +739,9 @@ export default function OnboardingCandidatPage() {
                   </option>
                   <option value="Transport & distribution">Transport & distribution</option>
                   <option value="Supply chain management">Supply chain management</option>
-                  <option value="Import / Export">Import / Export</option>
+                  <option value="Import - Export">Import - Export</option>
                   <option value="Gestion d'entrepot">Gestion d’entrepôt</option>
-                  <option value="Procurement / achats">Procurement / achats</option>
+                  <option value="Procurement - achats">Procurement - achats</option>
                 </optgroup>
 
                 <optgroup label="Autres"> <option value="Autre">Autre</option> </optgroup>

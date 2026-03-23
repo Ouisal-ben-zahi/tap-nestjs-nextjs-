@@ -164,7 +164,7 @@ export default function MatchingRecruteurPage() {
                         </div>
                       </div>
                       <Link
-                        href="/app/candidats"
+                        href={`/app/candidats?jobId=${job.id}`}
                         className="flex items-center gap-1.5 text-[12px] text-emerald-400 hover:text-emerald-300 transition-colors opacity-0 group-hover:opacity-100"
                       >
                         Voir les candidats <ArrowRight size={12} />

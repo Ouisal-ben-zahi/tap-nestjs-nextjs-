@@ -80,23 +80,40 @@ def load_candidates_for_domaine(domaine_activite: Optional[str]) -> List[Dict[st
     if supabase_db is None:
         return []
     categorie = normalize_categorie_profil(domaine_activite or "") if domaine_activite else None
+    full_select = (
+        "id, id_agent, candidate_uuid, nom, prenom, titre_profil, categorie_profil, "
+        "ville, pays, annees_experience, disponibilite, niveau_seniorite, pret_a_relocater, "
+        "pays_cible, constraints, search_criteria, salaire_minimum, "
+        "skills, languages, contract_types, realisations"
+    )
+    fallback_select = (
+        "id, id_agent, candidate_uuid, nom, prenom, titre_profil, categorie_profil, "
+        "ville, pays, annees_experience, disponibilite, niveau_seniorite, pret_a_relocater, "
+        "pays_cible, constraints, search_criteria, salaire_minimum"
+    )
     try:
-        # Les colonnes *_csv n'existent plus dans certains schémas Supabase,
-        # on ne sélectionne que les champs JSON actuels.
-        query = supabase_db.table("candidates").select(
-            "id, id_agent, candidate_uuid, nom, prenom, titre_profil, categorie_profil, "
-            "ville, pays, annees_experience, disponibilite, niveau_seniorite, pret_a_relocater, "
-            "pays_cible, constraints, search_criteria, salaire_minimum, "
-            "skills, languages, contract_types, realisations"
-        )
+        query = supabase_db.table("candidates").select(full_select)
         if categorie:
             # Insensible à la casse : categorie_profil normalisée côté Python (normalize_categorie_profil)
             query = query.eq("categorie_profil", categorie)
         resp = query.order("id").execute()
         rows = resp.data or []
     except Exception as e:
-        print(f"⚠️  Erreur chargement candidats pour domaine (Supabase): {e}")
-        rows = []
+        error_text = str(e)
+        if "column candidates." in error_text and "does not exist" in error_text:
+            try:
+                # Fallback pour anciens schémas DB sans colonnes JSON skills/languages/contract_types/realisations.
+                query = supabase_db.table("candidates").select(fallback_select)
+                if categorie:
+                    query = query.eq("categorie_profil", categorie)
+                resp = query.order("id").execute()
+                rows = resp.data or []
+            except Exception as e2:
+                print(f"⚠️  Erreur chargement candidats pour domaine (Supabase): {e2}")
+                rows = []
+        else:
+            print(f"⚠️  Erreur chargement candidats pour domaine (Supabase): {e}")
+            rows = []
 
     out = []
     for r in rows:

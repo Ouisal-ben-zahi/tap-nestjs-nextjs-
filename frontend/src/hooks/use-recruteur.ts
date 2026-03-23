@@ -19,6 +19,14 @@ export function useRecruteurJobs() {
   });
 }
 
+export function useMatchedCandidatesByOffer(jobId: number | null, enabled = true) {
+  return useQuery({
+    queryKey: ['recruteur', 'matched-candidates', jobId],
+    queryFn: () => recruteurService.getMatchedCandidatesByOffer(jobId as number),
+    enabled: Boolean(enabled && jobId),
+  });
+}
+
 export function useCreateJob() {
   const queryClient = useQueryClient();
   const addToast = useUiStore((s) => s.addToast);

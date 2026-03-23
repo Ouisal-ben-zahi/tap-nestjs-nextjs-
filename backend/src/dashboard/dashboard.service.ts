@@ -166,6 +166,12 @@ export interface ApplyJobPayload {
   lien?: string | null;
 }
 
+export interface RecruiterMatchByOfferPayload {
+  job_id: number;
+  top_n?: number;
+  only_postule?: boolean;
+}
+
 export interface CandidateScoreFromJson {
   candidateId: number | null;
   scoreGlobal: number | null;
@@ -1886,6 +1892,44 @@ export class DashboardService {
     }
 
     return { success: true };
+  }
+
+  async getRecruiterMatchedCandidatesByOffer(
+    userId: number,
+    payload: RecruiterMatchByOfferPayload,
+  ): Promise<any> {
+    if (!userId || Number.isNaN(userId)) {
+      throw new BadRequestException('userId invalide');
+    }
+
+    const jobId = Number(payload?.job_id);
+    if (!jobId || Number.isNaN(jobId)) {
+      throw new BadRequestException("Le champ 'job_id' est requis");
+    }
+
+    // Security: ensure recruiter can only query their own jobs.
+    const { data: job, error: jobError } = await this.supabase
+      .from('jobs')
+      .select('id')
+      .eq('id', jobId)
+      .eq('user_id', userId)
+      .limit(1)
+      .maybeSingle();
+
+    if (jobError) {
+      throw new BadRequestException(
+        jobError.message || 'Erreur lors de la validation de l’offre',
+      );
+    }
+    if (!job) {
+      throw new BadRequestException('Offre introuvable pour ce recruteur');
+    }
+
+    return this.callFlaskJson<any>('POST', '/api/recruteur/match-by-offre', {
+      job_id: jobId,
+      top_n: payload?.top_n ?? 20,
+      only_postule: Boolean(payload?.only_postule),
+    });
   }
 
   async getRecruiterOverview(

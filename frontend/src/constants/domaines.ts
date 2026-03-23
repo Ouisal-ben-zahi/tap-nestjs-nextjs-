@@ -5,7 +5,7 @@ export const DOMAINE_GROUPS: DomaineGroup[] = [
   {
     label: "Informatique & Technologies (IT)",
     options: [
-      { value: "Developpement logiciel / Software engineering", label: "Développement logiciel / Software engineering" },
+      { value: "Developpement logiciel - Software engineering", label: "Développement logiciel - Software engineering" },
       { value: "Developpement web", label: "Développement web" },
       { value: "Reseaux informatiques", label: "Réseaux informatiques" },
       { value: "Cybersecurite", label: "Cybersécurité" },
@@ -32,7 +32,7 @@ export const DOMAINE_GROUPS: DomaineGroup[] = [
     options: [
       { value: "Marketing digital", label: "Marketing digital" },
       { value: "Community management", label: "Community management" },
-      { value: "SEO / SEA", label: "SEO / SEA" },
+      { value: "SEO - SEA", label: "SEO - SEA" },
       { value: "Content marketing", label: "Content marketing" },
       {
         value: "Branding & communication corporate",
@@ -60,13 +60,13 @@ export const DOMAINE_GROUPS: DomaineGroup[] = [
     label: "Commerce & Vente",
     options: [
       { value: "Vente terrain", label: "Vente terrain" },
-      { value: "Vente en magasin / retail", label: "Vente en magasin / retail" },
+      { value: "Vente en magasin - retail", label: "Vente en magasin - retail" },
       { value: "Business development", label: "Business development" },
       { value: "Gestion grands comptes", label: "Gestion grands comptes" },
       { value: "E-commerce", label: "E-commerce" },
       { value: "Relation client", label: "Relation client" },
       { value: "Negociation commerciale", label: "Négociation commerciale" },
-      { value: "Avant-vente / presales", label: "Avant-vente / presales" },
+      { value: "Avant-vente - presales", label: "Avant-vente - presales" },
     ],
   },
   {
@@ -74,7 +74,7 @@ export const DOMAINE_GROUPS: DomaineGroup[] = [
     options: [
       { value: "Logistique transport", label: "Logistique transport" },
       { value: "Maintenance automobile", label: "Maintenance automobile" },
-      { value: "Gestion flotte vehicules", label: "Gestion flotte véhicules" },
+      { value: "Gestion flotte vehicules", label: "Gestion flotte vehicules" },
       { value: "Transport international", label: "Transport international" },
       { value: "Exploitation transport", label: "Exploitation transport" },
       { value: "Mecanique automobile", label: "Mécanique automobile" },
@@ -110,7 +110,7 @@ export const DOMAINE_GROUPS: DomaineGroup[] = [
     label: "Média, Design & Création",
     options: [
       { value: "Design graphique", label: "Design graphique" },
-      { value: "UI / UX design", label: "UI / UX design" },
+      { value: "UI - UX design", label: "UI - UX design" },
       { value: "Motion design", label: "Motion design" },
       { value: "Montage video", label: "Montage vidéo" },
       { value: "Photographie", label: "Photographie" },
@@ -126,9 +126,9 @@ export const DOMAINE_GROUPS: DomaineGroup[] = [
       { value: "Planification & approvisionnement", label: "Planification & approvisionnement" },
       { value: "Transport & distribution", label: "Transport & distribution" },
       { value: "Supply chain management", label: "Supply chain management" },
-      { value: "Import / Export", label: "Import / Export" },
+      { value: "Import - Export", label: "Import - Export" },
       { value: "Gestion d'entrepot", label: "Gestion d’entrepôt" },
-      { value: "Procurement / achats", label: "Procurement / achats" },
+      { value: "Procurement - achats", label: "Procurement - achats" },
     ],
   },
   {

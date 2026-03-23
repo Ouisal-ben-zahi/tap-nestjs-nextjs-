@@ -1,7 +1,7 @@
 import { Body, Controller, Delete, Get, HttpCode, Param, Post, Query, Req, UploadedFile, UploadedFiles, UseGuards, UseInterceptors } from '@nestjs/common';
 import { AuthGuard } from '@nestjs/passport';
 import { FileFieldsInterceptor, FileInterceptor } from '@nestjs/platform-express';
-import { DashboardService, type ApplyJobPayload, type RecruiterJobPayload } from './dashboard.service';
+import { DashboardService, type ApplyJobPayload, type RecruiterJobPayload, type RecruiterMatchByOfferPayload } from './dashboard.service';
 
 @Controller('dashboard')
 export class DashboardController {
@@ -212,6 +212,16 @@ export class DashboardController {
       id,
       body.status,
     );
+  }
+
+  @Post('recruteur/match-by-offre')
+  @UseGuards(AuthGuard('jwt'))
+  async getRecruiterMatchedCandidatesByOfferByJwt(
+    @Req() req: any,
+    @Body() body: RecruiterMatchByOfferPayload,
+  ) {
+    const userId = await this.dashboardService.resolveJwtUserId(req?.user);
+    return this.dashboardService.getRecruiterMatchedCandidatesByOffer(userId, body);
   }
 
   // === Legacy routes with userId in URL ===

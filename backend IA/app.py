@@ -5994,18 +5994,38 @@ def match_by_offre():
                     )
             except Exception as e:
                 print(f"⚠️ Erreur lecture domaine offre depuis Supabase: {e}")
-        # Ne jamais charger tous les candidats sans filtre : si l'offre n'a pas de domaine, retourner liste vide
-        if not domaine_for_filter:
+        applied_ids: list[int] = []
+        if only_postule and supabase_db is not None:
+            try:
+                resp_post = (
+                    supabase_db.table("candidate_postule")
+                    .select("candidate_id")
+                    .eq("job_id", job_id)
+                    .execute()
+                )
+                rows = resp_post.data or []
+                applied_ids = [r.get("candidate_id") for r in rows if r.get("candidate_id") is not None]
+            except Exception as e:
+                print(f"⚠️ Erreur lecture candidate_postule depuis Supabase: {e}")
+
+        # Sans domaine, on reste strict sauf en mode only_postule (où on peut matcher sur les postulants de l'offre).
+        if not domaine_for_filter and not only_postule:
             return jsonify({
                 "job_id": job_id,
                 "job_title": (job_offer.get("title") or job_offer.get("required_title") or "").strip(),
                 "candidates": [],
                 "message": "Précisez le domaine d'activité ou la catégorie de l'offre pour afficher les candidats matchés.",
             })
-        # Normaliser pour matcher exactement la colonne candidats.categorie_profil (dev, data, design, video, autre)
+
+        # Normaliser pour matcher la colonne candidats.categorie_profil (dev, data, design, video, autre)
         from candidate_minio_path import normalize_categorie_profil
-        categorie_canonique = normalize_categorie_profil(domaine_for_filter)
-        df = load_candidates_df(categorie_canonique)
+        categorie_canonique = normalize_categorie_profil(domaine_for_filter) if domaine_for_filter else None
+        df = load_candidates_df(categorie_canonique) if categorie_canonique else load_candidates_df(None)
+
+        # Si le filtre domaine ne trouve rien mais qu'on veut les postulants de l'offre, fallback sur tous les candidats.
+        if df.empty and categorie_canonique and only_postule:
+            df = load_candidates_df(None)
+
         if df.empty:
             return jsonify({
                 "job_id": job_id,
@@ -6016,19 +6036,6 @@ def match_by_offre():
 
         # Ne garder que les candidats qui ont effectivement postulé à cette offre
         if only_postule:
-            applied_ids: list[int] = []
-            if supabase_db is not None:
-                try:
-                    resp_post = (
-                        supabase_db.table("candidate_postule")
-                        .select("candidate_id")
-                        .eq("job_id", job_id)
-                        .execute()
-                    )
-                    rows = resp_post.data or []
-                    applied_ids = [r.get("candidate_id") for r in rows if r.get("candidate_id") is not None]
-                except Exception as e:
-                    print(f"⚠️ Erreur lecture candidate_postule depuis Supabase: {e}")
             if not applied_ids:
                 return jsonify({
                     "job_id": job_id,
@@ -6046,6 +6053,73 @@ def match_by_offre():
                 })
 
         results_df = find_matching_candidates(job_offer, df, top_n=top_n)
+
+        # --- Hybrid scoring: règles A4 + sémantique embeddings ---
+        # global_score A4 est déjà un pourcentage [0..100].
+        # On ajoute:
+        # - semantic_score (offre complète vs profil candidat)
+        # - skills_embedding_score (skills offre vs skills candidat)
+        # puis on combine les trois scores.
+        def _to_pct_from_cosine(sim):
+            # cosine [-1..1] -> [0..100]
+            try:
+                return max(0.0, min(100.0, ((float(sim) + 1.0) / 2.0) * 100.0))
+            except Exception:
+                return None
+
+        def _skills_text_from_value(value):
+            if value is None:
+                return ""
+            if isinstance(value, str):
+                s = value.strip()
+                if not s:
+                    return ""
+                # JSON list string fallback
+                if s.startswith("["):
+                    try:
+                        parsed = json.loads(s)
+                        return _skills_text_from_value(parsed)
+                    except Exception:
+                        return s
+                return s
+            if isinstance(value, list):
+                out = []
+                for x in value:
+                    if isinstance(x, dict):
+                        name = (x.get("name") or "").strip()
+                        if name:
+                            out.append(name)
+                    elif isinstance(x, str) and x.strip():
+                        out.append(x.strip())
+                return ", ".join(out)
+            return str(value).strip()
+
+        # 1) Embedding offre (réutiliser la colonne jobs.embedding si possible)
+        job_embedding = None
+        job_skills_embedding = None
+        if supabase_db is not None:
+            try:
+                resp_job_emb = (
+                    supabase_db.table("jobs")
+                    .select("embedding, title, categorie_profil, niveau_attendu, niveau_seniorite, experience_min, contrat, entreprise, presence_sur_site, location_type, disponibilite, reason, main_mission, tasks_other, skills")
+                    .eq("id", job_id)
+                    .limit(1)
+                    .execute()
+                )
+                job_row = resp_job_emb.data[0] if resp_job_emb.data else None
+                if job_row:
+                    job_embedding = parse_embedding(job_row.get("embedding"))
+                    if not job_embedding:
+                        # fallback: générer à la volée avec le même format que /api/offres/embed
+                        job_text = _build_job_embedding_text_from_payload(job_row)
+                        if job_text:
+                            job_embedding = generer_embedding(job_text, task_type="RETRIEVAL_DOCUMENT")
+                    job_skills_text = _skills_text_from_value(job_row.get("skills"))
+                    if job_skills_text:
+                        job_skills_embedding = generer_embedding(job_skills_text, task_type="RETRIEVAL_DOCUMENT")
+            except Exception as e:
+                print(f"⚠️ Erreur génération embedding offre pour matching recruteur: {e}")
+
         candidates_out = []
         for _, row in results_df.iterrows():
             cid = row.get("candidate_id")
@@ -6057,10 +6131,70 @@ def match_by_offre():
                     candidate_info[k] = v.isoformat()
                 elif isinstance(v, float) and pd.isna(v):
                     candidate_info[k] = None
+            # 2) Embeddings candidat
+            semantic_pct = None
+            skills_pct = None
+            if cid is not None and job_embedding:
+                try:
+                    # Priorité cache DB (table candidate_embeddings), sinon calcul dynamique.
+                    cand_embedding = None
+                    if supabase_db is not None:
+                        try:
+                            resp_cand_emb = (
+                                supabase_db.table("candidate_embeddings")
+                                .select("embedding")
+                                .eq("candidate_id", int(cid))
+                                .limit(1)
+                                .execute()
+                            )
+                            emb_row = resp_cand_emb.data[0] if resp_cand_emb.data else None
+                            cand_embedding = parse_embedding((emb_row or {}).get("embedding"))
+                        except Exception:
+                            cand_embedding = None
+
+                    if not cand_embedding:
+                        cand_title = (candidate_info.get("titre_profil") or score_row.get("name") or "").strip()
+                        cand_resume = (candidate_info.get("resume_bref") or "").strip()
+                        cand_skills_text = _skills_text_from_value(candidate_info.get("skills"))
+                        cand_lang_text = _skills_text_from_value(candidate_info.get("languages"))
+                        cand_text = " | ".join([p for p in [cand_title, cand_resume, cand_skills_text, cand_lang_text] if p])
+                        if cand_text:
+                            cand_embedding = generer_embedding(cand_text, task_type="RETRIEVAL_QUERY")
+
+                    if cand_embedding:
+                        semantic_sim = calculer_similarite(cand_embedding, job_embedding)
+                        semantic_pct = _to_pct_from_cosine(semantic_sim)
+
+                        if job_skills_embedding:
+                            cand_skills_text = _skills_text_from_value(candidate_info.get("skills"))
+                            if cand_skills_text:
+                                cand_skills_embedding = generer_embedding(cand_skills_text, task_type="RETRIEVAL_QUERY")
+                                if cand_skills_embedding:
+                                    skills_sim = calculer_similarite(cand_skills_embedding, job_skills_embedding)
+                                    skills_pct = _to_pct_from_cosine(skills_sim)
+                except Exception as e:
+                    print(f"⚠️ Erreur scoring embedding candidat {cid}: {e}")
+
+            rule_score = float(score_row.get("global_score") or 0.0)
+            # Poids hybrides:
+            # - 70% score règles A4
+            # - 20% similarité sémantique globale
+            # - 10% similarité embedding des skills
+            final_score = (
+                0.70 * rule_score
+                + 0.20 * (semantic_pct if semantic_pct is not None else rule_score)
+                + 0.10 * (skills_pct if skills_pct is not None else (semantic_pct if semantic_pct is not None else rule_score))
+            )
+            final_score = round(max(0.0, min(100.0, final_score)), 1)
+
             candidates_out.append({
                 "candidate_id": score_row.get("candidate_id"),
                 "name": score_row.get("name"),
-                "global_score": score_row.get("global_score"),
+                # On expose les composantes pour debug/transparence.
+                "global_score_rule": round(rule_score, 1),
+                "semantic_score": round(semantic_pct, 1) if semantic_pct is not None else None,
+                "skills_embedding_score": round(skills_pct, 1) if skills_pct is not None else None,
+                "global_score": final_score,
                 "skill_score": score_row.get("skill_score"),
                 "experience_score": score_row.get("experience_score"),
                 "language_score": score_row.get("language_score"),
