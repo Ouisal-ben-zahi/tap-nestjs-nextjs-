@@ -37,6 +37,7 @@ export default function AnalyseCvAppPage() {
   const removeToast = useUiStore((s) => s.removeToast);
   const [progressToastId, setProgressToastId] = useState<string | null>(null);
   const progressRef = useRef(0);
+  const startedAtRef = useRef<number | null>(null);
 
   const handleDrop = useCallback((e: React.DragEvent) => {
     e.preventDefault();
@@ -71,6 +72,7 @@ export default function AnalyseCvAppPage() {
     if (!uploadCv.isPending) return;
     if (progressToastId) return;
 
+    startedAtRef.current = Date.now();
     progressRef.current = 5;
     const id = addToast({
       type: "info",
@@ -93,6 +95,9 @@ export default function AnalyseCvAppPage() {
     }
 
     const tick = window.setInterval(() => {
+      const startedAt = startedAtRef.current ?? Date.now();
+      const elapsedSeconds = Math.max(0, Math.round((Date.now() - startedAt) / 1000));
+
       // Détermination “stages” via disponibilité des fichiers
       let target = 10;
       let label = "Upload du CV & analyse IA";
@@ -118,11 +123,13 @@ export default function AnalyseCvAppPage() {
         target === 100 ? 100 : Math.max(target < current ? target : current + (target - current) * 0.18);
       progressRef.current = Math.min(100, next);
 
+      const progressLabel = `${label} • ${elapsedSeconds}s`;
+
       updateToast(progressToastId, {
         type: target === 100 ? "success" : "info",
         message: target === 100 ? "Génération terminée ✓" : "Génération en cours…",
         progress: Math.round(progressRef.current),
-        progressLabel: label,
+        progressLabel,
       });
 
       if (target === 100 && progressRef.current >= 100) {
