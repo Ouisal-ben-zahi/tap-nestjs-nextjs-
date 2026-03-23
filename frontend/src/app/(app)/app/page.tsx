@@ -56,7 +56,11 @@ export default function DashboardPage() {
   const isCandidat = user?.role === "candidat";
   const statsQuery = useCandidatStats();
   const features = isRecruteur ? recruteurFeatures : candidatFeatures;
-  const firstName = user?.email?.split("@")[0] || "";
+  const stats = statsQuery.data;
+  const candidateFullName = isCandidat
+    ? [stats?.firstName, stats?.lastName].filter((v) => Boolean(v && String(v).trim())).join(" ")
+    : "";
+  const welcomeName = candidateFullName || user?.email?.split("@")[0] || "";
   const theme = useDashboardTheme();
   const isLight = theme === "light";
 
@@ -65,7 +69,6 @@ export default function DashboardPage() {
     if (!isCandidat) return;
     if (statsQuery.isLoading || statsQuery.isError || statsQuery.isFetching)
       return;
-    const stats = statsQuery.data;
     const hasProfile =
       stats?.candidateId !== null && stats?.candidateId !== undefined;
     if (!hasProfile) {
@@ -93,8 +96,8 @@ export default function DashboardPage() {
               isLight ? "text-[rgba(35,35,35,1)]" : "text-white"
             }`}
           >
-            Bienvenue{firstName ? "," : ""}
-            {firstName && (
+            Bienvenue{welcomeName ? "," : ""}
+            {welcomeName && (
               <span
                 className={`ml-2 ${
                   isLight
@@ -102,7 +105,7 @@ export default function DashboardPage() {
                     : "text-[rgba(202,27,40,1)]"
                 }`}
               >
-                {firstName}
+                {welcomeName}
               </span>
             )}
           </h1>

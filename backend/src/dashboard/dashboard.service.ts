@@ -5,6 +5,8 @@ import { SupabaseClient, createClient } from '@supabase/supabase-js';
 export interface CandidateDashboardStats {
   candidateId: number | null;
   firstProfileDate: string | null;
+  firstName?: string | null;
+  lastName?: string | null;
   applications: number;
   interviews: number;
   savedOffers: number;
@@ -676,7 +678,7 @@ export class DashboardService {
       error: candidateError,
     } = await this.supabase
       .from('candidates')
-      .select('id, created_at, image_minio_url')
+      .select('id, created_at, image_minio_url, nom, prenom')
       .eq('user_id', userId)
       .order('created_at', { ascending: true })
       .limit(1)
@@ -692,6 +694,8 @@ export class DashboardService {
       return {
         candidateId: null,
         firstProfileDate: null,
+        firstName: null,
+        lastName: null,
         applications: 0,
         interviews: 0,
         savedOffers: 0,
@@ -778,6 +782,8 @@ export class DashboardService {
     return {
       candidateId,
       firstProfileDate: candidateRow.created_at as string,
+      firstName: (candidateRow.prenom as string | null) ?? null,
+      lastName: (candidateRow.nom as string | null) ?? null,
       applications: applications ?? 0,
       interviews: interviews ?? 0,
       savedOffers: 0,

@@ -126,9 +126,9 @@ export default function StatsProbleme() {
               const showCard = distance <= 1; // 3 cartes visibles (left / center / right)
               const opacity = isActive ? 1 : distance === 1 ? 0.78 : 0;
               const blur = isActive ? 0 : distance === 1 ? 1.5 : 10;
-              const scale = isActive ? 1 : distance === 1 ? 0.92 : 0.86;
-              // Pour éviter que la carte centrale "monte/descende" pendant le carousel :
-              // on garde la même ligne verticale et on n'utilise qu'une légère profondeur via scale/blur.
+              // Important: supprimer le scale évite l'impression de mouvement haut/bas.
+              const scale = 1;
+              // La profondeur est gérée via opacity/blur + zIndex (sans déformation verticale).
               const translateY = 0;
               const translateX = diff * stepPx;
               const zIndex = 100 - distance;
@@ -139,11 +139,12 @@ export default function StatsProbleme() {
                   className={[
                     "absolute left-1/2 top-1/2",
                     "rounded-2xl overflow-hidden",
-                    "bg-[#0A0A0A] border border-white/[0.06]",
+                    "bg-[#0A0A0A] border-l border-r border-white/[0.06]",
                     "transition-[transform,opacity,filter] duration-700 ease-[cubic-bezier(.22,1,.36,1)]",
-                    isActive ? "shadow-[0_0_70px_rgba(202,27,40,0.18)] border-tap-red/20" : "pointer-events-none",
+                    isActive
+                      ? "shadow-[0_0_70px_rgba(202,27,40,0.18)] border-l-tap-red/60 border-r-tap-red/60"
+                      : "pointer-events-none",
                     "will-change-transform",
-                    isActive ? "card-animated-border card-carousel-active" : "",
                   ].join(" ")}
                   style={{
                     transform: `translate(-50%, -50%) translateX(${translateX}px) translateY(${translateY}px) scale(${scale})`,

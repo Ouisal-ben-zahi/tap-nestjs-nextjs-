@@ -97,7 +97,7 @@ export default function Header() {
                     href={link.href}
                     className={`relative px-4 py-2 text-[11px] font-medium uppercase tracking-[1.5px] rounded-full transition-all duration-300 ${
                       isActive
-                        ? "text-red-500 font-semibold"
+                        ? "text-red-500 font-bold"
                         : "text-white/50 hover:text-red-500"
                     }`}
                   >
@@ -114,7 +114,7 @@ export default function Header() {
                     href={link.href}
                     className={`relative px-4 py-2 text-[11px] font-medium uppercase tracking-[1.5px] rounded-full transition-all duration-300 ${
                       isActive
-                        ? "text-red-500 font-semibold"
+                        ? "text-red-500 font-bold"
                         : "text-white/50 hover:text-red-500"
                     }`}
                   >
@@ -128,7 +128,7 @@ export default function Header() {
                 <button
                   className={`flex items-center gap-1 px-4 py-2 text-[11px] font-medium uppercase tracking-[1.5px] rounded-full transition-all duration-300 ${
                     produitLinks.some((l) => pathname === l.href)
-                      ? "text-red-500 font-semibold"
+                      ? "text-red-500 font-bold"
                       : "text-white/50 hover:text-red-500"
                   }`}
                   onClick={() => setProduitOpen((v) => !v)}
@@ -156,7 +156,7 @@ export default function Header() {
                         onClick={() => setProduitOpen(false)}
                         className={`block px-4 py-2.5 text-[12px] rounded-lg transition-all duration-200 ${
                           pathname === link.href
-                            ? "text-red-500 bg-red-500/[0.08]"
+                            ? "text-red-500 font-bold bg-red-500/[0.08]"
                             : "text-white/50 hover:text-white hover:bg-white/[0.04]"
                         }`}
                       >
@@ -175,7 +175,7 @@ export default function Header() {
                     href={link.href}
                     className={`relative px-4 py-2 text-[11px] font-medium uppercase tracking-[1.5px] rounded-full transition-all duration-300 ${
                       isActive
-                        ? "text-red-500 font-semibold"
+                        ? "text-red-500 font-bold"
                         : "text-white/50 hover:text-red-500"
                     }`}
                   >
@@ -271,7 +271,7 @@ export default function Header() {
                   onClick={() => setMenuOpen(false)}
                   className={`flex items-center justify-between px-3 py-3 rounded-xl text-[13px] font-medium tracking-wide transition-colors duration-200 ${
                     isActive
-                      ? "text-red-500 font-semibold"
+                      ? "text-red-500 font-bold"
                       : "text-white/50 hover:text-red-500"
                   }`}
                 >
@@ -289,7 +289,7 @@ export default function Header() {
                 onClick={() => setProduitOpen((v) => !v)}
                 className={`w-full flex items-center justify-between px-3 py-3 rounded-xl text-[13px] font-medium tracking-wide transition-colors duration-200 ${
                   produitLinks.some((l) => pathname === l.href)
-                    ? "text-red-500 font-semibold"
+                    ? "text-red-500 font-bold"
                     : "text-white/50 hover:text-red-500"
                 }`}
               >
@@ -317,7 +317,7 @@ export default function Header() {
                         onClick={() => setMenuOpen(false)}
                         className={`flex items-center justify-between px-3 py-2.5 rounded-lg text-[12px] tracking-wide transition-colors duration-200 ${
                           isActive
-                            ? "text-white font-medium"
+                            ? "text-white font-bold"
                             : "text-white/35 hover:text-white/70 font-light"
                         }`}
                       >
@@ -340,7 +340,7 @@ export default function Header() {
                   onClick={() => setMenuOpen(false)}
                   className={`flex items-center justify-between px-3 py-3 rounded-xl text-[13px] font-medium tracking-wide transition-colors duration-200 ${
                     isActive
-                      ? "text-red-500 font-semibold"
+                      ? "text-red-500 font-bold"
                       : "text-white/50 hover:text-red-500"
                   }`}
                 >

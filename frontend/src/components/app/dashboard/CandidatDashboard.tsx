@@ -1,23 +1,19 @@
 "use client";
 
-import { useRef } from "react";
-import { useCandidatStats, useCandidatApplications, useUploadCv } from "@/hooks/use-candidat";
+import { useCandidatStats, useCandidatApplications } from "@/hooks/use-candidat";
 import StatCard from "@/components/ui/StatCard";
 import StatusBadge from "@/components/ui/StatusBadge";
 import EmptyState from "@/components/ui/EmptyState";
 import ErrorState from "@/components/ui/ErrorState";
 import { StatCardSkeleton } from "@/components/ui/Skeleton";
 import { Skeleton } from "@/components/ui/Skeleton";
-import Link from "next/link";
-import { FileText, Calendar, Clock, CheckCircle, Upload, FolderOpen, ArrowRight, Search } from "lucide-react";
-import { formatRelative, statusBg } from "@/lib/utils";
+import { FileText, Calendar, Clock, CheckCircle } from "lucide-react";
+import { formatRelative } from "@/lib/utils";
 import { useDashboardTheme } from "@/hooks/use-dashboard-theme";
 
 export default function CandidatDashboard() {
   const statsQuery = useCandidatStats();
   const appsQuery = useCandidatApplications();
-  const uploadCv = useUploadCv();
-  const fileRef = useRef<HTMLInputElement>(null);
 
   const stats = statsQuery.data;
   const apps = appsQuery.data?.applications?.slice(0, 5) || [];
@@ -45,47 +41,6 @@ export default function CandidatDashboard() {
             </div>
           )}
         </div>
-      </div>
-
-      {/* Quick Actions */}
-      <div className="flex flex-wrap gap-3">
-        <button
-          onClick={() => fileRef.current?.click()}
-          disabled={uploadCv.isPending}
-          className="flex items-center gap-2 px-5 py-3 bg-tap-red/10 hover:bg-tap-red/20 border border-tap-red/20 text-tap-red rounded-xl text-[13px] font-medium transition-all disabled:opacity-50"
-        >
-          {uploadCv.isPending ? (
-            <span className="w-4 h-4 border-2 border-tap-red/30 border-t-tap-red rounded-full animate-spin" />
-          ) : (
-            <Upload size={14} />
-          )}
-          Uploader un CV
-        </button>
-        <input ref={fileRef} type="file" accept=".pdf" onChange={(e) => { const f = e.target.files?.[0]; if (f) uploadCv.mutate(f); e.target.value = ""; }} className="hidden" />
-
-        <Link
-          href="/app/mes-fichiers"
-          className={`flex items-center gap-2 px-5 py-3 rounded-xl text-[13px] font-medium transition-all ${
-            isLight
-              ? "bg-white hover:bg-white border border-tap-red/40 text-black hover:text-black"
-              : "bg-white/[0.04] hover:bg-white/[0.08] border border-white/[0.08] text-white/60 hover:text-white/80"
-          }`}
-        >
-          <FolderOpen size={14} />
-          Mes fichiers
-        </Link>
-
-        <Link
-          href="/app/analyse-cv"
-          className={`flex items-center gap-2 px-5 py-3 rounded-xl text-[13px] font-medium transition-all ${
-            isLight
-              ? "bg-white hover:bg-white border border-tap-red/40 text-black hover:text-black"
-              : "bg-white/[0.04] hover:bg-white/[0.08] border border-white/[0.08] text-white/60 hover:text-white/80"
-          }`}
-        >
-          <Search size={14} />
-          Analyser mon CV
-        </Link>
       </div>
 
       {/* Candidatures récentes */}

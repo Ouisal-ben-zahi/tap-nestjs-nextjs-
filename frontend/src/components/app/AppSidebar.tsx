@@ -147,15 +147,6 @@ export default function AppSidebar({ open, onClose }: AppSidebarProps) {
         </div>
 
         <nav className="flex-1 pl-3 pr-0 py-4 space-y-0.5 overflow-y-auto [scrollbar-width:none] [&::-webkit-scrollbar]:hidden">
-          <div className={`px-3 mb-4 ${collapsed ? "flex items-center justify-center" : ""}`}>
-            <span
-              className="inline-flex items-center gap-2 text-[9px] font-semibold uppercase tracking-[3px] text-white/70 whitespace-nowrap"
-              title="Navigation"
-            >
-              <span className="w-1 h-1 rounded-full bg-white shadow-[0_0_8px_rgba(255,255,255,0.9)]" />
-              Navigation
-            </span>
-          </div>
           {navItems.map((item) => {
             const isActive = pathname === item.href;
             const Icon = item.icon;

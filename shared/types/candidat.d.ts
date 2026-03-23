@@ -1,6 +1,8 @@
 export interface CandidateDashboardStats {
     candidateId: number | null;
     firstProfileDate: string | null;
+    firstName?: string | null;
+    lastName?: string | null;
     applications: number;
     interviews: number;
     savedOffers: number;
