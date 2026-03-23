@@ -1,5 +1,14 @@
 import { create } from 'zustand';
 
+const createToastId = (): string => {
+  const safeCrypto = globalThis.crypto;
+  if (safeCrypto && typeof safeCrypto.randomUUID === 'function') {
+    return safeCrypto.randomUUID();
+  }
+
+  return `toast-${Date.now()}-${Math.random().toString(36).slice(2, 10)}`;
+};
+
 export interface Toast {
   id: string;
   message: string;
@@ -27,7 +36,7 @@ export const useUiStore = create<UiState>((set) => ({
   setSidebarOpen: (open) => set({ sidebarOpen: open }),
 
   addToast: (toast) => {
-    const id = crypto.randomUUID();
+    const id = createToastId();
     set((s) => ({ toasts: [...s.toasts, { ...toast, id }] }));
     setTimeout(() => {
       set((s) => ({ toasts: s.toasts.filter((t) => t.id !== id) }));
