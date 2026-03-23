@@ -133,18 +133,26 @@ export default function FaqHome() {
                 aria-expanded={isOpen}
                 className={[
                   "reveal-item text-left group relative rounded-2xl border bg-[#050505]/95 mx-1 sm:mx-2",
-                  "transition-[border-color,box-shadow] duration-300 px-4 sm:px-5 md:px-6 py-3.5 sm:py-4",
+                  // Effet “luxe” uniquement quand la FAQ est ouverte (pas sur le hover)
+                  "overflow-hidden",
+                  "before:content-[''] before:absolute before:inset-0 before:-z-10 before:opacity-0 before:transition-opacity before:duration-300 before:bg-[radial-gradient(circle_at_top_left,rgba(214,29,39,0.35),transparent_55%)]",
+                  "px-4 sm:px-5 md:px-6 py-3.5 sm:py-4",
+                  // Hover luxe: transition simple, sans “border animée” premium
+                  "border-white/[0.06] transition-colors duration-200 ease-out",
+                  "hover:border-tap-red/25 hover:bg-white/[0.02]",
                   "focus:outline-none focus-visible:ring-2 focus-visible:ring-tap-red/60 focus-visible:ring-offset-2 focus-visible:ring-offset-black",
-                  "shadow-[0_0_0_1px_rgba(255,255,255,0.02)] will-change-transform",
-                  "border-white/[0.05]",
-                  // L'animation premium de bordure ne se déclenche que si la question est active (ouverte)
-                  isOpen ? "card-animated-border card-carousel-active border-tap-red/20" : "",
+                  "shadow-[0_0_0_1px_rgba(255,255,255,0.02)] transition-shadow duration-300 will-change-transform",
+                  "transition-transform duration-200 ease-out",
+                  "hover:-translate-y-px hover:shadow-[0_0_0_1px_rgba(255,255,255,0.06),0_0_18px_rgba(214,29,39,0.10)]",
+                  isOpen
+                    ? "border-tap-red/20 before:opacity-100 shadow-[0_0_0_1px_rgba(214,29,39,0.22),0_0_30px_rgba(214,29,39,0.14)]"
+                    : "",
                 ].join(" ")}
               >
                 <div className="flex items-center gap-3 sm:gap-4">
                   <div className="flex-1 min-w-0 relative z-[1]">
                     <div className="flex items-start justify-between gap-3">
-                      <p className="text-[13px] sm:text-[15px] font-semibold text-white leading-[1.5]">
+                      <p className="text-[13px] sm:text-[15px] font-bold text-white leading-[1.5]">
                         {item.question}
                       </p>
                       <span
@@ -164,7 +172,12 @@ export default function FaqHome() {
                         isOpen ? "max-h-40 opacity-100 mt-2.5" : "max-h-0 opacity-0 mt-0"
                       }`}
                     >
-                      <p className="text-[12px] sm:text-[13px] text-white/45 leading-[1.7] font-light">
+                      <p
+                        className={[
+                          "text-[12px] sm:text-[13px] leading-[1.7] font-light",
+                          isOpen ? "text-white/65" : "text-white/45",
+                        ].join(" ")}
+                      >
                         {item.answer}
                       </p>
                     </div>

@@ -40,8 +40,8 @@ export default function CommentCaMarche() {
               {steps.map((step, i) => (
                 <div
                   key={i}
-                  className="group relative rounded-2xl bg-[#0A0A0A]/55 border border-transparent overflow-hidden w-[210px] px-6 py-6 flex flex-col items-center text-center transition-transform duration-500 ease-[cubic-bezier(.22,1,.36,1)] group-hover:-translate-y-1 group-hover:scale-[1.01] group-hover:bg-transparent"
-                  style={{ animationDelay: `${i * 0.12}s` }}
+                  className="group relative rounded-2xl bg-[#0A0A0A]/55 border border-transparent overflow-hidden w-[210px] px-6 py-6 flex flex-col items-center text-center transition-transform duration-500 ease-[cubic-bezier(.22,1,.36,1)] group-hover:-translate-y-1 group-hover:scale-[1.01] group-hover:bg-transparent reveal-item reveal-fade"
+                  style={{ transitionDelay: `${i * 120}ms` }}
                 >
                   {/* Premium hover overlays */}
                   <div className="absolute inset-0 opacity-0 transition-opacity duration-500 pointer-events-none bg-[radial-gradient(circle_at_25%_0%,rgba(202,27,40,0.35),transparent_55%)] blur-[2px] mix-blend-screen" />
@@ -74,8 +74,8 @@ export default function CommentCaMarche() {
               {steps.map((step, i) => (
                 <div
                   key={i}
-                  className="group relative rounded-2xl bg-[#0A0A0A]/55 border border-transparent overflow-hidden px-6 py-6 w-full max-w-[360px] flex flex-col items-center text-center transition-transform duration-500 ease-[cubic-bezier(.22,1,.36,1)] group-hover:-translate-y-1 group-hover:scale-[1.01] group-hover:bg-transparent"
-                  style={{ animationDelay: `${i * 0.12}s` }}
+                  className="group relative rounded-2xl bg-[#0A0A0A]/55 border border-transparent overflow-hidden px-6 py-6 w-full max-w-[360px] flex flex-col items-center text-center transition-transform duration-500 ease-[cubic-bezier(.22,1,.36,1)] group-hover:-translate-y-1 group-hover:scale-[1.01] group-hover:bg-transparent reveal-item reveal-fade"
+                  style={{ transitionDelay: `${i * 120}ms` }}
                 >
                   {/* Premium hover overlays */}
                   <div className="absolute inset-0 opacity-0 transition-opacity duration-500 pointer-events-none bg-[radial-gradient(circle_at_25%_0%,rgba(202,27,40,0.35),transparent_55%)] blur-[2px] mix-blend-screen" />

@@ -166,11 +166,6 @@ export default function AnalyseCvAppPage() {
             <Loader2 size={18} className="text-yellow-500 animate-spin" />
           </div>
           <div>
-<<<<<<< Updated upstream
-            <h3 className={`text-[14px] font-semibold mb-1 ${isLight ? "text-black" : "text-white"}`}>Analyse en cours...</h3>
-            <p className={`text-[13px] font-light ${isLight ? "text-black/70" : "text-white/45"}`}>
-              Notre IA analyse votre CV. Vos Talent Cards seront disponibles sous peu. Vous pouvez revenir plus tard.
-=======
             <h3 className="text-[14px] font-semibold text-white mb-1">Analyse en cours…</h3>
             <p className="text-[13px] text-white/45 font-light">
               Notre IA analyse votre CV et génère vos Talent Cards et portfolios. Cette opération peut prendre quelques minutes. Vous pouvez revenir plus tard.
@@ -219,7 +214,6 @@ export default function AnalyseCvAppPage() {
             <h3 className="text-[14px] font-semibold text-white mb-1">Régénération terminée ✓</h3>
             <p className="text-[13px] text-white/45 font-light">
               Tous vos fichiers ont été mis à jour avec les données de votre nouveau CV.
->>>>>>> Stashed changes
             </p>
           </div>
         </div>

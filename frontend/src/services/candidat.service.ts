@@ -51,7 +51,6 @@ export const candidatService = {
       return { portfolioPdfFiles: [...short, ...long] };
     }),
 
-<<<<<<< Updated upstream
   getPublicJobs: () =>
     api.get<{
       jobs: {
@@ -91,12 +90,9 @@ export const candidatService = {
     api
       .post('/dashboard/candidat/apply-job', payload)
       .then((r) => r.data as { success: boolean; applicationId: number; status: string }),
-=======
-  getPublicJobs: () => fetchDashboardJobs(),
 
-  /** Même source que les offres publiques pour l’instant ; `queryFn` requis par React Query. */
+  /** Même source que les offres publiques pour l’instant ; utile pour la page “matching”. */
   getMatchingJobs: () => fetchDashboardJobs(),
->>>>>>> Stashed changes
 
   uploadCv: (file: File) => {
     const formData = new FormData();

@@ -55,6 +55,16 @@ export function useCandidatMatchingJobs(enabled?: boolean) {
   });
 }
 
+export function useCandidatPublicJobs(enabled?: boolean) {
+  const authEnabled = useAuthEnabled();
+  return useQuery({
+    queryKey: ['candidat', 'public-jobs'],
+    queryFn: candidatService.getPublicJobs,
+    staleTime: 5 * 60 * 1000,
+    enabled: enabled ?? authEnabled,
+  });
+}
+
 export function useCandidatCvFiles() {
   return useQuery({
     queryKey: ['candidat', 'cv-files'],
