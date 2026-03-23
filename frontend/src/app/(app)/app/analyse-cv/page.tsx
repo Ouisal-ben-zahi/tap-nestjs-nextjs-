@@ -65,7 +65,9 @@ export default function AnalyseCvAppPage() {
 
   const hasCvs = (cvQuery.data?.cvFiles?.length ?? 0) > 0;
   const hasTalentCards = (talentcardQuery.data?.talentcardFiles?.length ?? 0) > 0;
-  const hasPortfolios = (portfolioQuery.data?.portfolioPdfFiles?.length ?? 0) > 0;
+  const portfolioFiles = portfolioQuery.data?.portfolioPdfFiles ?? [];
+  const hasPortfolioShort = portfolioFiles.some((f) => f.type === "short");
+  const hasPortfolios = hasPortfolioShort;
 
   // Toast avec barre de progression pour l'analyse/génération (estimation via polling fichiers)
   useEffect(() => {
@@ -106,9 +108,9 @@ export default function AnalyseCvAppPage() {
         if (!hasTalentCards) {
           target = 60;
           label = uploadCv.isRegeneration ? "Régénération des Talent Cards" : "Génération du CV & des Talent Cards";
-        } else if (!hasPortfolios) {
+        } else if (!hasPortfolioShort) {
           target = 85;
-          label = "Génération du Portfolio";
+          label = uploadCv.isRegeneration ? "Régénération du portfolio court" : "Génération du portfolio court";
         } else {
           target = 100;
           label = uploadCv.isRegeneration ? "Régénération terminée" : "Génération terminée";
@@ -151,7 +153,7 @@ export default function AnalyseCvAppPage() {
     uploadCv.isSuccess,
     polling,
     hasTalentCards,
-    hasPortfolios,
+    hasPortfolioShort,
   ]);
 
   if (!isCandidat) {
@@ -169,7 +171,7 @@ export default function AnalyseCvAppPage() {
     polling &&
     !uploadCv.isRegeneration &&
     hasCvs &&
-    !(hasTalentCards && hasPortfolios) &&
+    !(hasTalentCards && hasPortfolioShort) &&
     !talentcardQuery.isLoading;
 
   // Regeneration: re-upload in progress, files not yet refreshed
@@ -177,7 +179,7 @@ export default function AnalyseCvAppPage() {
 
   // Stop polling once both talent cards AND portfolios are available after a re-upload
   useEffect(() => {
-    if (isRegenerating && hasTalentCards && hasPortfolios) {
+    if (isRegenerating && hasTalentCards && hasPortfolioShort) {
       setPolling(false);
       uploadCv.setRegeneration(false);
       setRegenDone(true);
@@ -185,18 +187,18 @@ export default function AnalyseCvAppPage() {
       return () => window.clearTimeout(t);
     }
   // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [isRegenerating, hasTalentCards, hasPortfolios]);
+  }, [isRegenerating, hasTalentCards, hasPortfolioShort]);
 
   // Stop polling for first-time analysis once BOTH talent cards AND portfolios appear
   useEffect(() => {
-    if (!uploadCv.isRegeneration && polling && hasTalentCards && hasPortfolios) {
+    if (!uploadCv.isRegeneration && polling && hasTalentCards && hasPortfolioShort) {
       setPolling(false);
       setAnalysisDone(true);
       const t = window.setTimeout(() => setAnalysisDone(false), 5000);
       return () => window.clearTimeout(t);
     }
   // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [hasTalentCards, hasPortfolios, polling, uploadCv.isRegeneration]);
+  }, [hasTalentCards, hasPortfolioShort, polling, uploadCv.isRegeneration]);
 
   return (
     <div className="max-w-[1100px] mx-auto">
