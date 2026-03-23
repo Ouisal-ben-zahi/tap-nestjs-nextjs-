@@ -32,7 +32,25 @@ export default function ToastContainer() {
             className={`bg-zinc-900 border ${borders[toast.type]} rounded-lg p-4 flex items-start gap-3 shadow-xl`}
           >
             {icons[toast.type]}
-            <p className="text-sm text-zinc-200 flex-1">{toast.message}</p>
+            <div className="flex-1">
+              <p className="text-sm text-zinc-200">{toast.message}</p>
+              {typeof toast.progress === 'number' && (
+                <div className="mt-3">
+                  {toast.progressLabel ? (
+                    <div className="flex items-center justify-between text-[11px] text-zinc-400 mb-1">
+                      <span className="truncate pr-2">{toast.progressLabel}</span>
+                      <span className="shrink-0 font-semibold text-zinc-300">{Math.round(toast.progress)}%</span>
+                    </div>
+                  ) : null}
+                  <div className="h-2 w-full bg-white/5 rounded-full overflow-hidden">
+                    <div
+                      className="h-full rounded-full bg-tap-red/80 transition-[width] duration-300 ease-out"
+                      style={{ width: `${Math.max(0, Math.min(100, toast.progress))}%` }}
+                    />
+                  </div>
+                </div>
+              )}
+            </div>
             <button onClick={() => removeToast(toast.id)} className="text-zinc-500 hover:text-zinc-300">
               <X className="w-4 h-4" />
             </button>

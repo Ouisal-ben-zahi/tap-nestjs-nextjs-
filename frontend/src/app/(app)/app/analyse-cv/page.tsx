@@ -10,6 +10,7 @@ import { Skeleton } from "@/components/ui/Skeleton";
 import { FileText, Upload, Award, Briefcase, Loader2, ArrowRight, RefreshCw, CheckCircle2 } from "lucide-react";
 import Link from "next/link";
 import { useDashboardTheme } from "@/hooks/use-dashboard-theme";
+import { useUiStore } from "@/stores/ui";
 
 export default function AnalyseCvAppPage() {
   const { isCandidat } = useAuth();
@@ -30,6 +31,12 @@ export default function AnalyseCvAppPage() {
   const deleteCv = useDeleteCvFile();
   const [dragOver, setDragOver] = useState(false);
   const fileRef = useRef<HTMLInputElement>(null);
+
+  const addToast = useUiStore((s) => s.addToast);
+  const updateToast = useUiStore((s) => s.updateToast);
+  const removeToast = useUiStore((s) => s.removeToast);
+  const [progressToastId, setProgressToastId] = useState<string | null>(null);
+  const progressRef = useRef(0);
 
   const handleDrop = useCallback((e: React.DragEvent) => {
     e.preventDefault();
@@ -55,6 +62,91 @@ export default function AnalyseCvAppPage() {
     }
   }, [uploadCv.isPending, uploadCv.isSuccess]);
 
+  const hasCvs = (cvQuery.data?.cvFiles?.length ?? 0) > 0;
+  const hasTalentCards = (talentcardQuery.data?.talentcardFiles?.length ?? 0) > 0;
+  const hasPortfolios = (portfolioQuery.data?.portfolioPdfFiles?.length ?? 0) > 0;
+
+  // Toast avec barre de progression pour l'analyse/génération (estimation via polling fichiers)
+  useEffect(() => {
+    if (!uploadCv.isPending) return;
+    if (progressToastId) return;
+
+    progressRef.current = 5;
+    const id = addToast({
+      type: "info",
+      duration: 60000, // on retire manuellement à la fin
+      message: "Génération en cours…",
+      progress: 5,
+      progressLabel: "Upload du CV & analyse IA",
+    });
+    setProgressToastId(id);
+  }, [uploadCv.isPending, addToast, progressToastId]);
+
+  useEffect(() => {
+    if (!progressToastId) return;
+
+    // Si une erreur arrive, on retire le toast
+    if (uploadCv.isError) {
+      removeToast(progressToastId);
+      setProgressToastId(null);
+      return;
+    }
+
+    const tick = window.setInterval(() => {
+      // Détermination “stages” via disponibilité des fichiers
+      let target = 10;
+      let label = "Upload du CV & analyse IA";
+
+      if (polling) {
+        if (!hasTalentCards) {
+          target = 60;
+          label = uploadCv.isRegeneration ? "Régénération des Talent Cards" : "Génération du CV & des Talent Cards";
+        } else if (!hasPortfolios) {
+          target = 85;
+          label = "Génération du Portfolio";
+        } else {
+          target = 100;
+          label = uploadCv.isRegeneration ? "Régénération terminée" : "Génération terminée";
+        }
+      } else if (uploadCv.isSuccess) {
+        target = 20;
+        label = "Traitement en cours…";
+      }
+
+      const current = progressRef.current;
+      const next =
+        target === 100 ? 100 : Math.max(target < current ? target : current + (target - current) * 0.18);
+      progressRef.current = Math.min(100, next);
+
+      updateToast(progressToastId, {
+        type: target === 100 ? "success" : "info",
+        message: target === 100 ? "Génération terminée ✓" : "Génération en cours…",
+        progress: Math.round(progressRef.current),
+        progressLabel: label,
+      });
+
+      if (target === 100 && progressRef.current >= 100) {
+        window.clearInterval(tick);
+        window.setTimeout(() => {
+          removeToast(progressToastId);
+          setProgressToastId(null);
+        }, 2000);
+      }
+    }, 250);
+
+    return () => window.clearInterval(tick);
+  }, [
+    progressToastId,
+    updateToast,
+    removeToast,
+    uploadCv.isError,
+    uploadCv.isRegeneration,
+    uploadCv.isSuccess,
+    polling,
+    hasTalentCards,
+    hasPortfolios,
+  ]);
+
   if (!isCandidat) {
     return (
       <EmptyState
@@ -64,10 +156,6 @@ export default function AnalyseCvAppPage() {
       />
     );
   }
-
-  const hasCvs = (cvQuery.data?.cvFiles?.length ?? 0) > 0;
-  const hasTalentCards = (talentcardQuery.data?.talentcardFiles?.length ?? 0) > 0;
-  const hasPortfolios = (portfolioQuery.data?.portfolioPdfFiles?.length ?? 0) > 0;
 
   // First-time analysis: CV present but talent cards OR portfolios not yet generated
   const isAnalyzing =

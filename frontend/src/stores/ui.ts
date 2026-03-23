@@ -5,6 +5,8 @@ export interface Toast {
   message: string;
   type: 'success' | 'error' | 'info';
   duration?: number;
+  progress?: number; // 0..100
+  progressLabel?: string;
 }
 
 interface UiState {
@@ -12,8 +14,9 @@ interface UiState {
   toasts: Toast[];
   toggleSidebar: () => void;
   setSidebarOpen: (open: boolean) => void;
-  addToast: (toast: Omit<Toast, 'id'>) => void;
+  addToast: (toast: Omit<Toast, 'id'>) => string;
   removeToast: (id: string) => void;
+  updateToast: (id: string, patch: Partial<Omit<Toast, 'id'>>) => void;
 }
 
 export const useUiStore = create<UiState>((set) => ({
@@ -29,7 +32,13 @@ export const useUiStore = create<UiState>((set) => ({
     setTimeout(() => {
       set((s) => ({ toasts: s.toasts.filter((t) => t.id !== id) }));
     }, toast.duration || 4000);
+    return id;
   },
 
   removeToast: (id) => set((s) => ({ toasts: s.toasts.filter((t) => t.id !== id) })),
+
+  updateToast: (id, patch) =>
+    set((s) => ({
+      toasts: s.toasts.map((t) => (t.id === id ? { ...t, ...patch } : t)),
+    })),
 }));
