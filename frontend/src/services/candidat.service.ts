@@ -108,12 +108,8 @@ export const candidatService = {
       .post('/dashboard/candidat/apply-job', payload)
       .then((r) => r.data as { success: boolean; applicationId: number; status: string }),
 
-<<<<<<< Updated upstream
-  /** Même source que les offres publiques pour l’instant ; utile pour la page “matching”. */
-  getMatchingJobs: () => fetchDashboardJobs(),
-=======
+  /** Endpoint dédié au matching IA avec fallback défensif côté client. */
   getMatchingJobs: () => fetchMatchingJobs(),
->>>>>>> Stashed changes
 
   uploadCv: (file: File) => {
     const formData = new FormData();
