@@ -70,6 +70,20 @@ export default function AnalyseCvAppPage() {
   const hasPortfolioShort = portfolioFiles.some((f) => f.type === "short");
   const hasPortfolios = hasPortfolioShort;
 
+  const talentFiles = talentcardQuery.data?.talentcardFiles ?? [];
+  const talentCount = talentFiles.length;
+  const talentMaxUpdatedAtMs = Math.max(
+    0,
+    ...talentFiles.map((f) => (f.updatedAt ? new Date(f.updatedAt).getTime() : 0)),
+  );
+  const talentMaxSize = Math.max(
+    0,
+    ...talentFiles.map((f) => (typeof f.size === "number" ? f.size : 0)),
+  );
+
+  const talentSigNow =
+    talentCount > 0 ? `${talentCount}|${talentMaxUpdatedAtMs}|${talentMaxSize}` : null;
+
   const portfolioShortFiles = portfolioFiles.filter((f) => f.type === "short");
   const portfolioShortCount = portfolioShortFiles.length;
   const portfolioShortMaxUpdatedAtMs = Math.max(
@@ -81,12 +95,26 @@ export default function AnalyseCvAppPage() {
   const portfolioShortSigRef = useRef<string | null>(null);
   const portfolioShortStableSinceRef = useRef<number | null>(null);
 
+  // Snapshot “au début” de la génération (pour éviter de considérer des fichiers déjà existants)
+  const initialTalentSigRef = useRef<string | null>(null);
+  const initialPortfolioSigRef = useRef<string | null>(null);
+
   // Toast avec barre de progression pour l'analyse/génération (estimation via polling fichiers)
   useEffect(() => {
     if (!uploadCv.isPending) return;
     if (progressToastId) return;
 
     startedAtRef.current = Date.now();
+    initialTalentSigRef.current = talentSigNow;
+    initialPortfolioSigRef.current =
+      portfolioShortCount > 0
+        ? `${portfolioShortCount}|${portfolioShortMaxUpdatedAtMs}|${portfolioShortMaxSize}`
+        : null;
+
+    // Réinitialiser l’état de “prêt” à chaque nouvelle génération
+    setPortfolioShortReady(false);
+    portfolioShortSigRef.current = null;
+    portfolioShortStableSinceRef.current = null;
     progressRef.current = 5;
     const id = addToast({
       type: "info",
@@ -124,8 +152,11 @@ export default function AnalyseCvAppPage() {
           ? `${portfolioShortCount}|${portfolioShortMaxUpdatedAtMs}|${portfolioShortMaxSize}`
           : null;
 
+      const sigInitial = initialPortfolioSigRef.current;
+      const isPortfolioSigChanged = sig ? sig !== sigInitial : false;
+
       let isPortfolioShortStableNow = false;
-      if (!sig) {
+      if (!sig || !isPortfolioSigChanged) {
         portfolioShortSigRef.current = null;
         portfolioShortStableSinceRef.current = null;
         isPortfolioShortStableNow = false;
@@ -147,10 +178,11 @@ export default function AnalyseCvAppPage() {
       let label = "Upload du CV & analyse IA";
 
       if (polling) {
-        if (!hasTalentCards) {
+        const isTalentSigChanged = talentSigNow ? talentSigNow !== initialTalentSigRef.current : false;
+        if (!isTalentSigChanged) {
           target = 60;
           label = uploadCv.isRegeneration ? "Régénération des Talent Cards" : "Génération du CV & des Talent Cards";
-        } else if (!hasPortfolioShort) {
+        } else if (!hasPortfolioShort || !isPortfolioSigChanged) {
           // On évite d'afficher 85 tant que la one-page n'est pas encore stable.
           target = 75;
           label = uploadCv.isRegeneration

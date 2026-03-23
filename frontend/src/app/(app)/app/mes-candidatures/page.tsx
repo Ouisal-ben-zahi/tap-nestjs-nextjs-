@@ -3,6 +3,7 @@
 import Link from "next/link";
 import { FileText } from "lucide-react";
 import { useCandidatApplications } from "@/hooks/use-candidat";
+import { useAuth } from "@/hooks/use-auth";
 import EmptyState from "@/components/ui/EmptyState";
 import ErrorState from "@/components/ui/ErrorState";
 import { Skeleton } from "@/components/ui/Skeleton";
@@ -10,7 +11,9 @@ import { formatRelative, statusBg } from "@/lib/utils";
 import { useDashboardTheme } from "@/hooks/use-dashboard-theme";
 
 export default function MesCandidaturesPage() {
-  const appsQuery = useCandidatApplications();
+  const { isCandidat, isHydrated } = useAuth();
+  const enabled = Boolean(isCandidat && isHydrated);
+  const appsQuery = useCandidatApplications(enabled);
   const applications = appsQuery.data?.applications || [];
   const theme = useDashboardTheme();
   const isLight = theme === "light";

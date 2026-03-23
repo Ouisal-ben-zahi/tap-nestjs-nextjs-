@@ -3,12 +3,12 @@
 import { useEffect } from "react";
 import { useRouter } from "next/navigation";
 import { useAuth } from "@/hooks/use-auth";
-import { useCandidatApplications, useCandidatStats, useCandidatMatchingJobs } from "@/hooks/use-candidat";
+import { useCandidatStats, useCandidatMatchingJobs } from "@/hooks/use-candidat";
 import EmptyState from "@/components/ui/EmptyState";
 import ErrorState from "@/components/ui/ErrorState";
 import { Skeleton } from "@/components/ui/Skeleton";
-import { Users, MapPin, Briefcase, Sparkles, Clock } from "lucide-react";
-import { formatRelative, statusBg } from "@/lib/utils";
+import { Users, MapPin, Briefcase, Sparkles } from "lucide-react";
+import { formatRelative } from "@/lib/utils";
 import { useDashboardTheme } from "@/hooks/use-dashboard-theme";
 
 export default function MatchingPage() {
@@ -16,14 +16,12 @@ export default function MatchingPage() {
   const { isCandidat, isHydrated } = useAuth();
   const enabled = Boolean(isCandidat && isHydrated);
   const statsQuery = useCandidatStats(enabled);
-  const appsQuery = useCandidatApplications(enabled);
   const jobsQuery = useCandidatMatchingJobs(enabled);
   const theme = useDashboardTheme();
   const isLight = theme === "light";
 
   const stats = statsQuery.data;
   const hasProfile = stats?.candidateId !== null && stats?.candidateId !== undefined;
-  const apps = appsQuery.data?.applications || [];
 
   // Rediriger vers la complétion de profil si aucun candidat en BDD
   useEffect(() => {
@@ -60,11 +58,6 @@ export default function MatchingPage() {
         <Skeleton className="h-24 w-full" />
       </div>
     );
-  }
-
-  // Si pas de profil, on laisse la redirection faire son travail
-  if (!hasProfile && !statsQuery.isError) {
-    return null;
   }
 
   return (
@@ -225,81 +218,6 @@ export default function MatchingPage() {
                   </div>
                 );
               })}
-            </div>
-          )}
-        </div>
-
-        {/* Vos candidatures */}
-        <div>
-          <div className="flex items-center gap-3 mb-5">
-            <div className="w-1 h-5 rounded-full bg-emerald-500" />
-            <h2 className={`text-[13px] uppercase tracking-[2px] font-semibold ${isLight ? "text-black" : "text-white/50"}`}>
-              Vos candidatures
-            </h2>
-          </div>
-
-          {appsQuery.isLoading ? (
-            <div className="space-y-3">
-              {Array.from({ length: 5 }).map((_, i) => (
-                <Skeleton key={i} className="h-20 w-full" />
-              ))}
-            </div>
-          ) : appsQuery.isError ? (
-            <ErrorState
-              onRetry={() => appsQuery.refetch()}
-              message={String(
-                (appsQuery.error as any)?.response?.data?.message ??
-                  (appsQuery.error as any)?.message ??
-                  "Une erreur est survenue",
-              )}
-            />
-          ) : apps.length === 0 ? (
-            <EmptyState
-              icon={<Briefcase className="w-10 h-10" />}
-              title="Aucune candidature"
-              description="Les offres matchées par l'IA apparaîtront ici."
-            />
-          ) : (
-            <div className="space-y-3">
-              {apps.map((app) => (
-                <div
-                  key={app.id}
-                  className={`rounded-xl p-5 transition ${
-                    isLight
-                      ? "bg-white border border-tap-red/40 hover:border-tap-red/70"
-                      : "bg-zinc-900/50 border border-white/[0.06] hover:border-white/[0.1]"
-                  }`}
-                >
-                  <div className="flex items-start justify-between gap-4">
-                    <div className="flex-1 min-w-0">
-                      <div className="flex items-center gap-3 mb-2">
-                        <h3 className={`text-[15px] font-semibold truncate ${isLight ? "text-black" : "text-white"}`}>
-                          {app.jobTitle ?? "Offre sans titre"}
-                        </h3>
-                        <span
-                          className={`text-[11px] px-2.5 py-1 rounded-full border font-medium shrink-0 ${statusBg(
-                            app.status ?? "Inconnu",
-                          )}`}
-                        >
-                          {app.status ?? "Inconnu"}
-                        </span>
-                      </div>
-                      <div className={`flex flex-wrap items-center gap-3 text-[12px] ${isLight ? "text-black/60" : "text-white/40"}`}>
-                        <span className="flex items-center gap-1">
-                          <Briefcase size={12} />
-                          {app.company}
-                        </span>
-                        {app.validatedAt && (
-                          <span className="flex items-center gap-1">
-                            <Clock size={12} />
-                            {formatRelative(app.validatedAt)}
-                          </span>
-                        )}
-                      </div>
-                    </div>
-                  </div>
-                </div>
-              ))}
             </div>
           )}
         </div>
