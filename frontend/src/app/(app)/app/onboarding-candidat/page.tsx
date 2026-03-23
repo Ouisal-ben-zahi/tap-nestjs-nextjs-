@@ -455,7 +455,7 @@ export default function OnboardingCandidatPage() {
 
       await api.post("/dashboard/candidat/upload-cv", formData);
 
-      // 🕒 Attendre que la Talent Card soit générée (polling sur les fichiers Talent Card)
+      // Attendre que la Talent Card soit générée (polling sur les fichiers Talent Card)
       const sleep = (ms: number) => new Promise<void>((resolve) => setTimeout(resolve, ms));
       try {
         for (let i = 0; i < 20; i += 1) {
@@ -1041,7 +1041,7 @@ export default function OnboardingCandidatPage() {
         {currentWizardStep === 4 && (
           <div className="space-y-4 text-center">
             <h3 className="text-lg font-semibold text-white mb-2">
-              ✅ Ton profil est complet !
+               Ton profil est complet !
             </h3>
             <p className="text-[13px] text-white/60 mb-4">
               Choisis la langue de ta Talent Card, puis lance la génération.
@@ -1078,7 +1078,7 @@ export default function OnboardingCandidatPage() {
               </div>
             </div>
             <p className="text-[12px] text-white/50">
-              💡 La génération peut prendre quelques instants. Tu pourras ensuite
+              La génération peut prendre quelques instants. Tu pourras ensuite
               utiliser ton profil pour le matching et les candidatures.
             </p>
           </div>
@@ -1117,7 +1117,7 @@ export default function OnboardingCandidatPage() {
               }
               className="btn-primary text-[13px] disabled:opacity-40"
             >
-              {loading ? "⏳ Génération en cours..." : "🚀 Finaliser mon profil"}
+              {loading ? " Génération en cours..." : " Finaliser mon profil"}
             </button>
           )}
         </div>

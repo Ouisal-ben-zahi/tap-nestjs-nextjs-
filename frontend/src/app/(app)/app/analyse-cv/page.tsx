@@ -75,6 +75,7 @@ export default function AnalyseCvAppPage() {
     0,
     ...portfolioShortFiles.map((f) => (f.updatedAt ? new Date(f.updatedAt).getTime() : 0)),
   );
+  const portfolioShortMaxSize = Math.max(0, ...portfolioShortFiles.map((f) => (typeof f.size === "number" ? f.size : 0)));
   const [portfolioShortReady, setPortfolioShortReady] = useState(false);
   const portfolioShortSigRef = useRef<string | null>(null);
   const portfolioShortStableSinceRef = useRef<number | null>(null);
@@ -110,9 +111,13 @@ export default function AnalyseCvAppPage() {
       const startedAt = startedAtRef.current ?? Date.now();
       const elapsedSeconds = Math.max(0, Math.round((Date.now() - startedAt) / 1000));
 
-      // “Prêt” = portfolio short existe et sa signature (count + max updatedAt) est stable 2s.
-      const STABLE_MS = 2000;
-      const sig = portfolioShortCount > 0 ? `${portfolioShortCount}|${portfolioShortMaxUpdatedAtMs}` : null;
+      // “Prêt” = portfolio short existe et sa signature (count + max updatedAt + max size)
+      // est stable suffisamment longtemps (pour éviter “terminé” trop tôt).
+      const STABLE_MS = 6000;
+      const sig =
+        portfolioShortCount > 0
+          ? `${portfolioShortCount}|${portfolioShortMaxUpdatedAtMs}|${portfolioShortMaxSize}`
+          : null;
 
       let isPortfolioShortStableNow = false;
       if (!sig) {
