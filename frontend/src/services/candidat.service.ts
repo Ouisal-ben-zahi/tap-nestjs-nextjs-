@@ -197,6 +197,11 @@ export const candidatService = {
       .then((r) => r.data);
   },
 
+  getInterviewSimulationEvaluation: (sessionId: string) =>
+    api
+      .get(`/dashboard/candidat/interview/${encodeURIComponent(sessionId)}/evaluation`)
+      .then((r) => r.data as { success: boolean; evaluation?: any; error?: string }),
+
   deleteCvFile: (path: string) =>
     api.delete('/dashboard/candidat/cv-file', { params: { path } }).then((r) => r.data),
 

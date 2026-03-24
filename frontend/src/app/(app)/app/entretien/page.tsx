@@ -120,7 +120,7 @@ export default function EntretienPage() {
                   <div className={`flex items-center gap-4 text-[11px] ${isLight ? "text-black/60" : "text-white/30"}`}>
                     <span className="flex items-center gap-1"><Clock size={11} />{type.duration}</span>
                     <span>{type.questions} questions</span>
-                    {isB3Type ? <span className="text-purple-500">Lance en</span> : null}
+                    {isB3Type ? <span className="text-purple-500">Lance entretien</span> : null}
                   </div>
                 </div>
               );

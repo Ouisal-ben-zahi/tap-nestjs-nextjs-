@@ -3,3 +3,4 @@ backend IA/venv1/
 backend IA/venv/
 backend IA/.env.example
 backend IA/**/*.pyc
+backend IA/audio_sessions/

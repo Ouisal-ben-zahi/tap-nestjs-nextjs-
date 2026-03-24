@@ -25,14 +25,27 @@ export default function EntretienSimulationPage() {
     queryKey: ["interview", "status", sessionId],
     queryFn: () => candidatService.getInterviewSimulationStatus(sessionId),
     enabled: Boolean(sessionId),
-    refetchInterval: 2000,
+    refetchInterval: (q) => {
+      const st = (q.state.data as any)?.status;
+      return st === "completed" ? 10000 : 2000;
+    },
   });
 
   const audioQuery = useQuery({
     queryKey: ["interview", "audio", sessionId],
     queryFn: () => candidatService.getInterviewSimulationAudio(sessionId),
     enabled: Boolean(sessionId),
-    refetchInterval: 2000,
+    refetchInterval: (q) => {
+      const st = statusQuery.data?.status;
+      return st === "completed" ? 10000 : 2000;
+    },
+  });
+
+  const evaluationQuery = useQuery({
+    queryKey: ["interview", "evaluation", sessionId],
+    queryFn: () => candidatService.getInterviewSimulationEvaluation(sessionId),
+    enabled: Boolean(sessionId && statusQuery.data?.status === "completed"),
+    refetchInterval: false,
   });
 
   const sendAudioMutation = useMutation({
@@ -150,10 +163,17 @@ export default function EntretienSimulationPage() {
           <p className="text-red-500">Impossible de charger le statut de la simulation.</p>
         ) : (
           <div className="space-y-3">
-            
+            <p className={isLight ? "text-black/70" : "text-white/70"}>
+              <span className="font-semibold">Statut:</span> {statusQuery.data?.status}
+            </p>
             <p className={isLight ? "text-black/70" : "text-white/70"}>
               <span className="font-semibold">Progression:</span> {statusQuery.data?.current_question ?? 0}/{statusQuery.data?.total_questions ?? 5}
             </p>
+            {statusQuery.data?.status === "generating_audio" ? (
+              <p className={isLight ? "text-black/70" : "text-white/70"}>
+                L'IA prépare l'audio de la prochaine question...
+              </p>
+            ) : null}
             {(statusQuery.data?.intro_text || "").trim() ? (
               <p className={isLight ? "text-black/80" : "text-white/80"}>
                 <span className="font-semibold">Introduction:</span> {statusQuery.data?.intro_text}
@@ -183,6 +203,26 @@ export default function EntretienSimulationPage() {
               <p className="text-red-500">
                 <span className="font-semibold">Erreur:</span> {statusQuery.data?.error}
               </p>
+            ) : null}
+            {statusQuery.data?.status === "completed" ? (
+              <div className={`mt-2 p-4 rounded-xl ${isLight ? "bg-black/[0.03] border border-black/10" : "bg-white/[0.03] border border-white/[0.08]"}`}>
+                <p className={isLight ? "text-black font-semibold mb-2" : "text-white font-semibold mb-2"}>
+                  Évaluation finale
+                </p>
+                {evaluationQuery.isLoading ? (
+                  <p className={isLight ? "text-black/70" : "text-white/70"}>Chargement de l'évaluation...</p>
+                ) : evaluationQuery.isError ? (
+                  <p className="text-red-500">Impossible de récupérer l'évaluation.</p>
+                ) : evaluationQuery.data?.evaluation ? (
+                  <pre className={`text-xs whitespace-pre-wrap ${isLight ? "text-black/80" : "text-white/80"}`}>
+                    {JSON.stringify(evaluationQuery.data.evaluation, null, 2)}
+                  </pre>
+                ) : (
+                  <p className={isLight ? "text-black/70" : "text-white/70"}>
+                    Évaluation non disponible pour le moment.
+                  </p>
+                )}
+              </div>
             ) : null}
           </div>
         )}

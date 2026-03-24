@@ -150,6 +150,12 @@ export interface InterviewAudioListResult {
   audio_files: InterviewAudioFileItem[];
 }
 
+export interface InterviewEvaluationResult {
+  success: boolean;
+  evaluation?: any;
+  error?: string;
+}
+
 export interface RecruiterOverviewStats {
   totalJobs: number;
   totalApplications: number;
@@ -901,6 +907,25 @@ export class DashboardService {
       });
       form.pipe(req);
     });
+  }
+
+  async getCandidateInterviewSimulationEvaluation(
+    userId: number,
+    sessionId: string,
+  ): Promise<InterviewEvaluationResult> {
+    if (!userId || Number.isNaN(userId)) {
+      throw new BadRequestException('userId invalide');
+    }
+    if (!sessionId || !sessionId.trim()) {
+      throw new BadRequestException('sessionId manquant');
+    }
+
+    await this.getCandidateRowForUser(userId);
+
+    return await this.callFlaskJson<InterviewEvaluationResult>(
+      'GET',
+      `/interview/${encodeURIComponent(sessionId)}/evaluation`,
+    );
   }
   async getCandidateStats(userId: number): Promise<CandidateDashboardStats> {
     if (userId === null || userId === undefined || Number.isNaN(userId)) {

@@ -166,6 +166,16 @@ export class DashboardController {
     return (this.dashboardService as any).sendCandidateInterviewSimulationAudio(userId, sessionId, audio);
   }
 
+  @Get('candidat/interview/:sessionId/evaluation')
+  @UseGuards(AuthGuard('jwt'))
+  async getCandidateInterviewSimulationEvaluationByJwt(
+    @Req() req: any,
+    @Param('sessionId') sessionId: string,
+  ) {
+    const userId = await this.dashboardService.resolveJwtUserId(req?.user);
+    return (this.dashboardService as any).getCandidateInterviewSimulationEvaluation(userId, sessionId);
+  }
+
   @Post('candidat/upload-cv')
   @UseGuards(AuthGuard('jwt'))
   @UseInterceptors(

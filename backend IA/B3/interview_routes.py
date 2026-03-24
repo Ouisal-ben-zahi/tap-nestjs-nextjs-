@@ -83,17 +83,33 @@ def sanitize_text_for_tts(text: str) -> str:
     if not text or not isinstance(text, str):
         return text
     t = text.replace("*", "").strip()
+    # Normalisations pour éviter des intonations étranges sur XTTS.
+    t = re.sub(r"https?://\S+", " ", t)      # URLs
+    t = re.sub(r"\bwww\.\S+", " ", t)        # domaines
+    t = t.replace("…", ".")
+    t = re.sub(r"\.{2,}", ".", t)            # ... -> .
+    t = re.sub(r"[!?]{2,}", "!", t)          # !! / ??? -> !
+    t = re.sub(r"[:;]+", ", ", t)            # : ; -> pause courte
+    t = re.sub(r"\s*[/|]\s*", ", ", t)       # / | -> pause
+    t = re.sub(r"[\(\)\[\]\{\}\"“”«»]", " ", t)
+    t = re.sub(r"[_#~`]+", " ", t)
     while "  " in t:
         t = t.replace("  ", " ")
+    # Eviter une fin brute qui déstabilise parfois la synthèse.
+    t = t.strip(" ,")
+    if t and t[-1] not in ".!?":
+        t += "."
     return t or text
 
 
 def _compact_tts_text(text: str) -> str:
-    """Version plus courte pour accélérer le TTS (sans changer le texte affiché)."""
+    """Texte TTS (complet par défaut; compactage optionnel si explicitement activé)."""
     t = sanitize_text_for_tts(text or "")
     if not t:
         return t
-    if not TTS_FAST_MODE:
+    # Exiger un réglage explicite pour couper le texte, sinon on lit toute la phrase.
+    compact_enabled = os.environ.get("TTS_COMPACT_TEXT", "0").strip().lower() in ("1", "true", "yes", "on")
+    if not (TTS_FAST_MODE and compact_enabled):
         return t
     if len(t) <= TTS_MAX_CHARS:
         return t
@@ -684,9 +700,10 @@ def record_response(session_id):
                             next_question, updated_history = ask_gemini(transcription_for_llm, conversation_history)
                             interview_sessions[session_id]["conversation_history"] = updated_history
                             interview_sessions[session_id]["current_question"] = question_number + 1
-                            interview_sessions[session_id]["current_question_text"] = next_question
+                            interview_sessions[session_id]["pending_question_text"] = next_question
+                            interview_sessions[session_id]["current_question_text"] = ""
                             interview_sessions[session_id]["current_question_audio"] = None
-                            interview_sessions[session_id]["status"] = "question_ready"
+                            interview_sessions[session_id]["status"] = "generating_audio"
                             print(f"🤖 Question {question_number + 1} ({len(next_question)} car.): {next_question}")
                             # Terminer seulement après que le candidat a répondu à la 10e question (pas dès qu'on génère la 10e)
                             if question_number + 1 > session.get("total_questions", 10):
@@ -698,11 +715,18 @@ def record_response(session_id):
                                         qid = uuid.uuid4().hex[:8]
                                         q_audio = os.path.join(session_dir, f"question_{qid}.wav")
                                         _tts_to_file_fast(next_question, q_audio)
-                                        if session_id in interview_sessions and interview_sessions[session_id].get("status") == "question_ready":
+                                        if session_id in interview_sessions and interview_sessions[session_id].get("status") == "generating_audio":
+                                            interview_sessions[session_id]["current_question_text"] = next_question
                                             interview_sessions[session_id]["current_question_audio"] = os.path.basename(q_audio)
+                                            interview_sessions[session_id]["status"] = "question_ready"
+                                            interview_sessions[session_id]["pending_question_text"] = ""
                                             print(f"🔊 TTS prêt pour question {question_number + 1}")
                                     except Exception as e_tts:
                                         print(f"⚠️ Erreur TTS en arrière-plan: {e_tts}")
+                                        if session_id in interview_sessions:
+                                            interview_sessions[session_id]["current_question_text"] = next_question
+                                            interview_sessions[session_id]["status"] = "question_ready"
+                                            interview_sessions[session_id]["pending_question_text"] = ""
                                 threading.Thread(target=generate_tts_background, daemon=True).start()
                     except Exception as e:
                         print(f"⚠️ Erreur lors de la génération de la question suivante: {e}")
@@ -722,12 +746,13 @@ def record_response(session_id):
                         if conversation_history:
                             repeat_prompt = f"L'intervieweur a dit: '{transcription}'. Cette réponse semble être un test ou trop courte. Demande poliment au candidat de répéter sa réponse de manière plus complète et détaillée. Sois bref et professionnel."
                             repeat_question, _ = ask_gemini(repeat_prompt, conversation_history)
-                            interview_sessions[session_id]["current_question_text"] = repeat_question
+                            interview_sessions[session_id]["pending_question_text"] = repeat_question
+                            interview_sessions[session_id]["current_question_text"] = ""
                             interview_sessions[session_id]["current_question_audio"] = None
-                            interview_sessions[session_id]["status"] = "question_ready"
+                            interview_sessions[session_id]["status"] = "generating_audio"
                             interview_sessions[session_id]["error"] = None
                             print(f"🔄 Question de répétition générée: {repeat_question}")
-                            print(f"✅ [REPEAT] Session {session_id} → status=question_ready, texte envoyé au front (len={len(repeat_question)})")
+                            print(f"✅ [REPEAT] Session {session_id} → status=generating_audio (len={len(repeat_question)})")
                             # TTS en arrière-plan
                             def generate_repeat_tts():
                                 try:
@@ -735,9 +760,16 @@ def record_response(session_id):
                                     question_audio_file = os.path.join(session_dir, f"question_{question_id}.wav")
                                     _tts_to_file_fast(repeat_question, question_audio_file)
                                     if session_id in interview_sessions:
+                                        interview_sessions[session_id]["current_question_text"] = repeat_question
                                         interview_sessions[session_id]["current_question_audio"] = os.path.basename(question_audio_file)
+                                        interview_sessions[session_id]["status"] = "question_ready"
+                                        interview_sessions[session_id]["pending_question_text"] = ""
                                 except Exception as e_tts:
                                     print(f"⚠️ Erreur TTS répétition: {e_tts}")
+                                    if session_id in interview_sessions:
+                                        interview_sessions[session_id]["current_question_text"] = repeat_question
+                                        interview_sessions[session_id]["status"] = "question_ready"
+                                        interview_sessions[session_id]["pending_question_text"] = ""
                             threading.Thread(target=generate_repeat_tts, daemon=True).start()
                     except Exception as e:
                         print(f"⚠️ Erreur lors de la génération de la question de répétition: {e}")
