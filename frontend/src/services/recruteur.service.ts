@@ -39,6 +39,8 @@ export type ValidateCandidateResponse = {
     category: string;
   }>;
   interviewQuestionsError?: string | null;
+  interviewPdfPath?: string | null;
+  interviewPdfUrl?: string | null;
 };
 
 export type SaveInterviewPdfResponse = {

@@ -1985,6 +1985,8 @@ export class DashboardService {
     applicationId: number;
     interviewQuestions: RecruiterInterviewQuestion[];
     interviewQuestionsError?: string | null;
+    interviewPdfPath?: string | null;
+    interviewPdfUrl?: string | null;
   }> {
     if (!userId || Number.isNaN(userId)) {
       throw new BadRequestException('userId invalide');
@@ -2072,11 +2074,63 @@ export class DashboardService {
           : "Erreur lors de la génération des questions d'entretien";
     }
 
+    // Best-effort: vérifier si un PDF entretien existe déjà dans le storage
+    // pour ce candidat, afin de proposer un téléchargement immédiat côté front.
+    let interviewPdfPath: string | null = null;
+    let interviewPdfUrl: string | null = null;
+    try {
+      const { data: candRow } = await this.supabase
+        .from('candidates')
+        .select('id, categorie_profil')
+        .eq('id', candidateId)
+        .limit(1)
+        .maybeSingle();
+
+      if (candRow?.id) {
+        const category = String(candRow.categorie_profil ?? 'Autres').trim() || 'Autres';
+        const folderPath = `candidates/${category}/${candidateId}`;
+        const { data: files, error: listError } = await this.supabase.storage
+          .from('tap_files')
+          .list(folderPath, {
+            limit: 100,
+            sortBy: { column: 'name', order: 'desc' },
+          });
+
+        if (!listError && Array.isArray(files) && files.length > 0) {
+          const latestInterviewPdf = files
+            .filter(
+              (f: any) =>
+                typeof f?.name === 'string' &&
+                f.name.startsWith('entretien_tap_') &&
+                f.name.toLowerCase().endsWith('.pdf'),
+            )
+            .sort((a: any, b: any) => {
+              const ta = new Date(String(a?.updated_at ?? a?.created_at ?? 0)).getTime();
+              const tb = new Date(String(b?.updated_at ?? b?.created_at ?? 0)).getTime();
+              return tb - ta;
+            })[0];
+
+          if (latestInterviewPdf?.name) {
+            const path = `${folderPath}/${latestInterviewPdf.name}`;
+            interviewPdfPath = path;
+            const { data: signed, error: signError } = await this.supabase.storage
+              .from('tap_files')
+              .createSignedUrl(path, 60 * 60);
+            interviewPdfUrl = signError ? null : (signed?.signedUrl ?? null);
+          }
+        }
+      }
+    } catch {
+      // On ne bloque jamais la validation si la lecture storage échoue.
+    }
+
     return {
       success: true,
       applicationId: Number(updated.id),
       interviewQuestions,
       interviewQuestionsError,
+      interviewPdfPath,
+      interviewPdfUrl,
     };
   }
 

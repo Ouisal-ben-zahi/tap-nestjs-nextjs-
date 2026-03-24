@@ -8,7 +8,7 @@ import { useMatchedCandidatesByOffer, useRecruteurOverview, useSaveInterviewPdf,
 import EmptyState from "@/components/ui/EmptyState";
 import ErrorState from "@/components/ui/ErrorState";
 import { Skeleton } from "@/components/ui/Skeleton";
-import { Search, Users, Briefcase, FileText, Filter, CheckCircle2, X } from "lucide-react";
+import { Search, Users, Briefcase, FileText, Filter, CheckCircle2, X, Download } from "lucide-react";
 import { formatRelative, statusBg } from "@/lib/utils";
 
 type InterviewQuestion = {
@@ -33,6 +33,7 @@ export default function CandidatsPage() {
   const [interviewQuestions, setInterviewQuestions] = useState<InterviewQuestion[]>([]);
   const [interviewCandidateName, setInterviewCandidateName] = useState<string>("Candidat");
   const [interviewCandidateId, setInterviewCandidateId] = useState<number | null>(null);
+  const [interviewPdfUrlsByCandidate, setInterviewPdfUrlsByCandidate] = useState<Record<number, string>>({});
 
   if (!isRecruteur) {
     return (
@@ -181,6 +182,7 @@ export default function CandidatsPage() {
                     const isValidatingThisCandidate =
                       validateCandidateMutation.isPending &&
                       validateCandidateMutation.variables?.candidateId === candidateId;
+                    const existingInterviewPdfUrl = interviewPdfUrlsByCandidate[candidateId] || null;
 
                     return (
                       <div
@@ -230,6 +232,16 @@ export default function CandidatsPage() {
                                   },
                                   {
                                     onSuccess: (data) => {
+                                      const existingPdfUrl =
+                                        typeof data?.interviewPdfUrl === "string" && data.interviewPdfUrl.trim()
+                                          ? data.interviewPdfUrl.trim()
+                                          : null;
+                                      if (existingPdfUrl) {
+                                        setInterviewPdfUrlsByCandidate((prev) => ({
+                                          ...prev,
+                                          [candidateId]: existingPdfUrl,
+                                        }));
+                                      }
                                       const questions = Array.isArray(data?.interviewQuestions)
                                         ? data.interviewQuestions
                                             .filter((q) => q && typeof q.text === "string" && q.text.trim())
@@ -253,8 +265,24 @@ export default function CandidatsPage() {
                               className="mt-2 inline-flex items-center gap-1.5 px-2.5 py-1 text-[11px] rounded-md border border-emerald-500/40 text-emerald-300 hover:bg-emerald-500/10 disabled:opacity-50 disabled:cursor-not-allowed"
                             >
                               <CheckCircle2 size={13} />
-                              {isValidatingThisCandidate ? "Validation..." : "Valider"}
+                              {isValidatingThisCandidate
+                                ? "Validation..."
+                                : existingInterviewPdfUrl
+                                  ? "Régénérer d'autres questions"
+                                  : "Valider"}
                             </button>
+                            {existingInterviewPdfUrl ? (
+                              <a
+                                href={existingInterviewPdfUrl}
+                                target="_blank"
+                                rel="noopener noreferrer"
+                                className="mt-2 ml-auto inline-flex items-center justify-center w-8 h-8 rounded-md border border-blue-500/40 text-blue-300 hover:bg-blue-500/10 transition"
+                                title="Télécharger les questions d'entretien"
+                                aria-label="Télécharger les questions d'entretien"
+                              >
+                                <Download size={14} />
+                              </a>
+                            ) : null}
                           </div>
                         </div>
                         <div className="mt-3 h-1.5 bg-zinc-800 rounded-full overflow-hidden">
@@ -403,11 +431,27 @@ export default function CandidatsPage() {
                     type="button"
                     onClick={() => {
                       if (!selectedJobId || !interviewCandidateId || !interviewQuestions.length) return;
-                      saveInterviewPdfMutation.mutate({
-                        jobId: selectedJobId,
-                        candidateId: interviewCandidateId,
-                        questions: interviewQuestions,
-                      });
+                      saveInterviewPdfMutation.mutate(
+                        {
+                          jobId: selectedJobId,
+                          candidateId: interviewCandidateId,
+                          questions: interviewQuestions,
+                        },
+                        {
+                          onSuccess: (data) => {
+                            const fileUrl =
+                              typeof data?.file_url === "string" && data.file_url.trim()
+                                ? data.file_url.trim()
+                                : null;
+                            if (interviewCandidateId && fileUrl) {
+                              setInterviewPdfUrlsByCandidate((prev) => ({
+                                ...prev,
+                                [interviewCandidateId]: fileUrl,
+                              }));
+                            }
+                          },
+                        },
+                      );
                     }}
                     disabled={
                       !selectedJobId ||
