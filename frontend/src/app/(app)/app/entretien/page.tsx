@@ -7,10 +7,14 @@ import { Skeleton } from "@/components/ui/Skeleton";
 import { MessageSquare, Mic, FileText, Upload, Brain, Target, Clock, ArrowRight, Sparkles } from "lucide-react";
 import Link from "next/link";
 import { useDashboardTheme } from "@/hooks/use-dashboard-theme";
+import { useMutation } from "@tanstack/react-query";
+import { candidatService } from "@/services/candidat.service";
+import { useUiStore } from "@/stores/ui";
+import { useRouter } from "next/navigation";
 
 const interviewTypes = [
   { title: "Entretien comportemental", description: "Questions sur vos expériences passées et votre gestion des situations.", icon: Brain, color: "#a855f7", duration: "20 min", questions: 10 },
-  { title: "Entretien technique", description: "Évaluez vos compétences techniques avec des questions adaptées.", icon: Target, color: "#3b82f6", duration: "30 min", questions: 15 },
+  { title: "Entretien technique", description: "Évaluez vos compétences techniques avec des questions adaptées.", icon: Target, color: "#3b82f6", duration: "30 min", questions: 15, b3: true },
   { title: "Présentation personnelle", description: "Entraînez-vous à vous présenter de manière concise et impactante.", icon: Mic, color: "#10b981", duration: "10 min", questions: 5 },
   { title: "Questions RH classiques", description: "Motivation, prétentions salariales, disponibilité et plus.", icon: MessageSquare, color: "#f59e0b", duration: "15 min", questions: 8 },
 ];
@@ -20,6 +24,23 @@ export default function EntretienPage() {
   const statsQuery = useCandidatStats();
   const theme = useDashboardTheme();
   const isLight = theme === "light";
+  const addToast = useUiStore((s) => s.addToast);
+  const router = useRouter();
+
+  const startInterviewMutation = useMutation({
+    mutationFn: () => candidatService.startInterviewSimulation(),
+    onSuccess: (res) => {
+      if (res?.session_id) {
+        router.push(`/app/entretien/simulation?sessionId=${encodeURIComponent(res.session_id)}`);
+        addToast({ message: "Simulation B3 lancée.", type: "success" });
+        return;
+      }
+      addToast({ message: "Simulation lancée, mais lien de session indisponible.", type: "error" });
+    },
+    onError: () => {
+      addToast({ message: "Impossible de démarrer la simulation B3", type: "error" });
+    },
+  });
 
   if (!isCandidat) {
     return <EmptyState icon={<MessageSquare className="w-12 h-12" />} title="Espace candidat uniquement" description="Cette section est réservée aux candidats." />;
@@ -72,14 +93,20 @@ export default function EntretienPage() {
           <div className="grid grid-cols-1 sm:grid-cols-2 gap-4 mb-8">
             {interviewTypes.map((type, i) => {
               const Icon = type.icon;
+              const isB3Type = Boolean((type as any).b3);
               return (
                 <div
                   key={i}
+                  onClick={() => {
+                    if (isB3Type && !startInterviewMutation.isPending) {
+                      startInterviewMutation.mutate();
+                    }
+                  }}
                   className={`group rounded-2xl p-6 transition-all duration-300 cursor-pointer ${
                     isLight
                       ? "bg-white border border-tap-red/40 hover:border-tap-red/70"
                       : "bg-zinc-900/50 border border-white/[0.06] hover:border-white/[0.12]"
-                  }`}
+                  } ${isB3Type && startInterviewMutation.isPending ? "opacity-70 pointer-events-none" : ""}`}
                 >
                   <div className="flex items-start justify-between mb-4">
                     <div className="w-11 h-11 rounded-xl flex items-center justify-center border transition-transform group-hover:scale-110"
@@ -93,6 +120,7 @@ export default function EntretienPage() {
                   <div className={`flex items-center gap-4 text-[11px] ${isLight ? "text-black/60" : "text-white/30"}`}>
                     <span className="flex items-center gap-1"><Clock size={11} />{type.duration}</span>
                     <span>{type.questions} questions</span>
+                    {isB3Type ? <span className="text-purple-500">Lance en</span> : null}
                   </div>
                 </div>
               );

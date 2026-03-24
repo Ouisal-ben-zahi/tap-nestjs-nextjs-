@@ -127,6 +127,45 @@ export class DashboardController {
     return (this.dashboardService as any).runCandidatePortfolioLongPipeline(userId, body?.lang);
   }
 
+  @Post('candidat/interview/start')
+  @UseGuards(AuthGuard('jwt'))
+  async startCandidateInterviewSimulationByJwt(@Req() req: any) {
+    const userId = await this.dashboardService.resolveJwtUserId(req?.user);
+    return (this.dashboardService as any).startCandidateInterviewSimulation(userId);
+  }
+
+  @Get('candidat/interview/:sessionId/status')
+  @UseGuards(AuthGuard('jwt'))
+  async getCandidateInterviewSimulationStatusByJwt(
+    @Req() req: any,
+    @Param('sessionId') sessionId: string,
+  ) {
+    const userId = await this.dashboardService.resolveJwtUserId(req?.user);
+    return (this.dashboardService as any).getCandidateInterviewSimulationStatus(userId, sessionId);
+  }
+
+  @Get('candidat/interview/:sessionId/audio')
+  @UseGuards(AuthGuard('jwt'))
+  async getCandidateInterviewSimulationAudioByJwt(
+    @Req() req: any,
+    @Param('sessionId') sessionId: string,
+  ) {
+    const userId = await this.dashboardService.resolveJwtUserId(req?.user);
+    return (this.dashboardService as any).getCandidateInterviewSimulationAudio(userId, sessionId);
+  }
+
+  @Post('candidat/interview/:sessionId/record')
+  @UseGuards(AuthGuard('jwt'))
+  @UseInterceptors(FileInterceptor('audio'))
+  async sendCandidateInterviewSimulationAudioByJwt(
+    @Req() req: any,
+    @Param('sessionId') sessionId: string,
+    @UploadedFile() audio: any,
+  ) {
+    const userId = await this.dashboardService.resolveJwtUserId(req?.user);
+    return (this.dashboardService as any).sendCandidateInterviewSimulationAudio(userId, sessionId, audio);
+  }
+
   @Post('candidat/upload-cv')
   @UseGuards(AuthGuard('jwt'))
   @UseInterceptors(

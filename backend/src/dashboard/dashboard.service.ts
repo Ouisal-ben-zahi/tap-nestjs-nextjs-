@@ -116,6 +116,40 @@ export interface PortfolioLongPipelineResult {
   error?: string;
 }
 
+export interface InterviewStartResult {
+  success: boolean;
+  session_id?: string;
+  message?: string;
+  status_url?: string;
+  events_url?: string;
+  audio_url?: string;
+  evaluation_url?: string;
+  error?: string;
+}
+
+export interface InterviewStatusResult {
+  session_id: string;
+  status: string;
+  current_question: number;
+  total_questions: number;
+  current_question_text: string;
+  intro_text: string;
+  error?: string | null;
+}
+
+export interface InterviewAudioFileItem {
+  type: 'intro' | 'question' | 'response' | string;
+  filename: string;
+  text?: string;
+  question_number?: number;
+  file_url?: string;
+}
+
+export interface InterviewAudioListResult {
+  session_id: string;
+  audio_files: InterviewAudioFileItem[];
+}
+
 export interface RecruiterOverviewStats {
   totalJobs: number;
   totalApplications: number;
@@ -710,6 +744,163 @@ export class DashboardService {
         e?.message || 'Erreur lors de la génération du portfolio long',
       );
     }
+  }
+
+  async startCandidateInterviewSimulation(userId: number): Promise<InterviewStartResult> {
+    if (!userId || Number.isNaN(userId)) {
+      throw new BadRequestException('userId invalide');
+    }
+
+    const candidate = await this.getCandidateRowForUser(userId);
+    const candidateId = candidate.id as number;
+    const candidateUuid = (candidate as any).id_agent as string | null | undefined;
+    if (!candidateUuid || typeof candidateUuid !== 'string') {
+      throw new BadRequestException('candidate_uuid introuvable (id_agent)');
+    }
+
+    const result = await this.callFlaskJson<any>(
+      'POST',
+      `/interview/${encodeURIComponent(candidateUuid)}/start`,
+      { db_candidate_id: candidateId },
+    );
+
+    const sessionId = result?.session_id ? String(result.session_id) : null;
+    const flaskBase = this.getFlaskBaseUrl();
+    return {
+      success: Boolean(result?.success),
+      session_id: sessionId ?? undefined,
+      message: result?.message,
+      status_url: sessionId ? `${flaskBase}/interview/${encodeURIComponent(sessionId)}/status` : undefined,
+      events_url: sessionId ? `${flaskBase}/interview/${encodeURIComponent(sessionId)}/events` : undefined,
+      audio_url: sessionId ? `${flaskBase}/interview/${encodeURIComponent(sessionId)}/audio` : undefined,
+      evaluation_url: sessionId ? `${flaskBase}/interview/${encodeURIComponent(sessionId)}/evaluation` : undefined,
+    };
+  }
+
+  async getCandidateInterviewSimulationStatus(
+    userId: number,
+    sessionId: string,
+  ): Promise<InterviewStatusResult> {
+    if (!userId || Number.isNaN(userId)) {
+      throw new BadRequestException('userId invalide');
+    }
+    if (!sessionId || !sessionId.trim()) {
+      throw new BadRequestException('sessionId manquant');
+    }
+
+    // Vérifie que l'utilisateur courant possède un profil candidat
+    await this.getCandidateRowForUser(userId);
+
+    return await this.callFlaskJson<InterviewStatusResult>(
+      'GET',
+      `/interview/${encodeURIComponent(sessionId)}/status`,
+    );
+  }
+
+  async getCandidateInterviewSimulationAudio(
+    userId: number,
+    sessionId: string,
+  ): Promise<InterviewAudioListResult> {
+    if (!userId || Number.isNaN(userId)) {
+      throw new BadRequestException('userId invalide');
+    }
+    if (!sessionId || !sessionId.trim()) {
+      throw new BadRequestException('sessionId manquant');
+    }
+
+    await this.getCandidateRowForUser(userId);
+
+    const data = await this.callFlaskJson<InterviewAudioListResult>(
+      'GET',
+      `/interview/${encodeURIComponent(sessionId)}/audio`,
+    );
+
+    const flaskBase = this.getFlaskBaseUrl();
+    const audio_files = (data?.audio_files || []).map((f: any) => ({
+      ...f,
+      file_url:
+        f?.filename
+          ? `${flaskBase}/interview/${encodeURIComponent(sessionId)}/audio/${encodeURIComponent(String(f.filename))}`
+          : undefined,
+    }));
+    return {
+      session_id: data?.session_id || sessionId,
+      audio_files,
+    };
+  }
+
+  async sendCandidateInterviewSimulationAudio(
+    userId: number,
+    sessionId: string,
+    file: any,
+  ): Promise<any> {
+    if (!userId || Number.isNaN(userId)) {
+      throw new BadRequestException('userId invalide');
+    }
+    if (!sessionId || !sessionId.trim()) {
+      throw new BadRequestException('sessionId manquant');
+    }
+    if (!file || !file.buffer) {
+      throw new BadRequestException('Fichier audio manquant');
+    }
+
+    await this.getCandidateRowForUser(userId);
+
+    const FormData = require('form-data');
+    const http = require('http');
+    const https = require('https');
+    const { URL } = require('url');
+    const base = this.getFlaskBaseUrl();
+    const endpoint = `${base}/interview/${encodeURIComponent(sessionId)}/record`;
+
+    const form = new FormData();
+    form.append('audio', file.buffer, {
+      filename: file.originalname || `response-${Date.now()}.webm`,
+      contentType: file.mimetype || 'audio/webm',
+    });
+
+    return await new Promise((resolve, reject) => {
+      const u = new URL(endpoint);
+      const transport = u.protocol === 'https:' ? https : http;
+      const req = transport.request(
+        {
+          hostname: u.hostname,
+          port: u.port || (u.protocol === 'https:' ? 443 : 80),
+          path: u.pathname + u.search,
+          method: 'POST',
+          headers: form.getHeaders(),
+          timeout: 180000,
+        },
+        (res: any) => {
+          const chunks: Buffer[] = [];
+          res.on('data', (c: Buffer) => chunks.push(c));
+          res.on('end', () => {
+            const raw = Buffer.concat(chunks).toString('utf-8');
+            let parsed: any = {};
+            try {
+              parsed = raw ? JSON.parse(raw) : {};
+            } catch {
+              parsed = { message: raw };
+            }
+            if (res.statusCode && res.statusCode >= 400) {
+              return reject(
+                new BadRequestException(parsed?.error || parsed?.message || 'Erreur envoi audio entretien'),
+              );
+            }
+            resolve(parsed);
+          });
+        },
+      );
+
+      req.on('error', (err: any) =>
+        reject(new BadRequestException(err?.message || 'Erreur réseau envoi audio entretien')),
+      );
+      req.on('timeout', () => {
+        req.destroy();
+        reject(new BadRequestException('Timeout lors de l’envoi audio entretien'));
+      });
+      form.pipe(req);
+    });
   }
   async getCandidateStats(userId: number): Promise<CandidateDashboardStats> {
     if (userId === null || userId === undefined || Number.isNaN(userId)) {

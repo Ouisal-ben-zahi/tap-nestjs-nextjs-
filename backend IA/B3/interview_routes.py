@@ -8,6 +8,7 @@ import json
 import time
 import threading
 import subprocess
+import re
 from flask import Blueprint, request, jsonify, send_file, Response, stream_with_context
 from typing import Dict, Optional, Tuple, Any
 from B3.interview import (
@@ -55,6 +56,9 @@ tts = TTS(
 # Speaker explicite pour le modèle multi-speaker XTTS v2
 # Utilise le même nom que dans la commande CLI: --speaker_idx "Dionisio Schuyler"
 TTS_SPEAKER = "Dionisio Schuyler"
+TTS_FAST_MODE = (os.environ.get("TTS_FAST_MODE", "1").strip().lower() in ("1", "true", "yes", "on"))
+TTS_SPEED = float(os.environ.get("TTS_SPEED", "1.20"))
+TTS_MAX_CHARS = int(os.environ.get("TTS_MAX_CHARS", "240"))
 
 # =========================
 # SESSIONS D'ENTRETIEN EN MÉMOIRE
@@ -82,6 +86,52 @@ def sanitize_text_for_tts(text: str) -> str:
     while "  " in t:
         t = t.replace("  ", " ")
     return t or text
+
+
+def _compact_tts_text(text: str) -> str:
+    """Version plus courte pour accélérer le TTS (sans changer le texte affiché)."""
+    t = sanitize_text_for_tts(text or "")
+    if not t:
+        return t
+    if not TTS_FAST_MODE:
+        return t
+    if len(t) <= TTS_MAX_CHARS:
+        return t
+
+    # Garder 1-2 phrases max, jusqu'au seuil.
+    parts = [p.strip() for p in re.split(r"(?<=[\.\!\?])\s+", t) if p and p.strip()]
+    out = []
+    total = 0
+    for p in parts:
+        add = len(p) + (1 if out else 0)
+        if total + add > TTS_MAX_CHARS:
+            break
+        out.append(p)
+        total += add
+        if len(out) >= 2:
+            break
+    if out:
+        return " ".join(out)
+    return t[:TTS_MAX_CHARS].rstrip(" ,;:.") + "."
+
+
+def _tts_to_file_fast(text: str, file_path: str) -> None:
+    """
+    Wrapper TTS avec mode rapide:
+    - texte audio compacté
+    - vitesse configurable
+    - fallback propre si `speed` n'est pas supporté par la version TTS installée.
+    """
+    text_tts = _compact_tts_text(text)
+    kwargs = {"text": text_tts, "file_path": file_path}
+    if TTS_SPEAKER:
+        kwargs["speaker"] = TTS_SPEAKER
+        kwargs["language"] = "fr"
+    try:
+        tts.tts_to_file(**kwargs, speed=TTS_SPEED)
+    except TypeError:
+        # Certaines versions n'acceptent pas speed.
+        tts.tts_to_file(**kwargs)
 
 
 def remove_bonjour_prefix(text: str) -> str:
@@ -238,11 +288,7 @@ def start_interview(candidate_uuid):
                 
                 # Générer l'audio de l'introduction
                 intro_audio_file = os.path.join(session_dir, f"intro_{int(time.time())}.wav")
-                intro_tts = sanitize_text_for_tts(intro)
-                if TTS_SPEAKER:
-                    tts.tts_to_file(text=intro_tts, file_path=intro_audio_file, speaker=TTS_SPEAKER, language="fr")
-                else:
-                    tts.tts_to_file(text=intro_tts, file_path=intro_audio_file)
+                _tts_to_file_fast(intro, intro_audio_file)
                 
                 interview_sessions[session_id]["status"] = "intro_ready"
                 interview_sessions[session_id]["intro_text"] = intro
@@ -258,11 +304,7 @@ def start_interview(candidate_uuid):
                 # Générer l'audio de la question
                 question_id = uuid.uuid4().hex[:8]
                 question_audio_file = os.path.join(session_dir, f"question_{question_id}.wav")
-                question_tts = sanitize_text_for_tts(question)
-                if TTS_SPEAKER:
-                    tts.tts_to_file(text=question_tts, file_path=question_audio_file, speaker=TTS_SPEAKER, language="fr")
-                else:
-                    tts.tts_to_file(text=question_tts, file_path=question_audio_file)
+                _tts_to_file_fast(question, question_audio_file)
                 
                 interview_sessions[session_id]["current_question_text"] = question
                 interview_sessions[session_id]["current_question_audio"] = os.path.basename(question_audio_file)
@@ -655,11 +697,7 @@ def record_response(session_id):
                                     try:
                                         qid = uuid.uuid4().hex[:8]
                                         q_audio = os.path.join(session_dir, f"question_{qid}.wav")
-                                        text_tts = sanitize_text_for_tts(next_question)
-                                        if TTS_SPEAKER:
-                                            tts.tts_to_file(text=text_tts, file_path=q_audio, speaker=TTS_SPEAKER, language="fr")
-                                        else:
-                                            tts.tts_to_file(text=text_tts, file_path=q_audio)
+                                        _tts_to_file_fast(next_question, q_audio)
                                         if session_id in interview_sessions and interview_sessions[session_id].get("status") == "question_ready":
                                             interview_sessions[session_id]["current_question_audio"] = os.path.basename(q_audio)
                                             print(f"🔊 TTS prêt pour question {question_number + 1}")
@@ -695,11 +733,7 @@ def record_response(session_id):
                                 try:
                                     question_id = uuid.uuid4().hex[:8]
                                     question_audio_file = os.path.join(session_dir, f"question_{question_id}.wav")
-                                    text_tts = sanitize_text_for_tts(repeat_question)
-                                    if TTS_SPEAKER:
-                                        tts.tts_to_file(text=text_tts, file_path=question_audio_file, speaker=TTS_SPEAKER, language="fr")
-                                    else:
-                                        tts.tts_to_file(text=text_tts, file_path=question_audio_file)
+                                    _tts_to_file_fast(repeat_question, question_audio_file)
                                     if session_id in interview_sessions:
                                         interview_sessions[session_id]["current_question_audio"] = os.path.basename(question_audio_file)
                                 except Exception as e_tts:

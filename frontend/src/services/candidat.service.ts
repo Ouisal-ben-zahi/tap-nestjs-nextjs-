@@ -149,6 +149,54 @@ export const candidatService = {
       .post('/dashboard/candidat/portfolio-long/run', { lang })
       .then((r) => r.data as { success: boolean; scoring?: any; generation?: { success: boolean; message?: string } }),
 
+  startInterviewSimulation: () =>
+    api
+      .post('/dashboard/candidat/interview/start')
+      .then((r) => r.data as {
+        success: boolean;
+        session_id?: string;
+        message?: string;
+        status_url?: string;
+        events_url?: string;
+        audio_url?: string;
+        evaluation_url?: string;
+      }),
+
+  getInterviewSimulationStatus: (sessionId: string) =>
+    api
+      .get(`/dashboard/candidat/interview/${encodeURIComponent(sessionId)}/status`)
+      .then((r) => r.data as {
+        session_id: string;
+        status: string;
+        current_question: number;
+        total_questions: number;
+        current_question_text: string;
+        intro_text: string;
+        error?: string | null;
+      }),
+
+  getInterviewSimulationAudio: (sessionId: string) =>
+    api
+      .get(`/dashboard/candidat/interview/${encodeURIComponent(sessionId)}/audio`)
+      .then((r) => r.data as {
+        session_id: string;
+        audio_files: Array<{
+          type: string;
+          filename: string;
+          text?: string;
+          question_number?: number;
+          file_url?: string;
+        }>;
+      }),
+
+  sendInterviewSimulationAudio: (sessionId: string, file: File) => {
+    const formData = new FormData();
+    formData.append("audio", file);
+    return api
+      .post(`/dashboard/candidat/interview/${encodeURIComponent(sessionId)}/record`, formData)
+      .then((r) => r.data);
+  },
+
   deleteCvFile: (path: string) =>
     api.delete('/dashboard/candidat/cv-file', { params: { path } }).then((r) => r.data),
 
