@@ -1,13 +1,13 @@
 "use client";
 
-import { useEffect } from "react";
+import { useEffect, useState } from "react";
 import { useRouter } from "next/navigation";
 import { useAuth } from "@/hooks/use-auth";
-import { useCandidatStats, useCandidatMatchingJobs } from "@/hooks/use-candidat";
+import { useCandidatStats, useCandidatMatchingJobs, useCandidatPublicJobs } from "@/hooks/use-candidat";
 import EmptyState from "@/components/ui/EmptyState";
 import ErrorState from "@/components/ui/ErrorState";
 import { Skeleton } from "@/components/ui/Skeleton";
-import { Users, MapPin, Briefcase, Sparkles } from "lucide-react";
+import { Users, MapPin, Briefcase, Sparkles, SlidersHorizontal } from "lucide-react";
 import { formatRelative } from "@/lib/utils";
 import { useDashboardTheme } from "@/hooks/use-dashboard-theme";
 
@@ -15,8 +15,10 @@ export default function MatchingPage() {
   const router = useRouter();
   const { isCandidat, isHydrated } = useAuth();
   const enabled = Boolean(isCandidat && isHydrated);
+  const [showAllOffers, setShowAllOffers] = useState(false);
   const statsQuery = useCandidatStats(enabled);
   const jobsQuery = useCandidatMatchingJobs(enabled);
+  const publicJobsQuery = useCandidatPublicJobs(enabled && showAllOffers);
   const theme = useDashboardTheme();
   const isLight = theme === "light";
 
@@ -116,40 +118,63 @@ export default function MatchingPage() {
             <div className="flex items-center gap-3">
               <div className="w-1 h-5 rounded-full bg-emerald-500" />
               <h2 className={`text-[13px] uppercase tracking-[2px] font-semibold ${isLight ? "text-black" : "text-white/50"}`}>
-                Offres recommandées par l'IA
+                {showAllOffers ? "Toutes les offres" : "Offres recommandées par l'IA"}
               </h2>
             </div>
-            {jobsQuery.data?.jobs?.length ? (
-              <span className="text-[11px] text-emerald-500/70 font-medium">
-                {jobsQuery.data.jobs.length} offre{jobsQuery.data.jobs.length > 1 ? "s" : ""} matchée{jobsQuery.data.jobs.length > 1 ? "s" : ""}
-              </span>
-            ) : null}
+            <div className="flex items-center gap-3">
+              <button
+                type="button"
+                onClick={() => setShowAllOffers((v) => !v)}
+                className={`inline-flex items-center gap-1.5 px-2.5 py-1.5 rounded-lg border text-[11px] transition ${
+                  showAllOffers
+                    ? "border-emerald-500/40 bg-emerald-500/10 text-emerald-400"
+                    : isLight
+                      ? "border-black/15 text-black/60 hover:bg-black/5"
+                      : "border-white/[0.12] text-white/50 hover:bg-white/[0.05]"
+                }`}
+                title={showAllOffers ? "Afficher le matching IA" : "Afficher toutes les offres"}
+              >
+                <SlidersHorizontal size={13} />
+                {showAllOffers ? "Toutes" : "Matching"}
+              </button>
+              {(showAllOffers ? publicJobsQuery.data?.jobs?.length : jobsQuery.data?.jobs?.length) ? (
+                <span className="text-[11px] text-emerald-500/70 font-medium">
+                  {showAllOffers
+                    ? `${publicJobsQuery.data?.jobs?.length ?? 0} offre${(publicJobsQuery.data?.jobs?.length ?? 0) > 1 ? "s" : ""}`
+                    : `${jobsQuery.data?.jobs?.length ?? 0} offre${(jobsQuery.data?.jobs?.length ?? 0) > 1 ? "s" : ""} matchée${(jobsQuery.data?.jobs?.length ?? 0) > 1 ? "s" : ""}`}
+                </span>
+              ) : null}
+            </div>
           </div>
 
-          {jobsQuery.isLoading ? (
+          {(showAllOffers ? publicJobsQuery.isLoading : jobsQuery.isLoading) ? (
             <div className="space-y-3">
               {Array.from({ length: 4 }).map((_, i) => (
                 <Skeleton key={i} className="h-20 w-full" />
               ))}
             </div>
-          ) : jobsQuery.isError ? (
+          ) : (showAllOffers ? publicJobsQuery.isError : jobsQuery.isError) ? (
             <ErrorState
-              onRetry={() => jobsQuery.refetch()}
+              onRetry={() => (showAllOffers ? publicJobsQuery.refetch() : jobsQuery.refetch())}
               message={String(
-                (jobsQuery.error as any)?.response?.data?.message ??
-                  (jobsQuery.error as any)?.message ??
+                ((showAllOffers ? publicJobsQuery.error : jobsQuery.error) as any)?.response?.data?.message ??
+                  ((showAllOffers ? publicJobsQuery.error : jobsQuery.error) as any)?.message ??
                   "Une erreur est survenue",
               )}
             />
-          ) : !jobsQuery.data?.jobs?.length ? (
+          ) : !(showAllOffers ? publicJobsQuery.data?.jobs?.length : jobsQuery.data?.jobs?.length) ? (
             <EmptyState
               icon={<Sparkles className="w-10 h-10" />}
-              title="Aucune offre matchée pour l'instant"
-              description="L'IA n'a pas encore trouvé d'offres suffisamment proches de votre profil. Revenez bientôt."
+              title={showAllOffers ? "Aucune offre pour l'instant" : "Aucune offre matchée pour l'instant"}
+              description={
+                showAllOffers
+                  ? "Aucune offre active n'est disponible pour le moment."
+                  : "L'IA n'a pas encore trouvé d'offres suffisamment proches de votre profil. Revenez bientôt."
+              }
             />
           ) : (
             <div className="space-y-3">
-              {jobsQuery.data.jobs.map((job) => {
+              {(showAllOffers ? publicJobsQuery.data?.jobs ?? [] : jobsQuery.data?.jobs ?? []).map((job) => {
                 const localisation =
                   typeof job.location_type === "string" && job.location_type.trim()
                     ? job.location_type
@@ -200,10 +225,11 @@ export default function MatchingPage() {
                       </div>
 
                       <div className="shrink-0 flex flex-col items-end gap-2">
-                        {/* Score IA */}
-                        <span className={`text-[12px] font-semibold px-2.5 py-1 rounded-full border ${scoreColor}`}>
-                          {scorePct}% match
-                        </span>
+                        {!showAllOffers && (
+                          <span className={`text-[12px] font-semibold px-2.5 py-1 rounded-full border ${scoreColor}`}>
+                            {scorePct}% match
+                          </span>
+                        )}
                         <span className={`text-[11px] ${isLight ? "text-black/50" : "text-white/30"}`}>
                           {job.created_at && formatRelative(job.created_at)}
                         </span>

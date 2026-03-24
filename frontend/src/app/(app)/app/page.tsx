@@ -3,7 +3,7 @@
 import { useEffect } from "react";
 import { useRouter } from "next/navigation";
 import { useAuth } from "@/hooks/use-auth";
-import { useCandidatStats } from "@/hooks/use-candidat";
+import { useCandidatProfile, useCandidatStats } from "@/hooks/use-candidat";
 import CandidatDashboard from "@/components/app/dashboard/CandidatDashboard";
 import RecruteurDashboard from "@/components/app/dashboard/RecruteurDashboard";
 import Link from "next/link";
@@ -55,12 +55,21 @@ export default function DashboardPage() {
   const isRecruteur = user?.role === "recruteur";
   const isCandidat = user?.role === "candidat";
   const statsQuery = useCandidatStats();
+  const recruiterProfileQuery = useCandidatProfile(isRecruteur);
   const features = isRecruteur ? recruteurFeatures : candidatFeatures;
   const stats = statsQuery.data;
   const candidateFullName = isCandidat
     ? [stats?.firstName, stats?.lastName].filter((v) => Boolean(v && String(v).trim())).join(" ")
     : "";
-  const welcomeName = candidateFullName || user?.email?.split("@")[0] || "";
+  const recruiterFullName = isRecruteur
+    ? [recruiterProfileQuery.data?.prenom, recruiterProfileQuery.data?.nom]
+        .filter((v) => Boolean(v && String(v).trim()))
+        .join(" ")
+    : "";
+  const welcomeName =
+    (isRecruteur ? recruiterFullName : candidateFullName) ||
+    user?.email?.split("@")[0] ||
+    "";
   const theme = useDashboardTheme();
   const isLight = theme === "light";
 
