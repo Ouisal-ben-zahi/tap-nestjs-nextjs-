@@ -25,15 +25,15 @@ def _portfolio_pdf_exists(storage, prefix: str, candidate_uuid: str, version: st
   """
   if version == "one-page":
     names = [
-      f"{prefix}portfolio_{candidate_uuid}_one-page.pdf",
-      f"{prefix}portfolio_{candidate_uuid}_one-page_fr.pdf",
-      f"{prefix}portfolio_{candidate_uuid}_one-page_en.pdf",
+      f"{prefix}portfolio_TAP_one-page.pdf",
+      f"{prefix}portfolio_TAP_one-page_fr.pdf",
+      f"{prefix}portfolio_TAP_one-page_en.pdf",
     ]
   else:
     names = [
-      f"{prefix}portfolio_{candidate_uuid}.pdf",
-      f"{prefix}portfolio_{candidate_uuid}_fr.pdf",
-      f"{prefix}portfolio_{candidate_uuid}_en.pdf",
+      f"{prefix}portfolio_TAP.pdf",
+      f"{prefix}portfolio_TAP_fr.pdf",
+      f"{prefix}portfolio_TAP_en.pdf",
     ]
   for object_name in names:
     ok, _, _ = storage.download_file(object_name)
@@ -53,16 +53,16 @@ def _talentcard_pdf_exists(storage, prefix: str, candidate_uuid: str, id_agent: 
   if candidate_uuid:
     names.extend(
       [
-        f"{prefix}talentcard_html_{candidate_uuid}.pdf",
-        f"{prefix}talentcard_html_{candidate_uuid}_en.pdf",
-        f"{prefix}talentcard_{candidate_uuid}.pdf",
-        f"{prefix}talentcard_{candidate_uuid}_fr.pdf",
-        f"{prefix}talentcard_{candidate_uuid}_en.pdf",
+        f"{prefix}talentcard_html_TAP.pdf",
+        f"{prefix}talentcard_html_TAP_en.pdf",
+        f"{prefix}talentcard_TAP.pdf",
+        f"{prefix}talentcard_TAP_fr.pdf",
+        f"{prefix}talentcard_TAP_en.pdf",
       ]
     )
   # Fallback éventuel basé sur id_agent pour compat
   if id_agent:
-    names.append(f"{prefix}talentcard_html_{id_agent}.pdf")
+    names.append(f"{prefix}talentcard_html_TAP.pdf")
   for object_name in names:
     ok, _, _ = storage.download_file(object_name)
     if ok:

@@ -725,9 +725,9 @@ def save_portfolio_html(
 
         minio_prefix = get_candidate_minio_prefix(candidate_id)
         if lang and lang in ("fr", "en"):
-            object_name = f"{minio_prefix}portfolio_{candidate_uuid}_{version}_{lang}.html"
+            object_name = f"{minio_prefix}portfolio_TAP_{version}_{lang}.html"
         else:
-            object_name = f"{minio_prefix}portfolio_{candidate_uuid}_{version}.html"
+            object_name = f"{minio_prefix}portfolio_TAP_{version}.html"
 
         html_bytes = html_content.encode("utf-8")
 

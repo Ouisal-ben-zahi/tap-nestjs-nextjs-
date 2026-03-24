@@ -2296,7 +2296,7 @@ def convert_html_to_pdf(
             
             print(f"✅ PDF généré: {len(pdf_bytes)} bytes")
             
-            # Sauvegarder dans Supabase Storage (avec suffixe langue si fourni: portfolio_{uuid}_one-page_fr.pdf)
+            # Sauvegarder dans Supabase Storage (avec suffixe langue si fourni: portfolio_TAP_one-page_fr.pdf)
             from candidate_minio_path import get_candidate_minio_prefix
 
             storage = get_supabase_storage()
@@ -2306,9 +2306,9 @@ def convert_html_to_pdf(
             minio_prefix = get_candidate_minio_prefix(candidate_id)
             lang_suffix = f"_{lang}" if lang and lang in ("fr", "en") else ""
             if pdf_page_format == "one-page":
-                object_name = f"{minio_prefix}portfolio_{candidate_uuid}_one-page{lang_suffix}.pdf"
+                object_name = f"{minio_prefix}portfolio_TAP_one-page{lang_suffix}.pdf"
             else:
-                object_name = f"{minio_prefix}portfolio_{candidate_uuid}{lang_suffix}.pdf"
+                object_name = f"{minio_prefix}portfolio_TAP{lang_suffix}.pdf"
 
             # Supprimer l'ancien PDF pour que la prévisualisation affiche bien le nouveau après régénération
             try:

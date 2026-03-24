@@ -38,7 +38,7 @@ def _load_talentcard_json(candidate_id: int) -> Optional[Dict[str, Any]]:
         return None
 
     prefix = get_candidate_minio_prefix(int(candidate_id))
-    object_name = f"{prefix}talentcard_{candidate_uuid}.json"
+    object_name = f"{prefix}talentcard_TAP.json"
 
     ok, file_bytes, _err = storage.download_file(object_name)
     if not ok or not file_bytes:

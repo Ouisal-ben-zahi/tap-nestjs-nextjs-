@@ -97,9 +97,19 @@ def _load_talentcard_from_db(candidate_id: int) -> Optional[Dict[str, Any]]:
             storage = get_supabase_storage()
             if storage and storage.client:
                 prefix = get_candidate_minio_prefix(candidate_id) + "talentcard_"
+                folder = prefix.rsplit("talentcard_", 1)[0].rstrip("/")
+                existing_names = set()
+                try:
+                    listed = storage.list_files(folder)
+                    for item in listed:
+                        name = item.get("name", "") if isinstance(item, dict) else str(item)
+                        if name:
+                            existing_names.add(name)
+                except Exception as e_list:
+                    print(f"⚠️  Listage Supabase Storage échoué pour Talent Card: {e_list}")
 
-                # Essayer de retrouver candidate_uuid via fichiers_versions pour nommer talentcard_{uuid}.json
-                tc_object_name = None
+                # Priorité au nom standard actuel, puis anciens noms
+                candidate_names = ["talentcard_TAP.json"]
                 try:
                     fv_resp = (
                         supabase_db.table("fichiers_versions")
@@ -112,23 +122,23 @@ def _load_talentcard_from_db(candidate_id: int) -> Optional[Dict[str, Any]]:
                     if fv_resp.data:
                         cand_uuid = fv_resp.data[0].get("candidate_uuid")
                         if cand_uuid:
-                            tc_object_name = f"{prefix}{cand_uuid}.json"
+                            candidate_names.append(f"talentcard_{cand_uuid}.json")
                 except Exception as e_fv:
                     print(f"⚠️  Lookup fichiers_versions pour talentcard JSON (Supabase) échoué: {e_fv}")
+                candidate_names.append("talentcard_latest.json")
 
-                # Fallback: nom générique latest.json
-                if not tc_object_name:
-                    tc_object_name = f"{prefix}latest.json"
-
-                success, file_bytes, error = storage.download_file(tc_object_name)
-                if success and file_bytes:
-                    tc_json = json.loads(file_bytes.decode("utf-8"))
-                    if isinstance(tc_json, dict):
-                        merged = dict(talentcard_data)
-                        # Le JSON A1 contient notamment skills, experience, realisations, langues_parlees...
-                        for k, v in tc_json.items():
-                            merged[k] = v
-                        talentcard_data = merged
+                selected_name = next((n for n in candidate_names if n in existing_names), None)
+                if selected_name:
+                    tc_object_name = f"{folder}/{selected_name}"
+                    success, file_bytes, _error = storage.download_file(tc_object_name)
+                    if success and file_bytes:
+                        tc_json = json.loads(file_bytes.decode("utf-8"))
+                        if isinstance(tc_json, dict):
+                            merged = dict(talentcard_data)
+                            # Le JSON A1 contient notamment skills, experience, realisations, langues_parlees...
+                            for k, v in tc_json.items():
+                                merged[k] = v
+                            talentcard_data = merged
         except Exception as e_storage:
             print(f"⚠️  Impossible de compléter la Talent Card depuis Supabase Storage pour candidat {candidate_id}: {e_storage}")
 
@@ -434,25 +444,21 @@ def save_portfolio_html(
 
         minio_prefix = get_candidate_minio_prefix(candidate_id)
         if lang and lang in ("fr", "en"):
-            object_name = f"{minio_prefix}portfolio_{candidate_uuid}_{version}_{lang}.html"
+            object_name = f"{minio_prefix}portfolio_TAP_{version}_{lang}.html"
         else:
-            object_name = f"{minio_prefix}portfolio_{candidate_uuid}_{version}.html"
-        
-        # Convertir en bytes
-        html_bytes = html_content.encode('utf-8')
-        
-        success, url, error = storage.upload_file(
+            object_name = f"{minio_prefix}portfolio_TAP_{version}.html"
+
+        html_bytes = html_content.encode("utf-8")
+        success, url, err = storage.upload_file(
             html_bytes,
             object_name,
-            content_type="text/html",
+            content_type="text/html; charset=utf-8",
         )
-        
         if success:
-            print(f"✅ Portfolio HTML sauvegardé dans Supabase Storage: {object_name}")
+            print(f"✅ HTML sauvegardé dans Supabase Storage: {object_name}")
             return True, url, None
-        else:
-            return False, None, f"Erreur upload HTML vers Supabase Storage: {error}"
-            
+        return False, None, err or "Erreur upload HTML vers Supabase Storage"
+
     except Exception as e:
         error_msg = f"Erreur lors de la sauvegarde du portfolio HTML (Supabase): {str(e)}"
         print(f"❌ {error_msg}")
@@ -624,9 +630,9 @@ def convert_talent_card_html_to_pdf(
             # FR = nom historique (sans suffixe) pour compatibilité, EN = suffixe _en
             _lang = (lang or "fr").lower()
             if _lang == "en":
-                object_name = f"{prefix}talentcard_html_{candidate_uuid}_en.pdf"
+                object_name = f"{prefix}talentcard_html_TAP_en.pdf"
             else:
-                object_name = f"{prefix}talentcard_html_{candidate_uuid}.pdf"
+                object_name = f"{prefix}talentcard_html_TAP.pdf"
 
             storage = get_supabase_storage()
             if not storage or not storage.client:

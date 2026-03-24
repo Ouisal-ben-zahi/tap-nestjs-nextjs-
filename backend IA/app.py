@@ -150,7 +150,7 @@ def _load_talentcard_from_db(db_candidate_id):
         storage = get_supabase_storage()
         if storage and storage.client:
             prefix = get_candidate_minio_prefix(db_candidate_id) + "talentcard_"
-            # Nom déterministe : talentcard_{candidate_uuid}.json si present dans la table fichiers_versions
+            # Nom déterministe : talentcard_TAP.json si present dans la table fichiers_versions
             talentcard_object = None
             try:
                 # Essayer de retrouver le dernier talentcard JSON via fichiers_versions dans Supabase
@@ -570,8 +570,8 @@ def _delete_old_cv_files(db_candidate_id: int, old_candidate_uuid: str | None, m
     puis réinitialise les URLs dans fichiers_versions pour invalider la vérification d'idempotence.
 
     Cible storage :
-      - CV original brut    : cv_cv_*.pdf  (tous les fichiers qui matchent le pattern)
-      - CV corrigé FR/EN    : cv_{uuid}.pdf / cv_{uuid}_en.pdf
+      - CV original brut    : CV_importer.pdf
+      - CV corrigé FR/EN    : CV_TAP_fr.pdf / CV_TAP_en.pdf
       - HTML corrigé FR/EN  : cv_{uuid}.html / cv_{uuid}_en.html
       - JSON corrigé FR/EN  : corrected_data_{uuid}.json / corrected_data_{uuid}_en.json
     Non supprimé ici : image.png (profil), talentcard, portfolio — ils sont régénérés séparément.
@@ -594,21 +594,21 @@ def _delete_old_cv_files(db_candidate_id: int, old_candidate_uuid: str | None, m
         if old_candidate_uuid:
             _uuid = old_candidate_uuid
             files_to_delete += [
-                f"{minio_prefix}cv_{_uuid}.pdf",
-                f"{minio_prefix}cv_{_uuid}_en.pdf",
+                f"{minio_prefix}CV_TAP_fr.pdf",
+                f"{minio_prefix}CV_TAP_en.pdf",
                 f"{minio_prefix}cv_{_uuid}.html",
                 f"{minio_prefix}cv_{_uuid}_en.html",
                 f"{minio_prefix}corrected_data_{_uuid}.json",
                 f"{minio_prefix}corrected_data_{_uuid}_en.json",
             ]
+        else:
+            files_to_delete += [
+                f"{minio_prefix}CV_TAP_fr.pdf",
+                f"{minio_prefix}CV_TAP_en.pdf",
+            ]
 
-        # 2) CV originaux bruts (pattern cv_cv_*.pdf) — on liste le dossier pour trouver tous
-        folder = minio_prefix.rstrip("/")
-        listed = storage.list_files(folder)
-        for item in listed:
-            fname = item.get("name", "") if isinstance(item, dict) else str(item)
-            if fname.startswith("cv_cv_") and fname.endswith(".pdf"):
-                files_to_delete.append(f"{minio_prefix}{fname}")
+        # 2) CV original brut (nom unique)
+        files_to_delete.append(f"{minio_prefix}CV_importer.pdf")
 
         # Dédoublonner
         files_to_delete = list(dict.fromkeys(files_to_delete))
@@ -1032,8 +1032,8 @@ def _generate_corrected_cv_from_talentcard(
         import shutil
 
         tmp_dir = tempfile.mkdtemp(prefix="corrected_cv_")
-        out_html_path = os.path.join(tmp_dir, f"cv_{candidate_uuid}.html")
-        out_json_path = os.path.join(tmp_dir, f"corrected_data_{candidate_uuid}.json")
+        out_html_path = os.path.join(tmp_dir, f"CV_TAP.html")
+        out_json_path = os.path.join(tmp_dir, f"corrected_data_TAP.json")
 
         # 1) Génération CV corrigé en FR
         result_agent2_fr = generate_corrected_cv_agent2(
@@ -1086,7 +1086,7 @@ def _generate_corrected_cv_from_talentcard(
             if os.path.exists(out_html_path):
                 with open(out_html_path, "rb") as f:
                     html_bytes = f.read()
-                object_name = f"{minio_prefix}cv_{candidate_uuid}.html"
+                object_name = f"{minio_prefix}CV_TAP.html"
                 success, url, _ = _upload_to_minio_with_logging(
                     None, html_bytes, object_name, content_type="text/html; charset=utf-8"
                 )
@@ -1096,7 +1096,7 @@ def _generate_corrected_cv_from_talentcard(
             if os.path.exists(out_json_path):
                 with open(out_json_path, "rb") as f:
                     json_bytes = f.read()
-                object_name = f"{minio_prefix}corrected_data_{candidate_uuid}.json"
+                object_name = f"{minio_prefix}corrected_data_TAP.json"
                 success, url, _ = _upload_to_minio_with_logging(
                     None, json_bytes, object_name, content_type="application/json"
                 )
@@ -1105,7 +1105,7 @@ def _generate_corrected_cv_from_talentcard(
 
             if pdf_converted and pdf_bytes:
                 # PDF FR (par défaut, contenu FR)
-                object_name_fr = f"{minio_prefix}cv_{candidate_uuid}.pdf"
+                object_name_fr = f"{minio_prefix}CV_TAP_fr.pdf"
                 success_fr, url_fr, _ = _upload_to_minio_with_logging(
                     None, pdf_bytes, object_name_fr, content_type="application/pdf"
                 )
@@ -1119,8 +1119,8 @@ def _generate_corrected_cv_from_talentcard(
                 # On regénère dans un nouveau dossier temporaire pour ne pas écraser les fichiers FR
                 tmp_dir_en = tempfile.mkdtemp(prefix="corrected_cv_en_")
                 try:
-                    out_html_en = os.path.join(tmp_dir_en, f"cv_{candidate_uuid}_en.html")
-                    out_json_en = os.path.join(tmp_dir_en, f"corrected_data_{candidate_uuid}_en.json")
+                    out_html_en = os.path.join(tmp_dir_en, f"CV_TAP_en.html")
+                    out_json_en = os.path.join(tmp_dir_en, f"corrected_data_TAP_en.json")
 
                     result_agent2_en = generate_corrected_cv_agent2(
                         candidate=talentcard_data,
@@ -1139,7 +1139,7 @@ def _generate_corrected_cv_from_talentcard(
                     if os.path.exists(out_json_en):
                         with open(out_json_en, "rb") as f:
                             json_bytes_en = f.read()
-                        object_name_json_en = f"{minio_prefix}corrected_data_{candidate_uuid}_en.json"
+                        object_name_json_en = f"{minio_prefix}corrected_data_TAP_en.json"
                         _upload_to_minio_with_logging(
                             None, json_bytes_en, object_name_json_en, content_type="application/json"
                         )
@@ -1162,7 +1162,7 @@ def _generate_corrected_cv_from_talentcard(
                                 pass
 
                     if pdf_en_converted and pdf_bytes_en:
-                        object_name_en = f"{minio_prefix}cv_{candidate_uuid}_en.pdf"
+                        object_name_en = f"{minio_prefix}CV_TAP_en.pdf"
                         success_en, url_en, _ = _upload_to_minio_with_logging(
                             None, pdf_bytes_en, object_name_en, content_type="application/pdf"
                         )
@@ -1187,8 +1187,8 @@ def _generate_corrected_cv_from_talentcard(
         if supabase_db is not None:
             try:
                 minio_prefix = get_candidate_minio_prefix(db_candidate_id)
-                object_name_pdf = f"{minio_prefix}cv_{candidate_uuid}.pdf"
-                object_name_json = f"{minio_prefix}corrected_data_{candidate_uuid}.json"
+                object_name_pdf = f"{minio_prefix}CV_TAP_fr.pdf"
+                object_name_json = f"{minio_prefix}corrected_data_TAP.json"
 
                 fv_cv_update = {
                     "candidate_uuid": candidate_uuid,
@@ -1478,8 +1478,7 @@ def process_candidate():
         _delete_old_cv_files(db_candidate_id, candidate_uuid, minio_prefix)
 
     if cv_content and cv_file:
-        cv_filename = cv_file.filename or 'cv.pdf'
-        cv_object_name = f"{minio_prefix}cv_{cv_filename}"
+        cv_object_name = f"{minio_prefix}CV_importer.pdf"
         success, url, _ = _upload_to_minio_with_logging(None, cv_content, cv_object_name)
         if success:
             minio_urls['cv_url'] = url
@@ -1569,7 +1568,7 @@ def process_candidate():
     talentcard_json_path = None
     try:
         talentcard_json_bytes = json.dumps(talentcard_data, ensure_ascii=False, indent=2).encode("utf-8")
-        talentcard_json_object = f"{minio_prefix}talentcard_{candidate_uuid}.json"
+        talentcard_json_object = f"{minio_prefix}talentcard_TAP.json"
         success_json, url_json, _ = _upload_to_minio_with_logging(
             None, talentcard_json_bytes, talentcard_json_object, content_type="application/json"
         )
@@ -1784,7 +1783,7 @@ def _download_corrected_cv_from_minio(
     """
     Télécharge le CV corrigé PDF directement depuis MinIO.
     Ne dépend plus d'aucun stockage local sur disque.
-    lang: "fr" -> cv_{uuid}.pdf, "en" -> cv_{uuid}_en.pdf
+    lang: "fr" -> CV_TAP_fr.pdf, "en" -> CV_TAP_en.pdf
     Retourne (pdf_bytes, file_name) ou (None, None) si introuvable.
     Dans le nouveau schéma, il n'y a plus de versionning explicite en base (fichiers_versions),
     donc version_number est ignoré et on prend simplement le dernier fichier correspondant.
@@ -1824,18 +1823,11 @@ def _download_corrected_cv_from_minio(
         except Exception as e:
             print(f"⚠️ _download_corrected_cv_from_minio: lecture fichiers_versions échouée: {e}")
 
-        # Si une langue spécifique est demandée, construire le chemin standard
+        # Si une langue spécifique est demandée, utiliser le nom standard unique
         if lang == "en":
-            # Version EN : cv_{uuid}_en.pdf
-            object_name_lang = f"{minio_prefix}cv_{candidate_uuid}_en.pdf"
-            # Priorité au chemin explicite EN
-            preferred = object_name_lang
-            candidates = [p for p in [preferred, object_name] if p]
+            candidates = [p for p in [f"{minio_prefix}CV_TAP_en.pdf", object_name] if p]
         else:
-            # Version FR : cv_{uuid}.pdf
-            object_name_lang = f"{minio_prefix}cv_{candidate_uuid}.pdf"
-            preferred = object_name_lang
-            candidates = [p for p in [preferred, object_name] if p]
+            candidates = [p for p in [f"{minio_prefix}CV_TAP_fr.pdf", object_name] if p]
 
         for obj_name in candidates:
             try:
@@ -1907,16 +1899,16 @@ def _get_portfolio_pdf_bytes(db_candidate_id: int, candidate_uuid: str, version:
         # 2) Construire les chemins standards de fallback
         if version == "one-page":
             candidates = [
-                f"{minio_prefix}portfolio_{candidate_uuid}_one-page.pdf",
-                f"{minio_prefix}portfolio_{candidate_uuid}_one-page_fr.pdf",
-                f"{minio_prefix}portfolio_{candidate_uuid}_one-page_en.pdf",
+                f"{minio_prefix}portfolio_TAP_one-page.pdf",
+                f"{minio_prefix}portfolio_TAP_one-page_fr.pdf",
+                f"{minio_prefix}portfolio_TAP_one-page_en.pdf",
             ]
             download_name = "portfolio_one_page.pdf"
         else:
             candidates = [
-                f"{minio_prefix}portfolio_{candidate_uuid}.pdf",
-                f"{minio_prefix}portfolio_{candidate_uuid}_fr.pdf",
-                f"{minio_prefix}portfolio_{candidate_uuid}_en.pdf",
+                f"{minio_prefix}portfolio_TAP.pdf",
+                f"{minio_prefix}portfolio_TAP_fr.pdf",
+                f"{minio_prefix}portfolio_TAP_en.pdf",
             ]
             download_name = "portfolio_long.pdf"
 
@@ -1945,15 +1937,19 @@ def recruit_landing(db_candidate_id):
     et l'option « Tout télécharger » (ZIP).
     """
     try:
-        from database.connection import DatabaseConnection
         from flask import Response
-        DatabaseConnection.initialize()
+        if supabase_db is None:
+            return "<h1>Erreur</h1><p>Base de données Supabase non configurée.</p>", 500
+
         db_id = int(db_candidate_id)
-        with DatabaseConnection.get_connection() as db:
-            cursor = db.cursor(dictionary=True)
-            cursor.execute("SELECT candidate_uuid, nom, prenom FROM candidates WHERE id = %s", (db_id,))
-            row = cursor.fetchone()
-            cursor.close()
+        resp = (
+            supabase_db.table("candidates")
+            .select("candidate_uuid, nom, prenom")
+            .eq("id", db_id)
+            .limit(1)
+            .execute()
+        )
+        row = resp.data[0] if resp.data else None
         if not row or not row.get("candidate_uuid"):
             return "<h1>Candidat introuvable</h1><p>Ce lien n'est pas valide ou le profil n'est pas encore disponible.</p>", 404
         candidate_uuid = row["candidate_uuid"]
@@ -1989,88 +1985,109 @@ def recruit_landing(db_candidate_id):
   <meta name="viewport" content="width=device-width, initial-scale=1">
   <title>Profil candidat – CV & Portfolio</title>
   <style>
+    :root {{
+      --tap-red: #ca1b28;
+      --tap-red-hover: #e01f26;
+      --tap-bg: #050505;
+      --tap-surface: #111111;
+      --tap-text: #f0f0f0;
+      --tap-muted: rgba(240, 240, 240, 0.72);
+      --tap-border: rgba(255, 255, 255, 0.10);
+    }}
     * {{ box-sizing: border-box; }}
     html, body {{
       margin: 0;
-      padding: 7rem 3rem;
-      overflow: hidden;
+      min-height: 100%;
+      font-family: "DM Sans", -apple-system, BlinkMacSystemFont, "Segoe UI", Arial, sans-serif;
+      color: var(--tap-text);
+      overflow-x: hidden;
     }}
     body {{
-      font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Arial, sans-serif;
-      background: #0d0d0d url('{assets_base_url}Modif-2.jpeg') no-repeat center center;
+      position: relative;
+      padding: 15rem 20px;
+      background:
+        radial-gradient(circle at 20% 20%, rgba(202, 27, 40, 0.15), transparent 40%),
+        radial-gradient(circle at 80% 10%, rgba(202, 27, 40, 0.10), transparent 35%),
+        var(--tap-bg) url('{assets_base_url}Modif-2.jpeg') no-repeat center center;
       background-size: cover;
-      color: #fff;
-      text-align: center;
       display: flex;
-      flex-direction: column;
       align-items: center;
       justify-content: center;
+      text-align: center;
     }}
     body::before {{
       content: "";
-      position: absolute;
+      position: fixed;
       inset: 0;
-      background: url('{assets_base_url}Background-3.png') no-repeat center center;
+      background: linear-gradient(160deg, rgba(0, 0, 0, 0.72), rgba(0, 0, 0, 0.86)),
+                  url('{assets_base_url}Background-3.png') no-repeat center center;
       background-size: cover;
       pointer-events: none;
+      z-index: 0;
     }}
     .content {{
       position: relative;
       z-index: 1;
       width: 100%;
-      max-width: 900px;
-      display: flex;
-      flex-direction: column;
-      align-items: center;
+      max-width: 980px;
+      padding: clamp(24px, 4vw, 44px);
+      border: 1px solid var(--tap-border);
+      background: linear-gradient(180deg, rgba(255, 255, 255, 0.05), rgba(255, 255, 255, 0.02));
+      backdrop-filter: blur(18px) saturate(1.2);
+      -webkit-backdrop-filter: blur(18px) saturate(1.2);
+      box-shadow: 0 24px 60px rgba(0, 0, 0, 0.50);
+      border-radius: 28px;
     }}
     h1 {{
-      font-size: 72px;
-      font-weight: 500;
-      letter-spacing: 0.05em;
+      margin: 0;
+      font-size: clamp(28px, 5vw, 58px);
+      font-weight: 700;
+      letter-spacing: 0.06em;
       text-transform: uppercase;
-      margin: 0 0 24px 0;
-      color: #fff;
-      line-height: 1.1;
+      line-height: 1.05;
     }}
     .candidate-name {{
-      font-size: 42px;
+      margin: 10px 0 30px 0;
+      font-size: clamp(18px, 3vw, 30px);
+      font-weight: 500;
       letter-spacing: 0.08em;
       text-transform: uppercase;
-      color: #fff;
-      margin: 0 0 64px 0;
-      line-height: 1.2;
+      color: var(--tap-muted);
     }}
     .links {{
-      display: flex;
-      flex-direction: column;
-      gap: 3rem;
-    
+      display: grid;
+      gap: 14px;
+      width: 100%;
     }}
     a.btn {{
-      display: block;
-      padding: 15px 20px;
-      background: #ca1b28;
-      color: #fff;
+      display: inline-flex;
+      align-items: center;
+      justify-content: center;
+      width: 100%;
+      min-height: 52px;
+      padding: 14px 22px;
+      border-radius: 9999px;
       text-decoration: none;
-      border-radius: 0;
-      font-weight: bold;
-      font-size: 28px;
-      letter-spacing: 0.04em;
       text-transform: uppercase;
-      text-align: center;
-      border: none;
-      width: 100rem;
-      height: 4rem;
-      font-weight: 500;
+      letter-spacing: 1.3px;
+      font-weight: 700;
+      font-size: clamp(11px, 2vw, 13px);
+      color: #ffffff;
+      border: 1px solid rgba(255, 255, 255, 0.08);
+      background: linear-gradient(135deg, #e01f26 0%, #ca1b28 50%, #a01520 100%);
+      box-shadow: 0 4px 16px rgba(202, 27, 40, 0.35), inset 0 1px 0 rgba(255, 255, 255, 0.14);
+      transition: transform 0.2s ease, box-shadow 0.2s ease, background 0.2s ease;
     }}
-    a.btn:hover {{ opacity: 0.9; }}
+    a.btn:hover {{
+      background: linear-gradient(135deg, #ff2a33 0%, #e01f26 50%, #ca1b28 100%);
+      transform: translateY(-1px);
+      box-shadow: 0 8px 28px rgba(202, 27, 40, 0.45), 0 0 36px rgba(202, 27, 40, 0.18);
+    }}
     @media (max-width: 600px) {{
-      html, body {{ padding: 5rem 1rem; overflow-x: hidden; overflow-y: auto; }}
-      .content {{ max-width: 100%; }}
-      h1 {{ font-size: 28px; margin-bottom: 16px; }}
-      .candidate-name {{ font-size: 22px; margin-bottom: 2rem; }}
-      a.btn {{ width: 100%; max-width: 100%; font-size: 14px; padding: 22px 16px; min-height: 3rem; }}
-      .links {{ gap: 1.5rem; width: 100%; }}
+      body {{ padding: 20px 12px; }}
+      .content {{ border-radius: 20px; padding: 20px 14px; }}
+      .links {{ gap: 10px; }}
+      a.btn {{ min-height: 48px; letter-spacing: 1.1px; }}
     }}
   </style>
 </head>
@@ -2247,7 +2264,7 @@ def download_talentcard_json(candidate_id):
         if not storage or not storage.client:
             return jsonify({"error": "Stockage Supabase non configuré"}), 500
 
-        # On suppose un chemin standard talentcard_{uuid}.json sous le préfixe candidat
+        # On suppose un chemin standard talentcard_TAP.json sous le préfixe candidat
         try:
             db_id = int(candidate_id)
         except (TypeError, ValueError):
@@ -2270,13 +2287,13 @@ def download_talentcard_json(candidate_id):
             return jsonify({"error": "Candidat introuvable ou sans candidate_uuid"}), 404
 
         prefix = get_candidate_minio_prefix(db_id)
-        object_name = f"{prefix}talentcard_{candidate_uuid}.json"
+        object_name = f"{prefix}talentcard_TAP.json"
 
         success, file_bytes, error = storage.download_file(object_name)
         if not success or not file_bytes:
             return jsonify({"error": error or "Échec du téléchargement du JSON depuis Supabase Storage"}), 500
 
-        file_name = f"talentcard_{candidate_uuid}.json"
+        file_name = f"talentcard_TAP.json"
         return send_file(
             BytesIO(file_bytes),
             as_attachment=True,
@@ -2596,19 +2613,19 @@ def _get_talent_card_pdf_bytes(db_candidate_id: int, lang: str | None = None):
         if (lang or "").lower() == "en":
             candidates_names.extend(
                 [
-                    f"{prefix}talentcard_html_{candidate_uuid}_en.pdf",
-                    f"{prefix}talentcard_html_{candidate_uuid}.pdf",
+                    f"{prefix}talentcard_html_TAP_en.pdf",
+                    f"{prefix}talentcard_html_TAP.pdf",
                 ]
             )
         else:
             candidates_names.extend(
                 [
-                    f"{prefix}talentcard_html_{candidate_uuid}.pdf",
-                    f"{prefix}talentcard_html_{candidate_uuid}_en.pdf",
+                    f"{prefix}talentcard_html_TAP.pdf",
+                    f"{prefix}talentcard_html_TAP_en.pdf",
                 ]
             )
     if id_agent:
-        candidates_names.append(f"{prefix}talentcard_html_{id_agent}.pdf")
+        candidates_names.append(f"{prefix}talentcard_html_TAP.pdf")
 
     try:
         storage = get_supabase_storage()
@@ -2617,7 +2634,7 @@ def _get_talent_card_pdf_bytes(db_candidate_id: int, lang: str | None = None):
                 success, pdf_bytes, _ = storage.download_file(name)
                 if success and pdf_bytes:
                     # Nom de téléchargement basé sur candidate_uuid ou id_agent
-                    download_name = f"talentcard_{candidate_uuid or id_agent}.pdf"
+                    download_name = f"talentcard_TAP.pdf"
                     return pdf_bytes, download_name
             except Exception:
                 continue
@@ -2695,7 +2712,7 @@ def preview_corrected_cv_pdf(candidate_uuid):
     Query params:
         version: Numéro de version (optionnel, utilise la dernière si non fourni)
         db_candidate_id: ID du candidat en base de données (optionnel)
-        lang: "fr" ou "en" (défaut "fr") — correspond aux fichiers MinIO cv_{uuid}.pdf / cv_{uuid}_en.pdf
+        lang: "fr" ou "en" (défaut "fr") — correspond aux fichiers MinIO CV_TAP_fr.pdf / CV_TAP_en.pdf
         raw: si présent, retourne le PDF directement (utilisé par l'iframe)
     """
     if not request.args.get("raw"):
@@ -2775,7 +2792,7 @@ def download_corrected_cv(candidate_uuid):
         return send_file(
             BytesIO(pdf_bytes),
             as_attachment=True,
-            download_name=file_name or f"cv_{candidate_uuid}.pdf",
+            download_name=file_name or (f"CV_TAP_{lang}.pdf" if lang in ("fr", "en") else "CV_TAP_fr.pdf"),
             mimetype="application/pdf",
         )
     except Exception as e:
@@ -3010,7 +3027,7 @@ def enrich_corrected_cv(candidate_uuid):
             return jsonify({"error": "Stockage Supabase non configuré"}), 500
 
         minio_prefix = get_candidate_minio_prefix(db_candidate_id)
-        object_name_json = f"{minio_prefix}corrected_data_{candidate_uuid}.json"
+        object_name_json = f"{minio_prefix}corrected_data_TAP.json"
         ok, file_bytes, error = storage.download_file(object_name_json)
         if not ok or not file_bytes:
             return jsonify({"error": "Aucun CV corrigé trouvé pour ce candidat. Générez d'abord le CV corrigé."}), 404
@@ -3080,7 +3097,7 @@ def enrich_corrected_cv(candidate_uuid):
         import tempfile
 
         with tempfile.TemporaryDirectory(prefix="corrected_cv_enrich_") as tmp_dir:
-            out_html_path = os.path.join(tmp_dir, f"cv_{candidate_uuid}.html")
+            out_html_path = os.path.join(tmp_dir, f"CV_TAP.html")
             render_cv_html(html_template_path, cv_context, out_html_path)
 
             pdf_converted = False
@@ -3101,7 +3118,7 @@ def enrich_corrected_cv(candidate_uuid):
             try:
                 with open(out_html_path, "rb") as f:
                     html_bytes = f.read()
-                object_name_html = f"{minio_prefix}cv_{candidate_uuid}.html"
+                object_name_html = f"{minio_prefix}CV_TAP.html"
                 _upload_to_minio_with_logging(
                     None,
                     html_bytes,
@@ -3111,7 +3128,7 @@ def enrich_corrected_cv(candidate_uuid):
 
                 # Uploader le JSON modifié
                 json_bytes = json.dumps(corrected, ensure_ascii=False, indent=2).encode("utf-8")
-                object_name_json = f"{minio_prefix}corrected_data_{candidate_uuid}.json"
+                object_name_json = f"{minio_prefix}corrected_data_TAP.json"
                 _upload_to_minio_with_logging(
                     None,
                     json_bytes,
@@ -3121,7 +3138,7 @@ def enrich_corrected_cv(candidate_uuid):
 
                 # Uploader le PDF si disponible
                 if pdf_converted and pdf_bytes:
-                    object_name_pdf = f"{minio_prefix}cv_{candidate_uuid}.pdf"
+                    object_name_pdf = f"{minio_prefix}CV_TAP_fr.pdf"
                     _upload_to_minio_with_logging(
                         None,
                         pdf_bytes,
@@ -4331,7 +4348,7 @@ def generate_portfolio(candidate_uuid):
         # Upload éventuel du JSON vers le stockage (directement depuis l'objet Python)
         try:
             minio_prefix = get_candidate_minio_prefix(db_candidate_id)
-            object_name = f"{minio_prefix}portfolio_{candidate_uuid}.json"
+            object_name = f"{minio_prefix}portfolio_TAP.json"
             json_bytes = json.dumps(portfolio_data, ensure_ascii=False, indent=2).encode("utf-8")
             success, url, _ = _upload_to_minio_with_logging(
                 None,
@@ -4563,7 +4580,7 @@ def regenerate_portfolio(candidate_uuid):
         # Supprimer les anciennes versions du portfolio depuis le stockage avant régénération
         try:
             storage = get_supabase_storage()
-            prefix = get_candidate_minio_prefix(db_candidate_id) + f"portfolio_{candidate_uuid}"
+            prefix = get_candidate_minio_prefix(db_candidate_id) + f"portfolio_TAP"
             objects_to_remove = [
                 f"{prefix}.pdf",
                 f"{prefix}_one-page.pdf",
@@ -4614,7 +4631,7 @@ def regenerate_portfolio(candidate_uuid):
         try:
             import time
             timestamp = int(time.time())
-            object_name = f"{get_candidate_minio_prefix(db_candidate_id)}portfolio_{candidate_uuid}_v{timestamp}.json"
+            object_name = f"{get_candidate_minio_prefix(db_candidate_id)}portfolio_TAP_{timestamp}.json"
             json_bytes = json.dumps(portfolio_data, ensure_ascii=False, indent=2).encode("utf-8")
             success, url, _ = _upload_to_minio_with_logging(
                 None,
@@ -4976,11 +4993,11 @@ def get_portfolio_saved_html(candidate_uuid, version):
 
         storage = get_supabase_storage()
         minio_prefix = get_candidate_minio_prefix(db_candidate_id)
-        object_name_with_lang = f"{minio_prefix}portfolio_{candidate_uuid}_{version}_{lang}.html"
+        object_name_with_lang = f"{minio_prefix}portfolio_TAP_{version}_{lang}.html"
         # Variante autre langue (ex: on demande en → essayer fr)
         alt_lang = "fr" if lang == "en" else "en"
-        object_name_alt_lang = f"{minio_prefix}portfolio_{candidate_uuid}_{version}_{alt_lang}.html"
-        object_name_fallback = f"{minio_prefix}portfolio_{candidate_uuid}_{version}.html"
+        object_name_alt_lang = f"{minio_prefix}portfolio_TAP_{version}_{alt_lang}.html"
+        object_name_fallback = f"{minio_prefix}portfolio_TAP_{version}.html"
 
         # Redirection vers l'URL signée/public de stockage (utilisable par le navigateur)
         if request.args.get("redirect") == "1":
@@ -5516,9 +5533,9 @@ def get_portfolio_pdf_status(candidate_uuid):
 
         minio_prefix = get_candidate_minio_prefix(db_candidate_id)
         if version == "one-page":
-            object_name = f"{minio_prefix}portfolio_{candidate_uuid}_one-page{lang_suffix}.pdf"
+            object_name = f"{minio_prefix}portfolio_TAP_one-page{lang_suffix}.pdf"
         else:
-            object_name = f"{minio_prefix}portfolio_{candidate_uuid}{lang_suffix}.pdf"
+            object_name = f"{minio_prefix}portfolio_TAP{lang_suffix}.pdf"
 
         success, _, _ = storage.download_file(object_name)
         if success:
@@ -5572,23 +5589,23 @@ def get_portfolio_pdf(candidate_uuid):
         # quand le fichier existe avec un suffixe langue (_fr, _en) mais que l'URL n'a pas ?lang=
         if version == "one-page":
             candidates = [
-                f"{minio_prefix}portfolio_{candidate_uuid}_one-page.pdf",
-                f"{minio_prefix}portfolio_{candidate_uuid}_one-page_fr.pdf",
-                f"{minio_prefix}portfolio_{candidate_uuid}_one-page_en.pdf",
+                f"{minio_prefix}portfolio_TAP_one-page.pdf",
+                f"{minio_prefix}portfolio_TAP_one-page_fr.pdf",
+                f"{minio_prefix}portfolio_TAP_one-page_en.pdf",
             ]
         else:
             candidates = [
-                f"{minio_prefix}portfolio_{candidate_uuid}.pdf",
-                f"{minio_prefix}portfolio_{candidate_uuid}_fr.pdf",
-                f"{minio_prefix}portfolio_{candidate_uuid}_en.pdf",
+                f"{minio_prefix}portfolio_TAP.pdf",
+                f"{minio_prefix}portfolio_TAP_fr.pdf",
+                f"{minio_prefix}portfolio_TAP_en.pdf",
             ]
         # Si une langue est demandée, on met sa variante en premier
         if lang:
             lang_suffix = f"_{lang}"
             if version == "one-page":
-                preferred = f"{minio_prefix}portfolio_{candidate_uuid}_one-page{lang_suffix}.pdf"
+                preferred = f"{minio_prefix}portfolio_TAP_one-page{lang_suffix}.pdf"
             else:
-                preferred = f"{minio_prefix}portfolio_{candidate_uuid}{lang_suffix}.pdf"
+                preferred = f"{minio_prefix}portfolio_TAP{lang_suffix}.pdf"
             if preferred not in candidates:
                 candidates.insert(0, preferred)
             else:
@@ -5691,7 +5708,7 @@ def get_portfolio_pdf(candidate_uuid):
             }), 404
         
         from flask import Response
-        filename = f"portfolio_{candidate_uuid}{f'_{lang}' if lang else ''}.pdf"
+        filename = f"portfolio_TAP{f'_{lang}' if lang else ''}.pdf"
         headers = {
             'Content-Disposition': f'inline; filename={filename}',
             'Cache-Control': 'no-cache, no-store, must-revalidate',
@@ -6867,9 +6884,9 @@ def scoring_candidate(db_candidate_id):
                 return jsonify({'success': False, 'message': 'UUID du candidat introuvable en base'}), 404
 
             # 2. Construire le chemin du fichier JSON dans Supabase Storage
-            # Structure : candidates/{categorie_profil}/{id}/talentcard_{uuid}.json
+            # Structure : candidates/{categorie_profil}/{id}/talentcard_TAP.json
             minio_prefix = get_candidate_minio_prefix(int(db_candidate_id))
-            object_name = f"{minio_prefix}talentcard_{candidate_uuid}.json"
+            object_name = f"{minio_prefix}talentcard_TAP.json"
 
             print(f"🎯 Cible Supabase Storage identifiée : {object_name}")
 

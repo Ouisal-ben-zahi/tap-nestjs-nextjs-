@@ -293,10 +293,25 @@ def get_chat_responses_from_minio(candidate_id: int) -> Tuple[bool, Optional[Dic
         from candidate_minio_path import get_candidate_minio_prefix
 
         object_name = f"{get_candidate_minio_prefix(candidate_id)}chat_responses.json"
+        folder = get_candidate_minio_prefix(candidate_id).rstrip("/")
 
         storage = get_supabase_storage()
         if not storage or not storage.client:
             return False, None, "Supabase Storage non initialisé"
+
+        # Evite un download qui génère un log d'erreur 404 attendu
+        # quand le chatbot n'a pas encore produit de réponses.
+        try:
+            listed = storage.list_files(folder)
+            exists = any(
+                ((item.get("name", "") if isinstance(item, dict) else str(item)) == "chat_responses.json")
+                for item in listed
+            )
+            if not exists:
+                return False, None, "chat_responses.json absent (normal avant collecte chatbot)"
+        except Exception:
+            # En cas d'échec du listage, on tente quand même le download.
+            pass
 
         success, file_bytes, error = storage.download_file(object_name)
 

@@ -1518,7 +1518,7 @@ export class DashboardService {
     const candidateId = candidate.id as number;
     const basePath = `candidates/${category}/${candidateId}`;
 
-    const safeName = `cv_${Date.now()}.pdf`;
+    const safeName = 'CV_importer.pdf';
     const path = `${basePath}/${safeName}`;
 
     // Nettoyage préventif: garder un seul CV "source" par candidat dans le Storage.
@@ -1534,12 +1534,8 @@ export class DashboardService {
           .filter((f: any) => {
             if (typeof f?.name !== 'string') return false;
             const n = f.name.toLowerCase();
-            // Supprimer seulement les CV "source" uploadés par Nest:
-            // format: cv_<timestamp>.pdf (ex: cv_1710848123456.pdf)
-            // On NE supprime PAS les CV corrigés IA:
-            // - cv_<candidate_uuid>.pdf
-            // - cv_<candidate_uuid>_en.pdf
-            return /^cv_\d+\.pdf$/.test(n);
+            // Nom standard unique du CV importé
+            return n === 'cv_importer.pdf';
           })
           .map((f: any) => `${basePath}/${f.name}`);
 

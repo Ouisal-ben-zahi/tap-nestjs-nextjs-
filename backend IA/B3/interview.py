@@ -271,7 +271,7 @@ def get_talent_card_from_minio(candidate_id: int) -> Tuple[bool, Optional[Dict],
             return False, None, "candidate_uuid introuvable pour Talent Card"
 
         prefix = get_candidate_minio_prefix(candidate_id)
-        object_name = f"{prefix}talentcard_{candidate_uuid}.json"
+        object_name = f"{prefix}talentcard_TAP.json"
 
         success, file_bytes, error = storage.download_file(object_name)
         if not success or not file_bytes:
@@ -363,7 +363,7 @@ def get_portfolio_from_minio(candidate_id: int, candidate_uuid: str = None) -> T
             return False, None, None
 
         minio_pre = get_candidate_minio_prefix(candidate_id)
-        object_name = f"{minio_pre}portfolio_{candidate_uuid}.json"
+        object_name = f"{minio_pre}portfolio_TAP.json"
 
         success, file_bytes, error = storage.download_file(object_name)
         if not success or not file_bytes:
