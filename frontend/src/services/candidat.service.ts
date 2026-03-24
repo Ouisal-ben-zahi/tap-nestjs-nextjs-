@@ -149,9 +149,9 @@ export const candidatService = {
       .post('/dashboard/candidat/portfolio-long/run', { lang })
       .then((r) => r.data as { success: boolean; scoring?: any; generation?: { success: boolean; message?: string } }),
 
-  startInterviewSimulation: () =>
+  startInterviewSimulation: (interviewType: string) =>
     api
-      .post('/dashboard/candidat/interview/start')
+      .post('/dashboard/candidat/interview/start', { interviewType })
       .then((r) => r.data as {
         success: boolean;
         session_id?: string;

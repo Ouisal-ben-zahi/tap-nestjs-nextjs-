@@ -13,11 +13,11 @@ import { useUiStore } from "@/stores/ui";
 import { useRouter } from "next/navigation";
 
 const interviewTypes = [
-  { title: "Entretien comportemental", description: "Questions sur vos expériences passées et votre gestion des situations.", icon: Brain, color: "#a855f7", duration: "20 min", questions: 10 },
-  { title: "Entretien technique", description: "Évaluez vos compétences techniques avec des questions adaptées.", icon: Target, color: "#3b82f6", duration: "30 min", questions: 15, b3: true },
-  { title: "Présentation personnelle", description: "Entraînez-vous à vous présenter de manière concise et impactante.", icon: Mic, color: "#10b981", duration: "10 min", questions: 5 },
-  { title: "Questions RH classiques", description: "Motivation, prétentions salariales, disponibilité et plus.", icon: MessageSquare, color: "#f59e0b", duration: "15 min", questions: 8 },
-];
+  { key: "behavioral", title: "Entretien comportemental", description: "Questions sur vos expériences passées et votre gestion des situations.", icon: Brain, color: "#a855f7", duration: "20 min", questions: 10 },
+  { key: "technical", title: "Entretien technique", description: "Évaluez vos compétences techniques avec des questions adaptées.", icon: Target, color: "#3b82f6", duration: "30 min", questions: 15 },
+  { key: "presentation", title: "Présentation personnelle", description: "Entraînez-vous à vous présenter de manière concise et impactante.", icon: Mic, color: "#10b981", duration: "10 min", questions: 5 },
+  { key: "hr", title: "Questions RH classiques", description: "Motivation, prétentions salariales, disponibilité et plus.", icon: MessageSquare, color: "#f59e0b", duration: "15 min", questions: 8 },
+] as const;
 
 export default function EntretienPage() {
   const { isCandidat } = useAuth();
@@ -28,10 +28,10 @@ export default function EntretienPage() {
   const router = useRouter();
 
   const startInterviewMutation = useMutation({
-    mutationFn: () => candidatService.startInterviewSimulation(),
-    onSuccess: (res) => {
+    mutationFn: (interviewType: string) => candidatService.startInterviewSimulation(interviewType),
+    onSuccess: (res, interviewType) => {
       if (res?.session_id) {
-        router.push(`/app/entretien/simulation?sessionId=${encodeURIComponent(res.session_id)}`);
+        router.push(`/app/entretien/simulation?sessionId=${encodeURIComponent(res.session_id)}&type=${encodeURIComponent(interviewType)}`);
         addToast({ message: "Simulation B3 lancée.", type: "success" });
         return;
       }
@@ -93,20 +93,19 @@ export default function EntretienPage() {
           <div className="grid grid-cols-1 sm:grid-cols-2 gap-4 mb-8">
             {interviewTypes.map((type, i) => {
               const Icon = type.icon;
-              const isB3Type = Boolean((type as any).b3);
               return (
                 <div
                   key={i}
                   onClick={() => {
-                    if (isB3Type && !startInterviewMutation.isPending) {
-                      startInterviewMutation.mutate();
+                    if (!startInterviewMutation.isPending) {
+                      startInterviewMutation.mutate(type.key);
                     }
                   }}
                   className={`group rounded-2xl p-6 transition-all duration-300 cursor-pointer ${
                     isLight
                       ? "bg-white border border-tap-red/40 hover:border-tap-red/70"
                       : "bg-zinc-900/50 border border-white/[0.06] hover:border-white/[0.12]"
-                  } ${isB3Type && startInterviewMutation.isPending ? "opacity-70 pointer-events-none" : ""}`}
+                  } ${startInterviewMutation.isPending ? "opacity-70 pointer-events-none" : ""}`}
                 >
                   <div className="flex items-start justify-between mb-4">
                     <div className="w-11 h-11 rounded-xl flex items-center justify-center border transition-transform group-hover:scale-110"
@@ -120,7 +119,7 @@ export default function EntretienPage() {
                   <div className={`flex items-center gap-4 text-[11px] ${isLight ? "text-black/60" : "text-white/30"}`}>
                     <span className="flex items-center gap-1"><Clock size={11} />{type.duration}</span>
                     <span>{type.questions} questions</span>
-                    {isB3Type ? <span className="text-purple-500">Lance entretien</span> : null}
+                    <span className="text-purple-500">Lance entretien</span>
                   </div>
                 </div>
               );

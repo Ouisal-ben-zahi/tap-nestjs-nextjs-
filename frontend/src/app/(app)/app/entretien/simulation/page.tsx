@@ -48,6 +48,32 @@ export default function EntretienSimulationPage() {
     refetchInterval: false,
   });
 
+  const evaluation = evaluationQuery.data?.evaluation as Record<string, any> | undefined;
+  const evalScore =
+    evaluation?.score_global ??
+    evaluation?.score ??
+    evaluation?.global_score ??
+    evaluation?.note_finale;
+  const evalDecision =
+    evaluation?.decision ??
+    evaluation?.recommendation ??
+    evaluation?.verdict;
+  const evalSummary =
+    evaluation?.commentaire_global ??
+    evaluation?.summary ??
+    evaluation?.resume ??
+    evaluation?.commentaire;
+  const evalStrengths: string[] = Array.isArray(evaluation?.points_forts)
+    ? evaluation?.points_forts
+    : Array.isArray(evaluation?.strengths)
+      ? evaluation?.strengths
+      : [];
+  const evalImprovements: string[] = Array.isArray(evaluation?.axes_amelioration)
+    ? evaluation?.axes_amelioration
+    : Array.isArray(evaluation?.improvements)
+      ? evaluation?.improvements
+      : [];
+
   const sendAudioMutation = useMutation({
     mutationFn: (file: File) => candidatService.sendInterviewSimulationAudio(sessionId, file),
     onSuccess: () => {
@@ -214,9 +240,65 @@ export default function EntretienSimulationPage() {
                 ) : evaluationQuery.isError ? (
                   <p className="text-red-500">Impossible de récupérer l'évaluation.</p>
                 ) : evaluationQuery.data?.evaluation ? (
-                  <pre className={`text-xs whitespace-pre-wrap ${isLight ? "text-black/80" : "text-white/80"}`}>
-                    {JSON.stringify(evaluationQuery.data.evaluation, null, 2)}
-                  </pre>
+                  <div className="space-y-3">
+                    {(evalScore !== undefined && evalScore !== null) || evalDecision ? (
+                      <div className="flex flex-wrap items-center gap-2">
+                        {evalScore !== undefined && evalScore !== null ? (
+                          <span className={`px-3 py-1 rounded-full text-xs font-semibold ${isLight ? "bg-black/10 text-black" : "bg-white/10 text-white"}`}>
+                            Score: {String(evalScore)}
+                          </span>
+                        ) : null}
+                        {evalDecision ? (
+                          <span className={`px-3 py-1 rounded-full text-xs font-semibold ${isLight ? "bg-tap-red/15 text-black" : "bg-tap-red/25 text-white"}`}>
+                            Décision: {String(evalDecision)}
+                          </span>
+                        ) : null}
+                      </div>
+                    ) : null}
+
+                    {evalSummary ? (
+                      <p className={isLight ? "text-black/80 text-sm" : "text-white/80 text-sm"}>
+                        {String(evalSummary)}
+                      </p>
+                    ) : null}
+
+                    {evalStrengths.length ? (
+                      <div>
+                        <p className={isLight ? "text-black font-medium text-sm mb-1" : "text-white font-medium text-sm mb-1"}>
+                          Points forts
+                        </p>
+                        <ul className={isLight ? "text-black/80 text-sm space-y-1" : "text-white/80 text-sm space-y-1"}>
+                          {evalStrengths.map((item, idx) => (
+                            <li key={`strength-${idx}`}>- {String(item)}</li>
+                          ))}
+                        </ul>
+                      </div>
+                    ) : null}
+
+                    {evalImprovements.length ? (
+                      <div>
+                        <p className={isLight ? "text-black font-medium text-sm mb-1" : "text-white font-medium text-sm mb-1"}>
+                          Axes d'amélioration
+                        </p>
+                        <ul className={isLight ? "text-black/80 text-sm space-y-1" : "text-white/80 text-sm space-y-1"}>
+                          {evalImprovements.map((item, idx) => (
+                            <li key={`improve-${idx}`}>- {String(item)}</li>
+                          ))}
+                        </ul>
+                      </div>
+                    ) : null}
+
+                    {!evalSummary && !evalStrengths.length && !evalImprovements.length ? (
+                      <details>
+                        <summary className={isLight ? "text-black/70 text-sm cursor-pointer" : "text-white/70 text-sm cursor-pointer"}>
+                          Voir les détails techniques
+                        </summary>
+                        <pre className={`mt-2 text-xs whitespace-pre-wrap ${isLight ? "text-black/80" : "text-white/80"}`}>
+                          {JSON.stringify(evaluationQuery.data.evaluation, null, 2)}
+                        </pre>
+                      </details>
+                    ) : null}
+                  </div>
                 ) : (
                   <p className={isLight ? "text-black/70" : "text-white/70"}>
                     Évaluation non disponible pour le moment.

@@ -752,7 +752,10 @@ export class DashboardService {
     }
   }
 
-  async startCandidateInterviewSimulation(userId: number): Promise<InterviewStartResult> {
+  async startCandidateInterviewSimulation(
+    userId: number,
+    interviewType?: string,
+  ): Promise<InterviewStartResult> {
     if (!userId || Number.isNaN(userId)) {
       throw new BadRequestException('userId invalide');
     }
@@ -767,7 +770,7 @@ export class DashboardService {
     const result = await this.callFlaskJson<any>(
       'POST',
       `/interview/${encodeURIComponent(candidateUuid)}/start`,
-      { db_candidate_id: candidateId },
+      { db_candidate_id: candidateId, interview_type: interviewType || 'technical' },
     );
 
     const sessionId = result?.session_id ? String(result.session_id) : null;

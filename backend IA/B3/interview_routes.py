@@ -86,13 +86,18 @@ def sanitize_text_for_tts(text: str) -> str:
     # Normalisations pour éviter des intonations étranges sur XTTS.
     t = re.sub(r"https?://\S+", " ", t)      # URLs
     t = re.sub(r"\bwww\.\S+", " ", t)        # domaines
-    t = t.replace("…", ".")
-    t = re.sub(r"\.{2,}", ".", t)            # ... -> .
-    t = re.sub(r"[!?]{2,}", "!", t)          # !! / ??? -> !
+    t = t.replace("…", ", ")
+    t = re.sub(r"\.{2,}", ", ", t)           # ... -> pause
+    t = re.sub(r"[!?]{2,}", "?", t)          # !! / ??? -> ?
     t = re.sub(r"[:;]+", ", ", t)            # : ; -> pause courte
     t = re.sub(r"\s*[/|]\s*", ", ", t)       # / | -> pause
     t = re.sub(r"[\(\)\[\]\{\}\"“”«»]", " ", t)
     t = re.sub(r"[_#~`]+", " ", t)
+    # Ponctuation neutre pour éviter les montées/descentes de voix trop marquées.
+    t = re.sub(r"\?", ", ", t)
+    t = re.sub(r"!", ", ", t)
+    t = re.sub(r"\.", ", ", t)
+    t = re.sub(r",\s*,+", ", ", t)
     while "  " in t:
         t = t.replace("  ", " ")
     # Eviter une fin brute qui déstabilise parfois la synthèse.
@@ -180,6 +185,35 @@ def remove_bonjour_prefix(text: str) -> str:
     return stripped if stripped else original
 
 
+def _extract_recruiter_question_only(text: str) -> str:
+    """
+    Garde uniquement la question du recruteur.
+    Défensif contre les sorties LLM qui incluent des blocs "Candidat:" / "Recruteur:".
+    """
+    if not text:
+        return text
+    t = str(text).strip()
+
+    # 1) Si le modèle renvoie explicitement des blocs "Recruteur:", prendre le dernier.
+    recruiter_segments = re.findall(
+        r"(?:^|\n)\s*Recruteur\s*:\s*(.+?)(?=(?:\n\s*(?:Candidat|Recruteur)\s*:)|\Z)",
+        t,
+        flags=re.IGNORECASE | re.DOTALL,
+    )
+    if recruiter_segments:
+        t = recruiter_segments[-1].strip()
+
+    # 2) Supprimer les éventuels blocs candidat restants.
+    t = re.sub(r"(?:^|\n)\s*Candidat\s*:.*?(?=(?:\n\s*(?:Candidat|Recruteur)\s*:)|\Z)", " ", t, flags=re.IGNORECASE | re.DOTALL)
+
+    # 3) Si une balise "Candidat:" traine inline, couper avant.
+    t = re.split(r"\bCandidat\s*:", t, flags=re.IGNORECASE)[0].strip()
+
+    # 4) Nettoyage final.
+    t = re.sub(r"\s+", " ", t).strip()
+    return t
+
+
 def _get_agent_data_cached(db_candidate_id: int, candidate_uuid: str, retrieve_fn):
     """Retourne agent_data depuis le cache ou appelle retrieve_fn et met en cache."""
     cache_key = (db_candidate_id, candidate_uuid)
@@ -228,6 +262,9 @@ def start_interview(candidate_uuid):
     try:
         data = request.get_json() or {}
         db_candidate_id = data.get("db_candidate_id")
+        interview_type = (data.get("interview_type") or "technical").strip().lower()
+        if interview_type not in ("technical", "behavioral", "presentation", "hr"):
+            interview_type = "technical"
         
         if not db_candidate_id:
             return jsonify({"error": "db_candidate_id is required"}), 400
@@ -249,7 +286,8 @@ def start_interview(candidate_uuid):
             "current_question": 0,
             "total_questions": 5,
             "conversation_history": None,
-            "agent_data": None
+            "agent_data": None,
+            "interview_type": interview_type,
         }
         session_audio_responses[session_id] = []
         
@@ -264,6 +302,29 @@ def start_interview(candidate_uuid):
                 
                 # Construire le prompt personnalisé
                 interview_prompt = build_interview_prompt_from_data(agent_data)
+                type_prompt_map = {
+                    "technical": (
+                        "\n\nMODE ENTRETIEN TECHNIQUE:\n"
+                        "- Priorise les questions sur outils, stack, projets techniques, méthodologie et résolution de problèmes.\n"
+                        "- Pose des questions ciblées sur les technos vues dans le CV/portfolio."
+                    ),
+                    "behavioral": (
+                        "\n\nMODE ENTRETIEN COMPORTEMENTAL:\n"
+                        "- Priorise les situations vécues, collaboration, gestion de conflit, leadership, adaptation, communication.\n"
+                        "- Demande des exemples concrets (méthode STAR)."
+                    ),
+                    "presentation": (
+                        "\n\nMODE PRÉSENTATION PERSONNELLE:\n"
+                        "- Priorise la présentation du candidat, son pitch, sa valeur ajoutée, son positionnement.\n"
+                        "- Aide à structurer un discours clair et impactant."
+                    ),
+                    "hr": (
+                        "\n\nMODE ENTRETIEN RH:\n"
+                        "- Priorise motivation, disponibilité, salaire, mobilité, projection, culture d'entreprise, soft skills.\n"
+                        "- Reste orienté questions RH classiques."
+                    ),
+                }
+                interview_prompt += type_prompt_map.get(interview_type, type_prompt_map["technical"])
                 conversation_history = interview_prompt
                 interview_sessions[session_id]["conversation_history"] = conversation_history
                 
@@ -297,10 +358,17 @@ def start_interview(candidate_uuid):
                     if talent_card:
                         job_title = talent_card.get("Titre de profil", job_title)
                 
+                interview_type_label = {
+                    "technical": "technique",
+                    "behavioral": "comportemental",
+                    "presentation": "de présentation personnelle",
+                    "hr": "RH",
+                }.get(interview_type, "technique")
+
                 if prenom:
-                    intro = f"Bonjour {prenom}. Nous allons commencer l'entretien pour le poste de {job_title}."
+                    intro = f"Bonjour {prenom}. Nous allons commencer l'entretien {interview_type_label} pour le poste de {job_title}."
                 else:
-                    intro = f"Bonjour. Nous allons commencer l'entretien pour le poste de {job_title}."
+                    intro = f"Bonjour. Nous allons commencer l'entretien {interview_type_label} pour le poste de {job_title}."
                 
                 # Générer l'audio de l'introduction
                 intro_audio_file = os.path.join(session_dir, f"intro_{int(time.time())}.wav")
@@ -312,7 +380,7 @@ def start_interview(candidate_uuid):
                 
                 # Première question
                 question, conversation_history = ask_gemini("", conversation_history)
-                question = remove_bonjour_prefix(question)
+                question = remove_bonjour_prefix(_extract_recruiter_question_only(question))
                 interview_sessions[session_id]["conversation_history"] = conversation_history
                 interview_sessions[session_id]["current_question"] = 1
                 interview_sessions[session_id]["status"] = "question_ready"
@@ -698,6 +766,7 @@ def record_response(session_id):
                         conversation_history = session.get("conversation_history", "")
                         if conversation_history:
                             next_question, updated_history = ask_gemini(transcription_for_llm, conversation_history)
+                            next_question = _extract_recruiter_question_only(next_question)
                             interview_sessions[session_id]["conversation_history"] = updated_history
                             interview_sessions[session_id]["current_question"] = question_number + 1
                             interview_sessions[session_id]["pending_question_text"] = next_question
@@ -746,6 +815,7 @@ def record_response(session_id):
                         if conversation_history:
                             repeat_prompt = f"L'intervieweur a dit: '{transcription}'. Cette réponse semble être un test ou trop courte. Demande poliment au candidat de répéter sa réponse de manière plus complète et détaillée. Sois bref et professionnel."
                             repeat_question, _ = ask_gemini(repeat_prompt, conversation_history)
+                            repeat_question = _extract_recruiter_question_only(repeat_question)
                             interview_sessions[session_id]["pending_question_text"] = repeat_question
                             interview_sessions[session_id]["current_question_text"] = ""
                             interview_sessions[session_id]["current_question_audio"] = None

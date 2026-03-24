@@ -129,9 +129,12 @@ export class DashboardController {
 
   @Post('candidat/interview/start')
   @UseGuards(AuthGuard('jwt'))
-  async startCandidateInterviewSimulationByJwt(@Req() req: any) {
+  async startCandidateInterviewSimulationByJwt(
+    @Req() req: any,
+    @Body() body: { interviewType?: string },
+  ) {
     const userId = await this.dashboardService.resolveJwtUserId(req?.user);
-    return (this.dashboardService as any).startCandidateInterviewSimulation(userId);
+    return (this.dashboardService as any).startCandidateInterviewSimulation(userId, body?.interviewType);
   }
 
   @Get('candidat/interview/:sessionId/status')

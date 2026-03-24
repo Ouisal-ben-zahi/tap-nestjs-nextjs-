@@ -22,6 +22,7 @@ from dotenv import load_dotenv
 from typing import Dict, Optional, Tuple
 import threading
 import requests
+import re
 from concurrent.futures import ThreadPoolExecutor, as_completed
 from supabase_db import supabase_db
 from supabase_storage import get_supabase_storage
@@ -730,6 +731,28 @@ def ask_gemini(user_text, conversation_history):
     new_history = conversation_history + f"\nCandidat: {user_text}{prompt_addition}"
     response = gemini_model.generate_content(new_history)
     response_text = (response.text or "").strip()
+
+    # Gemini renvoie parfois tout le dialogue ("Candidat: ... Recruteur: ...").
+    # On ne garde que la dernière prise de parole recruteur pour éviter les conflits
+    # dans l'UI et le TTS.
+    if response_text:
+        # Priorité à la dernière ligne/tag "Recruteur:"
+        recruiter_segments = re.findall(
+            r"(?:^|\n)\s*Recruteur\s*:\s*(.+?)(?=(?:\n\s*(?:Candidat|Recruteur)\s*:)|\Z)",
+            response_text,
+            flags=re.IGNORECASE | re.DOTALL,
+        )
+        if recruiter_segments:
+            response_text = recruiter_segments[-1].strip()
+        else:
+            # Sinon, retirer un éventuel bloc "Candidat: ..." au début
+            response_text = re.sub(
+                r"^.*?\bRecruteur\s*:\s*",
+                "",
+                response_text,
+                flags=re.IGNORECASE | re.DOTALL,
+            ).strip() or response_text
+
     updated_history = new_history + f"\nRecruteur: {response_text}"
     return response_text, updated_history
 
