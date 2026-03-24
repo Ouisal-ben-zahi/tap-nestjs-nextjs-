@@ -2054,6 +2054,7 @@ export class DashboardService {
           candidate_id: candidateId,
           job_id: jobId,
         },
+        15000,
       );
       if (qResp?.success && Array.isArray(qResp?.questions)) {
         interviewQuestions = qResp.questions
