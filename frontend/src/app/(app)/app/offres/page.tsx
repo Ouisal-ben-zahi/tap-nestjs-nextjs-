@@ -7,6 +7,7 @@ import EmptyState from "@/components/ui/EmptyState";
 import ErrorState from "@/components/ui/ErrorState";
 import StatusBadge from "@/components/ui/StatusBadge";
 import { Skeleton } from "@/components/ui/Skeleton";
+import DropdownSelect from "@/components/app/DropdownSelect";
 import { Briefcase, Plus, X, Send, MapPin, Clock, DollarSign, Users, ChevronDown, CheckCircle2, CircleSlash2 } from "lucide-react";
 import { formatDate } from "@/lib/utils";
 import type { JobPayload } from "@/types/recruteur";
@@ -562,18 +563,20 @@ export default function OffresPage() {
               >
                 Niveau d&apos;etude attendu
               </label>
-              <select
+              <DropdownSelect
                 value={form.niveau_attendu ?? ""}
-                onChange={(e) => update("niveau_attendu", e.target.value)}
-                className="input-premium"
-              >
-                <option value="">-- Selectionner --</option>
-                {NIVEAUX_ETUDE.map((niveau) => (
-                  <option key={niveau} value={niveau}>
-                    {niveau}
-                  </option>
-                ))}
-              </select>
+                onChange={(value) => update("niveau_attendu", value || null)}
+                placeholder="-- Selectionner --"
+                groups={[
+                  {
+                    options: NIVEAUX_ETUDE.map((niveau) => ({
+                      value: niveau,
+                      label: niveau,
+                    })),
+                  },
+                ]}
+                isLight={isLight}
+              />
             </div>
 
             {/* Niveau + Expérience minimum */}
@@ -826,8 +829,9 @@ export default function OffresPage() {
               >
                 Competences techniques
               </label>
+              <div className="space-y-3">
               {skills.map((skill, index) => (
-                <div key={index} className="grid grid-cols-1 sm:grid-cols-12 gap-3 items-end">
+                <div key={index} className="w-full grid grid-cols-1 sm:grid-cols-12 gap-3 items-end">
                   <div className="sm:col-span-5">
                     <label className={`block text-[10px] mb-2 ${isLight ? "text-black/60" : "text-white/40"}`}>
                       Competence
@@ -844,40 +848,49 @@ export default function OffresPage() {
                     <label className={`block text-[10px] mb-2 ${isLight ? "text-black/60" : "text-white/40"}`}>
                       Niveau
                     </label>
-                    <select
+                    <DropdownSelect
                       value={skill.level}
-                      onChange={(e) => updateSkill(index, "level", e.target.value)}
-                      className="input-premium"
-                    >
-                      {SKILL_LEVELS.map((level) => (
-                        <option key={level} value={level}>
-                          {level}
-                        </option>
-                      ))}
-                    </select>
+                      onChange={(value) => updateSkill(index, "level", value)}
+                      placeholder="Niveau"
+                      groups={[
+                        {
+                          options: SKILL_LEVELS.map((level) => ({
+                            value: level,
+                            label: level,
+                          })),
+                        },
+                      ]}
+                      isLight={isLight}
+                    />
                   </div>
                   <div className="sm:col-span-3">
                     <label className={`block text-[10px] mb-2 ${isLight ? "text-black/60" : "text-white/40"}`}>
                       Priorite
                     </label>
-                    <select
+                    <DropdownSelect
                       value={skill.priority}
-                      onChange={(e) => updateSkill(index, "priority", e.target.value)}
-                      className="input-premium"
-                    >
-                      {SKILL_PRIORITIES.map((priority) => (
-                        <option key={priority} value={priority}>
-                          {priority}
-                        </option>
-                      ))}
-                    </select>
+                      onChange={(value) => updateSkill(index, "priority", value)}
+                      placeholder="Priorite"
+                      groups={[
+                        {
+                          options: SKILL_PRIORITIES.map((priority) => ({
+                            value: priority,
+                            label: priority,
+                          })),
+                        },
+                      ]}
+                      isLight={isLight}
+                    />
                   </div>
                   <div className="sm:col-span-1">
+                    <label className="block text-[10px] mb-2 opacity-0 select-none">
+                      Action
+                    </label>
                     {skills.length > 1 && (
                       <button
                         type="button"
                         onClick={() => removeSkill(index)}
-                        className="w-full px-3 py-2 rounded-lg border border-red-500/30 text-red-500 hover:bg-red-500/10"
+                        className="w-full h-[42px] px-3 rounded-lg border border-red-500/30 text-red-500 hover:bg-red-500/10"
                       >
                         X
                       </button>
@@ -885,6 +898,7 @@ export default function OffresPage() {
                   </div>
                 </div>
               ))}
+              </div>
               <button
                 type="button"
                 onClick={addSkill}
@@ -941,62 +955,77 @@ export default function OffresPage() {
               >
                 Langues
               </label>
+              <div className="space-y-3">
               {languages.map((language, index) => (
-                <div key={index} className="grid grid-cols-1 sm:grid-cols-12 gap-3 items-end">
+                <div key={index} className="w-full grid grid-cols-1 sm:grid-cols-12 gap-3 items-end">
                   <div className="sm:col-span-5">
                     <label className={`block text-[10px] mb-2 ${isLight ? "text-black/60" : "text-white/40"}`}>
                       Langue
                     </label>
-                    <select
+                    <DropdownSelect
                       value={language.name}
-                      onChange={(e) => updateLanguage(index, "name", e.target.value)}
-                      className="input-premium"
-                    >
-                      <option value="">-- Selectionner --</option>
-                      <option value="Francais">Francais</option>
-                      <option value="Anglais">Anglais</option>
-                      <option value="Espagnol">Espagnol</option>
-                      <option value="Arabe">Arabe</option>
-                    </select>
+                      onChange={(value) => updateLanguage(index, "name", value)}
+                      placeholder="-- Selectionner --"
+                      groups={[
+                        {
+                          options: [
+                            { value: "Francais", label: "Francais" },
+                            { value: "Anglais", label: "Anglais" },
+                            { value: "Espagnol", label: "Espagnol" },
+                            { value: "Arabe", label: "Arabe" },
+                          ],
+                        },
+                      ]}
+                      isLight={isLight}
+                    />
                   </div>
                   <div className="sm:col-span-3">
                     <label className={`block text-[10px] mb-2 ${isLight ? "text-black/60" : "text-white/40"}`}>
                       Niveau
                     </label>
-                    <select
+                    <DropdownSelect
                       value={language.level}
-                      onChange={(e) => updateLanguage(index, "level", e.target.value)}
-                      className="input-premium"
-                    >
-                      {LANGUAGE_LEVELS.map((level) => (
-                        <option key={level} value={level}>
-                          {level}
-                        </option>
-                      ))}
-                    </select>
+                      onChange={(value) => updateLanguage(index, "level", value)}
+                      placeholder="Niveau"
+                      groups={[
+                        {
+                          options: LANGUAGE_LEVELS.map((level) => ({
+                            value: level,
+                            label: level,
+                          })),
+                        },
+                      ]}
+                      isLight={isLight}
+                    />
                   </div>
                   <div className="sm:col-span-3">
                     <label className={`block text-[10px] mb-2 ${isLight ? "text-black/60" : "text-white/40"}`}>
                       Importance
                     </label>
-                    <select
+                    <DropdownSelect
                       value={language.importance}
-                      onChange={(e) => updateLanguage(index, "importance", e.target.value)}
-                      className="input-premium"
-                    >
-                      {LANGUAGE_IMPORTANCE.map((importance) => (
-                        <option key={importance} value={importance}>
-                          {importance}
-                        </option>
-                      ))}
-                    </select>
+                      onChange={(value) => updateLanguage(index, "importance", value)}
+                      placeholder="Importance"
+                      groups={[
+                        {
+                          options: LANGUAGE_IMPORTANCE.map((importance) => ({
+                            value: importance,
+                            label: importance,
+                          })),
+                        },
+                      ]}
+                      isLight={isLight}
+                    />
                   </div>
                   <div className="sm:col-span-1">
+                    <label className="block text-[10px] mb-2 opacity-0 select-none">
+                      Action
+                    </label>
                     {languages.length > 1 && (
                       <button
                         type="button"
                         onClick={() => removeLanguage(index)}
-                        className="w-full px-3 py-2 rounded-lg border border-red-500/30 text-red-500 hover:bg-red-500/10"
+                        className="w-full h-[42px] px-3 rounded-lg border border-red-500/30 text-red-500 hover:bg-red-500/10"
                       >
                         X
                       </button>
@@ -1004,6 +1033,7 @@ export default function OffresPage() {
                   </div>
                 </div>
               ))}
+              </div>
               <button
                 type="button"
                 onClick={addLanguage}

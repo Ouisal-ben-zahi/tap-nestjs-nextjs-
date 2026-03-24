@@ -223,72 +223,74 @@ export default function CandidatsPage() {
                           <div className="shrink-0 text-right">
                             <p className="text-[20px] font-bold text-emerald-400">{scorePct}%</p>
                             <p className="text-[10px] text-white/30">score global</p>
-                            <button
-                              type="button"
-                              onClick={() => {
-                                if (!selectedJobId || !candidateId) return;
-                                validateCandidateMutation.mutate(
-                                  {
-                                    jobId: selectedJobId,
-                                    candidateId,
-                                  },
-                                  {
-                                    onSuccess: (data) => {
-                                      const existingPdfUrl =
-                                        typeof data?.interviewPdfUrl === "string" && data.interviewPdfUrl.trim()
-                                          ? data.interviewPdfUrl.trim()
-                                          : null;
-                                      if (existingPdfUrl) {
-                                        setInterviewPdfUrlsByCandidate((prev) => ({
-                                          ...prev,
-                                          [candidateId]: existingPdfUrl,
-                                        }));
-                                      }
-                                      setValidatedCandidates((prev) => ({
-                                        ...prev,
-                                        [candidateId]: true,
-                                      }));
-                                      const questions = Array.isArray(data?.interviewQuestions)
-                                        ? data.interviewQuestions
-                                            .filter((q) => q && typeof q.text === "string" && q.text.trim())
-                                            .map((q, idx) => ({
-                                              id: String(q.id ?? `q${idx + 1}`),
-                                              text: String(q.text).trim(),
-                                              category: String(q.category ?? "autre").trim().toLowerCase(),
-                                            }))
-                                        : [];
-                                      if (questions.length) {
-                                        setInterviewQuestions(questions);
-                                        setInterviewCandidateName(candidateName);
-                                        setInterviewCandidateId(candidateId || null);
-                                        setInterviewModalOpen(true);
-                                      }
+                            <div className="mt-2 inline-flex items-center gap-2">
+                              <button
+                                type="button"
+                                onClick={() => {
+                                  if (!selectedJobId || !candidateId) return;
+                                  validateCandidateMutation.mutate(
+                                    {
+                                      jobId: selectedJobId,
+                                      candidateId,
                                     },
-                                  },
-                                );
-                              }}
-                              disabled={!selectedJobId || !candidateId || isValidatingThisCandidate}
-                              className="mt-2 inline-flex items-center gap-1.5 px-2.5 py-1 text-[11px] rounded-md border border-emerald-500/40 text-emerald-300 hover:bg-emerald-500/10 disabled:opacity-50 disabled:cursor-not-allowed"
-                            >
-                              <CheckCircle2 size={13} />
-                              {isValidatingThisCandidate
-                                ? "Validation..."
-                                : alreadyValidated || existingInterviewPdfUrl
-                                  ? "Régénérer d'autres questions"
-                                  : "Valider"}
-                            </button>
-                            {existingInterviewPdfUrl ? (
-                              <a
-                                href={existingInterviewPdfUrl}
-                                target="_blank"
-                                rel="noopener noreferrer"
-                                className="mt-2 ml-auto inline-flex items-center justify-center w-8 h-8 rounded-md border border-blue-500/40 text-blue-300 hover:bg-blue-500/10 transition"
-                                title="Télécharger les questions d'entretien"
-                                aria-label="Télécharger les questions d'entretien"
+                                    {
+                                      onSuccess: (data) => {
+                                        const existingPdfUrl =
+                                          typeof data?.interviewPdfUrl === "string" && data.interviewPdfUrl.trim()
+                                            ? data.interviewPdfUrl.trim()
+                                            : null;
+                                        if (existingPdfUrl) {
+                                          setInterviewPdfUrlsByCandidate((prev) => ({
+                                            ...prev,
+                                            [candidateId]: existingPdfUrl,
+                                          }));
+                                        }
+                                        setValidatedCandidates((prev) => ({
+                                          ...prev,
+                                          [candidateId]: true,
+                                        }));
+                                        const questions = Array.isArray(data?.interviewQuestions)
+                                          ? data.interviewQuestions
+                                              .filter((q) => q && typeof q.text === "string" && q.text.trim())
+                                              .map((q, idx) => ({
+                                                id: String(q.id ?? `q${idx + 1}`),
+                                                text: String(q.text).trim(),
+                                                category: String(q.category ?? "autre").trim().toLowerCase(),
+                                              }))
+                                          : [];
+                                        if (questions.length) {
+                                          setInterviewQuestions(questions);
+                                          setInterviewCandidateName(candidateName);
+                                          setInterviewCandidateId(candidateId || null);
+                                          setInterviewModalOpen(true);
+                                        }
+                                      },
+                                    },
+                                  );
+                                }}
+                                disabled={!selectedJobId || !candidateId || isValidatingThisCandidate}
+                                className="inline-flex items-center gap-1.5 px-2.5 py-1 text-[11px] rounded-md border border-emerald-500/40 text-emerald-300 hover:bg-emerald-500/10 disabled:opacity-50 disabled:cursor-not-allowed"
                               >
-                                <Download size={14} />
-                              </a>
-                            ) : null}
+                                <CheckCircle2 size={13} />
+                                {isValidatingThisCandidate
+                                  ? "Validation..."
+                                  : alreadyValidated || existingInterviewPdfUrl
+                                    ? "Régénérer d'autres questions"
+                                    : "Valider"}
+                              </button>
+                              {existingInterviewPdfUrl ? (
+                                <a
+                                  href={existingInterviewPdfUrl}
+                                  target="_blank"
+                                  rel="noopener noreferrer"
+                                  className="p-1.5 rounded-full border border-white/[0.14] hover:bg-zinc-800 text-zinc-400 hover:text-white transition"
+                                  title="Télécharger les questions d'entretien"
+                                  aria-label="Télécharger les questions d'entretien"
+                                >
+                                  <Download size={14} />
+                                </a>
+                              ) : null}
+                            </div>
                           </div>
                         </div>
                         <div className="mt-3 h-1.5 bg-zinc-800 rounded-full overflow-hidden">
