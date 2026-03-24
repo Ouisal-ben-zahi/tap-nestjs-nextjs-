@@ -10,6 +10,7 @@ Niveau 2 — Matching pondéré intelligent.
 import json
 import os
 import re
+import unicodedata
 from typing import Any, Dict, List, Optional, Tuple
 
 from supabase_db import supabase_db
@@ -28,6 +29,102 @@ SIMILARITY_THRESHOLD = 0.5
 
 
 SENIORITY_ORDER = ["Junior", "Débutant", "Mid", "Intermédiaire", "Senior", "Avancé", "Lead", "Expert"]
+
+
+def _normalize_skill_text(value: Optional[str]) -> str:
+    """Normalise une compétence pour comparaison robuste (casse/accents/ponctuation)."""
+    if not value:
+        return ""
+    s = str(value).strip().lower()
+    s = unicodedata.normalize("NFKD", s).encode("ascii", "ignore").decode("ascii")
+    s = re.sub(r"[^a-z0-9]+", " ", s).strip()
+    return s
+
+
+def _extract_skill_name(item: Any) -> str:
+    """Extrait le nom de compétence depuis un item str/dict."""
+    if isinstance(item, str):
+        return item.strip()
+    if isinstance(item, dict):
+        raw_name = (
+            item.get("name")
+            or item.get("nom")
+            or item.get("skill")
+            or item.get("skill_name")
+            or item.get("competence")
+            or item.get("label")
+            or item.get("original_name")
+            or item.get("normalized_name")
+            or ""
+        )
+        if isinstance(raw_name, dict):
+            raw_name = (
+                raw_name.get("fr")
+                or raw_name.get("en")
+                or raw_name.get("value")
+                or ""
+            )
+        return str(raw_name).strip()
+    return ""
+
+
+def _extract_language_name(item: Any) -> str:
+    """Extrait le nom de langue depuis un item str/dict."""
+    if isinstance(item, str):
+        return item.strip()
+    if isinstance(item, dict):
+        raw_name = (
+            item.get("name")
+            or item.get("nom")
+            or item.get("language")
+            or item.get("langue")
+            or item.get("label")
+            or ""
+        )
+        if isinstance(raw_name, dict):
+            raw_name = (
+                raw_name.get("fr")
+                or raw_name.get("en")
+                or raw_name.get("value")
+                or ""
+            )
+        return str(raw_name).strip()
+    return ""
+
+
+def _explode_skill_tokens(name: str) -> List[str]:
+    """Découpe une chaîne de compétences concaténées en tokens unitaires."""
+    if not name:
+        return []
+    parts = re.split(r"[,;|/]+", name)
+    out = [p.strip() for p in parts if p and p.strip()]
+    return out if out else [name.strip()]
+
+
+def _parse_json_array_to_strings(value: Any, extractor=_extract_skill_name) -> List[str]:
+    """Convertit une valeur JSON (list/str/dict) en liste de chaînes propres."""
+    if value is None:
+        return []
+    parsed = value
+    if isinstance(parsed, str):
+        s = parsed.strip()
+        if not s:
+            return []
+        if s.startswith("["):
+            try:
+                parsed = json.loads(s)
+            except Exception:
+                parsed = [x.strip() for x in s.split(",") if x and x.strip()]
+        else:
+            parsed = [x.strip() for x in s.split(",") if x and x.strip()]
+    if not isinstance(parsed, list):
+        return []
+    out: List[str] = []
+    for item in parsed:
+        name = extractor(item)
+        if name:
+            out.extend(_explode_skill_tokens(name))
+    return out
 
 
 def _normalize_seniority(s: Optional[str]) -> str:
@@ -89,7 +186,7 @@ def load_candidates_for_domaine(domaine_activite: Optional[str]) -> List[Dict[st
     fallback_select = (
         "id, id_agent, candidate_uuid, nom, prenom, titre_profil, categorie_profil, "
         "ville, pays, annees_experience, disponibilite, niveau_seniorite, pret_a_relocater, "
-        "pays_cible, constraints, search_criteria, salaire_minimum"
+        "pays_cible, constraints, search_criteria, salaire_minimum, skills, type_contrat, langues"
     )
     try:
         query = supabase_db.table("candidates").select(full_select)
@@ -121,51 +218,15 @@ def load_candidates_for_domaine(domaine_activite: Optional[str]) -> List[Dict[st
         for k, v in list(row.items()):
             if hasattr(v, "isoformat"):
                 row[k] = v.isoformat()
-        # Skills : privilégier skills_csv, sinon dériver de skills JSON
-        skills_csv = (row.get("skills_csv") or "").strip()
-        if not skills_csv and row.get("skills"):
-            skills_val = row["skills"]
-            if isinstance(skills_val, str):
-                try:
-                    skills_val = json.loads(skills_val)
-                except Exception:
-                    skills_val = []
-            if isinstance(skills_val, list):
-                skills_csv = ",".join(
-                    str(x.get("name") if isinstance(x, dict) else x) for x in skills_val
-                )
-        row["skills"] = [s.strip() for s in skills_csv.split(",") if s.strip()]
-        row.pop("skills_csv", None)
-        # Langues : idem
-        lang_csv = (row.get("languages_csv") or "").strip()
-        if not lang_csv and row.get("languages"):
-            lang_val = row["languages"]
-            if isinstance(lang_val, str):
-                try:
-                    lang_val = json.loads(lang_val)
-                except Exception:
-                    lang_val = []
-            if isinstance(lang_val, list):
-                lang_csv = ",".join(
-                    str(x.get("name") if isinstance(x, dict) else x) for x in lang_val
-                )
-        row["languages"] = [s.strip() for s in lang_csv.split(",") if s.strip()]
-        row.pop("languages_csv", None)
-        # Types de contrat : idem
-        ct_csv = (row.get("contract_types_csv") or "").strip()
-        if not ct_csv and row.get("contract_types"):
-            ct_val = row["contract_types"]
-            if isinstance(ct_val, str):
-                try:
-                    ct_val = json.loads(ct_val)
-                except Exception:
-                    ct_val = []
-            if isinstance(ct_val, list):
-                ct_csv = ",".join(
-                    str(x.get("name") if isinstance(x, dict) else x) for x in ct_val
-                )
-        row["contract_types"] = [s.strip() for s in ct_csv.split(",") if s.strip()]
-        row.pop("contract_types_csv", None)
+        # Lecture directe des colonnes JSON de la table candidates
+        row["skills"] = _parse_json_array_to_strings(row.get("skills"), extractor=_extract_skill_name)
+        row["languages"] = _parse_json_array_to_strings(
+            row.get("languages") if row.get("languages") is not None else row.get("langues"),
+            extractor=_extract_language_name,
+        )
+        row["contract_types"] = _parse_json_array_to_strings(
+            row.get("contract_types") if row.get("contract_types") is not None else row.get("type_contrat")
+        )
         if "pret_a_relocater" not in row:
             row["pret_a_relocater"] = None
         if "pays_cible" not in row:
@@ -246,14 +307,15 @@ def load_job_criteria(job_id: int) -> Optional[Dict[str, Any]]:
         skills_raw = []
     skills_obligatoires = []
     skills_optionnelles = []
+    must_have_values = {"indispensable", "obligatoire", "required", "must"}
     for s in skills_raw:
-        if not isinstance(s, dict):
-            continue
-        name = (s.get("name") or "").strip()
+        name = _extract_skill_name(s)
         if not name:
             continue
-        priority = (s.get("priority") or "").strip()
-        if priority == "Indispensable":
+        priority = ""
+        if isinstance(s, dict):
+            priority = str(s.get("priority") or s.get("importance") or "").strip().lower()
+        if priority in must_have_values:
             skills_obligatoires.append(name)
         else:
             skills_optionnelles.append(name)
@@ -290,7 +352,7 @@ def load_job_criteria(job_id: int) -> Optional[Dict[str, Any]]:
     job_langues = []
     for lang in languages_raw:
         if isinstance(lang, dict):
-            name = (lang.get("name") or "").strip()
+            name = _extract_language_name(lang)
             if name:
                 job_langues.append({"name": name, "importance": (lang.get("importance") or "").strip()})
         elif isinstance(lang, str) and lang.strip():
@@ -388,9 +450,9 @@ def best_similarity(
     if not candidate_skills:
         return 0.0
     # Match exact (après normalisation)
-    j_lower = job_skill.lower().strip()
+    j_lower = _normalize_skill_text(job_skill)
     for cs in candidate_skills:
-        if (cs or "").lower().strip() == j_lower:
+        if _normalize_skill_text(cs) == j_lower:
             return 1.0
 
 

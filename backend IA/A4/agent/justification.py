@@ -11,6 +11,22 @@ from supabase_db import supabase_db
 from A4.agent.config import GEMINI_MODEL
 
 
+def _extract_item_name(x: Any) -> str:
+    """Extrait un libelle depuis un item str/dict (name/nom/label/skill)."""
+    if isinstance(x, str):
+        return x.strip()
+    if isinstance(x, dict):
+        return str(
+            x.get("name")
+            or x.get("nom")
+            or x.get("label")
+            or x.get("skill")
+            or x.get("skill_name")
+            or ""
+        ).strip()
+    return ""
+
+
 def _load_job_summary(job_id: int) -> str:
     """Résumé texte de l'offre pour le LLM."""
     if supabase_db is None:
@@ -70,7 +86,7 @@ def _load_candidate_summary(candidate_id: int) -> str:
             supabase_db.table("candidates")
             .select(
                 "id, titre_profil, resume_bref, annees_experience, niveau_seniorite, "
-                "disponibilite, skills_csv, languages_csv, skills, languages"
+                "disponibilite, skills, languages"
             )
             .eq("id", candidate_id)
             .limit(1)
@@ -78,38 +94,51 @@ def _load_candidate_summary(candidate_id: int) -> str:
         )
         row = resp.data[0] if resp.data else None
     except Exception as e:
-        print(f"⚠️  Erreur chargement candidat pour justification (Supabase): {e}")
-        row = None
+        if "column candidates.languages does not exist" in str(e):
+            try:
+                resp = (
+                    supabase_db.table("candidates")
+                    .select(
+                        "id, titre_profil, resume_bref, annees_experience, niveau_seniorite, "
+                        "disponibilite, skills, langues"
+                    )
+                    .eq("id", candidate_id)
+                    .limit(1)
+                    .execute()
+                )
+                row = resp.data[0] if resp.data else None
+            except Exception as e2:
+                print(f"⚠️  Erreur chargement candidat pour justification (Supabase): {e2}")
+                row = None
+        else:
+            print(f"⚠️  Erreur chargement candidat pour justification (Supabase): {e}")
+            row = None
     if not row:
         return ""
     parts = [f"Profil: {row.get('titre_profil') or 'N/A'}"]
     if row.get("resume_bref"):
         parts.append(f"Résumé: {row['resume_bref'][:400]}")
-    skills_csv = (row.get("skills_csv") or "").strip()
-    languages_csv = (row.get("languages_csv") or "").strip()
-    # Fallback depuis skills / languages JSON si les colonnes *_csv ne sont pas renseignées
-    if not skills_csv and row.get("skills"):
+    skills_csv = ""
+    languages_csv = ""
+    if row.get("skills"):
         skills_val = row["skills"]
         if isinstance(skills_val, str):
             try:
                 skills_val = json.loads(skills_val)
             except Exception:
-                skills_val = []
+                skills_val = [s.strip() for s in skills_val.split(",") if s and s.strip()]
         if isinstance(skills_val, list):
-            skills_csv = ",".join(
-                str(x.get("name") if isinstance(x, dict) else x) for x in skills_val
-            )
-    if not languages_csv and row.get("languages"):
-        lang_val = row["languages"]
+            skills_csv = ",".join([n for n in [_extract_item_name(x) for x in skills_val] if n])
+    lang_source = row.get("languages") if row.get("languages") is not None else row.get("langues")
+    if lang_source:
+        lang_val = lang_source
         if isinstance(lang_val, str):
             try:
                 lang_val = json.loads(lang_val)
             except Exception:
-                lang_val = []
+                lang_val = [s.strip() for s in lang_val.split(",") if s and s.strip()]
         if isinstance(lang_val, list):
-            languages_csv = ",".join(
-                str(x.get("name") if isinstance(x, dict) else x) for x in lang_val
-            )
+            languages_csv = ",".join([n for n in [_extract_item_name(x) for x in lang_val] if n])
 
     if skills_csv:
         parts.append("Compétences: " + skills_csv.replace(",", ", ")[:400])

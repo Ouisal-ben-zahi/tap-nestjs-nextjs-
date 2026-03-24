@@ -60,3 +60,55 @@ export function useToggleJobStatus() {
     },
   });
 }
+
+export function useValidateCandidate() {
+  const queryClient = useQueryClient();
+  const addToast = useUiStore((s) => s.addToast);
+
+  return useMutation({
+    mutationFn: (params: { jobId: number; candidateId: number }) =>
+      recruteurService.validateCandidateForJob(params.jobId, params.candidateId),
+    onSuccess: (data, variables) => {
+      queryClient.invalidateQueries({ queryKey: ['recruteur', 'matched-candidates', variables.jobId] });
+      queryClient.invalidateQueries({ queryKey: ['recruteur', 'overview'] });
+      const count = Array.isArray(data?.interviewQuestions) ? data.interviewQuestions.length : 0;
+      const msg =
+        count > 0
+          ? `Candidat validé. ${count} questions d'entretien générées.`
+          : 'Candidat validé avec succès';
+      addToast({ message: msg, type: 'success' });
+      if (data?.interviewQuestionsError) {
+        addToast({
+          message: `Validation OK, mais génération des questions indisponible: ${data.interviewQuestionsError}`,
+          type: 'error',
+        });
+      }
+    },
+    onError: () => {
+      addToast({ message: 'Impossible de valider ce candidat', type: 'error' });
+    },
+  });
+}
+
+export function useSaveInterviewPdf() {
+  const addToast = useUiStore((s) => s.addToast);
+
+  return useMutation({
+    mutationFn: (params: {
+      jobId: number;
+      candidateId: number;
+      questions?: Array<{ id: string; text: string; category: string }>;
+    }) =>
+      recruteurService.saveInterviewQuestionsPdf(
+        params.jobId,
+        params.candidateId,
+        params.questions,
+      ),
+    onSuccess: () => {
+      addToast({ message: 'PDF entretien TAP enregistre avec succes', type: 'success' });
+    },
+    onError: () => {
+      addToast({ message: "Impossible d'enregistrer le PDF d'entretien", type: 'error' });
+    },
+  });
+}

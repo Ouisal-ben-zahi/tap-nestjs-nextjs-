@@ -2,13 +2,20 @@
 
 import Link from "next/link";
 import { useSearchParams } from "next/navigation";
+import { useState } from "react";
 import { useAuth } from "@/hooks/use-auth";
-import { useMatchedCandidatesByOffer, useRecruteurOverview } from "@/hooks/use-recruteur";
+import { useMatchedCandidatesByOffer, useRecruteurOverview, useSaveInterviewPdf, useValidateCandidate } from "@/hooks/use-recruteur";
 import EmptyState from "@/components/ui/EmptyState";
 import ErrorState from "@/components/ui/ErrorState";
 import { Skeleton } from "@/components/ui/Skeleton";
-import { Search, Users, Briefcase, FileText, Filter } from "lucide-react";
+import { Search, Users, Briefcase, FileText, Filter, CheckCircle2, X } from "lucide-react";
 import { formatRelative, statusBg } from "@/lib/utils";
+
+type InterviewQuestion = {
+  id: string;
+  text: string;
+  category: string;
+};
 
 export default function CandidatsPage() {
   const searchParams = useSearchParams();
@@ -20,6 +27,12 @@ export default function CandidatsPage() {
   const isRecruteur = user?.role === "recruteur";
   const overviewQuery = useRecruteurOverview();
   const matchedCandidatesQuery = useMatchedCandidatesByOffer(selectedJobId, isRecruteur);
+  const validateCandidateMutation = useValidateCandidate();
+  const saveInterviewPdfMutation = useSaveInterviewPdf();
+  const [interviewModalOpen, setInterviewModalOpen] = useState(false);
+  const [interviewQuestions, setInterviewQuestions] = useState<InterviewQuestion[]>([]);
+  const [interviewCandidateName, setInterviewCandidateName] = useState<string>("Candidat");
+  const [interviewCandidateId, setInterviewCandidateId] = useState<number | null>(null);
 
   if (!isRecruteur) {
     return (
@@ -164,6 +177,10 @@ export default function CandidatsPage() {
                             .map((skill) => skill.trim())
                             .filter((skill) => skill && skill.toLowerCase() !== "aucune")
                         : [];
+                    const candidateId = Number(item.candidate_id ?? 0);
+                    const isValidatingThisCandidate =
+                      validateCandidateMutation.isPending &&
+                      validateCandidateMutation.variables?.candidateId === candidateId;
 
                     return (
                       <div
@@ -201,7 +218,43 @@ export default function CandidatsPage() {
                           </div>
                           <div className="shrink-0 text-right">
                             <p className="text-[20px] font-bold text-emerald-400">{scorePct}%</p>
-                            <p className="text-[10px] text-white/30">score global A4</p>
+                            <p className="text-[10px] text-white/30">score global</p>
+                            <button
+                              type="button"
+                              onClick={() => {
+                                if (!selectedJobId || !candidateId) return;
+                                validateCandidateMutation.mutate(
+                                  {
+                                    jobId: selectedJobId,
+                                    candidateId,
+                                  },
+                                  {
+                                    onSuccess: (data) => {
+                                      const questions = Array.isArray(data?.interviewQuestions)
+                                        ? data.interviewQuestions
+                                            .filter((q) => q && typeof q.text === "string" && q.text.trim())
+                                            .map((q, idx) => ({
+                                              id: String(q.id ?? `q${idx + 1}`),
+                                              text: String(q.text).trim(),
+                                              category: String(q.category ?? "autre").trim().toLowerCase(),
+                                            }))
+                                        : [];
+                                      if (questions.length) {
+                                        setInterviewQuestions(questions);
+                                        setInterviewCandidateName(candidateName);
+                                        setInterviewCandidateId(candidateId || null);
+                                        setInterviewModalOpen(true);
+                                      }
+                                    },
+                                  },
+                                );
+                              }}
+                              disabled={!selectedJobId || !candidateId || isValidatingThisCandidate}
+                              className="mt-2 inline-flex items-center gap-1.5 px-2.5 py-1 text-[11px] rounded-md border border-emerald-500/40 text-emerald-300 hover:bg-emerald-500/10 disabled:opacity-50 disabled:cursor-not-allowed"
+                            >
+                              <CheckCircle2 size={13} />
+                              {isValidatingThisCandidate ? "Validation..." : "Valider"}
+                            </button>
                           </div>
                         </div>
                         <div className="mt-3 h-1.5 bg-zinc-800 rounded-full overflow-hidden">
@@ -301,6 +354,77 @@ export default function CandidatsPage() {
           </div>
         </>
       )}
+
+      {interviewModalOpen ? (
+        <div className="fixed inset-0 z-50">
+          <div
+            className="absolute inset-0 bg-black/70 backdrop-blur-sm"
+            onClick={() => setInterviewModalOpen(false)}
+          />
+          <div className="absolute inset-0 flex items-center justify-center p-4">
+            <div className="w-full max-w-[760px] max-h-[80vh] overflow-hidden rounded-2xl border border-white/[0.08] bg-[#0a0a0a] shadow-2xl">
+              <div className="flex items-center justify-between px-5 py-4 border-b border-white/[0.08]">
+                <div>
+                  <p className="text-[14px] font-semibold text-white">
+                    Questions d'entretien - {interviewCandidateName}
+                  </p>
+                  <p className="text-[12px] text-white/45 mt-0.5">
+                    {interviewQuestions.length} question{interviewQuestions.length > 1 ? "s" : ""} proposee{interviewQuestions.length > 1 ? "s" : ""}
+                  </p>
+                </div>
+                <button
+                  onClick={() => setInterviewModalOpen(false)}
+                  className="w-9 h-9 rounded-xl flex items-center justify-center text-white/40 hover:text-white hover:bg-white/[0.06] transition"
+                >
+                  <X size={16} />
+                </button>
+              </div>
+              <div className="p-5 overflow-y-auto max-h-[calc(80vh-76px)] space-y-3">
+                {interviewQuestions.map((q) => (
+                  <div
+                    key={q.id}
+                    className="rounded-xl border border-white/[0.08] bg-zinc-900/50 p-4"
+                  >
+                    <p className="text-[11px] uppercase tracking-[1.5px] text-emerald-400/80 mb-2">
+                      {q.category || "autre"}
+                    </p>
+                    <p className="text-[13px] text-white/85 leading-relaxed">{q.text}</p>
+                  </div>
+                ))}
+                <div className="pt-2 flex items-center justify-end gap-2">
+                  <button
+                    type="button"
+                    onClick={() => setInterviewModalOpen(false)}
+                    className="h-9 px-3 rounded-lg border border-white/[0.16] text-white/75 hover:text-white hover:bg-white/[0.06] text-[12px] transition"
+                  >
+                    Fermer
+                  </button>
+                  <button
+                    type="button"
+                    onClick={() => {
+                      if (!selectedJobId || !interviewCandidateId || !interviewQuestions.length) return;
+                      saveInterviewPdfMutation.mutate({
+                        jobId: selectedJobId,
+                        candidateId: interviewCandidateId,
+                        questions: interviewQuestions,
+                      });
+                    }}
+                    disabled={
+                      !selectedJobId ||
+                      !interviewCandidateId ||
+                      !interviewQuestions.length ||
+                      saveInterviewPdfMutation.isPending
+                    }
+                    className="h-9 px-3 rounded-lg border border-emerald-500/40 text-emerald-300 hover:bg-emerald-500/10 text-[12px] transition disabled:opacity-50 disabled:cursor-not-allowed"
+                  >
+                    {saveInterviewPdfMutation.isPending ? "Enregistrement..." : "Enregistrer PDF entretien TAP"}
+                  </button>
+                </div>
+              </div>
+            </div>
+          </div>
+        </div>
+      ) : null}
     </div>
   );
 }

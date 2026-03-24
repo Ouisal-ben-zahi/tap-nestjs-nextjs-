@@ -1,6 +1,7 @@
 import { Injectable, BadRequestException } from '@nestjs/common';
 import { ConfigService } from '@nestjs/config';
 import { SupabaseClient, createClient } from '@supabase/supabase-js';
+import PDFDocument from 'pdfkit';
 
 export interface CandidateDashboardStats {
   candidateId: number | null;
@@ -172,6 +173,23 @@ export interface RecruiterMatchByOfferPayload {
   job_id: number;
   top_n?: number;
   only_postule?: boolean;
+}
+
+export interface RecruiterValidateCandidatePayload {
+  job_id: number;
+  candidate_id: number;
+}
+
+export interface RecruiterSaveInterviewPdfPayload {
+  job_id: number;
+  candidate_id: number;
+  questions?: RecruiterInterviewQuestion[];
+}
+
+export interface RecruiterInterviewQuestion {
+  id: string;
+  text: string;
+  category: string;
 }
 
 export interface CandidateScoreFromJson {
@@ -1936,6 +1954,301 @@ export class DashboardService {
       top_n: payload?.top_n ?? 20,
       only_postule: Boolean(payload?.only_postule),
     });
+  }
+
+  async validateCandidateApplication(
+    userId: number,
+    payload: RecruiterValidateCandidatePayload,
+  ): Promise<{
+    success: boolean;
+    applicationId: number;
+    interviewQuestions: RecruiterInterviewQuestion[];
+    interviewQuestionsError?: string | null;
+  }> {
+    if (!userId || Number.isNaN(userId)) {
+      throw new BadRequestException('userId invalide');
+    }
+
+    const jobId = Number(payload?.job_id);
+    const candidateId = Number(payload?.candidate_id);
+    if (!jobId || Number.isNaN(jobId)) {
+      throw new BadRequestException("Le champ 'job_id' est requis");
+    }
+    if (!candidateId || Number.isNaN(candidateId)) {
+      throw new BadRequestException("Le champ 'candidate_id' est requis");
+    }
+
+    // Security: ensure recruiter can only validate on their own jobs.
+    const { data: job, error: jobError } = await this.supabase
+      .from('jobs')
+      .select('id')
+      .eq('id', jobId)
+      .eq('user_id', userId)
+      .limit(1)
+      .maybeSingle();
+
+    if (jobError) {
+      throw new BadRequestException(
+        jobError.message || 'Erreur lors de la validation de l’offre',
+      );
+    }
+    if (!job) {
+      throw new BadRequestException('Offre introuvable pour ce recruteur');
+    }
+
+    const { data: updated, error: updateError } = await this.supabase
+      .from('candidate_postule')
+      .update({
+        validate: true,
+        validated_at: new Date().toISOString(),
+        status: 'ACCEPTEE',
+      })
+      .eq('job_id', jobId)
+      .eq('candidate_id', candidateId)
+      .select('id')
+      .maybeSingle();
+
+    if (updateError) {
+      throw new BadRequestException(
+        updateError.message || 'Erreur lors de la validation du candidat',
+      );
+    }
+    if (!updated?.id) {
+      throw new BadRequestException(
+        "Candidature introuvable pour ce candidat et cette offre",
+      );
+    }
+
+    // Déclenchement best-effort de la génération des questions d'entretien A4.
+    // On ne bloque jamais la validation si la génération échoue.
+    let interviewQuestions: RecruiterInterviewQuestion[] = [];
+    let interviewQuestionsError: string | null = null;
+    try {
+      const qResp = await this.callFlaskJson<any>(
+        'POST',
+        '/api/recruteur/interview-questions',
+        {
+          candidate_id: candidateId,
+          job_id: jobId,
+        },
+      );
+      if (qResp?.success && Array.isArray(qResp?.questions)) {
+        interviewQuestions = qResp.questions
+          .filter((q: any) => q && typeof q === 'object')
+          .map((q: any, idx: number) => ({
+            id: String(q.id ?? `q${idx + 1}`),
+            text: String(q.text ?? '').trim(),
+            category: String(q.category ?? 'autre').trim().toLowerCase(),
+          }))
+          .filter((q: RecruiterInterviewQuestion) => q.text.length > 0);
+      } else if (typeof qResp?.error === 'string' && qResp.error.trim()) {
+        interviewQuestionsError = qResp.error.trim();
+      }
+    } catch (e: any) {
+      interviewQuestionsError =
+        typeof e?.message === 'string' && e.message.trim()
+          ? e.message.trim()
+          : "Erreur lors de la génération des questions d'entretien";
+    }
+
+    return {
+      success: true,
+      applicationId: Number(updated.id),
+      interviewQuestions,
+      interviewQuestionsError,
+    };
+  }
+
+  async saveInterviewQuestionsPdf(
+    userId: number,
+    payload: RecruiterSaveInterviewPdfPayload,
+  ): Promise<{
+    success: boolean;
+    file_path?: string;
+    file_url?: string | null;
+    questions_count?: number;
+  }> {
+    if (!userId || Number.isNaN(userId)) {
+      throw new BadRequestException('userId invalide');
+    }
+
+    const jobId = Number(payload?.job_id);
+    const candidateId = Number(payload?.candidate_id);
+    if (!jobId || Number.isNaN(jobId)) {
+      throw new BadRequestException("Le champ 'job_id' est requis");
+    }
+    if (!candidateId || Number.isNaN(candidateId)) {
+      throw new BadRequestException("Le champ 'candidate_id' est requis");
+    }
+
+    const { data: job, error: jobError } = await this.supabase
+      .from('jobs')
+      .select('id')
+      .eq('id', jobId)
+      .eq('user_id', userId)
+      .limit(1)
+      .maybeSingle();
+
+    if (jobError) {
+      throw new BadRequestException(
+        jobError.message || 'Erreur lors de la validation de l’offre',
+      );
+    }
+    if (!job) {
+      throw new BadRequestException('Offre introuvable pour ce recruteur');
+    }
+
+    // Vérifier qu'il existe bien une candidature pour ce couple (job, candidate)
+    const { data: postule, error: postuleError } = await this.supabase
+      .from('candidate_postule')
+      .select('id')
+      .eq('job_id', jobId)
+      .eq('candidate_id', candidateId)
+      .limit(1)
+      .maybeSingle();
+    if (postuleError) {
+      throw new BadRequestException(
+        postuleError.message || 'Erreur lors de la vérification de la candidature',
+      );
+    }
+    if (!postule?.id) {
+      throw new BadRequestException(
+        "Candidature introuvable pour ce candidat et cette offre",
+      );
+    }
+
+    // Charger infos candidat + offre pour le header du PDF et le chemin de stockage
+    const { data: candRow, error: candError } = await this.supabase
+      .from('candidates')
+      .select('id, id_agent, prenom, nom, categorie_profil')
+      .eq('id', candidateId)
+      .limit(1)
+      .maybeSingle();
+    if (candError) {
+      throw new BadRequestException(
+        candError.message || 'Erreur lors de la lecture du candidat',
+      );
+    }
+    if (!candRow) {
+      throw new BadRequestException('Candidat introuvable');
+    }
+
+    const { data: jobRow, error: jobReadError } = await this.supabase
+      .from('jobs')
+      .select('title')
+      .eq('id', jobId)
+      .limit(1)
+      .maybeSingle();
+    if (jobReadError) {
+      throw new BadRequestException(
+        jobReadError.message || "Erreur lors de la lecture de l'offre",
+      );
+    }
+
+    // Questions: utiliser le payload si fourni, sinon les régénérer via Flask
+    let questions: RecruiterInterviewQuestion[] = [];
+    if (Array.isArray(payload?.questions) && payload.questions.length > 0) {
+      questions = payload.questions
+        .map((q: any, idx: number) => ({
+          id: String(q?.id ?? `q${idx + 1}`),
+          text: String(q?.text ?? '').trim(),
+          category: String(q?.category ?? 'autre').trim().toLowerCase(),
+        }))
+        .filter((q) => q.text.length > 0);
+    } else {
+      const qResp = await this.callFlaskJson<any>(
+        'POST',
+        '/api/recruteur/interview-questions',
+        {
+          candidate_id: candidateId,
+          job_id: jobId,
+        },
+      );
+      if (!qResp?.success || !Array.isArray(qResp?.questions)) {
+        throw new BadRequestException(
+          qResp?.error || "Impossible de générer les questions d'entretien",
+        );
+      }
+      questions = qResp.questions
+        .map((q: any, idx: number) => ({
+          id: String(q?.id ?? `q${idx + 1}`),
+          text: String(q?.text ?? '').trim(),
+          category: String(q?.category ?? 'autre').trim().toLowerCase(),
+        }))
+        .filter((q: RecruiterInterviewQuestion) => q.text.length > 0);
+    }
+
+    if (!questions.length) {
+      throw new BadRequestException("Aucune question d'entretien à enregistrer");
+    }
+
+    // Génération PDF (Nest)
+    const pdfBuffer = await new Promise<Buffer>((resolve, reject) => {
+      const doc = new PDFDocument({ size: 'A4', margin: 50 });
+      const chunks: Buffer[] = [];
+
+      doc.on('data', (chunk) => chunks.push(Buffer.isBuffer(chunk) ? chunk : Buffer.from(chunk)));
+      doc.on('end', () => resolve(Buffer.concat(chunks)));
+      doc.on('error', reject);
+
+      const candidateName = `${String(candRow.prenom ?? '').trim()} ${String(candRow.nom ?? '').trim()}`.trim();
+      const jobTitle = String(jobRow?.title ?? '').trim();
+      const generatedAt = new Date().toISOString().replace('T', ' ').slice(0, 19);
+
+      doc.fontSize(16).font('Helvetica-Bold').text('Entretien TAP - Questions proposees');
+      doc.moveDown(0.5);
+      doc.fontSize(10).font('Helvetica');
+      if (candidateName) doc.text(`Candidat: ${candidateName}`);
+      doc.text(`Candidate ID: ${candidateId}`);
+      if (jobTitle) doc.text(`Offre: ${jobTitle}`);
+      doc.text(`Genere le: ${generatedAt} UTC`);
+      doc.moveDown(0.8);
+      doc.moveTo(50, doc.y).lineTo(545, doc.y).strokeColor('#CCCCCC').stroke();
+      doc.moveDown(0.8);
+
+      questions.forEach((q, index) => {
+        doc.fontSize(11).font('Helvetica-Bold').text(`${index + 1}. [${q.category || 'autre'}]`);
+        doc.moveDown(0.2);
+        doc.fontSize(10).font('Helvetica').text(q.text, {
+          width: 495,
+          align: 'left',
+        });
+        doc.moveDown(0.8);
+      });
+
+      doc.end();
+    });
+
+    // Upload dans tap_files/candidates/<categorie>/<candidateId>/
+    const category = String(candRow.categorie_profil ?? 'Autres').trim() || 'Autres';
+    const idAgent = String(candRow.id_agent ?? `candidate_${candidateId}`).trim();
+    const timestamp = new Date().toISOString().replace(/[-:T]/g, '').slice(0, 15);
+    const fileName = `entretien_tap_${idAgent}_${timestamp}.pdf`;
+    const filePath = `candidates/${category}/${candidateId}/${fileName}`;
+
+    const { error: uploadError } = await this.supabase.storage
+      .from('tap_files')
+      .upload(filePath, pdfBuffer, {
+        contentType: 'application/pdf',
+        upsert: true,
+      });
+
+    if (uploadError) {
+      throw new BadRequestException(
+        uploadError.message || "Erreur lors de l'upload du PDF d'entretien",
+      );
+    }
+
+    const { data: signed, error: signError } = await this.supabase.storage
+      .from('tap_files')
+      .createSignedUrl(filePath, 60 * 60);
+
+    return {
+      success: true,
+      file_path: filePath,
+      file_url: signError ? null : (signed?.signedUrl ?? null),
+      questions_count: questions.length,
+    };
   }
 
   async getRecruiterOverview(

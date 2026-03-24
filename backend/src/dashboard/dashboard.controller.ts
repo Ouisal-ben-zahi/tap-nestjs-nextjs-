@@ -1,7 +1,7 @@
 import { Body, Controller, Delete, Get, HttpCode, Param, Post, Query, Req, UploadedFile, UploadedFiles, UseGuards, UseInterceptors } from '@nestjs/common';
 import { AuthGuard } from '@nestjs/passport';
 import { FileFieldsInterceptor, FileInterceptor } from '@nestjs/platform-express';
-import { DashboardService, type ApplyJobPayload, type RecruiterJobPayload, type RecruiterMatchByOfferPayload } from './dashboard.service';
+import { DashboardService, type ApplyJobPayload, type RecruiterJobPayload, type RecruiterMatchByOfferPayload, type RecruiterValidateCandidatePayload, type RecruiterSaveInterviewPdfPayload } from './dashboard.service';
 
 @Controller('dashboard')
 export class DashboardController {
@@ -222,6 +222,26 @@ export class DashboardController {
   ) {
     const userId = await this.dashboardService.resolveJwtUserId(req?.user);
     return this.dashboardService.getRecruiterMatchedCandidatesByOffer(userId, body);
+  }
+
+  @Post('recruteur/candidatures/validate')
+  @UseGuards(AuthGuard('jwt'))
+  async validateRecruiterCandidateByJwt(
+    @Req() req: any,
+    @Body() body: RecruiterValidateCandidatePayload,
+  ) {
+    const userId = await this.dashboardService.resolveJwtUserId(req?.user);
+    return this.dashboardService.validateCandidateApplication(userId, body);
+  }
+
+  @Post('recruteur/interview-questions/save-pdf')
+  @UseGuards(AuthGuard('jwt'))
+  async saveRecruiterInterviewQuestionsPdfByJwt(
+    @Req() req: any,
+    @Body() body: RecruiterSaveInterviewPdfPayload,
+  ) {
+    const userId = await this.dashboardService.resolveJwtUserId(req?.user);
+    return this.dashboardService.saveInterviewQuestionsPdf(userId, body);
   }
 
   // === Legacy routes with userId in URL ===

@@ -225,15 +225,59 @@ def _insert_talent_card_once(
         # Texte pour l'embedding du candidat : domaine + titre + compétences + résumé
         raw_categorie = _clean_string_value(data.get("categorie_profil"), max_length=50) or "autre"
         titre_profil = _clean_string_value(data.get("Titre de profil"), max_length=255) or ""
-        skills_list = data.get("skills") or []
-        if isinstance(skills_list, str):
-            skills_list = [skills_list]
-        skills_text = ", ".join([str(s) for s in skills_list if s])
+        raw_skills = (
+            data.get("skills")
+            or data.get("competences")
+            or data.get("competencies")
+            or []
+        )
+        if isinstance(raw_skills, str):
+            raw_skills_str = raw_skills.strip()
+            # Accepte un JSON string '["Python","SQL"]' ou une chaîne CSV "Python, SQL"
+            if raw_skills_str.startswith("[") and raw_skills_str.endswith("]"):
+                try:
+                    parsed_skills = json.loads(raw_skills_str)
+                    raw_skills = parsed_skills if isinstance(parsed_skills, list) else [raw_skills]
+                except Exception:
+                    raw_skills = [s.strip() for s in raw_skills.split(",") if s and s.strip()]
+            else:
+                raw_skills = [s.strip() for s in raw_skills.split(",") if s and s.strip()]
+        skills_list = [
+            skill for skill in
+            [_clean_string_value(s, max_length=255) for s in raw_skills]
+            if skill
+        ]
+        skills_text = ", ".join(skills_list)
+
+        raw_languages = (
+            data.get("languages")
+            or data.get("langues_parlees")
+            or data.get("langues")
+            or []
+        )
+        if isinstance(raw_languages, str):
+            raw_languages_str = raw_languages.strip()
+            # Accepte un JSON string '["Français","Anglais"]' ou une chaîne CSV "Français, Anglais"
+            if raw_languages_str.startswith("[") and raw_languages_str.endswith("]"):
+                try:
+                    parsed_languages = json.loads(raw_languages_str)
+                    raw_languages = parsed_languages if isinstance(parsed_languages, list) else [raw_languages]
+                except Exception:
+                    raw_languages = [s.strip() for s in raw_languages.split(",") if s and s.strip()]
+            else:
+                raw_languages = [s.strip() for s in raw_languages.split(",") if s and s.strip()]
+        languages_list = [
+            language for language in
+            [_clean_string_value(l, max_length=100) for l in raw_languages]
+            if language
+        ]
+        languages_text = ", ".join(languages_list)
         resume_bref = data.get("resume_bref") or ""
         embedding_text_parts = [
             raw_categorie,
             titre_profil,
             skills_text,
+            languages_text,
             resume_bref,
         ]
         embedding_text = " | ".join(
@@ -280,6 +324,8 @@ def _insert_talent_card_once(
                 data.get("niveau_seniorite") or data.get("niveau de seniorite"), max_length=100
             ),
             "resume_bref": _clean_string_value(data.get("resume_bref"), max_length=10000),
+            "skills": skills_list if skills_list else None,
+            "langues": languages_list if languages_list else None,
             "image_minio_url": (
                 (_extract_storage_path_from_url(image_url_to_save) or "")[:500]
                 if image_url_to_save

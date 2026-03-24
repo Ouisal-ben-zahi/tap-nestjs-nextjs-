@@ -30,6 +30,24 @@ export type MatchByOfferResponse = {
   message?: string;
 };
 
+export type ValidateCandidateResponse = {
+  success: boolean;
+  applicationId: number;
+  interviewQuestions?: Array<{
+    id: string;
+    text: string;
+    category: string;
+  }>;
+  interviewQuestionsError?: string | null;
+};
+
+export type SaveInterviewPdfResponse = {
+  success: boolean;
+  file_path?: string;
+  file_url?: string | null;
+  questions_count?: number;
+};
+
 export const recruteurService = {
   getOverview: () =>
     api.get<RecruteurOverview>('/dashboard/recruteur/overview').then((r) => r.data),
@@ -53,6 +71,27 @@ export const recruteurService = {
         job_id: jobId,
         top_n: 20,
         only_postule: true,
+      })
+      .then((r) => r.data),
+
+  validateCandidateForJob: (jobId: number, candidateId: number) =>
+    api
+      .post<ValidateCandidateResponse>('/dashboard/recruteur/candidatures/validate', {
+        job_id: jobId,
+        candidate_id: candidateId,
+      })
+      .then((r) => r.data),
+
+  saveInterviewQuestionsPdf: (
+    jobId: number,
+    candidateId: number,
+    questions?: Array<{ id: string; text: string; category: string }>,
+  ) =>
+    api
+      .post<SaveInterviewPdfResponse>('/dashboard/recruteur/interview-questions/save-pdf', {
+        job_id: jobId,
+        candidate_id: candidateId,
+        questions,
       })
       .then((r) => r.data),
 };

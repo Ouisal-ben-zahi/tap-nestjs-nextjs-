@@ -1,6 +1,7 @@
 import ast
 import os
 import sys
+import unicodedata
 
 import pandas as pd
 from sentence_transformers import SentenceTransformer, util
@@ -56,6 +57,128 @@ def _safe_str(v):
     if v is None:
         return ""
     return str(v).strip() if isinstance(v, str) else str(v)
+
+
+def _normalize_skill_text(v) -> str:
+    if v is None:
+        return ""
+    s = str(v).strip().lower()
+    s = unicodedata.normalize("NFKD", s).encode("ascii", "ignore").decode("ascii")
+    s = re.sub(r"[^a-z0-9]+", " ", s).strip()
+    return s
+
+
+def _extract_skill_name(v) -> str:
+    if isinstance(v, str):
+        return v.strip()
+    if isinstance(v, dict):
+        raw_name = (
+            v.get("name")
+            or v.get("nom")
+            or v.get("skill")
+            or v.get("skill_name")
+            or v.get("competence")
+            or v.get("label")
+            or v.get("original_name")
+            or v.get("normalized_name")
+            or ""
+        )
+        if isinstance(raw_name, dict):
+            raw_name = (
+                raw_name.get("fr")
+                or raw_name.get("en")
+                or raw_name.get("value")
+                or ""
+            )
+        return str(raw_name).strip()
+    return ""
+
+
+def _extract_language_name(v) -> str:
+    if isinstance(v, str):
+        return v.strip()
+    if isinstance(v, dict):
+        raw_name = (
+            v.get("name")
+            or v.get("nom")
+            or v.get("language")
+            or v.get("langue")
+            or v.get("label")
+            or ""
+        )
+        if isinstance(raw_name, dict):
+            raw_name = (
+                raw_name.get("fr")
+                or raw_name.get("en")
+                or raw_name.get("value")
+                or ""
+            )
+        return str(raw_name).strip()
+    return ""
+
+
+def _explode_skill_tokens(name: str) -> list[str]:
+    """Découpe une chaîne de compétences concaténées en tokens unitaires."""
+    if not name:
+        return []
+    parts = re.split(r"[,;|/]+", name)
+    out = [p.strip() for p in parts if p and p.strip()]
+    return out if out else [name.strip()]
+
+
+def _explode_language_tokens(name: str) -> list[str]:
+    """Découpe une chaîne de langues concaténées en tokens unitaires."""
+    if not name:
+        return []
+    parts = re.split(r"[,;|/]+", name)
+    out = [p.strip() for p in parts if p and p.strip()]
+    return out if out else [name.strip()]
+
+
+def _normalize_skill_list(values) -> list[str]:
+    if values is None:
+        return []
+    out = []
+    if isinstance(values, str):
+        s = values.strip()
+        if not s:
+            return []
+        if s.startswith("["):
+            try:
+                values = ast.literal_eval(s)
+            except (ValueError, SyntaxError):
+                values = [x.strip() for x in s.split(",") if x.strip()]
+        else:
+            values = [x.strip() for x in s.split(",") if x.strip()]
+    if isinstance(values, list):
+        for item in values:
+            name = _extract_skill_name(item)
+            if name:
+                out.extend(_explode_skill_tokens(name))
+    return out
+
+
+def _normalize_language_list(values) -> list[str]:
+    if values is None:
+        return []
+    out = []
+    if isinstance(values, str):
+        s = values.strip()
+        if not s:
+            return []
+        if s.startswith("["):
+            try:
+                values = ast.literal_eval(s)
+            except (ValueError, SyntaxError):
+                values = [x.strip() for x in s.split(",") if x.strip()]
+        else:
+            values = [x.strip() for x in s.split(",") if x.strip()]
+    if isinstance(values, list):
+        for item in values:
+            name = _extract_language_name(item)
+            if name:
+                out.extend(_explode_language_tokens(name))
+    return out
 
 
 def _parse_experience_min(value):
@@ -182,20 +305,38 @@ def get_job_offer_from_job_id(job_id):
 
 
 def semantic_skill_match_score(candidate_skills: list, job_skills: list) -> float:
+    candidate_skills = _normalize_skill_list(candidate_skills)
+    job_skills = _normalize_skill_list(job_skills)
     if not job_skills or not candidate_skills:
         return 1.0 if not job_skills else 0.0
+    candidate_norm = {_normalize_skill_text(s) for s in candidate_skills if _normalize_skill_text(s)}
+    matched_exact = sum(1 for js in job_skills if _normalize_skill_text(js) in candidate_norm)
+    if matched_exact == len(job_skills):
+        return 1.0
     c_emb = model.encode(candidate_skills)
     j_emb = model.encode(job_skills)
-    matched = sum(1 for je in j_emb if max(util.pytorch_cos_sim(je, c_emb)[0]).item() >= 0.7)
+    matched = matched_exact + sum(
+        1 for js, je in zip(job_skills, j_emb)
+        if _normalize_skill_text(js) not in candidate_norm
+        and max(util.pytorch_cos_sim(je, c_emb)[0]).item() >= 0.7
+    )
     return matched / len(job_skills)
 
 
 def get_missing_skills(candidate_skills: list, job_skills: list) -> list:
-    if not job_skills or not candidate_skills:
+    candidate_skills = _normalize_skill_list(candidate_skills)
+    job_skills = _normalize_skill_list(job_skills)
+    if not job_skills:
+        return []
+    if not candidate_skills:
         return job_skills
+    candidate_norm = {_normalize_skill_text(s) for s in candidate_skills if _normalize_skill_text(s)}
+    exact_missing = [js for js in job_skills if _normalize_skill_text(js) not in candidate_norm]
+    if not exact_missing:
+        return []
     c_emb = model.encode(candidate_skills)
-    j_emb = model.encode(job_skills)
-    return [skill for skill, je in zip(job_skills, j_emb)
+    j_emb = model.encode(exact_missing)
+    return [skill for skill, je in zip(exact_missing, j_emb)
             if max(util.pytorch_cos_sim(je, c_emb)[0]).item() < 0.7]
 
 
@@ -511,16 +652,23 @@ def _row_to_candidate(row) -> dict:
             return []
         if isinstance(v, str):
             try:
-                return ast.literal_eval(v) if v.strip().startswith("[") else [x.strip() for x in v.split(",") if x.strip()]
+                if v.strip().startswith("["):
+                    try:
+                        return ast.literal_eval(v)
+                    except (ValueError, SyntaxError):
+                        return json.loads(v)
+                return [x.strip() for x in v.split(",") if x.strip()]
             except (ValueError, SyntaxError):
+                return [v] if v.strip() else []
+            except json.JSONDecodeError:
                 return [v] if v.strip() else []
         return list(v) if hasattr(v, "__iter__") and not isinstance(v, str) else []
 
     return {
         "candidate_id": row.get("candidate_id"),
         "name": row.get("name", ""),
-        "skills": parse_list(row.get("skills")),
-        "languages": parse_list(row.get("languages")),
+        "skills": _normalize_skill_list(parse_list(row.get("skills"))),
+        "languages": _normalize_language_list(parse_list(row.get("languages"))),
         "experience": int(row["experience"]) if pd.notna(row.get("experience")) else int(row.get("annees_experience") or 0),
         "annees_experience": row.get("annees_experience") or row.get("experience") or 0,
         "seniority": (row.get("seniority") or "").strip() or "",
