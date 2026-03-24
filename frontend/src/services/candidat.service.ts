@@ -84,6 +84,7 @@ export const candidatService = {
         created_at: string | null;
         urgent: boolean;
         location_type: string | null;
+        score?: number | null;
         niveau_attendu: string | null;
         experience_min: string | null;
         presence_sur_site: string | null;
