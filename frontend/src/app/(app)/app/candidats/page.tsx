@@ -34,6 +34,7 @@ export default function CandidatsPage() {
   const [interviewCandidateName, setInterviewCandidateName] = useState<string>("Candidat");
   const [interviewCandidateId, setInterviewCandidateId] = useState<number | null>(null);
   const [interviewPdfUrlsByCandidate, setInterviewPdfUrlsByCandidate] = useState<Record<number, string>>({});
+  const [validatedCandidates, setValidatedCandidates] = useState<Record<number, boolean>>({});
 
   if (!isRecruteur) {
     return (
@@ -183,6 +184,7 @@ export default function CandidatsPage() {
                       validateCandidateMutation.isPending &&
                       validateCandidateMutation.variables?.candidateId === candidateId;
                     const existingInterviewPdfUrl = interviewPdfUrlsByCandidate[candidateId] || null;
+                    const alreadyValidated = Boolean(validatedCandidates[candidateId]);
 
                     return (
                       <div
@@ -242,6 +244,10 @@ export default function CandidatsPage() {
                                           [candidateId]: existingPdfUrl,
                                         }));
                                       }
+                                      setValidatedCandidates((prev) => ({
+                                        ...prev,
+                                        [candidateId]: true,
+                                      }));
                                       const questions = Array.isArray(data?.interviewQuestions)
                                         ? data.interviewQuestions
                                             .filter((q) => q && typeof q.text === "string" && q.text.trim())
@@ -267,7 +273,7 @@ export default function CandidatsPage() {
                               <CheckCircle2 size={13} />
                               {isValidatingThisCandidate
                                 ? "Validation..."
-                                : existingInterviewPdfUrl
+                                : alreadyValidated || existingInterviewPdfUrl
                                   ? "Régénérer d'autres questions"
                                   : "Valider"}
                             </button>

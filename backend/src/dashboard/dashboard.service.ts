@@ -2098,12 +2098,7 @@ export class DashboardService {
 
         if (!listError && Array.isArray(files) && files.length > 0) {
           const latestInterviewPdf = files
-            .filter(
-              (f: any) =>
-                typeof f?.name === 'string' &&
-                f.name.startsWith('entretien_tap_') &&
-                f.name.toLowerCase().endsWith('.pdf'),
-            )
+            .filter((f: any) => typeof f?.name === 'string' && f.name.toLowerCase().endsWith('.pdf'))
             .sort((a: any, b: any) => {
               const ta = new Date(String(a?.updated_at ?? a?.created_at ?? 0)).getTime();
               const tb = new Date(String(b?.updated_at ?? b?.created_at ?? 0)).getTime();
