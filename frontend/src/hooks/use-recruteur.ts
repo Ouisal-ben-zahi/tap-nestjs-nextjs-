@@ -78,9 +78,13 @@ export function useValidateCandidate() {
           : 'Candidat validé avec succès';
       addToast({ message: msg, type: 'success' });
       if (data?.interviewQuestionsError) {
+        const rawError = String(data.interviewQuestionsError).trim();
+        const isTimeout = rawError.toLowerCase().includes('timeout');
         addToast({
-          message: `Validation OK, mais génération des questions indisponible: ${data.interviewQuestionsError}`,
-          type: 'error',
+          message: isTimeout
+            ? "Validation OK. La génération des questions prend plus de temps, vous pouvez réessayer."
+            : `Validation OK, mais génération des questions indisponible: ${rawError}`,
+          type: isTimeout ? 'success' : 'error',
         });
       }
     },
