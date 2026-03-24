@@ -60,6 +60,15 @@ export const recruteurService = {
   createJob: (payload: JobPayload) =>
     api.post<Job>('/dashboard/recruteur/jobs', payload).then((r) => r.data),
 
+  getJob: (jobId: number) =>
+    api.get<{ job: Record<string, unknown> }>(`/dashboard/recruteur/jobs/${jobId}`).then((r) => r.data),
+
+  updateJob: (jobId: number, payload: JobPayload) =>
+    api.put<{ job: Job }>(`/dashboard/recruteur/jobs/${jobId}`, payload).then((r) => r.data),
+
+  deleteJob: (jobId: number) =>
+    api.delete<{ success: true }>(`/dashboard/recruteur/jobs/${jobId}`).then((r) => r.data),
+
   updateJobStatus: (jobId: number, status: 'ACTIVE' | 'INACTIVE') =>
     api
       .post<{ success: true }>(`/dashboard/recruteur/jobs/${jobId}/status`, {

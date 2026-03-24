@@ -428,19 +428,34 @@ export class DashboardService {
 
   /** Base URL Flask optionnelle (ex. création d’offre sans IA en local). */
   private tryGetFlaskBaseUrl(): string | null {
-    const flaskUrl =
+    const raw =
       this.config.get<string>('FLASK_AI_URL') ||
       this.config.get<string>('NEXT_PUBLIC_FLASK_AI_URL');
-    if (!flaskUrl || !String(flaskUrl).trim()) {
+    if (!raw || !String(raw).trim()) {
       return null;
     }
-    return String(flaskUrl).replace(/\/$/, '');
+    let flaskUrl = String(raw).trim().replace(/\/$/, '');
+    // Sans schéma (ex. localhost:5000), `new URL(...)` lève « Invalid URL ».
+    if (!/^https?:\/\//i.test(flaskUrl)) {
+      flaskUrl = `http://${flaskUrl}`;
+    }
+    try {
+      const parsed = new URL(flaskUrl);
+      if (!parsed.hostname) {
+        return null;
+      }
+    } catch {
+      return null;
+    }
+    return flaskUrl;
   }
 
   private getFlaskBaseUrl(): string {
     const base = this.tryGetFlaskBaseUrl();
     if (!base) {
-      throw new BadRequestException('FLASK_AI_URL non configuré');
+      throw new BadRequestException(
+        'FLASK_AI_URL non configuré ou invalide (ex. http://127.0.0.1:5000, sans guillemets superflus).',
+      );
     }
     return base;
   }
@@ -457,8 +472,22 @@ export class DashboardService {
       const https = require('https');
       const { URL } = require('url');
 
-      const url = new URL(base + path);
+      const pathNorm = path.startsWith('/') ? path : `/${path}`;
+      let url: InstanceType<typeof URL>;
+      try {
+        url = new URL(pathNorm, base);
+      } catch (e: any) {
+        throw new BadRequestException(
+          `URL Flask invalide (FLASK_AI_URL). Vérifiez le schéma http(s) et l'hôte. Détail : ${e?.message ?? e}`,
+        );
+      }
       const transport = url.protocol === 'https:' ? https : http;
+      const reqPort =
+        url.port !== ''
+          ? Number(url.port)
+          : url.protocol === 'https:'
+            ? 443
+            : 80;
 
       const payload = body !== undefined ? JSON.stringify(body) : undefined;
 
@@ -466,7 +495,7 @@ export class DashboardService {
         const req = transport.request(
           {
             hostname: url.hostname,
-            port: url.port,
+            port: reqPort,
             path: url.pathname + url.search,
             method,
             headers:
@@ -545,7 +574,7 @@ export class DashboardService {
     const base = this.tryGetFlaskBaseUrl();
     if (!base) {
       throw new BadRequestException(
-        'FLASK_AI_URL non configuré (ou NEXT_PUBLIC_FLASK_AI_URL). Impossible de générer l’embedding de l’offre.',
+        'FLASK_AI_URL non configuré ou invalide (NEXT_PUBLIC_FLASK_AI_URL). Exemple : http://127.0.0.1:5000 — impossible de générer l’embedding de l’offre.',
       );
     }
 
@@ -1816,8 +1845,7 @@ export class DashboardService {
       typeof file.size === 'number' ? (file.size as number) : null;
 
     // Fire-and-forget: trigger Flask AI analysis
-    const flaskUrl = this.config.get<string>('FLASK_AI_URL');
-    const normalizedFlaskBase = flaskUrl ? String(flaskUrl).replace(/\/$/, '') : null;
+    const normalizedFlaskBase = this.tryGetFlaskBaseUrl();
     if (normalizedFlaskBase) {
       try {
         const FormData = require('form-data');
@@ -1958,8 +1986,8 @@ export class DashboardService {
       return { has_photo: false };
     }
 
-    const flaskUrl = this.config.get<string>('FLASK_AI_URL');
-    if (!flaskUrl) {
+    const flaskBase = this.tryGetFlaskBaseUrl();
+    if (!flaskBase) {
       return { has_photo: false };
     }
 
@@ -1975,7 +2003,7 @@ export class DashboardService {
         contentType: 'application/pdf',
       });
 
-      const parsed = new URL(flaskUrl + '/check-cv-photo');
+      const parsed = new URL(flaskBase + '/check-cv-photo');
       const transport = parsed.protocol === 'https:' ? https : http;
 
       const result: { has_photo: boolean } = await new Promise(
@@ -2131,6 +2159,147 @@ export class DashboardService {
     return { jobs };
   }
 
+  async getRecruiterJobById(
+    userId: number,
+    jobId: number,
+  ): Promise<{ job: any }> {
+    if (!userId || Number.isNaN(userId)) {
+      throw new BadRequestException('userId invalide');
+    }
+    if (!jobId || Number.isNaN(jobId)) {
+      throw new BadRequestException('jobId invalide');
+    }
+
+    const { data, error } = await this.supabase
+      .from('jobs')
+      .select('*')
+      .eq('id', jobId)
+      .eq('user_id', userId)
+      .maybeSingle();
+
+    if (error) {
+      throw new BadRequestException(
+        error.message || 'Erreur lors du chargement de l’offre',
+      );
+    }
+    if (!data) {
+      throw new BadRequestException('Offre introuvable pour ce recruteur');
+    }
+
+    return { job: data };
+  }
+
+  async updateRecruiterJob(
+    userId: number,
+    jobId: number,
+    payload: RecruiterJobPayload,
+  ): Promise<{ job: any }> {
+    if (!userId || Number.isNaN(userId)) {
+      throw new BadRequestException('userId invalide');
+    }
+    if (!jobId || Number.isNaN(jobId)) {
+      throw new BadRequestException('jobId invalide');
+    }
+
+    const { data: existing, error: exErr } = await this.supabase
+      .from('jobs')
+      .select('id')
+      .eq('id', jobId)
+      .eq('user_id', userId)
+      .maybeSingle();
+
+    if (exErr) {
+      throw new BadRequestException(
+        exErr.message || 'Erreur lors de la vérification de l’offre',
+      );
+    }
+    if (!existing) {
+      throw new BadRequestException('Offre introuvable pour ce recruteur');
+    }
+
+    const title = payload.title?.trim();
+    if (!title) {
+      throw new BadRequestException('Le titre du poste est obligatoire');
+    }
+
+    const locationType =
+      typeof payload.localisation === 'string' && payload.localisation.trim()
+        ? payload.localisation.trim()
+        : null;
+
+    const embedding = await this.fetchJobEmbeddingFromFlask({
+      ...payload,
+      title,
+      localisation: locationType ?? payload.localisation,
+    });
+
+    const bodyToUpdate: any = {
+      title,
+      categorie_profil: payload.categorie_profil ?? null,
+      niveau_attendu: payload.niveau_attendu ?? null,
+      experience_min: payload.experience_min ?? null,
+      presence_sur_site: payload.presence_sur_site ?? null,
+      reason: payload.reason ?? null,
+      main_mission: payload.main_mission ?? null,
+      tasks_other: payload.tasks_other ?? null,
+      disponibilite: payload.disponibilite ?? null,
+      salary_min: payload.salary_min ?? null,
+      salary_max: payload.salary_max ?? null,
+      urgent: Boolean(payload.urgent),
+      contrat: payload.contrat ?? 'stage',
+      niveau_seniorite: payload.niveau_seniorite ?? null,
+      entreprise: payload.entreprise ?? null,
+      phone: payload.phone ?? null,
+      soft_skills: Array.isArray(payload.soft_skills) ? payload.soft_skills : null,
+      skills: Array.isArray(payload.skills) ? payload.skills : null,
+      languages: Array.isArray(payload.languages) ? payload.languages : null,
+      location_type: locationType,
+      embedding,
+    };
+
+    const { data, error } = await this.supabase
+      .from('jobs')
+      .update(bodyToUpdate)
+      .eq('id', jobId)
+      .eq('user_id', userId)
+      .select('*')
+      .single();
+
+    if (error || !data) {
+      throw new BadRequestException(
+        error?.message || 'Erreur lors de la mise à jour de l’offre',
+      );
+    }
+
+    return { job: data };
+  }
+
+  async deleteRecruiterJob(
+    userId: number,
+    jobId: number,
+  ): Promise<{ success: true }> {
+    if (!userId || Number.isNaN(userId)) {
+      throw new BadRequestException('userId invalide');
+    }
+    if (!jobId || Number.isNaN(jobId)) {
+      throw new BadRequestException('jobId invalide');
+    }
+
+    const { error } = await this.supabase
+      .from('jobs')
+      .delete()
+      .eq('id', jobId)
+      .eq('user_id', userId);
+
+    if (error) {
+      throw new BadRequestException(
+        error.message || 'Erreur lors de la suppression de l’offre',
+      );
+    }
+
+    return { success: true };
+  }
+
   async updateRecruiterJobStatus(
     userId: number,
     jobId: number,
@@ -2273,7 +2442,7 @@ export class DashboardService {
           candidate_id: candidateId,
           job_id: jobId,
         },
-        15000,
+        90000,
       );
       if (qResp?.success && Array.isArray(qResp?.questions)) {
         interviewQuestions = qResp.questions

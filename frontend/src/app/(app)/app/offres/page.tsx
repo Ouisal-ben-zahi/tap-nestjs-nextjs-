@@ -1,14 +1,36 @@
 "use client";
 
-import { useState } from "react";
+import { useState, useEffect, useRef } from "react";
+import Link from "next/link";
 import { useAuth } from "@/hooks/use-auth";
-import { useRecruteurJobs, useCreateJob, useToggleJobStatus } from "@/hooks/use-recruteur";
+import {
+  useRecruteurJobs,
+  useRecruteurJob,
+  useCreateJob,
+  useUpdateJob,
+  useDeleteJob,
+  useToggleJobStatus,
+} from "@/hooks/use-recruteur";
 import EmptyState from "@/components/ui/EmptyState";
 import ErrorState from "@/components/ui/ErrorState";
 import StatusBadge from "@/components/ui/StatusBadge";
 import { Skeleton } from "@/components/ui/Skeleton";
 import DropdownSelect from "@/components/app/DropdownSelect";
-import { Briefcase, Plus, X, Send, MapPin, Clock, DollarSign, Users, ChevronDown, CheckCircle2, CircleSlash2 } from "lucide-react";
+import {
+  Briefcase,
+  Plus,
+  X,
+  MapPin,
+  Clock,
+  DollarSign,
+  Users,
+  ChevronDown,
+  CheckCircle2,
+  CircleSlash2,
+  Eye,
+  Pencil,
+  Trash2,
+} from "lucide-react";
 import { formatDate } from "@/lib/utils";
 import type { JobPayload } from "@/types/recruteur";
 import { useDashboardTheme } from "@/hooks/use-dashboard-theme";
@@ -135,11 +157,91 @@ const emptyForm: JobPayload = {
   phone: "",
 };
 
+function hydrateFormFromJobRow(
+  job: Record<string, unknown>,
+  defaults: JobPayload,
+): {
+  form: JobPayload;
+  country: string;
+  city: string;
+  selectedCities: string[];
+  softSkills: string[];
+  skills: { name: string; level: string; priority: string }[];
+  languages: { name: string; level: string; importance: string }[];
+} {
+  const loc = String(job.location_type ?? job.localisation ?? "").trim();
+  let country = "";
+  let city = "";
+  let selectedCities: string[] = [];
+  if (loc) {
+    const parts = loc.split(",").map((s) => s.trim()).filter(Boolean);
+    if (parts.length >= 2) {
+      const last = parts[parts.length - 1]!;
+      if (COUNTRIES.includes(last)) {
+        country = last;
+        const rest = parts.slice(0, -1);
+        if (rest.length === 1) city = rest[0]!;
+        else selectedCities = rest;
+      } else {
+        selectedCities = parts;
+      }
+    } else if (parts.length === 1) {
+      selectedCities = parts;
+    }
+  }
+
+  const soft_skills = Array.isArray(job.soft_skills) ? (job.soft_skills as string[]) : [];
+  const skillsRaw = job.skills;
+  const skills =
+    Array.isArray(skillsRaw) && skillsRaw.length && typeof (skillsRaw as unknown[])[0] === "object"
+      ? (skillsRaw as { name: string; level: string; priority: string }[])
+      : [{ name: "", level: "Debutant", priority: "Indispensable" }];
+  const languagesRaw = job.languages;
+  const languages =
+    Array.isArray(languagesRaw) && languagesRaw.length && typeof (languagesRaw as unknown[])[0] === "object"
+      ? (languagesRaw as { name: string; level: string; importance: string }[])
+      : [{ name: "", level: "Debutant", importance: "Indispensable" }];
+
+  const numOrNull = (v: unknown): number | null => {
+    if (v === null || v === undefined || v === "") return null;
+    const n = typeof v === "number" ? v : Number(v);
+    return Number.isFinite(n) ? n : null;
+  };
+
+  const form: JobPayload = {
+    ...defaults,
+    title: String(job.title ?? ""),
+    categorie_profil: (job.categorie_profil as string) ?? defaults.categorie_profil,
+    niveau_attendu: (job.niveau_attendu as string | null) ?? null,
+    experience_min: (job.experience_min as string) ?? "",
+    presence_sur_site: (job.presence_sur_site as string) ?? "",
+    localisation: loc,
+    reason: (job.reason as string) ?? "",
+    main_mission: (job.main_mission as string) ?? "",
+    tasks_other: (job.tasks_other as string) ?? "",
+    disponibilite: (job.disponibilite as string) ?? "",
+    salary_min: numOrNull(job.salary_min),
+    salary_max: numOrNull(job.salary_max),
+    urgent: Boolean(job.urgent),
+    contrat: (job.contrat as string) ?? defaults.contrat,
+    niveau_seniorite: (job.niveau_seniorite as string) ?? defaults.niveau_seniorite,
+    entreprise: (job.entreprise as string) ?? "",
+    phone: (job.phone as string) ?? "",
+  };
+
+  return { form, country, city, selectedCities, softSkills: soft_skills, skills, languages };
+}
+
 export default function OffresPage() {
   const { isRecruteur } = useAuth();
   const jobsQuery = useRecruteurJobs();
   const createJob = useCreateJob();
+  const updateJob = useUpdateJob();
+  const deleteJob = useDeleteJob();
   const toggleJobStatus = useToggleJobStatus();
+  const [editingJobId, setEditingJobId] = useState<number | null>(null);
+  const [deleteConfirmJobId, setDeleteConfirmJobId] = useState<number | null>(null);
+  const editJobQuery = useRecruteurJob(editingJobId, Boolean(editingJobId));
   const [showForm, setShowForm] = useState(false);
   const [form, setForm] = useState<JobPayload>(emptyForm);
   const [categorieOpen, setCategorieOpen] = useState(false);
@@ -159,6 +261,7 @@ export default function OffresPage() {
   ]);
   const [countryOpen, setCountryOpen] = useState(false);
   const [cityOpen, setCityOpen] = useState(false);
+  const hydratedEditJobIdRef = useRef<number | null>(null);
   const theme = useDashboardTheme();
   const isLight = theme === "light";
 
@@ -171,6 +274,37 @@ export default function OffresPage() {
       />
     );
   }
+
+  useEffect(() => {
+    if (!editingJobId) {
+      hydratedEditJobIdRef.current = null;
+      return;
+    }
+    if (!editJobQuery.isSuccess || !editJobQuery.data?.job) return;
+    const row = editJobQuery.data.job as Record<string, unknown>;
+    if (Number(row.id) !== editingJobId) return;
+    if (hydratedEditJobIdRef.current === editingJobId) return;
+    hydratedEditJobIdRef.current = editingJobId;
+    const h = hydrateFormFromJobRow(row, emptyForm);
+    setForm(h.form);
+    setCountry(h.country);
+    setCity(h.city);
+    setSelectedCities(h.selectedCities);
+    setSoftSkills(h.softSkills);
+    setSkills(h.skills);
+    setLanguages(h.languages);
+  }, [editingJobId, editJobQuery.isSuccess, editJobQuery.data]);
+
+  const resetFormState = () => {
+    setForm(emptyForm);
+    setCountry("");
+    setCity("");
+    setSelectedCities([]);
+    setSoftSkills([]);
+    setSkills([{ name: "", level: "Debutant", priority: "Indispensable" }]);
+    setLanguages([{ name: "", level: "Debutant", importance: "Indispensable" }]);
+    setEditingJobId(null);
+  };
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
@@ -190,14 +324,12 @@ export default function OffresPage() {
       languages: languages.filter((l) => l.name.trim() !== ""),
     };
 
-    await createJob.mutateAsync(payload);
-    setForm(emptyForm);
-    setCountry("");
-    setCity("");
-    setSelectedCities([]);
-    setSoftSkills([]);
-    setSkills([{ name: "", level: "Debutant", priority: "Indispensable" }]);
-    setLanguages([{ name: "", level: "Debutant", importance: "Indispensable" }]);
+    if (editingJobId) {
+      await updateJob.mutateAsync({ jobId: editingJobId, payload });
+    } else {
+      await createJob.mutateAsync(payload);
+    }
+    resetFormState();
     setShowForm(false);
   };
 
@@ -257,7 +389,18 @@ export default function OffresPage() {
             </p>
           </div>
           <button
-            onClick={() => setShowForm(!showForm)}
+            type="button"
+            onClick={() => {
+              setShowForm((open) => {
+                if (open) {
+                  resetFormState();
+                  return false;
+                }
+                resetFormState();
+                setEditingJobId(null);
+                return true;
+              });
+            }}
             className="btn-primary gap-2"
           >
             {showForm ? <X size={14} /> : <Plus size={14} />}
@@ -274,6 +417,14 @@ export default function OffresPage() {
             isLight ? "bg-white border border-tap-red/40" : "bg-zinc-900/50 border border-white/[0.06]"
           }`}
         >
+          <div className="flex items-center justify-between gap-3">
+            <p className={`text-[14px] font-semibold ${isLight ? "text-black" : "text-white"}`}>
+              {editingJobId ? "Modifier l&apos;offre" : "Nouvelle offre"}
+            </p>
+            {editingJobId && editJobQuery.isLoading ? (
+              <span className="text-[12px] text-white/45">Chargement des données…</span>
+            ) : null}
+          </div>
           <div className="grid grid-cols-1 sm:grid-cols-2 gap-5">
             {/* Titre sur toute la largeur */}
             <div className="sm:col-span-2">
@@ -1065,22 +1216,38 @@ export default function OffresPage() {
             </div>
           </div>
 
-          <div className="flex justify-end pt-3">
+          <div className="flex justify-end items-center gap-3 pt-3 flex-wrap">
+            {editingJobId ? (
+              <button
+                type="button"
+                onClick={() => {
+                  resetFormState();
+                  setShowForm(false);
+                }}
+                disabled={createJob.isPending || updateJob.isPending}
+                className={`h-11 px-5 rounded-xl border text-[13px] font-medium transition disabled:opacity-50 ${
+                  isLight
+                    ? "border-black/15 text-black/80 hover:bg-black/[0.04]"
+                    : "border-white/[0.16] text-white/80 hover:bg-white/[0.06]"
+                }`}
+              >
+                Annuler les modifications
+              </button>
+            ) : null}
             <button
               type="submit"
-              disabled={createJob.isPending}
-              className="btn-primary gap-2 disabled:opacity-50"
+              disabled={createJob.isPending || updateJob.isPending || Boolean(editingJobId && editJobQuery.isLoading)}
+              className="btn-primary disabled:opacity-50"
             >
-              {createJob.isPending ? (
+              {createJob.isPending || updateJob.isPending ? (
                 <span className="flex items-center gap-2">
                   <span className="w-4 h-4 border-2 border-white/30 border-t-white rounded-full animate-spin" />
-                  Embedding IA + publication…
+                  {editingJobId ? "Mise à jour (embedding IA)…" : "Embedding IA + publication…"}
                 </span>
+              ) : editingJobId ? (
+                "Enregistrer les modifications"
               ) : (
-                <>
-                  <Send size={14} />
-                  Publier l&apos;offre
-                </>
+                "Publier l&apos;offre"
               )}
             </button>
           </div>
@@ -1098,7 +1265,15 @@ export default function OffresPage() {
           title="Aucune offre"
           description="Créez votre première offre pour commencer à recevoir des candidatures."
           action={
-            <button onClick={() => setShowForm(true)} className="btn-primary gap-2 mt-2">
+            <button
+              type="button"
+              onClick={() => {
+                resetFormState();
+                setEditingJobId(null);
+                setShowForm(true);
+              }}
+              className="btn-primary gap-2 mt-2"
+            >
               <Plus size={14} />
               Créer une offre
             </button>
@@ -1127,20 +1302,17 @@ export default function OffresPage() {
                     : "bg-zinc-900/50 border border-white/[0.06] hover:border-white/[0.1]"
                 }`}
               >
-                <div className="flex items-start justify-between gap-4">
-                  {/* Colonne gauche : titre + 2 icônes */}
+                <div className="flex items-start justify-between gap-3">
                   <div className="flex-1 min-w-0">
                     <h3 className={`text-[15px] font-semibold truncate ${isLight ? "text-black" : "text-white"}`}>
                       {titre}
                     </h3>
 
-                    {/* 2 icônes sous le titre : localisation + candidatures */}
                     <div
                       className={`mt-2 flex flex-wrap items-center gap-3 text-[12px] ${
                         isLight ? "text-black/70" : "text-white/50"
                       }`}
                     >
-                      {/* Localisation avec tooltip au hover */}
                       <button
                         type="button"
                         className="relative group flex items-center gap-2"
@@ -1155,7 +1327,6 @@ export default function OffresPage() {
                         </span>
                       </button>
 
-                      {/* Icône + nombre de candidatures juste à côté */}
                       <div className="flex items-center gap-2">
                         <Users size={14} className={isLight ? "text-black/70" : "text-white/60"} />
                         <span className={isLight ? "text-black/80" : "text-white/70"}>
@@ -1166,9 +1337,51 @@ export default function OffresPage() {
                     </div>
                   </div>
 
-                  {/* Colonne droite : statut + date + urgence */}
+                  <div className="flex items-start gap-2 shrink-0">
+                    <div className="flex items-center gap-1">
+                      <Link
+                        href={`/app/offres/${job.id}`}
+                        title="Voir le détail"
+                        className={`p-1.5 rounded-full border transition inline-flex ${
+                          isLight
+                            ? "border-black/10 hover:bg-black/5 text-black/60"
+                            : "border-white/[0.14] hover:bg-zinc-800 text-zinc-400 hover:text-white"
+                        }`}
+                      >
+                        <Eye size={14} />
+                      </Link>
+                      <button
+                        type="button"
+                        title="Modifier l'offre"
+                        onClick={() => {
+                          hydratedEditJobIdRef.current = null;
+                          setEditingJobId(job.id);
+                          setShowForm(true);
+                        }}
+                        className={`p-1.5 rounded-full border transition ${
+                          isLight
+                            ? "border-black/10 hover:bg-black/5 text-black/60"
+                            : "border-white/[0.14] hover:bg-zinc-800 text-zinc-400 hover:text-white"
+                        }`}
+                      >
+                        <Pencil size={14} />
+                      </button>
+                      <button
+                        type="button"
+                        title="Supprimer l'offre"
+                        onClick={() => setDeleteConfirmJobId(job.id)}
+                        className={`p-1.5 rounded-full border transition ${
+                          isLight
+                            ? "border-red-500/30 bg-red-500/10 text-red-600 hover:bg-red-500/15"
+                            : "border-red-400/30 bg-red-500/15 text-red-400 hover:bg-red-500/25"
+                        }`}
+                      >
+                        <Trash2 size={14} />
+                      </button>
+                    </div>
+
                   <div
-                    className={`text-right shrink-0 flex flex-col items-end gap-1 text-[11px] ${
+                    className={`text-right flex flex-col items-end gap-1 text-[11px] ${
                       isLight ? "text-black/60" : "text-white/35"
                     }`}
                   >
@@ -1207,12 +1420,70 @@ export default function OffresPage() {
                       </div>
                     )}
                   </div>
+                  </div>
                 </div>
               </div>
             );
           })}
         </div>
       )}
+
+      {/* Suppression — confirmation */}
+      {deleteConfirmJobId != null ? (
+        <div className="fixed inset-0 z-[60] flex items-center justify-center p-4">
+          <button
+            type="button"
+            className="absolute inset-0 bg-black/70 backdrop-blur-sm"
+            aria-label="Fermer"
+            onClick={() => setDeleteConfirmJobId(null)}
+          />
+          <div
+            className={`relative w-full max-w-[400px] rounded-2xl border p-6 shadow-2xl ${
+              isLight ? "bg-white border-black/10" : "bg-[#0a0a0a] border-white/[0.08]"
+            }`}
+          >
+            <p className={`text-[15px] font-semibold mb-2 ${isLight ? "text-black" : "text-white"}`}>
+              Supprimer cette offre ?
+            </p>
+            <p className={`text-[13px] mb-6 ${isLight ? "text-black/60" : "text-white/50"}`}>
+              Cette action est définitive. Les candidatures liées seront supprimées.
+            </p>
+            <div className="flex justify-end gap-2">
+              <button
+                type="button"
+                onClick={() => setDeleteConfirmJobId(null)}
+                className={`h-9 px-4 rounded-lg border text-[13px] ${
+                  isLight ? "border-black/15 text-black/80" : "border-white/[0.16] text-white/75"
+                }`}
+              >
+                Annuler
+              </button>
+              <button
+                type="button"
+                disabled={deleteJob.isPending}
+                onClick={() => {
+                  const id = deleteConfirmJobId;
+                  if (id == null) return;
+                  deleteJob.mutate(id, {
+                    onSuccess: () => {
+                      setDeleteConfirmJobId(null);
+                      setEditingJobId((e) => {
+                        if (e !== id) return e;
+                        setShowForm(false);
+                        resetFormState();
+                        return null;
+                      });
+                    },
+                  });
+                }}
+                className="h-9 px-4 rounded-lg border border-red-500/40 bg-red-500/15 text-red-300 hover:bg-red-500/25 text-[13px] disabled:opacity-50"
+              >
+                {deleteJob.isPending ? "Suppression…" : "Supprimer"}
+              </button>
+            </div>
+          </div>
+        </div>
+      ) : null}
     </div>
   );
 }

@@ -1,12 +1,24 @@
 import axios from 'axios';
+import { nestResponseDetail } from '@/lib/api-error';
+
+/** Évite « Invalid URL » si l’URL du backend est du type 127.0.0.1:3112 sans http(s). */
+function resolveApiBaseUrl(): string {
+  const raw = process.env.NEXT_PUBLIC_BACKEND_URL;
+  if (!raw || !String(raw).trim()) {
+    return '/api';
+  }
+  let u = String(raw).trim().replace(/\/$/, '');
+  if (u.startsWith('/')) {
+    return u;
+  }
+  if (!/^https?:\/\//i.test(u)) {
+    u = `http://${u}`;
+  }
+  return u;
+}
 
 const api = axios.create({
-  baseURL:
-    // Prefer direct backend calls when explicitly configured (avoids dev proxy socket hangups)
-    // Example: NEXT_PUBLIC_BACKEND_URL="http://127.0.0.1:3112"
-    (process.env.NEXT_PUBLIC_BACKEND_URL
-      ? process.env.NEXT_PUBLIC_BACKEND_URL.replace(/\/$/, '')
-      : '/api'),
+  baseURL: resolveApiBaseUrl(),
   headers: { 'Content-Type': 'application/json' },
 });
 
@@ -41,6 +53,13 @@ api.interceptors.response.use(
           window.location.href = '/connexion';
         }
         return Promise.reject(error);
+      }
+    }
+    // Enrichit le message Axios (souvent « Request failed with status code 400 ») avec le détail Nest.
+    if (axios.isAxiosError(error) && error.response?.data) {
+      const nestMsg = nestResponseDetail(error.response.data);
+      if (nestMsg) {
+        error.message = `${error.message} (${nestMsg})`;
       }
     }
     return Promise.reject(error);

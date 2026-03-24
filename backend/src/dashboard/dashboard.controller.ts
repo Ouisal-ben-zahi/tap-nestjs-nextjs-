@@ -257,6 +257,34 @@ export class DashboardController {
     return this.dashboardService.createRecruiterJob(userId, body);
   }
 
+  @Get('recruteur/jobs/:jobId')
+  @UseGuards(AuthGuard('jwt'))
+  async getRecruiterJobByIdJwt(@Req() req: any, @Param('jobId') jobId: string) {
+    const userId = await this.dashboardService.resolveJwtUserId(req?.user);
+    const id = Number.parseInt(jobId, 10);
+    return this.dashboardService.getRecruiterJobById(userId, id);
+  }
+
+  @Put('recruteur/jobs/:jobId')
+  @UseGuards(AuthGuard('jwt'))
+  async updateRecruiterJobByJwt(
+    @Req() req: any,
+    @Param('jobId') jobId: string,
+    @Body() body: RecruiterJobPayload,
+  ) {
+    const userId = await this.dashboardService.resolveJwtUserId(req?.user);
+    const id = Number.parseInt(jobId, 10);
+    return this.dashboardService.updateRecruiterJob(userId, id, body);
+  }
+
+  @Delete('recruteur/jobs/:jobId')
+  @UseGuards(AuthGuard('jwt'))
+  async deleteRecruiterJobByJwt(@Req() req: any, @Param('jobId') jobId: string) {
+    const userId = await this.dashboardService.resolveJwtUserId(req?.user);
+    const id = Number.parseInt(jobId, 10);
+    return this.dashboardService.deleteRecruiterJob(userId, id);
+  }
+
   @Get('recruteur/overview')
   @UseGuards(AuthGuard('jwt'))
   async getRecruiterOverviewByJwt(@Req() req: any) {

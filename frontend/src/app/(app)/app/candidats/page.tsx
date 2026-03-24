@@ -3,8 +3,11 @@
 import Link from "next/link";
 import { useSearchParams } from "next/navigation";
 import { useState } from "react";
+import { useQueryClient } from "@tanstack/react-query";
 import { useAuth } from "@/hooks/use-auth";
 import { useMatchedCandidatesByOffer, useRecruteurOverview, useSaveInterviewPdf, useValidateCandidate } from "@/hooks/use-recruteur";
+import { recruteurService, type ValidateCandidateResponse } from "@/services/recruteur.service";
+import { useUiStore } from "@/stores/ui";
 import EmptyState from "@/components/ui/EmptyState";
 import ErrorState from "@/components/ui/ErrorState";
 import { Skeleton } from "@/components/ui/Skeleton";
@@ -17,6 +20,20 @@ type InterviewQuestion = {
   category: string;
 };
 
+const REGENERATE_MAX_ATTEMPTS = 6;
+const REGENERATE_DELAY_MS = 4500;
+
+function normalizeInterviewQuestions(data: ValidateCandidateResponse | undefined): InterviewQuestion[] {
+  if (!Array.isArray(data?.interviewQuestions)) return [];
+  return data.interviewQuestions
+    .filter((q) => q && typeof q.text === "string" && q.text.trim())
+    .map((q, idx) => ({
+      id: String(q.id ?? `q${idx + 1}`),
+      text: String(q.text).trim(),
+      category: String(q.category ?? "autre").trim().toLowerCase(),
+    }));
+}
+
 export default function CandidatsPage() {
   const searchParams = useSearchParams();
   const jobIdParam = searchParams.get("jobId");
@@ -27,6 +44,8 @@ export default function CandidatsPage() {
   const isRecruteur = user?.role === "recruteur";
   const overviewQuery = useRecruteurOverview();
   const matchedCandidatesQuery = useMatchedCandidatesByOffer(selectedJobId, isRecruteur);
+  const queryClient = useQueryClient();
+  const addToast = useUiStore((s) => s.addToast);
   const validateCandidateMutation = useValidateCandidate();
   const saveInterviewPdfMutation = useSaveInterviewPdf();
   const [interviewModalOpen, setInterviewModalOpen] = useState(false);
@@ -35,6 +54,50 @@ export default function CandidatsPage() {
   const [interviewCandidateId, setInterviewCandidateId] = useState<number | null>(null);
   const [interviewPdfUrlsByCandidate, setInterviewPdfUrlsByCandidate] = useState<Record<number, string>>({});
   const [validatedCandidates, setValidatedCandidates] = useState<Record<number, boolean>>({});
+  /** Message si la modale s’ouvre sans liste de questions (ex. timeout IA). */
+  const [interviewQuestionsNotice, setInterviewQuestionsNotice] = useState<string | null>(null);
+  const [regeneratingCandidateId, setRegeneratingCandidateId] = useState<number | null>(null);
+
+  const openModalFromValidateResponse = (
+    data: ValidateCandidateResponse,
+    candidateName: string,
+    candidateId: number,
+    options?: { emptyNoticeOverride?: string | null },
+  ) => {
+    const existingPdfUrl =
+      typeof data?.interviewPdfUrl === "string" && data.interviewPdfUrl.trim()
+        ? data.interviewPdfUrl.trim()
+        : null;
+    if (existingPdfUrl) {
+      setInterviewPdfUrlsByCandidate((prev) => ({
+        ...prev,
+        [candidateId]: existingPdfUrl,
+      }));
+    }
+    setValidatedCandidates((prev) => ({
+      ...prev,
+      [candidateId]: true,
+    }));
+    const questions = normalizeInterviewQuestions(data);
+    const errRaw =
+      typeof data?.interviewQuestionsError === "string" ? data.interviewQuestionsError.trim() : "";
+    const isTimeout = errRaw.toLowerCase().includes("timeout");
+    setInterviewQuestions(questions);
+    setInterviewCandidateName(candidateName);
+    setInterviewCandidateId(candidateId || null);
+    setInterviewQuestionsNotice(
+      questions.length
+        ? null
+        : options?.emptyNoticeOverride !== undefined
+          ? options.emptyNoticeOverride
+          : isTimeout
+            ? "La génération des questions a dépassé le délai. Réessayez ou utilisez « Générer le PDF (questions IA) »."
+            : errRaw
+              ? `Génération des questions indisponible : ${errRaw}`
+              : "Aucune question n’a été renvoyée pour le moment. Réessayez dans un instant.",
+    );
+    setInterviewModalOpen(true);
+  };
 
   if (!isRecruteur) {
     return (
@@ -226,57 +289,91 @@ export default function CandidatsPage() {
                             <div className="mt-2 inline-flex items-center gap-2">
                               <button
                                 type="button"
-                                onClick={() => {
+                                onClick={async () => {
                                   if (!selectedJobId || !candidateId) return;
-                                  validateCandidateMutation.mutate(
-                                    {
-                                      jobId: selectedJobId,
-                                      candidateId,
-                                    },
-                                    {
-                                      onSuccess: (data) => {
-                                        const existingPdfUrl =
-                                          typeof data?.interviewPdfUrl === "string" && data.interviewPdfUrl.trim()
-                                            ? data.interviewPdfUrl.trim()
-                                            : null;
-                                        if (existingPdfUrl) {
-                                          setInterviewPdfUrlsByCandidate((prev) => ({
-                                            ...prev,
-                                            [candidateId]: existingPdfUrl,
-                                          }));
-                                        }
-                                        setValidatedCandidates((prev) => ({
-                                          ...prev,
-                                          [candidateId]: true,
-                                        }));
-                                        const questions = Array.isArray(data?.interviewQuestions)
-                                          ? data.interviewQuestions
-                                              .filter((q) => q && typeof q.text === "string" && q.text.trim())
-                                              .map((q, idx) => ({
-                                                id: String(q.id ?? `q${idx + 1}`),
-                                                text: String(q.text).trim(),
-                                                category: String(q.category ?? "autre").trim().toLowerCase(),
-                                              }))
-                                          : [];
-                                        if (questions.length) {
-                                          setInterviewQuestions(questions);
-                                          setInterviewCandidateName(candidateName);
-                                          setInterviewCandidateId(candidateId || null);
-                                          setInterviewModalOpen(true);
-                                        }
+                                  const isRegenerate =
+                                    alreadyValidated || Boolean(existingInterviewPdfUrl);
+
+                                  if (!isRegenerate) {
+                                    validateCandidateMutation.mutate(
+                                      { jobId: selectedJobId, candidateId },
+                                      {
+                                        onSuccess: (data) =>
+                                          openModalFromValidateResponse(data, candidateName, candidateId),
                                       },
-                                    },
-                                  );
+                                    );
+                                    return;
+                                  }
+
+                                  setRegeneratingCandidateId(candidateId);
+                                  try {
+                                    let last: ValidateCandidateResponse | null = null;
+                                    for (let attempt = 0; attempt < REGENERATE_MAX_ATTEMPTS; attempt++) {
+                                      if (attempt > 0) {
+                                        await new Promise((r) => setTimeout(r, REGENERATE_DELAY_MS));
+                                      }
+                                      last = await recruteurService.validateCandidateForJob(
+                                        selectedJobId,
+                                        candidateId,
+                                      );
+                                      const qs = normalizeInterviewQuestions(last);
+                                      if (qs.length > 0) {
+                                        await queryClient.invalidateQueries({
+                                          queryKey: ["recruteur", "matched-candidates", selectedJobId],
+                                        });
+                                        await queryClient.invalidateQueries({
+                                          queryKey: ["recruteur", "overview"],
+                                        });
+                                        openModalFromValidateResponse(last, candidateName, candidateId);
+                                        addToast({
+                                          message: `${qs.length} question(s) d’entretien générée(s).`,
+                                          type: "success",
+                                        });
+                                        return;
+                                      }
+                                    }
+                                    await queryClient.invalidateQueries({
+                                      queryKey: ["recruteur", "matched-candidates", selectedJobId],
+                                    });
+                                    await queryClient.invalidateQueries({
+                                      queryKey: ["recruteur", "overview"],
+                                    });
+                                    if (last) {
+                                      openModalFromValidateResponse(last, candidateName, candidateId, {
+                                        emptyNoticeOverride:
+                                          "Après plusieurs tentatives automatiques, aucune question n’a été reçue. Utilisez « Générer le PDF (questions IA) » dans la modale ou réessayez plus tard.",
+                                      });
+                                      addToast({
+                                        message:
+                                          "Aucune question reçue après plusieurs tentatives. Voir la modale.",
+                                        type: "error",
+                                      });
+                                    }
+                                  } catch {
+                                    addToast({
+                                      message: "Impossible de régénérer les questions pour le moment.",
+                                      type: "error",
+                                    });
+                                  } finally {
+                                    setRegeneratingCandidateId(null);
+                                  }
                                 }}
-                                disabled={!selectedJobId || !candidateId || isValidatingThisCandidate}
+                                disabled={
+                                  !selectedJobId ||
+                                  !candidateId ||
+                                  isValidatingThisCandidate ||
+                                  regeneratingCandidateId === candidateId
+                                }
                                 className="inline-flex items-center gap-1.5 px-2.5 py-1 text-[11px] rounded-md border border-emerald-500/40 text-emerald-300 hover:bg-emerald-500/10 disabled:opacity-50 disabled:cursor-not-allowed"
                               >
                                 <CheckCircle2 size={13} />
-                                {isValidatingThisCandidate
-                                  ? "Validation..."
-                                  : alreadyValidated || existingInterviewPdfUrl
-                                    ? "Régénérer d'autres questions"
-                                    : "Valider"}
+                                {regeneratingCandidateId === candidateId
+                                  ? "Régénération en cours..."
+                                  : isValidatingThisCandidate
+                                    ? "Validation..."
+                                    : alreadyValidated || existingInterviewPdfUrl
+                                      ? "Régénérer d'autres questions"
+                                      : "Valider"}
                               </button>
                               {existingInterviewPdfUrl ? (
                                 <a
@@ -395,7 +492,10 @@ export default function CandidatsPage() {
         <div className="fixed inset-0 z-50">
           <div
             className="absolute inset-0 bg-black/70 backdrop-blur-sm"
-            onClick={() => setInterviewModalOpen(false)}
+            onClick={() => {
+              setInterviewModalOpen(false);
+              setInterviewQuestionsNotice(null);
+            }}
           />
           <div className="absolute inset-0 flex items-center justify-center p-4">
             <div className="w-full max-w-[760px] max-h-[80vh] overflow-hidden rounded-2xl border border-white/[0.08] bg-[#0a0a0a] shadow-2xl">
@@ -409,13 +509,32 @@ export default function CandidatsPage() {
                   </p>
                 </div>
                 <button
-                  onClick={() => setInterviewModalOpen(false)}
+                  onClick={() => {
+                    setInterviewModalOpen(false);
+                    setInterviewQuestionsNotice(null);
+                  }}
                   className="w-9 h-9 rounded-xl flex items-center justify-center text-white/40 hover:text-white hover:bg-white/[0.06] transition"
                 >
                   <X size={16} />
                 </button>
               </div>
               <div className="p-5 overflow-y-auto max-h-[calc(80vh-76px)] space-y-3">
+                {interviewQuestionsNotice ? (
+                  <div className="rounded-xl border border-amber-500/30 bg-amber-500/10 px-4 py-3 text-[13px] text-amber-100/90 leading-relaxed">
+                    {interviewQuestionsNotice}
+                  </div>
+                ) : null}
+                {interviewCandidateId && interviewPdfUrlsByCandidate[interviewCandidateId] ? (
+                  <a
+                    href={interviewPdfUrlsByCandidate[interviewCandidateId]}
+                    target="_blank"
+                    rel="noopener noreferrer"
+                    className="inline-flex items-center gap-2 rounded-xl border border-blue-500/35 bg-blue-500/10 px-4 py-2.5 text-[13px] text-blue-200 hover:bg-blue-500/15 transition"
+                  >
+                    <Download size={16} />
+                    Télécharger le PDF des questions (déjà enregistré)
+                  </a>
+                ) : null}
                 {interviewQuestions.map((q) => (
                   <div
                     key={q.id}
@@ -430,7 +549,10 @@ export default function CandidatsPage() {
                 <div className="pt-2 flex items-center justify-end gap-2">
                   <button
                     type="button"
-                    onClick={() => setInterviewModalOpen(false)}
+                    onClick={() => {
+                      setInterviewModalOpen(false);
+                      setInterviewQuestionsNotice(null);
+                    }}
                     className="h-9 px-3 rounded-lg border border-white/[0.16] text-white/75 hover:text-white hover:bg-white/[0.06] text-[12px] transition"
                   >
                     Fermer
@@ -438,12 +560,13 @@ export default function CandidatsPage() {
                   <button
                     type="button"
                     onClick={() => {
-                      if (!selectedJobId || !interviewCandidateId || !interviewQuestions.length) return;
+                      if (!selectedJobId || !interviewCandidateId) return;
                       saveInterviewPdfMutation.mutate(
                         {
                           jobId: selectedJobId,
                           candidateId: interviewCandidateId,
-                          questions: interviewQuestions,
+                          questions:
+                            interviewQuestions.length > 0 ? interviewQuestions : undefined,
                         },
                         {
                           onSuccess: (data) => {
@@ -461,15 +584,14 @@ export default function CandidatsPage() {
                         },
                       );
                     }}
-                    disabled={
-                      !selectedJobId ||
-                      !interviewCandidateId ||
-                      !interviewQuestions.length ||
-                      saveInterviewPdfMutation.isPending
-                    }
+                    disabled={!selectedJobId || !interviewCandidateId || saveInterviewPdfMutation.isPending}
                     className="h-9 px-3 rounded-lg border border-emerald-500/40 text-emerald-300 hover:bg-emerald-500/10 text-[12px] transition disabled:opacity-50 disabled:cursor-not-allowed"
                   >
-                    {saveInterviewPdfMutation.isPending ? "Enregistrement..." : "Enregistrer PDF entretien TAP"}
+                    {saveInterviewPdfMutation.isPending
+                      ? "Enregistrement..."
+                      : interviewQuestions.length > 0
+                        ? "Enregistrer PDF entretien TAP"
+                        : "Générer le PDF (questions IA)"}
                   </button>
                 </div>
               </div>

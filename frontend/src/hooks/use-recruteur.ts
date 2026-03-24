@@ -1,6 +1,7 @@
 'use client';
 
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
+import { getApiErrorMessage } from '@/lib/api-error';
 import { recruteurService } from '@/services/recruteur.service';
 import { useUiStore } from '@/stores/ui';
 import type { JobPayload } from '@/types/recruteur';
@@ -16,6 +17,54 @@ export function useRecruteurJobs() {
   return useQuery({
     queryKey: ['recruteur', 'jobs'],
     queryFn: recruteurService.getJobs,
+  });
+}
+
+export function useRecruteurJob(jobId: number | null, enabled = true) {
+  return useQuery({
+    queryKey: ['recruteur', 'job', jobId],
+    queryFn: () => recruteurService.getJob(jobId as number),
+    enabled: Boolean(enabled && jobId),
+  });
+}
+
+export function useUpdateJob() {
+  const queryClient = useQueryClient();
+  const addToast = useUiStore((s) => s.addToast);
+
+  return useMutation({
+    mutationFn: (params: { jobId: number; payload: JobPayload }) =>
+      recruteurService.updateJob(params.jobId, params.payload),
+    onSuccess: (_, variables) => {
+      queryClient.invalidateQueries({ queryKey: ['recruteur', 'jobs'] });
+      queryClient.invalidateQueries({ queryKey: ['recruteur', 'overview'] });
+      queryClient.invalidateQueries({ queryKey: ['recruteur', 'job', variables.jobId] });
+      addToast({ message: 'Offre mise à jour avec succès', type: 'success' });
+    },
+    onError: (error) => {
+      addToast({
+        message: getApiErrorMessage(error, "Erreur lors de la mise à jour de l'offre"),
+        type: 'error',
+      });
+    },
+  });
+}
+
+export function useDeleteJob() {
+  const queryClient = useQueryClient();
+  const addToast = useUiStore((s) => s.addToast);
+
+  return useMutation({
+    mutationFn: (jobId: number) => recruteurService.deleteJob(jobId),
+    onSuccess: (_, jobId) => {
+      queryClient.invalidateQueries({ queryKey: ['recruteur', 'jobs'] });
+      queryClient.invalidateQueries({ queryKey: ['recruteur', 'overview'] });
+      queryClient.removeQueries({ queryKey: ['recruteur', 'job', jobId] });
+      addToast({ message: 'Offre supprimée', type: 'success' });
+    },
+    onError: () => {
+      addToast({ message: "Impossible de supprimer l'offre", type: 'error' });
+    },
   });
 }
 
@@ -38,8 +87,11 @@ export function useCreateJob() {
       queryClient.invalidateQueries({ queryKey: ['recruteur', 'overview'] });
       addToast({ message: 'Offre créée avec succès', type: 'success' });
     },
-    onError: () => {
-      addToast({ message: "Erreur lors de la création de l'offre", type: 'error' });
+    onError: (error) => {
+      addToast({
+        message: getApiErrorMessage(error, "Erreur lors de la création de l'offre"),
+        type: 'error',
+      });
     },
   });
 }
@@ -80,12 +132,13 @@ export function useValidateCandidate() {
       if (data?.interviewQuestionsError) {
         const rawError = String(data.interviewQuestionsError).trim();
         const isTimeout = rawError.toLowerCase().includes('timeout');
-        addToast({
-          message: isTimeout
-            ? "Validation OK. La génération des questions prend plus de temps, vous pouvez réessayer."
-            : `Validation OK, mais génération des questions indisponible: ${rawError}`,
-          type: isTimeout ? 'success' : 'error',
-        });
+        // Timeout : la modale affiche le détail, pas besoin d’un 2e toast.
+        if (!isTimeout) {
+          addToast({
+            message: `Validation OK, mais génération des questions indisponible: ${rawError}`,
+            type: 'error',
+          });
+        }
       }
     },
     onError: () => {
