@@ -42,7 +42,9 @@ CREATE TABLE candidates (
   salaire_minimum   varchar(50),
   embedding         jsonb,
   user_id           integer,
-  type_contrat      text
+  type_contrat      text,
+  skills            json,
+  langues           json
 );
 
 CREATE TABLE candidate_postule (

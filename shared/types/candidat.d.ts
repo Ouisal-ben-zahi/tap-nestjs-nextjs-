@@ -65,3 +65,27 @@ export interface CandidateScoreFromJson {
         niveau: string;
     }[];
 }
+export interface CandidateProfile {
+    candidateId: number;
+    nom: string;
+    prenom: string;
+    titre_profil: string | null;
+    categorie_profil: string | null;
+    ville: string | null;
+    pays: string | null;
+    pays_cible: string | null;
+    linkedin: string | null;
+    github: string | null;
+    behance: string | null;
+    email: string | null;
+    phone: string | null;
+    annees_experience: number | null;
+    disponibilite: string | null;
+    pret_a_relocater: string | null;
+    niveau_seniorite: string | null;
+    salaire_minimum: string | null;
+    constraints: string | null;
+    search_criteria: string | null;
+    resume_bref: string | null;
+    type_contrat: string | null;
+}

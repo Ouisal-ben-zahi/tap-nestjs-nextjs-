@@ -5,6 +5,7 @@ import type {
   CandidatePortfolioItem,
   CandidatePortfolioPdfFiles,
   CandidateScoreFromJson,
+  CandidateProfile,
 } from '@shared/types/candidat';
 
 export type CandidatStats = CandidateDashboardStats;
@@ -18,4 +19,5 @@ export interface PortfolioPdfFile extends CandidateCvFileItem {
 }
 
 export type CandidatScore = CandidateScoreFromJson;
+export type CandidatProfile = CandidateProfile;
 

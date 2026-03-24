@@ -1,4 +1,4 @@
-import { Body, Controller, Delete, Get, HttpCode, Param, Post, Query, Req, UploadedFile, UploadedFiles, UseGuards, UseInterceptors } from '@nestjs/common';
+import { Body, Controller, Delete, Get, HttpCode, Param, Post, Put, Query, Req, UploadedFile, UploadedFiles, UseGuards, UseInterceptors } from '@nestjs/common';
 import { AuthGuard } from '@nestjs/passport';
 import { FileFieldsInterceptor, FileInterceptor } from '@nestjs/platform-express';
 import { DashboardService, type ApplyJobPayload, type RecruiterJobPayload, type RecruiterMatchByOfferPayload, type RecruiterValidateCandidatePayload, type RecruiterSaveInterviewPdfPayload } from './dashboard.service';
@@ -36,6 +36,20 @@ export class DashboardController {
   async getCandidateApplicationsByJwt(@Req() req: any) {
     const userId = await this.dashboardService.resolveJwtUserId(req?.user);
     return this.dashboardService.getCandidateApplications(userId);
+  }
+
+  @Get('candidat/profile')
+  @UseGuards(AuthGuard('jwt'))
+  async getCandidateProfileByJwt(@Req() req: any) {
+    const userId = await this.dashboardService.resolveJwtUserId(req?.user);
+    return this.dashboardService.getCandidateProfileByUser(userId);
+  }
+
+  @Put('candidat/profile')
+  @UseGuards(AuthGuard('jwt'))
+  async updateCandidateProfileByJwt(@Req() req: any, @Body() body: Record<string, any>) {
+    const userId = await this.dashboardService.resolveJwtUserId(req?.user);
+    return this.dashboardService.updateCandidateProfileByUser(userId, body);
   }
 
   @Get('candidat/cv-files')

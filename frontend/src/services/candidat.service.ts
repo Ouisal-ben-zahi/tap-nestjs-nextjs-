@@ -7,6 +7,7 @@ import type {
   PortfolioPdfFile,
   PortfolioProject,
   CandidatScore,
+  CandidatProfile,
 } from '@/types/candidat';
 
 /** Jobs listés côté dashboard (et scoring optionnel pour le matching IA). */
@@ -54,6 +55,12 @@ export const candidatService = {
 
   getApplications: () =>
     api.get<{ applications: Application[] }>('/dashboard/candidat/applications').then((r) => r.data),
+
+  getProfile: () =>
+    api.get<CandidatProfile>('/dashboard/candidat/profile').then((r) => r.data),
+
+  updateProfile: (payload: Partial<CandidatProfile>) =>
+    api.put<CandidatProfile>('/dashboard/candidat/profile', payload).then((r) => r.data),
 
   getCvFiles: () =>
     api.get<{ cvFiles: CvFile[] }>('/dashboard/candidat/cv-files').then((r) => r.data),

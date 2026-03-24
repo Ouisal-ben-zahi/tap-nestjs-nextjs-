@@ -39,22 +39,32 @@ export default function AnalyseCvAppPage() {
   const deleteTalentcard = useDeleteTalentcardFile();
   const deletePortfolioPdf = useDeletePortfolioPdfFile();
   const [dragOver, setDragOver] = useState(false);
+  const [uploadBorderActive, setUploadBorderActive] = useState(false);
   const fileRef = useRef<HTMLInputElement>(null);
+
+  const triggerUploadBorderAnimation = useCallback(() => {
+    setUploadBorderActive(true);
+    window.setTimeout(() => setUploadBorderActive(false), 1200);
+  }, []);
 
   const handleDrop = useCallback((e: React.DragEvent) => {
     e.preventDefault();
     setDragOver(false);
+    triggerUploadBorderAnimation();
     const file = e.dataTransfer.files[0];
     if (file && file.type === "application/pdf") {
       uploadCv.mutate(file);
     }
-  }, [uploadCv]);
+  }, [triggerUploadBorderAnimation, uploadCv]);
 
   const handleFileSelect = useCallback((e: React.ChangeEvent<HTMLInputElement>) => {
     const file = e.target.files?.[0];
-    if (file) uploadCv.mutate(file);
+    if (file) {
+      triggerUploadBorderAnimation();
+      uploadCv.mutate(file);
+    }
     e.target.value = "";
-  }, [uploadCv]);
+  }, [triggerUploadBorderAnimation, uploadCv]);
 
   // Start polling as soon as an upload is triggered
   useEffect(() => {
@@ -195,6 +205,9 @@ export default function AnalyseCvAppPage() {
               : "border-white/[0.08] hover:border-white/[0.15] bg-zinc-900/30"
         }`}
       >
+        {(uploadBorderActive || uploadCv.isPending) && (
+          <div className="pointer-events-none absolute inset-[-2px] rounded-2xl border-2 border-tap-red animate-pulse shadow-[0_0_0_2px_rgba(202,27,40,0.25),0_0_24px_rgba(202,27,40,0.35)]" />
+        )}
         {uploadCv.isPending ? (
           <div className="flex items-center justify-center gap-3">
             <div className="w-6 h-6 border-2 border-tap-red border-t-transparent rounded-full animate-spin" />
@@ -205,7 +218,11 @@ export default function AnalyseCvAppPage() {
             <Upload className={`w-8 h-8 mx-auto mb-3 ${isLight ? "text-tap-red" : "text-white/20"}`} />
             <p className={`text-sm mb-1 ${isLight ? "text-black/70" : "text-white/50"}`}>Glissez votre CV ici ou</p>
             <button
-              onClick={() => fileRef.current?.click()}
+              onClick={() => {
+                triggerUploadBorderAnimation();
+                // Laisse 80ms pour peindre l'animation avant d'ouvrir le picker système.
+                window.setTimeout(() => fileRef.current?.click(), 80);
+              }}
               className="inline-flex items-center gap-2 px-4 py-2 bg-tap-red/10 hover:bg-tap-red/20 text-tap-red rounded-lg text-sm cursor-pointer transition"
             >
               <Upload size={14} />
@@ -345,7 +362,7 @@ export default function AnalyseCvAppPage() {
         ) : !talentcardQuery.data?.talentcardFiles?.length ? (
           <EmptyState
             icon={<Award className="w-10 h-10" />}
-            title={hasCvs ? "En attente de l'analyse" : "Aucune Talent Card"}
+            title=""
             description={hasCvs
               ? "Vos Talent Cards seront générées automatiquement après l'analyse de votre CV."
               : "Uploadez d'abord un CV pour que l'IA génère vos Talent Cards."
@@ -381,7 +398,7 @@ export default function AnalyseCvAppPage() {
         ) : !portfolioQuery.data?.portfolioPdfFiles?.length ? (
           <EmptyState
             icon={<Briefcase className="w-10 h-10" />}
-            title={hasCvs ? "En attente de l'analyse" : "Aucun portfolio"}
+            title=""
             description={hasCvs
               ? "Vos portfolios seront générés automatiquement après l'analyse."
               : "Uploadez d'abord un CV pour que l'IA génère vos portfolios."

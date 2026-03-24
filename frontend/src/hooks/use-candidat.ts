@@ -45,6 +45,31 @@ export function useCandidatApplications(enabled?: boolean) {
   });
 }
 
+export function useCandidatProfile(enabled?: boolean) {
+  const authEnabled = useAuthEnabled();
+  return useQuery({
+    queryKey: ['candidat', 'profile'],
+    queryFn: candidatService.getProfile,
+    enabled: enabled ?? authEnabled,
+  });
+}
+
+export function useUpdateCandidatProfile() {
+  const queryClient = useQueryClient();
+  const addToast = useUiStore((s) => s.addToast);
+  return useMutation({
+    mutationFn: candidatService.updateProfile,
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ['candidat', 'profile'] });
+      queryClient.invalidateQueries({ queryKey: ['candidat', 'stats'] });
+      addToast({ message: 'Profil mis à jour avec succès', type: 'success' });
+    },
+    onError: () => {
+      addToast({ message: 'Erreur lors de la mise à jour du profil', type: 'error' });
+    },
+  });
+}
+
 export function useCandidatMatchingJobs(enabled?: boolean) {
   const authEnabled = useAuthEnabled();
   return useQuery({

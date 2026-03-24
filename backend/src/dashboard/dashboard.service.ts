@@ -206,6 +206,31 @@ export interface CandidateScoreFromJson {
   softSkills: { nom: string; niveau: string }[];
 }
 
+export interface CandidateProfile {
+  candidateId: number;
+  nom: string;
+  prenom: string;
+  titre_profil: string | null;
+  categorie_profil: string | null;
+  ville: string | null;
+  pays: string | null;
+  pays_cible: string | null;
+  linkedin: string | null;
+  github: string | null;
+  behance: string | null;
+  email: string | null;
+  phone: string | null;
+  annees_experience: number | null;
+  disponibilite: string | null;
+  pret_a_relocater: string | null;
+  niveau_seniorite: string | null;
+  salaire_minimum: string | null;
+  constraints: string | null;
+  search_criteria: string | null;
+  resume_bref: string | null;
+  type_contrat: string | null;
+}
+
 @Injectable()
 export class DashboardService {
   private supabase: SupabaseClient;
@@ -3100,6 +3125,137 @@ export class DashboardService {
     }
 
     return this.getCandidateScoreFromJson(candidate.id);
+  }
+
+  async getCandidateProfileByUser(userId: number): Promise<CandidateProfile> {
+    if (!userId || Number.isNaN(userId)) {
+      throw new BadRequestException('userId invalide');
+    }
+
+    const candidate = await this.getOrCreateCandidate(userId);
+    const candidateId = candidate.id as number;
+
+    const { data, error } = await this.supabase
+      .from('candidates')
+      .select('*')
+      .eq('id', candidateId)
+      .maybeSingle();
+
+    if (error || !data) {
+      throw new BadRequestException(
+        error?.message || 'Erreur lors du chargement du profil candidat',
+      );
+    }
+
+    return {
+      candidateId,
+      nom: (data.nom as string) ?? '',
+      prenom: (data.prenom as string) ?? '',
+      titre_profil: (data.titre_profil as string | null) ?? null,
+      categorie_profil: (data.categorie_profil as string | null) ?? null,
+      ville: (data.ville as string | null) ?? null,
+      pays: (data.pays as string | null) ?? null,
+      pays_cible: (data.pays_cible as string | null) ?? null,
+      linkedin: (data.linkedin as string | null) ?? null,
+      github: (data.github as string | null) ?? null,
+      behance: (data.behance as string | null) ?? null,
+      email: (data.email as string | null) ?? null,
+      phone: (data.phone as string | null) ?? null,
+      annees_experience:
+        typeof data.annees_experience === 'number'
+          ? (data.annees_experience as number)
+          : null,
+      disponibilite: (data.disponibilite as string | null) ?? null,
+      pret_a_relocater: (data.pret_a_relocater as string | null) ?? null,
+      niveau_seniorite: (data.niveau_seniorite as string | null) ?? null,
+      salaire_minimum: (data.salaire_minimum as string | null) ?? null,
+      constraints: (data.constraints as string | null) ?? null,
+      search_criteria: (data.search_criteria as string | null) ?? null,
+      resume_bref: (data.resume_bref as string | null) ?? null,
+      type_contrat: (data.type_contrat as string | null) ?? null,
+    };
+  }
+
+  async updateCandidateProfileByUser(
+    userId: number,
+    payload: Partial<CandidateProfile>,
+  ): Promise<CandidateProfile> {
+    if (!userId || Number.isNaN(userId)) {
+      throw new BadRequestException('userId invalide');
+    }
+
+    const candidate = await this.getOrCreateCandidate(userId);
+    const candidateId = candidate.id as number;
+    const { data: currentRow, error: currentRowError } = await this.supabase
+      .from('candidates')
+      .select('*')
+      .eq('id', candidateId)
+      .maybeSingle();
+
+    if (currentRowError || !currentRow) {
+      throw new BadRequestException(
+        currentRowError?.message || 'Impossible de charger le profil candidat',
+      );
+    }
+
+    const updatableKeys = [
+      'nom',
+      'prenom',
+      'titre_profil',
+      'categorie_profil',
+      'ville',
+      'pays',
+      'pays_cible',
+      'linkedin',
+      'github',
+      'behance',
+      'email',
+      'phone',
+      'annees_experience',
+      'disponibilite',
+      'pret_a_relocater',
+      'niveau_seniorite',
+      'salaire_minimum',
+      'constraints',
+      'search_criteria',
+      'resume_bref',
+      'type_contrat',
+    ] as const;
+
+    const toUpdate: Record<string, any> = {};
+    const existingColumns = new Set(Object.keys(currentRow as Record<string, unknown>));
+    for (const key of updatableKeys) {
+      if (payload[key] !== undefined && existingColumns.has(key)) {
+        toUpdate[key] = payload[key];
+      }
+    }
+
+    if (Object.keys(toUpdate).length === 0) {
+      return this.getCandidateProfileByUser(userId);
+    }
+
+    if (typeof toUpdate.nom === 'string') toUpdate.nom = toUpdate.nom.trim();
+    if (typeof toUpdate.prenom === 'string') toUpdate.prenom = toUpdate.prenom.trim();
+    if (!toUpdate.nom) toUpdate.nom = 'À compléter';
+    if (toUpdate.prenom === null) toUpdate.prenom = '';
+
+    if (toUpdate.annees_experience !== undefined && toUpdate.annees_experience !== null) {
+      const parsed = Number(toUpdate.annees_experience);
+      toUpdate.annees_experience = Number.isFinite(parsed) ? parsed : null;
+    }
+
+    const { error } = await this.supabase
+      .from('candidates')
+      .update(toUpdate)
+      .eq('id', candidateId);
+
+    if (error) {
+      throw new BadRequestException(
+        error.message || 'Erreur lors de la mise à jour du profil candidat',
+      );
+    }
+
+    return this.getCandidateProfileByUser(userId);
   }
 
   async deleteCandidateCvFile(userId: number, filePath: string): Promise<void> {

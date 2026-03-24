@@ -165,8 +165,7 @@ export default function DashboardPage() {
       </div>
 
       {/* Bottom */}
-      <div className={`mt-10 pt-8 flex items-center gap-3 ${isLight ? "border-t border-black/10" : "border-t border-white/[0.04]"}`}>
-        <Sparkles size={13} className="text-tap-red/50" />
+      <div className={`mt-10 pt-8 flex items-center justify-center ${isLight ? "border-t border-black/10" : "border-t border-white/[0.04]"}`}>
         <p className={`text-[12px] font-light ${isLight ? "text-black/40" : "text-white/30"}`}>
           Propulsé par l&apos;intelligence artificielle — TAP {new Date().getFullYear()}
         </p>
