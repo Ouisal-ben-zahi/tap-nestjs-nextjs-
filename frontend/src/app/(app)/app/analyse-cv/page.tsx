@@ -18,7 +18,6 @@ import { Skeleton } from "@/components/ui/Skeleton";
 import { FileText, Upload, Award, Briefcase, Loader2, ArrowRight, RefreshCw, CheckCircle2, Sparkles } from "lucide-react";
 import Link from "next/link";
 import { useDashboardTheme } from "@/hooks/use-dashboard-theme";
-import { useUiStore } from "@/stores/ui";
 
 export default function AnalyseCvAppPage() {
   const { isCandidat } = useAuth();
@@ -41,14 +40,6 @@ export default function AnalyseCvAppPage() {
   const deletePortfolioPdf = useDeletePortfolioPdfFile();
   const [dragOver, setDragOver] = useState(false);
   const fileRef = useRef<HTMLInputElement>(null);
-
-  const addToast = useUiStore((s) => s.addToast);
-  const updateToast = useUiStore((s) => s.updateToast);
-  const removeToast = useUiStore((s) => s.removeToast);
-  const [progressToastId, setProgressToastId] = useState<string | null>(null);
-  const progressRef = useRef(0);
-  const startedAtRef = useRef<number | null>(null);
-  const progressToastIdRef = useRef<string | null>(null);
 
   const handleDrop = useCallback((e: React.DragEvent) => {
     e.preventDefault();
@@ -114,148 +105,6 @@ export default function AnalyseCvAppPage() {
   const initialTalentSigRef = useRef<string | null>(null);
   const initialPortfolioSigRef = useRef<string | null>(null);
 
-  // Toast avec barre de progression pour l'analyse/génération (estimation via polling fichiers)
-  useEffect(() => {
-    if (!uploadCv.isPending) return;
-    if (progressToastId) return;
-
-    startedAtRef.current = Date.now();
-    initialTalentSigRef.current = talentSigNow;
-    initialPortfolioSigRef.current =
-      portfolioShortCount > 0
-        ? `${portfolioShortCount}|${portfolioShortMaxUpdatedAtMs}|${portfolioShortMaxSize}`
-        : null;
-
-    // Réinitialiser l’état de “prêt” à chaque nouvelle génération
-    setPortfolioShortReady(false);
-    portfolioShortSigRef.current = null;
-    portfolioShortStableSinceRef.current = null;
-    progressRef.current = 5;
-    const id = addToast({
-      type: "info",
-      // IMPORTANT: on retire manuellement à la fin, mais le store supprime aussi
-      // automatiquement après `duration`. On met une durée très longue pour éviter
-      // que le toast disparaisse avant la fin de génération du portfolio court.
-      duration: 600000, // 10 minutes
-      message: "Génération en cours…",
-      progress: 5,
-      progressLabel: "Upload du CV & analyse IA",
-    });
-    setProgressToastId(id);
-  }, [uploadCv.isPending, addToast, progressToastId]);
-
-  useEffect(() => {
-    progressToastIdRef.current = progressToastId;
-  }, [progressToastId]);
-
-  useEffect(() => {
-    if (!progressToastId) return;
-
-    // Si une erreur arrive, on retire le toast
-    if (uploadCv.isError) {
-      removeToast(progressToastId);
-      setProgressToastId(null);
-      return;
-    }
-
-    const tick = window.setInterval(() => {
-      const startedAt = startedAtRef.current ?? Date.now();
-      const elapsedSeconds = Math.max(0, Math.round((Date.now() - startedAt) / 1000));
-
-      // “Prêt” = portfolio short existe et sa signature (count + max updatedAt + max size)
-      // est stable suffisamment longtemps (pour éviter “terminé” trop tôt).
-      const STABLE_MS = 12000;
-      const sig =
-        portfolioShortCount > 0
-          ? `${portfolioShortCount}|${portfolioShortMaxUpdatedAtMs}|${portfolioShortMaxSize}`
-          : null;
-
-      const sigInitial = initialPortfolioSigRef.current;
-      const isPortfolioSigChanged = sig ? sig !== sigInitial : false;
-
-      let isPortfolioShortStableNow = false;
-      if (!sig || !isPortfolioSigChanged) {
-        portfolioShortSigRef.current = null;
-        portfolioShortStableSinceRef.current = null;
-        isPortfolioShortStableNow = false;
-      } else if (portfolioShortSigRef.current !== sig) {
-        portfolioShortSigRef.current = sig;
-        portfolioShortStableSinceRef.current = Date.now();
-        isPortfolioShortStableNow = false;
-      } else {
-        const stableSince = portfolioShortStableSinceRef.current;
-        const stableFor = stableSince ? Date.now() - stableSince : 0;
-        isPortfolioShortStableNow = stableFor >= STABLE_MS;
-      }
-
-      // Sync d'état robuste (évite un "ready" qui reste bloqué grâce au stale closure)
-      if (isPortfolioShortStableNow && !portfolioShortReadyRef.current) {
-        setPortfolioShortReady(true);
-      } else if (!isPortfolioShortStableNow && portfolioShortReadyRef.current) {
-        setPortfolioShortReady(false);
-      }
-
-      // Détermination “stages” via disponibilité des fichiers
-      let target = 10;
-      let label = "Upload du CV & analyse IA";
-
-      if (polling) {
-        const isTalentSigChanged = talentSigNow ? talentSigNow !== initialTalentSigRef.current : false;
-        if (!isTalentSigChanged) {
-          target = 60;
-          label = uploadCv.isRegeneration ? "Régénération des Talent Cards" : "Génération du CV & des Talent Cards";
-        } else if (!hasPortfolioShort || !isPortfolioSigChanged) {
-          // On évite d'afficher 85 tant que la one-page n'est pas encore stable.
-          target = 75;
-          label = uploadCv.isRegeneration
-            ? "Régénération du portfolio one-page (court)…"
-            : "Génération du portfolio one-page (court)…";
-        } else if (!isPortfolioShortStableNow) {
-          target = 92;
-          label = "One-page en cours de génération…";
-        } else {
-          target = 100;
-          label = uploadCv.isRegeneration ? "Régénération terminée" : "Génération terminée";
-        }
-      } else if (uploadCv.isSuccess) {
-        target = 20;
-        label = "Traitement en cours…";
-      }
-
-      const current = progressRef.current;
-      const next =
-        target === 100 ? 100 : Math.max(target < current ? target : current + (target - current) * 0.18);
-      progressRef.current = Math.min(100, next);
-
-      const progressLabel = `${label} • ${elapsedSeconds}s`;
-
-      updateToast(progressToastId, {
-        type: target === 100 ? "success" : "info",
-        message: target === 100 ? "Génération terminée ✓" : "Génération en cours…",
-        progress: Math.round(progressRef.current),
-        progressLabel,
-      });
-
-      if (target === 100 && progressRef.current >= 100) {
-        window.clearInterval(tick);
-      }
-    }, 250);
-
-    return () => window.clearInterval(tick);
-  }, [
-    progressToastId,
-    updateToast,
-    removeToast,
-    uploadCv.isError,
-    uploadCv.isRegeneration,
-    uploadCv.isSuccess,
-    polling,
-    hasTalentCards,
-    hasPortfolioShort,
-    portfolioShortCount,
-    portfolioShortMaxUpdatedAtMs,
-  ]);
-
   if (!isCandidat) {
     return (
       <EmptyState
@@ -276,6 +125,13 @@ export default function AnalyseCvAppPage() {
 
   // Regeneration: re-upload in progress, files not yet refreshed
   const isRegenerating = uploadCv.isRegeneration && polling;
+  const regenerationProgress = !isRegenerating
+    ? 0
+    : hasTalentCards && portfolioShortReady
+      ? 100
+      : hasTalentCards
+        ? 75
+        : 35;
 
   // Stop polling once both talent cards AND portfolios are available after a re-upload
   useEffect(() => {
@@ -285,11 +141,6 @@ export default function AnalyseCvAppPage() {
         setPolling(false);
         uploadCv.setRegeneration(false);
         setRegenDone(true);
-
-        // On retire le toast seulement une fois la “grâce” passée.
-        const toastId = progressToastIdRef.current;
-        if (toastId) removeToast(toastId);
-        setProgressToastId(null);
 
         const t = window.setTimeout(() => setRegenDone(false), 5000);
         // pas de retour cleanup ici (timeout interne)
@@ -307,10 +158,6 @@ export default function AnalyseCvAppPage() {
       const tStop = window.setTimeout(() => {
         setPolling(false);
         setAnalysisDone(true);
-
-        const toastId = progressToastIdRef.current;
-        if (toastId) removeToast(toastId);
-        setProgressToastId(null);
 
         const t = window.setTimeout(() => setAnalysisDone(false), 5000);
         void t;
@@ -423,10 +270,19 @@ export default function AnalyseCvAppPage() {
           <div className="w-10 h-10 rounded-xl bg-blue-500/10 border border-blue-500/20 flex items-center justify-center shrink-0">
             <RefreshCw size={18} className="text-blue-400 animate-spin" />
           </div>
-          <div>
+          <div className="w-full">
             <h3 className={`text-[14px] font-semibold mb-1 ${isLight ? "text-black" : "text-white"}`}>Régénération en cours...</h3>
             <p className={`text-[13px] font-light ${isLight ? "text-black/70" : "text-white/45"}`}>
               Votre nouveau CV est en cours d&apos;analyse. Toutes vos Talent Cards et portfolios seront mis à jour automatiquement. Vous pouvez revenir plus tard.
+            </p>
+            <div className={`mt-4 h-2 w-full overflow-hidden rounded-full ${isLight ? "bg-black/10" : "bg-white/10"}`}>
+              <div
+                className="h-full rounded-full bg-blue-400 transition-all duration-500"
+                style={{ width: `${regenerationProgress}%` }}
+              />
+            </div>
+            <p className={`mt-2 text-[12px] ${isLight ? "text-black/55" : "text-white/40"}`}>
+              Progression: {regenerationProgress}%
             </p>
           </div>
         </div>

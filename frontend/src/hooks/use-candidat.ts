@@ -196,7 +196,7 @@ export function useUploadCv() {
       queryClient.invalidateQueries({ queryKey: ['candidat', 'portfolio-pdfs'] });
       const msg = isRegenerationRef.current
         ? 'CV importé — régénération de tous les fichiers en cours…'
-        : 'CV uploadé avec succès — analyse IA en cours…';
+        : 'CV uploadé avec succès';
       addToast({ message: msg, type: 'success' });
     },
     onError: () => {
