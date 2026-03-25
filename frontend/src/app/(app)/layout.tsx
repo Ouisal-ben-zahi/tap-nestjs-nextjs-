@@ -1,24 +1,43 @@
 "use client";
 
-import { useEffect, useState } from "react";
+import { useEffect, useRef, useState } from "react";
 import Link from "next/link";
-import Image from "next/image";
-import { useAuth } from "@/hooks/use-auth";
-import { useCandidatStats } from "@/hooks/use-candidat";
 import AuthGuard from "@/components/app/AuthGuard";
 import HydrationGate from "@/components/app/HydrationGate";
 import AppSidebar from "@/components/app/AppSidebar";
-import { Menu, ArrowUpRight, Moon, Sun, User } from "lucide-react";
+import { useRecruiterTalentPanelStore } from "@/stores/recruiter-talent-panel";
+import { Menu, ArrowUpRight, Moon, Sun } from "lucide-react";
 
 export default function AppLayout({ children }: { children: React.ReactNode }) {
   const [sidebarOpen, setSidebarOpen] = useState(false);
-  const [profileOpen, setProfileOpen] = useState(false);
+  const [collapsed, setCollapsed] = useState(false);
   const [theme, setTheme] = useState<"dark" | "light">("dark");
-  const { user, logout } = useAuth();
-  const isCandidat = user?.role === "candidat";
-  const statsQuery = useCandidatStats();
-  const avatarUrl = isCandidat ? statsQuery.data?.avatarUrl ?? null : null;
-  const initial = (user?.email?.[0] || "").toUpperCase();
+  const recruiterTalentOpen = useRecruiterTalentPanelStore((s) => Boolean(s.talentPanel));
+  const closeRecruiterTalentPanel = useRecruiterTalentPanelStore((s) => s.closeTalentPanel);
+  const mainScrollRef = useRef<HTMLElement | null>(null);
+
+  useEffect(() => {
+    if (!recruiterTalentOpen) return;
+    const el = mainScrollRef.current;
+    if (!el) return;
+    const close = () => closeRecruiterTalentPanel();
+    el.addEventListener("scroll", close, { passive: true });
+    /* La molette ne déclenche pas toujours scroll (ex. fond sans défilement) */
+    el.addEventListener("wheel", close, { passive: true });
+    return () => {
+      el.removeEventListener("scroll", close);
+      el.removeEventListener("wheel", close);
+    };
+  }, [recruiterTalentOpen, closeRecruiterTalentPanel]);
+  // La sidebar a maintenant un margin gauche (left-3 => 12px) et un léger gap.
+  // Talent card (recruteur / Candidats) : colonne +320px + gap quand ouverte.
+  const sidebarLeftPaddingClass = collapsed
+    ? recruiterTalentOpen
+      ? "lg:pl-[440px]"
+      : "lg:pl-[112px]"
+    : recruiterTalentOpen
+      ? "lg:pl-[628px]"
+      : "lg:pl-[300px]";
 
   useEffect(() => {
     if (typeof window === "undefined") return;
@@ -37,7 +56,7 @@ export default function AppLayout({ children }: { children: React.ReactNode }) {
   return (
     <HydrationGate>
     <AuthGuard>
-      <div className={`h-screen relative overflow-hidden ${theme === "light" ? "bg-white" : "bg-black"}`}>
+      <div className={`h-screen relative overflow-hidden ${theme === "light" ? "bg-[#E6E6E6]" : "bg-black"}`}>
         {/* Background effects uniquement en mode sombre */}
         {theme === "dark" && (
           <div className="fixed inset-0 pointer-events-none">
@@ -56,10 +75,26 @@ export default function AppLayout({ children }: { children: React.ReactNode }) {
         )}
 
         <div className="relative z-10 flex flex-1 h-full overflow-hidden">
-          <AppSidebar open={sidebarOpen} onClose={() => setSidebarOpen(false)} />
+          <AppSidebar
+            open={sidebarOpen}
+            onClose={() => setSidebarOpen(false)}
+            collapsed={collapsed}
+            onToggleCollapsed={() => setCollapsed((v) => !v)}
+          />
+          {recruiterTalentOpen ? (
+            <button
+              type="button"
+              className="hidden lg:block fixed top-[64px] bottom-0 right-0 z-40 cursor-default border-0 p-0 bg-black/45"
+              style={{ left: collapsed ? 440 : 628 }}
+              onClick={closeRecruiterTalentPanel}
+              onWheel={closeRecruiterTalentPanel}
+              aria-label="Fermer la talent card"
+            />
+          ) : null}
           <main
-            className={`flex-1 p-5 sm:p-8 lg:p-10 pb-20 overflow-y-auto overflow-x-hidden relative ${
-              theme === "light" ? "bg-white" : "bg-[#0b0b0d]"
+            ref={mainScrollRef}
+            className={`flex-1 min-h-0 ${sidebarLeftPaddingClass} p-5 sm:p-8 lg:p-10 pb-20 overflow-y-auto overflow-x-hidden relative ${
+              theme === "light" ? "bg-[#E6E6E6]" : "bg-[#020001]"
             }`}
           >
             {/* Burger mobile (seul en haut à gauche) */}
@@ -75,35 +110,25 @@ export default function AppLayout({ children }: { children: React.ReactNode }) {
             {/* Header fixe du dashboard (comme avant) */}
             <div className="fixed top-0 left-0 right-0 z-30">
               <div
-                className={`flex items-center justify-between px-3 py-2 sm:px-6 sm:py-3 lg:pl-[250px] ${
+                className={`flex items-center justify-between px-3 py-2 sm:px-6 sm:py-3 ${sidebarLeftPaddingClass} ${
                   theme === "light"
-                    ? "bg-white border-b border-black/5"
-                    : "bg-[rgba(12,12,12,0.9)] border-b border-white/10 backdrop-blur-md"
+                    ? "bg-[#E6E6E6]"
+                    : "bg-[#020001]"
                 }`}
               >
-                {/* Left: Retour au site */}
-                <Link
-                  href="/"
-                  className={`inline-flex items-center gap-2 rounded-full px-3 py-1.5 text-[12px] font-medium transition-colors ${
-                    theme === "light"
-                      ? "text-[rgba(202,27,40,1)] hover:bg-white/60"
-                      : "text-white/70 hover:bg-white/10"
-                  }`}
-                  aria-label="Retour au site"
-                >
-                  <ArrowUpRight size={16} />
-                  <span className="hidden sm:inline">Retour au site</span>
-                </Link>
+                {/* Left: (vide) */}
+                <div />
 
-                {/* Right: theme toggle + email + avatar */}
+                {/* Right: theme toggle + Retour au site */}
                 <div className="flex items-center gap-3">
+                  {/* Un seul icon selon le mode actif */}
                   <button
                     type="button"
                     onClick={() => setTheme((prev) => (prev === "dark" ? "light" : "dark"))}
-                    className={`inline-flex items-center justify-center w-9 h-9 rounded-full transition-colors ${
+                    className={`inline-flex items-center justify-center w-9 h-9 rounded-full transition-colors backdrop-blur-md ${
                       theme === "light"
-                        ? "text-[rgba(202,27,40,1)] hover:bg-white/60"
-                        : "text-white/60 hover:text-white hover:bg-white/10"
+                        ? "bg-[#E6E6E6]/70 text-tap-red border-t border-b border-tap-red/25 shadow-[0_0_0_1px_rgba(202,27,40,0.18),0_12px_35px_rgba(202,27,40,0.10)]"
+                        : "text-white/60 hover:text-white hover:bg-white/[0.10] border border-tap-red/25 border-t border-b shadow-[0_0_0_1px_rgba(202,27,40,0.22),0_12px_35px_rgba(202,27,40,0.14)]"
                     }`}
                     aria-label="Basculer mode clair/sombre"
                     title={theme === "dark" ? "Passer en mode clair" : "Passer en mode sombre"}
@@ -111,104 +136,19 @@ export default function AppLayout({ children }: { children: React.ReactNode }) {
                     {theme === "dark" ? <Sun size={16} /> : <Moon size={16} />}
                   </button>
 
-                  {user?.email && (
-                    <button
-                      type="button"
-                      onClick={() => setProfileOpen((v) => !v)}
-                      className="hidden sm:flex items-center gap-2.5 px-0 py-0 rounded-full transition-colors"
-                      aria-label="Ouvrir le menu profil"
-                    >
-                      {avatarUrl ? (
-                        <div className="w-7 h-7 rounded-full overflow-hidden bg-black/20 flex items-center justify-center ring-1 ring-tap-red/30">
-                          <Image
-                            src={avatarUrl}
-                            alt={user.email}
-                            width={28}
-                            height={28}
-                            className="w-7 h-7 object-cover"
-                          />
-                        </div>
-                      ) : (
-                        <div className="w-7 h-7 rounded-full bg-tap-red flex items-center justify-center text-[11px] font-bold text-white uppercase ring-1 ring-tap-red/40">
-                          {initial || "?"}
-                        </div>
-                      )}
-                    </button>
-                  )}
+                  <Link
+                    href="/"
+                    className="btn-primary btn-sm gap-2 w-auto !py-1.5 !px-3 text-[12px]"
+                    aria-label="Retour au site"
+                  >
+                    <span className="hidden sm:inline">Retour au site</span>
+                    <ArrowUpRight size={14} />
+                  </Link>
                 </div>
               </div>
             </div>
 
-            {profileOpen && user?.email && (
-                  <div
-                    className={`fixed top-14 right-4 sm:right-6 z-40 w-56 rounded-2xl shadow-[0_18px_45px_rgba(0,0,0,0.25)] overflow-hidden ${
-                      theme === "light"
-                        ? "bg-[rgba(245,245,245,1)] border border-black/10"
-                        : "bg-[#050505]/95 border border-white/10 backdrop-blur-xl"
-                    }`}
-                  >
-                    <div className={`px-4 py-3 flex items-start gap-3 ${theme === "light" ? "border-b border-black/10" : "border-b border-white/[0.06]"}`}>
-                      {avatarUrl ? (
-                        <div className="w-8 h-8 rounded-full overflow-hidden bg-black/20 flex items-center justify-center ring-1 ring-tap-red/30">
-                          <Image
-                            src={avatarUrl}
-                            alt={user.email}
-                            width={32}
-                            height={32}
-                            className="w-8 h-8 object-cover"
-                          />
-                        </div>
-                      ) : (
-                        <div
-                          className={`w-8 h-8 rounded-full flex items-center justify-center text-[12px] font-bold uppercase ring-1 ring-tap-red/40 ${
-                            theme === "light" ? "bg-tap-red text-white" : "bg-tap-red text-black"
-                          }`}
-                        >
-                          {initial || "?"}
-                        </div>
-                      )}
-                      <div className="min-w-0">
-                        <p className={`text-[12px] truncate ${theme === "light" ? "text-[rgba(202,27,40,0.9)]" : "text-white/80"}`}>
-                          {user.email}
-                        </p>
-                        <p className={`text-[11px] capitalize ${theme === "light" ? "text-black/45" : "text-white/35"}`}>
-                          {isCandidat ? "Candidat" : "Recruteur"}
-                        </p>
-                      </div>
-                    </div>
-                    <button
-                      type="button"
-                      onClick={() => {
-                        setProfileOpen(false);
-                        window.location.href = "/app/parametres";
-                      }}
-                      className={`w-full text-left px-4 py-3 text-[13px] transition-colors ${
-                        theme === "light"
-                          ? "text-[rgba(202,27,40,0.9)] hover:bg-black/5"
-                          : "text-white/80 hover:bg-white/[0.04]"
-                      }`}
-                    >
-                      Mon compte
-                    </button>
-                    <button
-                      type="button"
-                      onClick={() => {
-                        setProfileOpen(false);
-                        logout();
-                        if (typeof window !== "undefined") {
-                          window.location.href = "/";
-                        }
-                      }}
-                      className={`w-full text-left px-4 py-3 text-[13px] transition-colors ${
-                        theme === "light"
-                          ? "text-[rgba(202,27,40,1)] hover:bg-[rgba(202,27,40,0.08)] border-t border-black/10"
-                          : "text-red-300 hover:text-red-200 hover:bg-red-500/10 border-t border-white/[0.04]"
-                      }`}
-                    >
-                      Se déconnecter
-                    </button>
-                  </div>
-            )}
+            {/* Avatar/menu profil retirés : la sidebar contient maintenant l'avatar + email/role */}
             {/* Espace sous la barre fixe (margin-bottom visuel) */}
             <div className="h-[64px] mb-6 sm:mb-8" />
 

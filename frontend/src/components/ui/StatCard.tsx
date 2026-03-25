@@ -19,7 +19,7 @@ export default function StatCard({ label, value, icon: Icon, trend, color = 'tex
     <div
       className={`rounded-xl p-6 transition group ${
         isLight
-          ? "bg-white border border-tap-red/40 hover:border-tap-red/70"
+          ? "card-luxury-light hover:border-tap-red/70"
           : "bg-zinc-900/50 border border-zinc-800 hover:border-zinc-700"
       }`}
     >

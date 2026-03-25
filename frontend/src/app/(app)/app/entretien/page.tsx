@@ -53,10 +53,6 @@ export default function EntretienPage() {
       <div className={`relative mb-8 pb-8 ${isLight ? "border-b border-black/10" : "border-b border-white/[0.04]"}`}>
         <div className="absolute top-[-80px] left-[-100px] w-[350px] h-[350px] rounded-full bg-[radial-gradient(circle,rgba(168,85,247,0.08),transparent_60%)] blur-3xl pointer-events-none" />
         <div className="relative">
-          <div className="inline-flex items-center gap-2.5 px-5 py-2.5 mb-4 rounded-full bg-purple-500/[0.08] border border-purple-500/15">
-            <MessageSquare size={13} className="text-purple-500" />
-            <span className="text-[10px] uppercase tracking-[2.5px] text-purple-500/80 font-semibold">Entretien IA</span>
-          </div>
           <h1 className={`text-[28px] sm:text-[36px] font-bold tracking-[-0.04em] font-heading ${isLight ? "text-black" : "text-white"}`}>Simulateur d&apos;entretien</h1>
           <p className={`text-[14px] mt-2 font-light ${isLight ? "text-black/60" : "text-white/45"}`}>Préparez-vous avec notre IA qui simule de vrais entretiens adaptés à votre profil.</p>
         </div>
@@ -72,7 +68,7 @@ export default function EntretienPage() {
           <div
             className={`rounded-2xl p-6 mb-8 flex items-start gap-4 ${
               isLight
-                ? "bg-white border border-tap-red/40"
+                ? "card-luxury-light"
                 : "bg-purple-500/[0.06] border border-purple-500/15"
             }`}
           >
@@ -80,8 +76,6 @@ export default function EntretienPage() {
               <Sparkles size={18} className="text-purple-500" />
             </div>
             <div>
-              <h3 className={`text-[14px] font-semibold mb-1 ${isLight ? "text-black" : "text-white"}`}>Propulsé par l&apos;IA</h3>
-              <p className={`text-[13px] font-light ${isLight ? "text-black/70" : "text-white/45"}`}>Les questions sont générées en fonction de votre CV, vos compétences et le poste visé.</p>
             </div>
           </div>
 
@@ -103,7 +97,7 @@ export default function EntretienPage() {
                   }}
                   className={`group rounded-2xl p-6 transition-all duration-300 cursor-pointer ${
                     isLight
-                      ? "bg-white border border-tap-red/40 hover:border-tap-red/70"
+                      ? "card-luxury-light hover:border-tap-red/70"
                       : "bg-zinc-900/50 border border-white/[0.06] hover:border-white/[0.12]"
                   } ${startInterviewMutation.isPending ? "opacity-70 pointer-events-none" : ""}`}
                 >
@@ -126,7 +120,7 @@ export default function EntretienPage() {
             })}
           </div>
 
-          <div className={`rounded-2xl p-6 ${isLight ? "bg-white border border-tap-red/40" : "bg-zinc-900/50 border border-white/[0.06]"}`}>
+          <div className={`rounded-2xl p-6 ${isLight ? "card-luxury-light" : "bg-zinc-900/50 border border-white/[0.06]"}`}>
             <h3 className={`text-[13px] uppercase tracking-[2px] font-semibold mb-5 ${isLight ? "text-black" : "text-white/50"}`}>Comment ça marche</h3>
             <div className="grid grid-cols-1 sm:grid-cols-3 gap-4">
               {[

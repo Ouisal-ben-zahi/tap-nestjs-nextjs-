@@ -11,6 +11,8 @@ import {
   Target,
   FileText,
   FileSpreadsheet,
+  Award,
+  Briefcase,
 } from 'lucide-react';
 import { formatFileSize, formatDate } from '@/lib/utils';
 import { useDashboardTheme } from "@/hooks/use-dashboard-theme";
@@ -24,14 +26,27 @@ interface FileCardProps {
   created_at?: string;
   updatedAt?: string | null;
   type?: string;
+  variant?: "default" | "sidebar-active";
   onDelete?: (path: string) => void;
 }
 
-export default function FileCard({ name, url, publicUrl, path, size, created_at, updatedAt, type, onDelete }: FileCardProps) {
+export default function FileCard({
+  name,
+  url,
+  publicUrl,
+  path,
+  size,
+  created_at,
+  updatedAt,
+  type,
+  variant = "default",
+  onDelete,
+}: FileCardProps) {
   const href = url || publicUrl || '#';
   const dateStr = created_at || updatedAt;
   const theme = useDashboardTheme();
   const isLight = theme === "light";
+  const isSidebarActiveVariant = variant === "sidebar-active";
   const extension = (name.split(".").pop() || "file").toUpperCase();
   const ext = extension.toLowerCase();
   const lowerName = name.toLowerCase();
@@ -40,13 +55,20 @@ export default function FileCard({ name, url, publicUrl, path, size, created_at,
   const iconConfig = (() => {
     // 1) Context métier prioritaire
     if (lowerName.includes("talent") || lowerType.includes("talent")) {
-      return { Icon: Building2, iconClass: isLight ? "text-tap-red" : "text-tap-red" };
+      return { Icon: Award, iconClass: isLight ? "text-tap-red" : "text-tap-red" };
+    }
+    // Portfolio long / court (backend typiquement: "long" ou "short")
+    if (lowerType === "long") {
+      return { Icon: FileText, iconClass: isLight ? "text-tap-red" : "text-tap-red" };
+    }
+    if (lowerType === "short") {
+      return { Icon: Briefcase, iconClass: isLight ? "text-tap-red" : "text-tap-red" };
     }
     if (lowerName.includes("portfolio") || lowerType.includes("portfolio")) {
-      return { Icon: Rocket, iconClass: isLight ? "text-tap-red" : "text-tap-red" };
+      return { Icon: Briefcase, iconClass: isLight ? "text-tap-red" : "text-tap-red" };
     }
     if (lowerName.includes("cv") || lowerName.includes("resume")) {
-      return { Icon: ScanSearch, iconClass: isLight ? "text-tap-red" : "text-tap-red" };
+      return { Icon: FileText, iconClass: isLight ? "text-tap-red" : "text-tap-red" };
     }
 
     // 2) Fallback par extension de fichier
@@ -75,9 +97,13 @@ export default function FileCard({ name, url, publicUrl, path, size, created_at,
   return (
     <div
       className={`rounded-2xl p-4 transition-all duration-300 group ${
-        isLight
-          ? "bg-white border border-black/10 hover:border-black/20 hover:shadow-[0_10px_22px_rgba(0,0,0,0.08)]"
-          : "bg-white/[0.02] border border-white/[0.08] hover:border-white/[0.16] hover:shadow-[0_12px_26px_rgba(0,0,0,0.32)]"
+        isSidebarActiveVariant
+          ? isLight
+            ? "card-luxury-light-active hover:shadow-[0_12px_30px_rgba(0,0,0,0.12)]"
+            : "bg-white/[0.06] border-0 hover:shadow-[0_12px_26px_rgba(0,0,0,0.32)]"
+          : isLight
+            ? "card-luxury-light hover:shadow-[0_12px_30px_rgba(0,0,0,0.10)]"
+            : "bg-white/[0.02] border border-white/[0.08] hover:border-white/[0.16] hover:shadow-[0_12px_26px_rgba(0,0,0,0.32)]"
       } ${canOpen ? "cursor-pointer" : ""}`}
       onClick={() => {
         if (!canOpen) return;

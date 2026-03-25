@@ -35,12 +35,6 @@ export default function MatchingRecruteurPage() {
       <div className="relative mb-8 pb-8 border-b border-white/[0.04]">
         <div className="absolute top-[-80px] left-[-100px] w-[350px] h-[350px] rounded-full bg-[radial-gradient(circle,rgba(16,185,129,0.08),transparent_60%)] blur-3xl pointer-events-none" />
         <div className="relative">
-          <div className="inline-flex items-center gap-2.5 px-5 py-2.5 mb-4 rounded-full bg-emerald-500/[0.08] border border-emerald-500/15">
-            <UserCheck size={13} className="text-emerald-500" />
-            <span className="text-[10px] uppercase tracking-[2.5px] text-emerald-500/80 font-semibold">
-              Matching IA
-            </span>
-          </div>
           <h1 className="text-[28px] sm:text-[36px] font-bold text-white tracking-[-0.04em] font-heading">
             Matching intelligent
           </h1>
@@ -50,16 +44,55 @@ export default function MatchingRecruteurPage() {
         </div>
       </div>
 
-      {/* AI Banner */}
-      <div className="bg-emerald-500/[0.06] border border-emerald-500/15 rounded-2xl p-6 mb-8 flex items-start gap-4">
-        <div className="w-10 h-10 rounded-xl bg-emerald-500/10 border border-emerald-500/20 flex items-center justify-center shrink-0">
-          <Sparkles size={18} className="text-emerald-500" />
-        </div>
-        <div>
-          <h3 className="text-[14px] font-semibold text-white mb-1">Matching propulsé par l&apos;IA</h3>
-          <p className="text-[13px] text-white/45 font-light">
-            L&apos;algorithme analyse les compétences, l&apos;expérience et les soft skills pour trouver les meilleurs profils pour chaque poste.
-          </p>
+      {/* AI Banner (premium - hover plus doux) */}
+      <div className="relative mb-8 group">
+        <div className="relative bg-white/[0.02] border border-white/[0.06] rounded-2xl p-6 glass glass-hover overflow-hidden">
+          <div
+            aria-hidden="true"
+            className="absolute inset-0 pointer-events-none opacity-0 group-hover:opacity-100 transition-opacity"
+            style={{
+              background:
+                "radial-gradient(circle at top, rgba(202, 27, 40, 0.22), transparent 55%)",
+            }}
+          />
+          <div className="flex items-start justify-between gap-4">
+            <div className="flex items-start gap-4 min-w-0">
+              <div className="w-10 h-10 rounded-xl bg-emerald-500/10 border border-emerald-500/20 flex items-center justify-center shrink-0">
+                <Sparkles size={18} className="text-emerald-400" />
+              </div>
+
+              <div className="min-w-0">
+                <h3 className="text-[14px] font-semibold text-white mb-1">Matching IA, calibreur de pertinence</h3>
+                <p className="text-[13px] text-white/45 font-light">
+                  L&apos;IA compare votre offre et le profil candidat pour optimiser les correspondances (compétences, expérience, et alignement).
+                </p>
+
+                <div className="flex flex-wrap gap-2 mt-3">
+                  <span className="inline-flex items-center gap-2 text-[11px] px-3 py-1 rounded-full border border-white/[0.08] bg-white/[0.03] text-white/60">
+                    <span className="w-1.5 h-1.5 rounded-full bg-emerald-400" />
+                    Analyse CV
+                  </span>
+                  <span className="inline-flex items-center gap-2 text-[11px] px-3 py-1 rounded-full border border-white/[0.08] bg-white/[0.03] text-white/60">
+                    <span className="w-1.5 h-1.5 rounded-full bg-tap-red" />
+                    Critères de l&apos;offre
+                  </span>
+                  <span className="inline-flex items-center gap-2 text-[11px] px-3 py-1 rounded-full border border-white/[0.08] bg-white/[0.03] text-white/60">
+                    <span className="w-1.5 h-1.5 rounded-full bg-blue-400" />
+                    Score de matching
+                  </span>
+                </div>
+              </div>
+            </div>
+
+            <a
+              href="#how-matching-recruteur"
+              className="hidden sm:inline-flex items-center gap-2 px-3 py-2 rounded-xl border border-white/[0.12] bg-white/[0.03] text-white/70 hover:text-white hover:bg-white/[0.06] transition shrink-0"
+              aria-label="Voir comment fonctionne le matching"
+              title="Voir comment fonctionne le matching"
+            >
+              <span className="text-[12px] font-medium">Comment ça marche</span>
+            </a>
+          </div>
         </div>
       </div>
 
@@ -183,7 +216,7 @@ export default function MatchingRecruteurPage() {
           </div>
 
           {/* Comment ça marche */}
-          <div className="mt-8 bg-zinc-900/50 border border-white/[0.06] rounded-2xl p-6">
+          <div id="how-matching-recruteur" className="mt-8 bg-zinc-900/50 border border-white/[0.06] rounded-2xl p-6">
             <h3 className="text-[13px] uppercase tracking-[2px] text-white/50 font-semibold mb-4">Comment fonctionne le matching</h3>
             <div className="grid grid-cols-1 sm:grid-cols-3 gap-4">
               {[

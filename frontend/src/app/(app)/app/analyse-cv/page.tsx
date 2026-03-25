@@ -223,7 +223,7 @@ export default function AnalyseCvAppPage() {
                 // Laisse 80ms pour peindre l'animation avant d'ouvrir le picker système.
                 window.setTimeout(() => fileRef.current?.click(), 80);
               }}
-              className="inline-flex items-center gap-2 px-4 py-2 bg-tap-red/10 hover:bg-tap-red/20 text-tap-red rounded-lg text-sm cursor-pointer transition"
+              className="btn-primary btn-sm gap-2"
             >
               <Upload size={14} />
               Choisir un fichier
@@ -322,9 +322,11 @@ export default function AnalyseCvAppPage() {
 
       {/* Mes CV */}
       <div className="mb-8">
-        <div className="flex items-center gap-3 mb-5">
-          <div className="w-1 h-5 rounded-full bg-tap-red" />
-          <h2 className={`text-[13px] uppercase tracking-[2px] font-semibold ${isLight ? "text-black" : "text-white/50"}`}>Mes CV</h2>
+        <div className="mb-5">
+          <sup className="relative z-10 inline-flex items-center gap-2 rounded-full bg-tap-red/[0.08] border border-tap-red/20 px-3 py-1">
+            <FileText size={12} className="text-tap-red" />
+            <span className="text-[10px] uppercase tracking-[2.5px] text-tap-red/80 font-semibold leading-none">Mes CV</span>
+          </sup>
         </div>
 
         {cvQuery.isLoading ? (
@@ -340,7 +342,7 @@ export default function AnalyseCvAppPage() {
         ) : (
           <div className="grid gap-3">
             {cvQuery.data.cvFiles.map((file, i) => (
-              <FileCard key={i} {...file} onDelete={(p) => deleteCv.mutate(p)} />
+              <FileCard key={i} {...file} variant="sidebar-active" onDelete={(p) => deleteCv.mutate(p)} />
             ))}
           </div>
         )}
@@ -348,11 +350,11 @@ export default function AnalyseCvAppPage() {
 
       {/* Talent Cards */}
       <div>
-        <div className="flex items-center gap-3 mb-5">
-          <div className="w-1 h-5 rounded-full bg-blue-500" />
-          <h2 className={`text-[13px] uppercase tracking-[2px] font-semibold flex items-center gap-2 ${isLight ? "text-black" : "text-white/50"}`}>
-            <Award size={13} className="text-blue-500" /> Talent Cards
-          </h2>
+        <div className="mb-5">
+          <sup className="relative z-10 inline-flex items-center gap-2 rounded-full bg-blue-500/[0.08] border border-blue-500/20 px-3 py-1">
+            <Award size={12} className="text-blue-500" />
+            <span className="text-[10px] uppercase tracking-[2.5px] text-blue-500/80 font-semibold leading-none">Talent Cards</span>
+          </sup>
         </div>
 
         {talentcardQuery.isLoading ? (
@@ -376,7 +378,7 @@ export default function AnalyseCvAppPage() {
         ) : (
           <div className="grid gap-3">
             {talentcardQuery.data.talentcardFiles.map((file, i) => (
-              <FileCard key={i} {...file} onDelete={(path) => deleteTalentcard.mutate(path)} />
+              <FileCard key={i} {...file} variant="sidebar-active" onDelete={(path) => deleteTalentcard.mutate(path)} />
             ))}
           </div>
         )}
@@ -384,11 +386,11 @@ export default function AnalyseCvAppPage() {
 
       {/* Portfolio */}
       <div className="mt-8">
-        <div className="flex items-center gap-3 mb-5">
-          <div className="w-1 h-5 rounded-full bg-green-500" />
-          <h2 className={`text-[13px] uppercase tracking-[2px] font-semibold flex items-center gap-2 ${isLight ? "text-black" : "text-white/50"}`}>
-            <Briefcase size={13} className="text-green-500" /> Portfolio
-          </h2>
+        <div className="mb-5">
+          <sup className="relative z-10 inline-flex items-center gap-2 rounded-full bg-emerald-500/[0.08] border border-emerald-500/20 px-3 py-1">
+            <Briefcase size={12} className="text-emerald-500" />
+            <span className="text-[10px] uppercase tracking-[2.5px] text-emerald-500/80 font-semibold leading-none">Portfolio</span>
+          </sup>
         </div>
 
         {portfolioQuery.isLoading ? (
@@ -407,7 +409,7 @@ export default function AnalyseCvAppPage() {
         ) : (
           <div className="grid gap-3">
             {portfolioQuery.data.portfolioPdfFiles.map((file, i) => (
-              <FileCard key={i} {...file} onDelete={(path) => deletePortfolioPdf.mutate(path)} />
+              <FileCard key={i} {...file} variant="sidebar-active" onDelete={(path) => deletePortfolioPdf.mutate(path)} />
             ))}
           </div>
         )}

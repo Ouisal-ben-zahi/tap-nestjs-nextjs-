@@ -45,7 +45,10 @@ export interface RecruiterOverviewStats {
     }[];
     recentApplications: {
         id: number;
+        jobId: number;
         candidateName: string | null;
+    candidateCategory: string | null;
+    candidateAvatarUrl: string | null;
         jobTitle: string | null;
         status: string | null;
         validatedAt: string | null;

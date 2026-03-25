@@ -42,12 +42,6 @@ export default function StatistiquesPage() {
       <div className={`relative mb-8 pb-8 ${isLight ? "border-b border-black/10" : "border-b border-white/[0.04]"}`}>
         <div className="absolute top-[-80px] left-[-100px] w-[350px] h-[350px] rounded-full bg-[radial-gradient(circle,rgba(245,158,11,0.08),transparent_60%)] blur-3xl pointer-events-none" />
         <div className="relative">
-          <div className="inline-flex items-center gap-2.5 px-5 py-2.5 mb-4 rounded-full bg-amber-500/[0.08] border border-amber-500/15">
-            <LayoutList size={13} className="text-amber-500" />
-            <span className="text-[10px] uppercase tracking-[2.5px] text-amber-500/80 font-semibold">
-              Statistiques
-            </span>
-          </div>
           <h1
             className={`text-[28px] sm:text-[36px] font-bold tracking-[-0.04em] font-heading ${
               isLight ? "text-black" : "text-white"
@@ -99,7 +93,7 @@ export default function StatistiquesPage() {
           <div className="grid grid-cols-1 sm:grid-cols-3 gap-3 mb-8">
             <div
               className={`rounded-xl p-5 flex items-center gap-4 ${
-                isLight ? "bg-white border border-tap-red/40" : "bg-zinc-900/50 border border-white/[0.06]"
+                isLight ? "card-luxury-light" : "bg-zinc-900/50 border border-white/[0.06]"
               }`}
             >
               <div className="w-10 h-10 rounded-xl bg-amber-500/10 border border-amber-500/20 flex items-center justify-center">
@@ -112,7 +106,7 @@ export default function StatistiquesPage() {
             </div>
             <div
               className={`rounded-xl p-5 flex items-center gap-4 ${
-                isLight ? "bg-white border border-tap-red/40" : "bg-zinc-900/50 border border-white/[0.06]"
+                isLight ? "card-luxury-light" : "bg-zinc-900/50 border border-white/[0.06]"
               }`}
             >
               <div className="w-10 h-10 rounded-xl bg-emerald-500/10 border border-emerald-500/20 flex items-center justify-center">
@@ -129,7 +123,7 @@ export default function StatistiquesPage() {
             </div>
             <div
               className={`rounded-xl p-5 flex items-center gap-4 ${
-                isLight ? "bg-white border border-tap-red/40" : "bg-zinc-900/50 border border-white/[0.06]"
+                isLight ? "card-luxury-light" : "bg-zinc-900/50 border border-white/[0.06]"
               }`}
             >
               <div className="w-10 h-10 rounded-xl bg-purple-500/10 border border-purple-500/20 flex items-center justify-center">
@@ -149,7 +143,7 @@ export default function StatistiquesPage() {
             {/* Candidatures par offre */}
             <div
               className={`rounded-2xl p-6 ${
-                isLight ? "bg-white border border-tap-red/40" : "bg-zinc-900/50 border border-white/[0.06]"
+                isLight ? "card-luxury-light" : "bg-zinc-900/50 border border-white/[0.06]"
               }`}
             >
               <div className="flex items-center gap-2 mb-5">
@@ -202,7 +196,7 @@ export default function StatistiquesPage() {
             {/* Offres par catégorie */}
             <div
               className={`rounded-2xl p-6 ${
-                isLight ? "bg-white border border-tap-red/40" : "bg-zinc-900/50 border border-white/[0.06]"
+                isLight ? "card-luxury-light" : "bg-zinc-900/50 border border-white/[0.06]"
               }`}
             >
               <div className="flex items-center gap-2 mb-5">
@@ -259,7 +253,7 @@ export default function StatistiquesPage() {
           {/* Répartition des statuts */}
           <div
             className={`rounded-2xl p-6 mb-8 ${
-              isLight ? "bg-white border border-tap-red/40" : "bg-zinc-900/50 border border-white/[0.06]"
+              isLight ? "card-luxury-light" : "bg-zinc-900/50 border border-white/[0.06]"
             }`}
           >
             <div className="flex items-center gap-2 mb-5">

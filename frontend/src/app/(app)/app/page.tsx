@@ -119,9 +119,7 @@ export default function DashboardPage() {
             )}
           </h1>
           <p className={`text-[15px] font-light max-w-md ${isLight ? "text-black/55" : "text-white/45"}`}>
-            {isRecruteur
-              ? "Gérez vos recrutements et trouvez les meilleurs talents."
-              : "Explorez vos outils dsfdg IA pour booster votre carrière."}
+            {isRecruteur ? "Gérez vos recrutements et trouvez les meilleurs talents." : ""}
           </p>
         </div>
       </div>
@@ -129,48 +127,6 @@ export default function DashboardPage() {
       {/* Live Dashboard */}
       <div className="mt-14 sm:mt-16">
         {isRecruteur ? <RecruteurDashboard /> : <CandidatDashboard />}
-      </div>
-
-      {/* Separator */}
-      <div className={`mt-10 mb-6 pt-6 ${isLight ? "border-t border-black/10" : "border-t border-white/[0.04]"}`}>
-        <div className="flex items-center gap-3">
-          <div className="w-1 h-5 rounded-full bg-tap-red" />
-          <h2 className={`text-[13px] uppercase tracking-[2px] font-semibold ${isLight ? "text-black/60" : "text-white/50"}`}>
-            {isRecruteur ? "Outils de recrutement" : "Accès rapide"}
-          </h2>
-        </div>
-      </div>
-
-      {/* Feature cards — compact */}
-      <div className="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-6 gap-3">
-        {features.map((feature) => {
-          const Icon = feature.icon;
-          return (
-            <Link
-              key={feature.href}
-              href={feature.href}
-              className={`group rounded-xl p-4 transition-all duration-300 flex flex-col items-center gap-3 text-center ${
-                isLight
-                  ? "bg-white border border-tap-red/40 hover:border-tap-red/70 hover:bg-white"
-                  : "bg-zinc-900/50 border border-white/[0.06] hover:border-white/[0.12] hover:bg-white/[0.03]"
-              }`}
-            >
-              <div
-                className="w-9 h-9 rounded-lg flex items-center justify-center border transition-all duration-300 group-hover:scale-110"
-                style={{ background: `${feature.color}0D`, borderColor: `${feature.color}15` }}
-              >
-                <Icon size={16} strokeWidth={1.5} style={{ color: `${feature.color}99` }} />
-              </div>
-              <span
-                className={`text-[11px] font-medium transition-colors ${
-                  isLight ? "text-black group-hover:text-black" : "text-white/50 group-hover:text-white/70"
-                }`}
-              >
-                {feature.title}
-              </span>
-            </Link>
-          );
-        })}
       </div>
 
       {/* Bottom */}

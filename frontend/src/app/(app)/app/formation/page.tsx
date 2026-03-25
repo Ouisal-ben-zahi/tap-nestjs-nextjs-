@@ -39,10 +39,6 @@ export default function FormationPage() {
       <div className={`relative mb-8 pb-8 ${isLight ? "border-b border-black/10" : "border-b border-white/[0.04]"}`}>
         <div className="absolute top-[-80px] left-[-100px] w-[350px] h-[350px] rounded-full bg-[radial-gradient(circle,rgba(245,158,11,0.08),transparent_60%)] blur-3xl pointer-events-none" />
         <div className="relative">
-          <div className="inline-flex items-center gap-2.5 px-5 py-2.5 mb-4 rounded-full bg-amber-500/[0.08] border border-amber-500/15">
-            <GraduationCap size={13} className="text-amber-500" />
-            <span className="text-[10px] uppercase tracking-[2.5px] text-amber-500/80 font-semibold">Micro-learning</span>
-          </div>
           <h1 className={`text-[28px] sm:text-[36px] font-bold tracking-[-0.04em] font-heading ${isLight ? "text-black" : "text-white"}`}>Formations recommandées</h1>
           <p className={`text-[14px] mt-2 font-light ${isLight ? "text-black/60" : "text-white/45"}`}>Des modules courts et ciblés pour booster votre profil et combler vos lacunes.</p>
         </div>
@@ -58,7 +54,7 @@ export default function FormationPage() {
           <div
             className={`rounded-2xl p-6 mb-8 flex items-start gap-4 ${
               isLight
-                ? "bg-white border border-tap-red/40"
+                ? "card-luxury-light"
                 : "bg-amber-500/[0.06] border border-amber-500/15"
             }`}
           >
@@ -67,7 +63,6 @@ export default function FormationPage() {
             </div>
             <div>
               <h3 className={`text-[14px] font-semibold mb-1 ${isLight ? "text-black" : "text-white"}`}>Recommandations IA</h3>
-              <p className={`text-[13px] font-light ${isLight ? "text-black/70" : "text-white/45"}`}>Ces formations ont été sélectionnées par notre IA en fonction de votre profil et du marché marocain.</p>
             </div>
           </div>
 
@@ -84,7 +79,7 @@ export default function FormationPage() {
                   key={i}
                   className={`group rounded-xl p-5 transition-all duration-300 cursor-pointer ${
                     isLight
-                      ? "bg-white border border-tap-red/40 hover:border-tap-red/70"
+                      ? "card-luxury-light hover:border-tap-red/70"
                       : "bg-zinc-900/50 border border-white/[0.06] hover:border-white/[0.12]"
                   }`}
                 >

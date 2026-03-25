@@ -14,7 +14,7 @@ export function StatCardSkeleton() {
   return (
     <div
       className={`rounded-xl p-6 ${
-        isLight ? "bg-white border border-tap-red/40" : "bg-zinc-900/50 border border-zinc-800"
+        isLight ? "card-luxury-light" : "bg-zinc-900/50 border border-zinc-800"
       }`}
     >
       <Skeleton className="h-4 w-24 mb-3" />

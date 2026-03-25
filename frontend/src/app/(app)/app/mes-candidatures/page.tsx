@@ -62,29 +62,37 @@ export default function MesCandidaturesPage() {
               key={app.id}
               className={`flex items-center justify-between gap-4 rounded-xl px-5 py-4 transition ${
                 isLight
-                  ? "bg-white border border-tap-red/40 hover:border-tap-red/70"
+                  ? "card-luxury-light hover:border-tap-red/70"
                   : "bg-zinc-900/50 border border-white/[0.06] hover:border-white/[0.1]"
               }`}
             >
               <div className="flex-1 min-w-0">
-                <p className={`text-[14px] font-medium truncate ${isLight ? "text-black" : "text-white"}`}>
-                  {app.jobTitle ?? "Offre sans titre"}
-                </p>
-                <p className={`text-[12px] ${isLight ? "text-black/70" : "text-white/40"}`}>{app.company}</p>
-              </div>
-              <div className="flex items-center gap-3 shrink-0">
-                <span
-                  className={`text-[11px] px-2.5 py-1 rounded-full border font-medium ${statusBg(
-                    app.status ?? "Inconnu",
-                  )}`}
-                >
-                  {app.status ?? "Inconnu"}
-                </span>
-                {app.validatedAt && (
-                  <span className={`text-[11px] ${isLight ? "text-black/70" : "text-white/30"}`}>
-                    {formatRelative(app.validatedAt)}
+                <div className="flex items-center gap-2 flex-wrap">
+                  <p
+                    className={`text-[14px] font-medium truncate ${
+                      isLight ? "text-black" : "text-white"
+                    }`}
+                  >
+                    {app.jobTitle ?? "Offre sans titre"}
+                  </p>
+                  <span
+                    className={`text-[11px] px-2.5 py-1 rounded-full border font-medium shrink-0 ${statusBg(
+                      app.status ?? "Inconnu",
+                    )}`}
+                  >
+                    {app.status ?? "Inconnu"}
                   </span>
-                )}
+                </div>
+                <p className={`text-[12px] mt-1 ${isLight ? "text-black/70" : "text-white/40"}`}>
+                  {app.company}
+                </p>
+              </div>
+
+              <div className="shrink-0 text-right">
+                <p className={`text-[11px] ${isLight ? "text-black/55" : "text-white/40"} `}>Postulation</p>
+                <p className={`text-[11px] mt-0.5 ${isLight ? "text-black/70" : "text-white/30"}`}>
+                  {app.validatedAt ? formatRelative(app.validatedAt) : "—"}
+                </p>
               </div>
             </div>
           ))}

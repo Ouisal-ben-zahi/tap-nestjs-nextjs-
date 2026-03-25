@@ -43,37 +43,47 @@ export function formatFileSize(bytes: number): string {
 }
 
 export function statusColor(status: string): string {
-  switch (status?.toLowerCase()) {
-    case 'accepted':
-    case 'accepté':
-    case 'active':
-      return 'text-green-400';
-    case 'refused':
-    case 'refusé':
-    case 'rejected':
-      return 'text-red-400';
-    case 'pending':
-    case 'en attente':
-      return 'text-yellow-400';
+  const s = status?.toLowerCase?.() ?? "";
+  switch (s) {
+    case "accepted":
+    case "accepté":
+    case "active":
+    case "acceptee":
+      return "text-green-400";
+    case "refused":
+    case "refusé":
+    case "rejected":
+    case "refusee":
+      return "text-red-400";
+    case "pending":
+    case "en attente":
+    case "en_cours":
+    case "en-cours":
+      return "text-yellow-400";
     default:
-      return 'text-zinc-400';
+      return "text-zinc-400";
   }
 }
 
 export function statusBg(status: string): string {
-  switch (status?.toLowerCase()) {
-    case 'accepted':
-    case 'accepté':
-    case 'active':
-      return 'bg-green-500/10 text-green-400 border-green-500/20';
-    case 'refused':
-    case 'refusé':
-    case 'rejected':
-      return 'bg-red-500/10 text-red-400 border-red-500/20';
-    case 'pending':
-    case 'en attente':
-      return 'bg-yellow-500/10 text-yellow-400 border-yellow-500/20';
+  const s = status?.toLowerCase?.() ?? "";
+  switch (s) {
+    case "accepted":
+    case "accepté":
+    case "active":
+    case "acceptee":
+      return "bg-green-500/10 text-green-400 border-green-500/20";
+    case "refused":
+    case "refusé":
+    case "rejected":
+    case "refusee":
+      return "bg-red-500/10 text-red-400 border-red-500/20";
+    case "pending":
+    case "en attente":
+    case "en_cours":
+    case "en-cours":
+      return "bg-yellow-500/10 text-yellow-400 border-yellow-500/20";
     default:
-      return 'bg-zinc-500/10 text-zinc-400 border-zinc-500/20';
+      return "bg-zinc-500/10 text-zinc-400 border-zinc-500/20";
   }
 }

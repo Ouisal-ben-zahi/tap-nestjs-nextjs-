@@ -50,9 +50,24 @@ export type SaveInterviewPdfResponse = {
   questions_count?: number;
 };
 
+export type RecruiterTalentcardFile = {
+  name: string;
+  path: string;
+  publicUrl: string;
+  updatedAt: string | null;
+  size: number | null;
+};
+
 export const recruteurService = {
   getOverview: () =>
     api.get<RecruteurOverview>('/dashboard/recruteur/overview').then((r) => r.data),
+
+  getCandidateTalentcardFiles: (candidateId: number) =>
+    api
+      .get<{ talentcardFiles: RecruiterTalentcardFile[] }>(
+        `/dashboard/recruteur/candidats/${candidateId}/talentcard-files`,
+      )
+      .then((r) => r.data),
 
   getJobs: () =>
     api.get<{ jobs: Job[] }>('/dashboard/recruteur/jobs').then((r) => r.data),

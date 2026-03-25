@@ -13,7 +13,6 @@ import {
 } from "@/hooks/use-recruteur";
 import EmptyState from "@/components/ui/EmptyState";
 import ErrorState from "@/components/ui/ErrorState";
-import StatusBadge from "@/components/ui/StatusBadge";
 import { Skeleton } from "@/components/ui/Skeleton";
 import DropdownSelect from "@/components/app/DropdownSelect";
 import {
@@ -371,12 +370,6 @@ export default function OffresPage() {
         <div className="absolute top-[-80px] left-[-100px] w-[350px] h-[350px] rounded-full bg-[radial-gradient(circle,rgba(202,27,40,0.08),transparent_60%)] blur-3xl pointer-events-none" />
         <div className="relative flex items-start justify-between">
           <div>
-            <div className="inline-flex items-center gap-2.5 px-5 py-2.5 mb-4 rounded-full bg-tap-red/[0.08] border border-tap-red/15">
-              <Briefcase size={13} className="text-tap-red" />
-              <span className="text-[10px] uppercase tracking-[2.5px] text-tap-red/80 font-semibold">
-                Mes offres
-              </span>
-            </div>
             <h1
               className={`text-[28px] sm:text-[36px] font-bold tracking-[-0.04em] font-heading ${
                 isLight ? "text-black" : "text-white"
@@ -414,7 +407,7 @@ export default function OffresPage() {
         <form
           onSubmit={handleSubmit}
           className={`rounded-2xl p-6 sm:p-8 mb-8 space-y-5 ${
-            isLight ? "bg-white border border-tap-red/40" : "bg-zinc-900/50 border border-white/[0.06]"
+            isLight ? "card-luxury-light" : "bg-zinc-900/50 border border-white/[0.06]"
           }`}
         >
           <div className="flex items-center justify-between gap-3">
@@ -1283,109 +1276,61 @@ export default function OffresPage() {
         <div className="space-y-3">
           {jobsQuery.data.jobs.map((job) => {
             const titre = (job as any).titre ?? job.title ?? "Offre sans titre";
-            const localisation =
-              (job as any).localisation ??
-              (typeof (job as any).location_type === "string" &&
-              (job as any).location_type.trim()
-                ? (job as any).location_type
-                : null);
-
-            const status = (job as any).status ?? 'ACTIVE';
-            const isInactive = status === 'INACTIVE';
+            const categorie = (job as any).categorie_profil ?? "—";
+            const status = (job as any).status ?? "ACTIVE";
+            const isInactive = status === "INACTIVE";
+            const applications = job.applicationCount ?? 0;
 
             return (
               <div
                 key={job.id}
-                className={`rounded-xl p-5 transition group ${
+                className={`rounded-xl p-4 sm:p-5 ${
                   isLight
-                    ? "bg-white border border-tap-red/40 hover:border-tap-red/70"
-                    : "bg-zinc-900/50 border border-white/[0.06] hover:border-white/[0.1]"
-                }`}
+                    ? "card-luxury-light hover:border-tap-red/60"
+                    : "bg-zinc-900/50 border border-white/[0.06] hover:border-white/[0.12]"
+                } transition`}
               >
-                <div className="flex items-start justify-between gap-3">
-                  <div className="flex-1 min-w-0">
-                    <h3 className={`text-[15px] font-semibold truncate ${isLight ? "text-black" : "text-white"}`}>
-                      {titre}
-                    </h3>
-
-                    <div
-                      className={`mt-2 flex flex-wrap items-center gap-3 text-[12px] ${
-                        isLight ? "text-black/70" : "text-white/50"
-                      }`}
-                    >
-                      <button
-                        type="button"
-                        className="relative group flex items-center gap-2"
+                <div className="grid grid-cols-1 sm:grid-cols-12 gap-3 sm:items-center">
+                  {/* Col 1: date + titre */}
+                  <div className="sm:col-span-5 min-w-0">
+                    <div className="flex items-center gap-3">
+                      <div
+                        className={`text-[11px] uppercase tracking-[2px] ${
+                          isLight ? "text-black/45" : "text-white/35"
+                        } leading-none`}
                       >
-                        <MapPin
-                          size={14}
-                          className={isLight ? "text-black/70 group-hover:text-black" : "text-white/60 group-hover:text-white"}
-                        />
-                        <span className="sr-only">Localisation</span>
-                        <span className="pointer-events-none absolute -bottom-7 left-1/2 -translate-x-1/2 whitespace-nowrap rounded-md bg-black px-2 py-1 text-[11px] text-white/90 opacity-0 group-hover:opacity-100 group-hover:translate-y-0 translate-y-1 transition-all">
-                          {localisation || "Localisation non renseignée"}
-                        </span>
-                      </button>
+                        {formatDate(job.created_at as any)}
+                      </div>
 
-                      <div className="flex items-center gap-2">
-                        <Users size={14} className={isLight ? "text-black/70" : "text-white/60"} />
-                        <span className={isLight ? "text-black/80" : "text-white/70"}>
-                          {(job.applicationCount ?? 0)} candidature
-                          {(job.applicationCount ?? 0) !== 1 ? "s" : ""}
-                        </span>
+                      <div className="min-w-0">
+                        <h3
+                          className={`text-[15px] font-semibold truncate ${
+                            isLight ? "text-black" : "text-white"
+                          }`}
+                        >
+                          {titre}
+                        </h3>
+                        <p className={`text-[13px] mt-1 truncate ${isLight ? "text-black/70" : "text-white/65"}`}>
+                          {categorie}
+                        </p>
                       </div>
                     </div>
                   </div>
 
-                  <div className="flex items-start gap-2 shrink-0">
-                    <div className="flex items-center gap-1">
-                      <Link
-                        href={`/app/offres/${job.id}`}
-                        title="Voir le détail"
-                        className={`p-1.5 rounded-full border transition inline-flex ${
-                          isLight
-                            ? "border-black/10 hover:bg-black/5 text-black/60"
-                            : "border-white/[0.14] hover:bg-zinc-800 text-zinc-400 hover:text-white"
-                        }`}
-                      >
-                        <Eye size={14} />
-                      </Link>
-                      <button
-                        type="button"
-                        title="Modifier l'offre"
-                        onClick={() => {
-                          hydratedEditJobIdRef.current = null;
-                          setEditingJobId(job.id);
-                          setShowForm(true);
-                        }}
-                        className={`p-1.5 rounded-full border transition ${
-                          isLight
-                            ? "border-black/10 hover:bg-black/5 text-black/60"
-                            : "border-white/[0.14] hover:bg-zinc-800 text-zinc-400 hover:text-white"
-                        }`}
-                      >
-                        <Pencil size={14} />
-                      </button>
-                      <button
-                        type="button"
-                        title="Supprimer l'offre"
-                        onClick={() => setDeleteConfirmJobId(job.id)}
-                        className={`p-1.5 rounded-full border transition ${
-                          isLight
-                            ? "border-red-500/30 bg-red-500/10 text-red-600 hover:bg-red-500/15"
-                            : "border-red-400/30 bg-red-500/15 text-red-400 hover:bg-red-500/25"
-                        }`}
-                      >
-                        <Trash2 size={14} />
-                      </button>
+                  {/* Col 2: nb candidatures */}
+                  <div className="sm:col-span-2">
+                    <div
+                      className={`inline-flex items-center gap-2 text-[12px] ${
+                        isLight ? "text-black/70" : "text-white/60"
+                      }`}
+                    >
+                      <Users size={14} className={isLight ? "text-black/50" : "text-white/40"} />
+                      {applications} candidature{applications !== 1 ? "s" : ""}
                     </div>
+                  </div>
 
-                  <div
-                    className={`text-right flex flex-col items-end gap-1 text-[11px] ${
-                      isLight ? "text-black/60" : "text-white/35"
-                    }`}
-                  >
-                    {/* Bouton statut ACTIVE / INACTIVE */}
+                  {/* Col 3: status */}
+                  <div className="sm:col-span-2">
                     <button
                       type="button"
                       onClick={() => {
@@ -1394,32 +1339,63 @@ export default function OffresPage() {
                           nextStatus: isInactive ? "ACTIVE" : "INACTIVE",
                         });
                       }}
-                      className={`flex items-center gap-1 px-2 py-1 rounded-full border text-[11px] ${
+                      className={`inline-flex items-center gap-1.5 px-3 py-1.5 rounded-full border text-[12px] font-medium transition w-full justify-center ${
                         isInactive
-                          ? "border-white/15 text-white/45 hover:border-white/30"
-                          : "border-emerald-400/40 text-emerald-300 hover:border-emerald-300"
+                          ? isLight
+                            ? "border-black/15 text-black/60 hover:border-black/30"
+                            : "border-white/15 text-white/55 hover:border-white/30"
+                          : "border-emerald-500/35 bg-emerald-500/10 text-emerald-400 hover:border-emerald-400"
+                      }`}
+                      title="Changer le statut"
+                    >
+                      {isInactive ? <CircleSlash2 size={14} /> : <CheckCircle2 size={14} />}
+                      {isInactive ? "Inactive" : "Active"}
+                    </button>
+                  </div>
+
+                  {/* Col 4: actions (3) */}
+                  <div className="sm:col-span-3 flex items-center justify-end gap-1 shrink-0">
+                    <Link
+                      href={`/app/offres/${job.id}`}
+                      title="Voir le détail"
+                      className={`p-1.5 rounded-full border transition inline-flex ${
+                        isLight
+                          ? "border-black/10 hover:bg-black/5 text-black/60"
+                          : "border-white/[0.14] hover:bg-zinc-800 text-zinc-400 hover:text-white"
                       }`}
                     >
-                      {isInactive ? (
-                        <>
-                          <CircleSlash2 size={12} />
-                          <span>Inactive</span>
-                        </>
-                      ) : (
-                        <>
-                          <CheckCircle2 size={12} />
-                          <span>Active</span>
-                        </>
-                      )}
+                      <Eye size={14} />
+                    </Link>
+
+                    <button
+                      type="button"
+                      title="Modifier l'offre"
+                      onClick={() => {
+                        hydratedEditJobIdRef.current = null;
+                        setEditingJobId(job.id);
+                        setShowForm(true);
+                      }}
+                      className={`p-1.5 rounded-full border transition ${
+                        isLight
+                          ? "border-black/10 hover:bg-black/5 text-black/60"
+                          : "border-white/[0.14] hover:bg-zinc-800 text-zinc-400 hover:text-white"
+                      }`}
+                    >
+                      <Pencil size={14} />
                     </button>
 
-                    <span className="mt-1">{formatDate(job.created_at as any)}</span>
-                    {job.urgent && (
-                      <div className="mt-1">
-                        <StatusBadge status="urgent" label="Urgent" />
-                      </div>
-                    )}
-                  </div>
+                    <button
+                      type="button"
+                      title="Supprimer l'offre"
+                      onClick={() => setDeleteConfirmJobId(job.id)}
+                      className={`p-1.5 rounded-full border transition ${
+                        isLight
+                          ? "border-red-500/30 bg-red-500/10 text-red-600 hover:bg-red-500/15"
+                          : "border-red-400/30 bg-red-500/15 text-red-400 hover:bg-red-500/25"
+                      }`}
+                    >
+                      <Trash2 size={14} />
+                    </button>
                   </div>
                 </div>
               </div>

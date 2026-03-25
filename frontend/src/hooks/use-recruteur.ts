@@ -13,6 +13,17 @@ export function useRecruteurOverview() {
   });
 }
 
+export function useRecruiterCandidateTalentcardFiles(
+  candidateId: number | null,
+  enabled = true,
+) {
+  return useQuery({
+    queryKey: ['recruteur', 'candidate-talentcard-files', candidateId],
+    queryFn: () => recruteurService.getCandidateTalentcardFiles(candidateId as number),
+    enabled: Boolean(enabled && candidateId != null && candidateId > 0),
+  });
+}
+
 export function useRecruteurJobs() {
   return useQuery({
     queryKey: ['recruteur', 'jobs'],

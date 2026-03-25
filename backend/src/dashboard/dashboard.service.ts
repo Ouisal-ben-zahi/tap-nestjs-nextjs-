@@ -1,4 +1,8 @@
-import { Injectable, BadRequestException } from '@nestjs/common';
+import {
+  Injectable,
+  BadRequestException,
+  ForbiddenException,
+} from '@nestjs/common';
 import { ConfigService } from '@nestjs/config';
 import { SupabaseClient, createClient } from '@supabase/supabase-js';
 import PDFDocument from 'pdfkit';
@@ -166,7 +170,11 @@ export interface RecruiterOverviewStats {
   applicationsPerJob: { jobId: number; title: string; value: number }[];
   recentApplications: {
     id: number;
+    jobId: number;
+    candidateId: number | null;
     candidateName: string | null;
+    candidateCategory: string | null;
+    candidateAvatarUrl: string | null;
     jobTitle: string | null;
     status: string | null;
     validatedAt: string | null;
@@ -311,6 +319,53 @@ export class DashboardService {
     }
 
     return candidate as { id: number; created_at: string };
+  }
+
+  /**
+   * Extrait le chemin dans le bucket `tap_files` depuis une URL publique/signée Supabase.
+   */
+  private extractTapFilesObjectPathFromUrl(url: string): string | null {
+    const marker = '/tap_files/';
+    const idx = url.indexOf(marker);
+    if (idx === -1) return null;
+    const after = url.slice(idx + marker.length).split('?')[0];
+    if (!after) return null;
+    try {
+      return decodeURIComponent(after);
+    } catch {
+      return after;
+    }
+  }
+
+  /**
+   * Retourne une URL affichable pour la photo candidat (signed URL bucket `tap_files`).
+   * Gère `image_minio_url` en chemin relatif ou en URL complète.
+   */
+  private async resolveCandidateAvatarUrl(
+    rawImage: string | null | undefined,
+  ): Promise<string | null> {
+    const trimmed = typeof rawImage === 'string' ? rawImage.trim() : '';
+    if (!trimmed) return null;
+
+    const trySign = async (objectPath: string) => {
+      const path = objectPath.replace(/^\/+/, '');
+      const { data: signed, error } = await this.supabase.storage
+        .from('tap_files')
+        .createSignedUrl(path, 60 * 60);
+      if (!error && signed?.signedUrl) return signed.signedUrl;
+      return null;
+    };
+
+    if (trimmed.startsWith('http://') || trimmed.startsWith('https://')) {
+      const fromUrl = this.extractTapFilesObjectPathFromUrl(trimmed);
+      if (fromUrl) {
+        const signed = await trySign(fromUrl);
+        if (signed) return signed;
+      }
+      return trimmed;
+    }
+
+    return trySign(trimmed);
   }
 
   private async resolveUserId(
@@ -1032,43 +1087,9 @@ export class DashboardService {
         .eq('status', 'REFUSEE'),
     ]);
 
-    let avatarUrl: string | null = null;
-    const rawImagePath =
-      (candidateRow.image_minio_url as string | null) ?? null;
-
-    if (rawImagePath) {
-      const { data: signed, error: signedError } = await this.supabase.storage
-        .from('tap_files')
-        .createSignedUrl(rawImagePath, 60 * 60);
-
-      if (!signedError && signed) {
-        // debug backend: image trouvée
-        // eslint-disable-next-line no-console
-        console.log(
-          '[avatar] image trouvée pour candidat',
-          candidateId,
-          'path =',
-          rawImagePath,
-        );
-        avatarUrl = signed.signedUrl;
-      } else {
-        // eslint-disable-next-line no-console
-        console.log(
-          '[avatar] image introuvable ou erreur pour candidat',
-          candidateId,
-          'path =',
-          rawImagePath,
-          'error =',
-          signedError?.message ?? null,
-        );
-      }
-    } else {
-      // eslint-disable-next-line no-console
-      console.log(
-        '[avatar] aucune image_minio_url pour candidat',
-        candidateId,
-      );
-    }
+    const avatarUrl = await this.resolveCandidateAvatarUrl(
+      candidateRow.image_minio_url as string | null,
+    );
 
     return {
       candidateId,
@@ -1348,6 +1369,12 @@ export class DashboardService {
     return { cvFiles };
   }
 
+  /** Talent Card TAP : uniquement les PDF dont le nom commence par talentcard et se termine par Tap.pdf */
+  private isTalentcardTapPdfFileName(fileName: string): boolean {
+    const n = fileName.trim().toLowerCase();
+    return n.startsWith('talentcard') && n.endsWith('tap.pdf');
+  }
+
   async getCandidateTalentcardFiles(
     userId: number,
   ): Promise<{ talentcardFiles: CandidateCvFileItem[] }> {
@@ -1397,8 +1424,7 @@ export class DashboardService {
 
     const files = (listed ?? []).filter((f: any) => {
       if (typeof f.name !== 'string') return false;
-      const name = f.name.toLowerCase();
-      return name.startsWith('talentcard') && name.endsWith('.pdf');
+      return this.isTalentcardTapPdfFileName(f.name);
     });
 
     const talentcardFiles: CandidateCvFileItem[] = [];
@@ -1478,8 +1504,7 @@ export class DashboardService {
 
     const files = (listed ?? []).filter((f: any) => {
       if (typeof f.name !== 'string') return false;
-      const name = f.name.toLowerCase();
-      return name.startsWith('talentcard') && name.endsWith('.pdf');
+      return this.isTalentcardTapPdfFileName(f.name);
     });
 
     const talentcardFiles: CandidateCvFileItem[] = [];
@@ -1511,6 +1536,70 @@ export class DashboardService {
     }
 
     return { talentcardFiles };
+  }
+
+  /**
+   * Vérifie qu'un recruteur a au moins une candidature (sur une de ses offres) pour ce candidat.
+   */
+  private async assertRecruiterHasCandidateApplication(
+    recruiterUserId: number,
+    candidateId: number,
+  ): Promise<void> {
+    const { data: jobs, error: jobsError } = await this.supabase
+      .from('jobs')
+      .select('id')
+      .eq('user_id', recruiterUserId);
+
+    if (jobsError) {
+      throw new BadRequestException(
+        jobsError.message || 'Erreur lors de la vérification des offres',
+      );
+    }
+
+    const jobIds = (jobs ?? [])
+      .map((j: any) => j.id as number)
+      .filter((id: number) => Number.isFinite(id) && id > 0);
+    if (!jobIds.length) {
+      throw new ForbiddenException('Accès refusé');
+    }
+
+    const { data: row, error } = await this.supabase
+      .from('candidate_postule')
+      .select('id')
+      .eq('candidate_id', candidateId)
+      .in('job_id', jobIds)
+      .limit(1)
+      .maybeSingle();
+
+    if (error) {
+      throw new BadRequestException(
+        error.message || 'Erreur lors de la vérification de la candidature',
+      );
+    }
+    if (!row) {
+      throw new ForbiddenException('Accès refusé');
+    }
+  }
+
+  /**
+   * Talent cards d'un candidat pour un recruteur connecté (JWT), uniquement si une candidature existe.
+   */
+  async getRecruiterCandidateTalentcardFiles(
+    recruiterUserId: number,
+    candidateId: number,
+  ): Promise<{ talentcardFiles: CandidateCvFileItem[] }> {
+    if (!recruiterUserId || Number.isNaN(recruiterUserId)) {
+      throw new BadRequestException('userId invalide');
+    }
+    if (!candidateId || Number.isNaN(candidateId)) {
+      throw new BadRequestException('candidateId invalide');
+    }
+
+    await this.assertRecruiterHasCandidateApplication(
+      recruiterUserId,
+      candidateId,
+    );
+    return this.getCandidateTalentcardFilesByCandidateId(candidateId);
   }
 
   async getCandidatePortfolioPdfFiles(
@@ -2804,15 +2893,15 @@ export class DashboardService {
       ([label, value]) => ({ label, value }),
     );
 
-    // Trier les candidatures récentes (par validatedAt décroissant)
-    const recentSorted = allApplications
-      .filter((a) => !!a.validatedAt)
-      .sort((a, b) => {
-        const da = new Date(a.validatedAt as string).getTime();
-        const db = new Date(b.validatedAt as string).getTime();
-        return db - da;
-      })
-      .slice(0, 10);
+    // Trier les candidatures (par validatedAt décroissant)
+    // Note: on n'exclut plus les candidatures sans validated_at (status en attente, etc.).
+    const recentSorted = [...allApplications].sort((a, b) => {
+      const da = a.validatedAt ? new Date(a.validatedAt as string).getTime() : 0;
+      const db = b.validatedAt ? new Date(b.validatedAt as string).getTime() : 0;
+      if (db !== da) return db - da;
+      // Tie-breaker pour une stabilité du tri (id décroissant).
+      return (b.id ?? 0) - (a.id ?? 0);
+    });
 
     let recentApplications: RecruiterOverviewStats['recentApplications'] = [];
 
@@ -2825,19 +2914,30 @@ export class DashboardService {
         ),
       );
 
-      let candidatesMap = new Map<number, { nom: string | null; prenom: string | null }>();
+      let candidatesMap = new Map<
+        number,
+        { nom: string | null; prenom: string | null; categorie_profil: string | null; avatarUrl: string | null }
+      >();
       if (candidateIdsArr.length > 0) {
         const { data: candidatesRows } = await this.supabase
           .from('candidates')
-          .select('id, nom, prenom')
+          .select('id, nom, prenom, categorie_profil, image_minio_url')
           .in('id', candidateIdsArr);
 
-        (candidatesRows ?? []).forEach((row: any) => {
-          candidatesMap.set(row.id as number, {
-            nom: (row.nom as string) ?? null,
-            prenom: (row.prenom as string) ?? null,
-          });
-        });
+        await Promise.all(
+          (candidatesRows ?? []).map(async (row: any) => {
+            const avatarUrl = await this.resolveCandidateAvatarUrl(
+              row.image_minio_url as string | null,
+            );
+
+            candidatesMap.set(row.id as number, {
+              nom: (row.nom as string) ?? null,
+              prenom: (row.prenom as string) ?? null,
+              categorie_profil: (row.categorie_profil as string) ?? null,
+              avatarUrl,
+            });
+          }),
+        );
       }
 
       const jobTitleMap = new Map<number, string>();
@@ -2853,7 +2953,11 @@ export class DashboardService {
             : null;
         return {
           id: a.id,
+          jobId: a.jobId,
+          candidateId: a.candidateId ?? null,
           candidateName: name,
+          candidateCategory: c?.categorie_profil ?? null,
+          candidateAvatarUrl: c?.avatarUrl ?? null,
           jobTitle: jobTitleMap.get(a.jobId) ?? 'Offre',
           status: a.status ?? null,
           validatedAt: a.validatedAt,
@@ -3758,8 +3862,7 @@ export class DashboardService {
     }
 
     const fileName = filePath.slice(expectedPrefix.length).toLowerCase();
-    // Validation "large" : éviter les faux rejets si les fichiers portent des suffixes (_fr/_en).
-    const isTalentcard = fileName.includes('talentcard') && fileName.endsWith('.pdf');
+    const isTalentcard = this.isTalentcardTapPdfFileName(fileName);
     if (!isTalentcard) {
       throw new BadRequestException('Type de fichier invalide pour Talent Card');
     }

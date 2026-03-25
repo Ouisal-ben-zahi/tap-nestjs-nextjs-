@@ -5,7 +5,7 @@ import { useRecruteurOverview } from "@/hooks/use-recruteur";
 import EmptyState from "@/components/ui/EmptyState";
 import ErrorState from "@/components/ui/ErrorState";
 import { Skeleton } from "@/components/ui/Skeleton";
-import { MessageSquare, Calendar, Clock, Users, Video, MapPin, Phone, CheckCircle } from "lucide-react";
+import { MessageSquare, Calendar, Clock, Video, MapPin, Phone, CheckCircle } from "lucide-react";
 import { formatRelative, statusBg } from "@/lib/utils";
 
 const INTERVIEW_TYPES = [
@@ -13,6 +13,16 @@ const INTERVIEW_TYPES = [
   { label: "Présentiel", icon: MapPin, color: "text-green-400", bg: "bg-green-500/10 border-green-500/20" },
   { label: "Téléphone", icon: Phone, color: "text-purple-400", bg: "bg-purple-500/10 border-purple-500/20" },
 ];
+
+function getInitials(name: string | null | undefined) {
+  const parts = String(name ?? "")
+    .trim()
+    .split(/\s+/)
+    .filter(Boolean);
+  const first = parts[0]?.[0] ?? "";
+  const second = parts.length > 1 ? parts[parts.length - 1]?.[0] ?? "" : "";
+  return `${first}${second}`.toUpperCase() || "C";
+}
 
 export default function EntretiensPlanifiesPage() {
   const { user } = useAuth();
@@ -41,12 +51,6 @@ export default function EntretiensPlanifiesPage() {
       <div className="relative mb-8 pb-8 border-b border-white/[0.04]">
         <div className="absolute top-[-80px] left-[-100px] w-[350px] h-[350px] rounded-full bg-[radial-gradient(circle,rgba(168,85,247,0.08),transparent_60%)] blur-3xl pointer-events-none" />
         <div className="relative">
-          <div className="inline-flex items-center gap-2.5 px-5 py-2.5 mb-4 rounded-full bg-purple-500/[0.08] border border-purple-500/15">
-            <MessageSquare size={13} className="text-purple-500" />
-            <span className="text-[10px] uppercase tracking-[2.5px] text-purple-500/80 font-semibold">
-              Entretiens
-            </span>
-          </div>
           <h1 className="text-[28px] sm:text-[36px] font-bold text-white tracking-[-0.04em] font-heading">
             Entretiens planifiés
           </h1>
@@ -125,23 +129,36 @@ export default function EntretiensPlanifiesPage() {
                 {interviewCandidates.map((app) => (
                   <div key={app.id} className="flex items-center justify-between gap-4 bg-zinc-900/50 border border-white/[0.06] rounded-xl px-5 py-4 hover:border-purple-500/20 transition group">
                     <div className="flex items-center gap-4 flex-1 min-w-0">
-                      <div className="w-9 h-9 rounded-full bg-purple-500/10 border border-purple-500/20 flex items-center justify-center shrink-0">
-                        <Users size={15} className="text-purple-400" />
+                      <div className="w-9 h-9 rounded-full overflow-hidden border border-white/[0.10] bg-white/[0.04] flex items-center justify-center shrink-0">
+                        {app.candidateAvatarUrl ? (
+                          <img
+                            src={app.candidateAvatarUrl}
+                            alt={app.candidateName ?? "Avatar candidat"}
+                            className="w-full h-full object-cover"
+                          />
+                        ) : (
+                          <span className="text-[12px] font-semibold text-white/70">{getInitials(app.candidateName)}</span>
+                        )}
                       </div>
                       <div className="min-w-0">
                         <p className="text-[14px] font-medium text-white truncate">{app.candidateName}</p>
-                        <p className="text-[12px] text-white/40">{app.jobTitle}</p>
+                        <p className="text-[12px] text-white/40 truncate">{app.jobTitle}</p>
+                        <div className="mt-1 flex items-center gap-2 flex-wrap">
+                          <span className="text-[12px] px-2 py-0.5 rounded-full bg-white/[0.04] border border-white/[0.08] text-white/45 truncate">
+                            {typeof app.candidateCategory === "string" && app.candidateCategory.trim()
+                              ? app.candidateCategory
+                              : "—"}
+                          </span>
+                        </div>
                       </div>
                     </div>
                     <div className="flex items-center gap-3 shrink-0">
                       <span className="text-[11px] px-2.5 py-1 rounded-full bg-green-500/10 text-green-400 border border-green-500/20 font-medium flex items-center gap-1">
                         <CheckCircle size={10} /> Accepté
                       </span>
-                      {app.validatedAt && (
-                        <span className="text-[11px] text-white/30">
-                          {formatRelative(app.validatedAt)}
-                        </span>
-                      )}
+                      <span className="text-[11px] text-white/30">
+                        {app.validatedAt ? formatRelative(app.validatedAt) : "—"}
+                      </span>
                     </div>
                   </div>
                 ))}
@@ -166,9 +183,30 @@ export default function EntretiensPlanifiesPage() {
               <div className="space-y-2">
                 {recentApps.map((app) => (
                   <div key={app.id} className="flex items-center justify-between gap-4 bg-zinc-900/50 border border-white/[0.06] rounded-xl px-5 py-4 hover:border-white/[0.1] transition">
-                    <div className="flex-1 min-w-0">
-                      <p className="text-[14px] font-medium text-white truncate">{app.candidateName}</p>
-                      <p className="text-[12px] text-white/40">{app.jobTitle}</p>
+                    <div className="flex items-center gap-4 flex-1 min-w-0">
+                      <div className="w-10 h-10 rounded-full overflow-hidden border border-white/[0.10] bg-white/[0.04] flex items-center justify-center shrink-0">
+                        {app.candidateAvatarUrl ? (
+                          <img
+                            src={app.candidateAvatarUrl}
+                            alt={app.candidateName ?? "Avatar candidat"}
+                            className="w-full h-full object-cover"
+                          />
+                        ) : (
+                          <span className="text-[12px] font-semibold text-white/70">{getInitials(app.candidateName)}</span>
+                        )}
+                      </div>
+
+                      <div className="min-w-0">
+                        <p className="text-[14px] font-medium text-white truncate">{app.candidateName}</p>
+                        <p className="text-[12px] text-white/40 truncate">{app.jobTitle}</p>
+                        <div className="mt-1 flex items-center gap-2 flex-wrap">
+                          <span className="text-[12px] px-2 py-0.5 rounded-full bg-white/[0.04] border border-white/[0.08] text-white/45 truncate">
+                            {typeof app.candidateCategory === "string" && app.candidateCategory.trim()
+                              ? app.candidateCategory
+                              : "—"}
+                          </span>
+                        </div>
+                      </div>
                     </div>
                     <div className="flex items-center gap-3 shrink-0">
                       <span
@@ -178,11 +216,9 @@ export default function EntretiensPlanifiesPage() {
                       >
                         {app.status ?? "Inconnu"}
                       </span>
-                      {app.validatedAt && (
-                        <span className="text-[11px] text-white/30">
-                          {formatRelative(app.validatedAt)}
-                        </span>
-                      )}
+                      <span className="text-[11px] text-white/30">
+                        {app.validatedAt ? formatRelative(app.validatedAt) : "—"}
+                      </span>
                     </div>
                   </div>
                 ))}

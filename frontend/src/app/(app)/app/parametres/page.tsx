@@ -232,12 +232,6 @@ export default function ParametresPage() {
     <div className="max-w-[800px] mx-auto space-y-8">
       {/* Header */}
       <div className={`relative mb-2 pb-6 ${isLight ? "border-b border-black/10" : "border-b border-white/[0.04]"}`}>
-        <div className="inline-flex items-center gap-2.5 px-5 py-2.5 mb-4 rounded-full bg-tap-red/[0.08] border border-tap-red/15">
-          <Settings size={13} className="text-tap-red" />
-          <span className="text-[10px] uppercase tracking-[2.5px] text-tap-red/80 font-semibold">
-            Paramètres du compte
-          </span>
-        </div>
         <h1 className={`text-[26px] sm:text-[32px] font-bold tracking-[-0.04em] font-heading ${isLight ? "text-black" : "text-white"}`}>
           Paramètres
         </h1>
@@ -278,7 +272,7 @@ export default function ParametresPage() {
 
         <div className="space-y-4">
           {activeTab === "mon-compte" && user?.role === "candidat" && (
-            <div className={`rounded-2xl p-5 sm:p-6 ${isLight ? "bg-white border border-tap-red/40" : "bg-zinc-900/50 border border-white/[0.06]"}`}>
+            <div className={`rounded-2xl p-5 sm:p-6 ${isLight ? "card-luxury-light" : "bg-zinc-900/50 border border-white/[0.06]"}`}>
               <div className="mb-4">
                 <h2 className={`text-[15px] font-semibold ${isLight ? "text-black" : "text-white"}`}>Informations personnelles</h2>
                 <p className={`text-[12px] mt-1 ${isLight ? "text-black/60" : "text-white/40"}`}>
@@ -417,7 +411,7 @@ export default function ParametresPage() {
           )}
 
           {activeTab === "securite" && (
-            <div className={`rounded-2xl p-5 sm:p-6 ${isLight ? "bg-white border border-tap-red/40" : "bg-zinc-900/50 border border-white/[0.06]"}`}>
+            <div className={`rounded-2xl p-5 sm:p-6 ${isLight ? "card-luxury-light" : "bg-zinc-900/50 border border-white/[0.06]"}`}>
               <div className="mb-4">
                 <h2 className={`text-[15px] font-semibold ${isLight ? "text-black" : "text-white"}`}>Sécurité</h2>
                 <p className={`text-[12px] mt-1 ${isLight ? "text-black/60" : "text-white/40"}`}>

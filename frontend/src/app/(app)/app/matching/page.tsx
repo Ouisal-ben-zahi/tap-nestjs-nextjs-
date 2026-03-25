@@ -7,7 +7,7 @@ import { useCandidatStats, useCandidatMatchingJobs, useCandidatPublicJobs } from
 import EmptyState from "@/components/ui/EmptyState";
 import ErrorState from "@/components/ui/ErrorState";
 import { Skeleton } from "@/components/ui/Skeleton";
-import { Users, MapPin, Briefcase, Sparkles, SlidersHorizontal } from "lucide-react";
+import { Users, MapPin, Briefcase, Sparkles, SlidersHorizontal, FileText, CheckCircle2, Calendar } from "lucide-react";
 import { formatRelative } from "@/lib/utils";
 import { useDashboardTheme } from "@/hooks/use-dashboard-theme";
 
@@ -67,12 +67,6 @@ export default function MatchingPage() {
       <div className={`relative mb-8 pb-8 ${isLight ? "border-b border-black/10" : "border-b border-white/[0.04]"}`}>
         <div className="absolute top-[-80px] left-[-100px] w-[350px] h-[350px] rounded-full bg-[radial-gradient(circle,rgba(16,185,129,0.08),transparent_60%)] blur-3xl pointer-events-none" />
         <div className="relative">
-          <div className="inline-flex items-center gap-2.5 px-5 py-2.5 mb-4 rounded-full bg-emerald-500/[0.08] border border-emerald-500/15">
-            <Users size={13} className="text-emerald-500" />
-            <span className="text-[10px] uppercase tracking-[2.5px] text-emerald-500/80 font-semibold">
-              Matching intelligent
-            </span>
-          </div>
           <h1 className={`text-[28px] sm:text-[36px] font-bold tracking-[-0.04em] font-heading ${isLight ? "text-black" : "text-white"}`}>
             Offres qui vous correspondent
           </h1>
@@ -83,30 +77,47 @@ export default function MatchingPage() {
       </div>
 
       <>
-        <div className="bg-emerald-500/[0.06] border border-emerald-500/15 rounded-2xl p-6 mb-8 flex items-start gap-4">
-          <div className="w-10 h-10 rounded-xl bg-emerald-500/10 border border-emerald-500/20 flex items-center justify-center shrink-0">
-            <Sparkles size={18} className="text-emerald-500" />
-          </div>
-          <div>
-            <h3 className={`text-[14px] font-semibold mb-1 ${isLight ? "text-black" : "text-white"}`}>Matching IA actif</h3>
-            <p className={`text-[13px] font-light ${isLight ? "text-black/70" : "text-white/45"}`}>
-              Notre algorithme analyse votre profil en continu et vous propose les offres les plus adaptées.
-            </p>
-          </div>
-        </div>
-
         {stats && (
-          <div className="grid grid-cols-3 gap-3 mb-8">
-            <div className={`rounded-xl p-4 text-center ${isLight ? "bg-white border border-tap-red/40" : "bg-zinc-900/50 border border-white/[0.06]"}`}>
-              <p className={`text-2xl font-bold ${isLight ? "text-black" : "text-white"}`}>{stats.applications}</p>
+          <div className="grid grid-cols-1 sm:grid-cols-3 gap-3 mb-8">
+            <div
+              className={`group rounded-xl p-4 text-center transition-all duration-300 ${
+                isLight
+                  ? "card-luxury-light hover:border-tap-red/70 hover:shadow-[0_12px_30px_rgba(0,0,0,0.10)]"
+                  : "bg-white/[0.03] border border-white/[0.08] hover:border-white/[0.14] hover:brightness-105"
+              }`}
+            >
+              <div className={`flex items-center justify-center mb-2 ${isLight ? "text-tap-red" : "text-[#CA1B28]"}`}>
+                <FileText size={16} />
+              </div>
+              <p className={`text-2xl font-bold ${isLight ? "text-black" : "text-white"}`}>{stats?.applications ?? 0}</p>
               <p className={`text-[11px] mt-1 ${isLight ? "text-black/60" : "text-white/40"}`}>Candidatures</p>
             </div>
-            <div className={`rounded-xl p-4 text-center ${isLight ? "bg-white border border-tap-red/40" : "bg-zinc-900/50 border border-white/[0.06]"}`}>
-              <p className={`text-2xl font-bold ${isLight ? "text-black" : "text-white"}`}>{stats.statusAccepted}</p>
+
+            <div
+              className={`group rounded-xl p-4 text-center transition-all duration-300 ${
+                isLight
+                  ? "card-luxury-light hover:border-tap-red/70 hover:shadow-[0_12px_30px_rgba(0,0,0,0.10)]"
+                  : "bg-white/[0.03] border border-white/[0.08] hover:border-white/[0.14] hover:brightness-105"
+              }`}
+            >
+              <div className={`flex items-center justify-center mb-2 ${isLight ? "text-tap-red" : "text-[#CA1B28]"}`}>
+                <CheckCircle2 size={16} />
+              </div>
+              <p className={`text-2xl font-bold ${isLight ? "text-black" : "text-white"}`}>{stats?.statusAccepted ?? 0}</p>
               <p className={`text-[11px] mt-1 ${isLight ? "text-black/60" : "text-white/40"}`}>Acceptées</p>
             </div>
-            <div className={`rounded-xl p-4 text-center ${isLight ? "bg-white border border-tap-red/40" : "bg-zinc-900/50 border border-white/[0.06]"}`}>
-              <p className={`text-2xl font-bold ${isLight ? "text-black" : "text-white"}`}>{stats.interviews}</p>
+
+            <div
+              className={`group rounded-xl p-4 text-center transition-all duration-300 ${
+                isLight
+                  ? "card-luxury-light hover:border-tap-red/70 hover:shadow-[0_12px_30px_rgba(0,0,0,0.10)]"
+                  : "bg-white/[0.03] border border-white/[0.08] hover:border-white/[0.14] hover:brightness-105"
+              }`}
+            >
+              <div className={`flex items-center justify-center mb-2 ${isLight ? "text-tap-red" : "text-[#CA1B28]"}`}>
+                <Calendar size={16} />
+              </div>
+              <p className={`text-2xl font-bold ${isLight ? "text-black" : "text-white"}`}>{stats?.interviews ?? 0}</p>
               <p className={`text-[11px] mt-1 ${isLight ? "text-black/60" : "text-white/40"}`}>Entretiens</p>
             </div>
           </div>
@@ -193,7 +204,7 @@ export default function MatchingPage() {
                     onClick={() => router.push(`/app/matching/offres/${job.id}`)}
                     className={`rounded-xl p-5 transition group cursor-pointer ${
                       isLight
-                        ? "bg-white border border-tap-red/40 hover:border-tap-red/70"
+                      ? "card-luxury-light hover:border-tap-red/70"
                         : "bg-zinc-900/50 border border-white/[0.06] hover:border-white/[0.1]"
                     }`}
                   >

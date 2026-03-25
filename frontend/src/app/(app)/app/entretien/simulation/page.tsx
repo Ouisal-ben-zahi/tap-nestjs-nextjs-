@@ -170,7 +170,7 @@ export default function EntretienSimulationPage() {
 
   return (
     <div className="max-w-[920px] mx-auto">
-      <div className={`rounded-2xl p-6 ${isLight ? "bg-white border border-tap-red/40" : "bg-zinc-900/50 border border-white/[0.06]"}`}>
+      <div className={`rounded-2xl p-6 ${isLight ? "card-luxury-light" : "bg-zinc-900/50 border border-white/[0.06]"}`}>
         <div className="flex items-center gap-3 mb-4">
           <MessageSquare className="text-purple-500" size={18} />
           <h1 className={`text-[22px] font-semibold ${isLight ? "text-black" : "text-white"}`}>Simulation entretien technique</h1>
