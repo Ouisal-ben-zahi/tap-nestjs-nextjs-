@@ -633,7 +633,7 @@ export default function RecruteurDashboard() {
                 <Bell size={13} className="text-yellow-500" /> Alertes
               </h2>
               <div className="mt-4 space-y-2">
-                {overview.alerts.map((alert, i) => (
+                {(overview?.alerts ?? []).map((alert, i) => (
                   <div
                     key={i}
                     className="flex items-start gap-3 bg-yellow-500/[0.05] border border-yellow-500/15 rounded-xl px-5 py-4"

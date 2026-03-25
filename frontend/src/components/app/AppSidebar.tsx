@@ -1,14 +1,11 @@
 "use client";
 
-import { useEffect } from "react";
 import Link from "next/link";
 import Image from "next/image";
 import { usePathname } from "next/navigation";
 import { useAuth } from "@/hooks/use-auth";
 import { useCandidatStats } from "@/hooks/use-candidat";
 import { useDashboardTheme } from "@/hooks/use-dashboard-theme";
-import RecruiterTalentCardSidebar from "@/components/app/RecruiterTalentCardSidebar";
-import { useRecruiterTalentPanelStore } from "@/stores/recruiter-talent-panel";
 import {
   LayoutDashboard,
   FileText,
@@ -77,17 +74,6 @@ export default function AppSidebar({
     (stats?.candidateId !== null && stats?.candidateId !== undefined);
 
   const navItems = user?.role === "recruteur" ? recruteurNavItems : candidatNavItems;
-  const isRecruteur = user?.role === "recruteur";
-  const talentPanel = useRecruiterTalentPanelStore((s) => s.talentPanel);
-  const closeTalentPanel = useRecruiterTalentPanelStore((s) => s.closeTalentPanel);
-  const showTalentBesideNav =
-    isRecruteur && pathname === "/app/candidats" && Boolean(talentPanel);
-
-  useEffect(() => {
-    if (pathname !== "/app/candidats" && talentPanel) {
-      closeTalentPanel();
-    }
-  }, [pathname, talentPanel, closeTalentPanel]);
 
   const handleLogout = () => {
     logout();
@@ -285,27 +271,6 @@ export default function AppSidebar({
           </button>
         </div>
         </aside>
-
-        {showTalentBesideNav ? (
-          <div
-            data-recruiter-talent-panel
-            className="fixed z-[55] inset-0 lg:static lg:inset-auto lg:z-auto lg:flex lg:flex-col lg:w-[min(320px,calc(100vw-120px))] lg:shrink-0 lg:min-h-0 lg:self-stretch flex flex-col pointer-events-none lg:pointer-events-auto"
-            role="dialog"
-            aria-modal="true"
-            aria-label="Talent card"
-          >
-            <button
-              type="button"
-              className="lg:hidden absolute inset-0 bg-black/60 backdrop-blur-[2px] border-0 p-0 cursor-default pointer-events-auto"
-              onClick={closeTalentPanel}
-              onWheel={closeTalentPanel}
-              aria-label="Fermer"
-            />
-            <div className="relative z-[1] mt-[72px] mb-3 mx-3 lg:m-0 lg:flex-1 lg:min-h-0 lg:mt-0 flex-1 min-h-0 max-h-[calc(100vh-96px)] lg:max-h-none flex flex-col pointer-events-auto">
-              <RecruiterTalentCardSidebar />
-            </div>
-          </div>
-        ) : null}
       </div>
     </>
   );

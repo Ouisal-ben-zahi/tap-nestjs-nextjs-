@@ -490,10 +490,12 @@ export default function CandidatsPage() {
                       }
                     }}
                     className={`grid grid-cols-12 items-center gap-4 bg-zinc-900/50 border rounded-xl px-5 py-4 transition ${
-                      canOpenTalent
-                        ? "cursor-pointer hover:border-white/[0.14] border-white/[0.06]"
-                        : "border-white/[0.06] hover:border-white/[0.1]"
-                    } ${isTalentSelected ? "ring-1 ring-blue-500/35 border-blue-500/20" : ""}`}
+                      isTalentSelected
+                        ? "cursor-pointer border-2 border-[#CA1B28] shadow-[0_0_24px_rgba(202,27,40,0.2)]"
+                        : canOpenTalent
+                          ? "cursor-pointer hover:border-white/[0.14] border-white/[0.06]"
+                          : "border-white/[0.06] hover:border-white/[0.1]"
+                    }`}
                   >
                     {/* Col 1: avatar + nom + titre offre */}
                     <div className="col-span-12 sm:col-span-5 min-w-0 flex items-center gap-4">

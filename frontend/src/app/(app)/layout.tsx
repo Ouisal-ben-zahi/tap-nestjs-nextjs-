@@ -2,9 +2,11 @@
 
 import { useEffect, useRef, useState } from "react";
 import Link from "next/link";
+import { usePathname } from "next/navigation";
 import AuthGuard from "@/components/app/AuthGuard";
 import HydrationGate from "@/components/app/HydrationGate";
 import AppSidebar from "@/components/app/AppSidebar";
+import RecruiterTalentCardSidebar from "@/components/app/RecruiterTalentCardSidebar";
 import { useRecruiterTalentPanelStore } from "@/stores/recruiter-talent-panel";
 import { Menu, ArrowUpRight, Moon, Sun } from "lucide-react";
 
@@ -12,9 +14,16 @@ export default function AppLayout({ children }: { children: React.ReactNode }) {
   const [sidebarOpen, setSidebarOpen] = useState(false);
   const [collapsed, setCollapsed] = useState(false);
   const [theme, setTheme] = useState<"dark" | "light">("dark");
+  const pathname = usePathname();
   const recruiterTalentOpen = useRecruiterTalentPanelStore((s) => Boolean(s.talentPanel));
   const closeRecruiterTalentPanel = useRecruiterTalentPanelStore((s) => s.closeTalentPanel);
   const mainScrollRef = useRef<HTMLElement | null>(null);
+
+  useEffect(() => {
+    if (pathname !== "/app/candidats" && recruiterTalentOpen) {
+      closeRecruiterTalentPanel();
+    }
+  }, [pathname, recruiterTalentOpen, closeRecruiterTalentPanel]);
 
   useEffect(() => {
     if (!recruiterTalentOpen) return;
@@ -29,15 +38,8 @@ export default function AppLayout({ children }: { children: React.ReactNode }) {
       el.removeEventListener("wheel", close);
     };
   }, [recruiterTalentOpen, closeRecruiterTalentPanel]);
-  // La sidebar a maintenant un margin gauche (left-3 => 12px) et un léger gap.
-  // Talent card (recruteur / Candidats) : colonne +320px + gap quand ouverte.
-  const sidebarLeftPaddingClass = collapsed
-    ? recruiterTalentOpen
-      ? "lg:pl-[440px]"
-      : "lg:pl-[112px]"
-    : recruiterTalentOpen
-      ? "lg:pl-[628px]"
-      : "lg:pl-[300px]";
+  // La sidebar : margin gauche (left-3 => 12px). La talent card est centrée en overlay (pas de décalage du main).
+  const sidebarLeftPaddingClass = collapsed ? "lg:pl-[112px]" : "lg:pl-[300px]";
 
   useEffect(() => {
     if (typeof window === "undefined") return;
@@ -81,16 +83,6 @@ export default function AppLayout({ children }: { children: React.ReactNode }) {
             collapsed={collapsed}
             onToggleCollapsed={() => setCollapsed((v) => !v)}
           />
-          {recruiterTalentOpen ? (
-            <button
-              type="button"
-              className="hidden lg:block fixed top-[64px] bottom-0 right-0 z-40 cursor-default border-0 p-0 bg-black/45"
-              style={{ left: collapsed ? 440 : 628 }}
-              onClick={closeRecruiterTalentPanel}
-              onWheel={closeRecruiterTalentPanel}
-              aria-label="Fermer la talent card"
-            />
-          ) : null}
           <main
             ref={mainScrollRef}
             className={`flex-1 min-h-0 ${sidebarLeftPaddingClass} p-5 sm:p-8 lg:p-10 pb-20 overflow-y-auto overflow-x-hidden relative ${
@@ -155,6 +147,30 @@ export default function AppLayout({ children }: { children: React.ReactNode }) {
             {children}
           </main>
         </div>
+
+        {recruiterTalentOpen ? (
+          <div
+            className="fixed inset-0 z-[60] flex items-center justify-center p-4 sm:p-6"
+            role="dialog"
+            aria-modal="true"
+            aria-label="Talent card"
+          >
+            <button
+              type="button"
+              className="absolute inset-0 cursor-default border-0 bg-transparent p-0"
+              onClick={closeRecruiterTalentPanel}
+              onWheel={closeRecruiterTalentPanel}
+              aria-label="Fermer la talent card"
+            />
+            <div
+              className="relative z-10 w-full max-w-[min(420px,96vw)] max-h-[min(92vh,900px)] shrink-0 overflow-auto pointer-events-auto translate-x-5 sm:translate-x-8 md:translate-x-10"
+              data-recruiter-talent-panel
+              onClick={(e) => e.stopPropagation()}
+            >
+              <RecruiterTalentCardSidebar />
+            </div>
+          </div>
+        ) : null}
       </div>
     </AuthGuard>
     </HydrationGate>
