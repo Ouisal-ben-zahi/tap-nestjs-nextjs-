@@ -225,6 +225,14 @@ export default function CandidatsPage() {
                     const normalizedScore =
                       rawScore <= 1 ? rawScore * 100 : rawScore;
                     const scorePct = Math.max(0, Math.min(100, Math.round(normalizedScore)));
+                    const scoreBadgeClass =
+                      scorePct >= 85
+                        ? "bg-emerald-500/10 text-emerald-400 border-emerald-500/25"
+                        : scorePct >= 70
+                          ? "bg-amber-500/10 text-amber-400 border-amber-500/25"
+                          : scorePct >= 50
+                            ? "bg-orange-500/10 text-orange-400 border-orange-500/25"
+                            : "bg-rose-500/10 text-rose-400 border-rose-500/25";
                     const candidateName =
                       item.name ||
                       [item.candidate?.prenom, item.candidate?.nom]
@@ -254,7 +262,11 @@ export default function CandidatsPage() {
 
                         {/* Col 2: % matching */}
                         <div className="col-span-6 sm:col-span-2 text-center sm:text-right">
-                          <p className="text-[20px] font-bold text-emerald-400">{scorePct}%</p>
+                          <span
+                            className={`inline-flex items-center rounded-full border px-2.5 py-1 text-[12px] font-semibold ${scoreBadgeClass}`}
+                          >
+                            {scorePct}% match
+                          </span>
                         </div>
 
                         {/* Col 3: bouton valider */}
@@ -367,76 +379,6 @@ export default function CandidatsPage() {
               )}
             </div>
           ) : null}
-
-          {/* Candidatures par offre */}
-          <div className="mb-8">
-            <div className="flex items-center gap-3 mb-5">
-              <div className="w-1 h-5 rounded-full bg-blue-500" />
-              <h2 className="text-[13px] uppercase tracking-[2px] text-white/50 font-semibold">2 dernier candidatures</h2>
-            </div>
-
-            {!overview?.applicationsPerJob?.length ? (
-              <EmptyState
-                icon={<Users className="w-10 h-10" />}
-                title="Aucun candidat"
-                description="Les candidats apparaîtront ici lorsqu'ils postuleront à vos offres."
-              />
-            ) : (
-              <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
-                {overview.applicationsPerJob.map((item, i) => {
-                  const job = jobsById.get((item as any).jobId) as any | undefined;
-                  const status = (job?.status as string) ?? "ACTIVE";
-                  const isInactive = status === "INACTIVE";
-                  const categorie = (job?.categorie_profil as string | null) ?? "—";
-                  const applicationsCount = item.value ?? 0;
-                  const jobId = (item as any).jobId as number | undefined;
-
-                  return (
-                    <div key={i} className="bg-zinc-900/50 border border-white/[0.06] rounded-xl px-5 py-4 hover:border-white/[0.1] transition">
-                      {/* Top: title + status */}
-                      <div className="flex items-start justify-between gap-3">
-                        <span className="text-[14px] font-medium text-white truncate">
-                          {item.title ?? "Offre"}
-                        </span>
-                        <span
-                          className={`text-[11px] px-2.5 py-1 rounded-full border font-medium shrink-0 ${
-                            isInactive
-                              ? "border-red-500/25 bg-red-500/15 text-red-400"
-                              : "border-emerald-500/25 bg-emerald-500/10 text-emerald-400"
-                          }`}
-                        >
-                          {isInactive ? "Inactive" : "Active"}
-                        </span>
-                      </div>
-
-                      {/* Category */}
-                      <div className="mt-3 text-[12px] text-white/45 truncate">{categorie}</div>
-
-                      {/* Bottom: count + arrow */}
-                      <div className="mt-4 flex items-center justify-between gap-3">
-                        <span className="text-[12px] text-white/70 font-semibold">
-                          {applicationsCount} candidature{applicationsCount > 1 ? "s" : ""}
-                        </span>
-
-                        {typeof jobId === "number" ? (
-                          <Link
-                            href={`/app/candidats?jobId=${jobId}`}
-                            className={`inline-flex items-center gap-1 px-3 py-2 rounded-xl border transition ${
-                              "border-white/[0.14] hover:bg-zinc-800 text-zinc-200 hover:text-white"
-                            }`}
-                            aria-label="Voir les candidatures"
-                            title="Voir les candidatures"
-                          >
-                            <ArrowRight size={14} />
-                          </Link>
-                        ) : null}
-                      </div>
-                    </div>
-                  );
-                })}
-              </div>
-            )}
-          </div>
 
           {/* Liste de candidatures */}
           <div>

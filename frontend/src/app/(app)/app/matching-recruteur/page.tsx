@@ -5,7 +5,7 @@ import { useRecruteurOverview, useRecruteurJobs } from "@/hooks/use-recruteur";
 import EmptyState from "@/components/ui/EmptyState";
 import ErrorState from "@/components/ui/ErrorState";
 import { Skeleton } from "@/components/ui/Skeleton";
-import { UserCheck, Briefcase, Users, Target, ArrowRight, TrendingUp } from "lucide-react";
+import { UserCheck, Briefcase, Users, Target, ArrowRight, Eye } from "lucide-react";
 import Link from "next/link";
 
 export default function MatchingRecruteurPage() {
@@ -135,51 +135,47 @@ export default function MatchingRecruteurPage() {
 
                 return (
                   <div key={job.id} className="bg-zinc-900/50 border border-white/[0.06] rounded-xl p-5 hover:border-white/[0.1] transition group">
-                    <div className="flex items-start justify-between gap-4 mb-4">
-                      <div className="flex-1 min-w-0">
-                        <h3 className="text-[15px] font-semibold text-white truncate">
+                    <div className="grid grid-cols-12 items-center gap-4">
+                      <div className="col-span-12 md:col-span-4 min-w-0">
+                        <h3 className="text-[15px] font-semibold text-white">
                           {job.title ?? "Offre sans titre"}
                         </h3>
-                        <div className="flex items-center gap-3 mt-1">
-                          <span className="text-[12px] text-white/40">
-                            {job.location_type || "Mode de travail non précisé"}
-                          </span>
-                          <span className="text-[12px] text-white/30">•</span>
-                          <span className="text-[12px] text-white/40">
-                            {job.categorie_profil || "Profil non précisé"}
-                          </span>
-                        </div>
+                        <p className="text-[12px] text-white/40 mt-1">
+                          {job.categorie_profil || "Profil non précisé"}
+                        </p>
                       </div>
-                      <div className="flex items-center gap-2 shrink-0">
-                        <div className="text-right">
-                          <p className="text-[18px] font-bold text-emerald-400">{matchScore}%</p>
-                          <p className="text-[10px] text-white/30">score matching</p>
-                        </div>
+
+                      <div className="col-span-6 md:col-span-2 text-center md:text-left">
+                        <p className="text-[13px] font-semibold text-white/80">
+                          {appCount} candidature{appCount > 1 ? "s" : ""}
+                        </p>
                       </div>
-                    </div>
-                    <div className="flex items-center justify-between">
-                      <div className="flex items-center gap-4">
-                        <div className="flex items-center gap-1.5 text-[12px] text-white/40">
-                          <Users size={13} />
-                          <span>{appCount} candidat{appCount > 1 ? "s" : ""}</span>
-                        </div>
-                        <div className="flex items-center gap-1.5 text-[12px] text-emerald-400/70">
-                          <TrendingUp size={13} />
-                          <span>Matching actif</span>
-                        </div>
+
+                      <div className="col-span-6 md:col-span-2 text-center md:text-left">
+                        <span className="inline-flex items-center rounded-full border border-emerald-500/25 bg-emerald-500/10 px-2.5 py-1 text-[12px] font-semibold text-emerald-400">
+                          {matchScore}% match
+                        </span>
                       </div>
-                      <Link
-                        href={`/app/candidats?jobId=${job.id}`}
-                        className="flex items-center gap-1.5 text-[12px] text-emerald-400 hover:text-emerald-300 transition-colors opacity-0 group-hover:opacity-100"
-                      >
-                        Voir les candidats <ArrowRight size={12} />
-                      </Link>
-                    </div>
-                    <div className="mt-3 h-1.5 bg-zinc-800 rounded-full overflow-hidden">
-                      <div
-                        className="h-full bg-emerald-500/60 rounded-full transition-all duration-1000"
-                        style={{ width: `${matchScore}%` }}
-                      />
+
+                      <div className="col-span-12 md:col-span-3 text-center md:text-right">
+                        <Link
+                          href={`/app/candidats?jobId=${job.id}`}
+                          className="inline-flex items-center gap-1.5 text-[12px] text-emerald-400 hover:text-emerald-300 transition-colors"
+                        >
+                          Voir les candidats <ArrowRight size={12} />
+                        </Link>
+                      </div>
+
+                      <div className="col-span-12 md:col-span-1 flex justify-center md:justify-end">
+                        <Link
+                          href={`/app/offres/${job.id}`}
+                          className="inline-flex items-center justify-center p-1.5 rounded-full border border-white/[0.14] hover:bg-zinc-800 text-zinc-400 hover:text-white transition"
+                          aria-label="Voir détails offre"
+                          title="Voir détails offre"
+                        >
+                          <Eye size={14} />
+                        </Link>
+                      </div>
                     </div>
                   </div>
                 );

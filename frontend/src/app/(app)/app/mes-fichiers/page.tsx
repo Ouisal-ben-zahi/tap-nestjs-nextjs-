@@ -1,6 +1,6 @@
 "use client";
 
-import { useState, useCallback } from "react";
+import { useState, useCallback, useEffect } from "react";
 import { useAuth } from "@/hooks/use-auth";
 import { useCandidatCvFiles, useCandidatTalentcardFiles, useCandidatPortfolioPdfs, useUploadCv, useDeleteCvFile, useDeleteTalentcardFile, useDeletePortfolioPdfFile } from "@/hooks/use-candidat";
 import FileCard from "@/components/ui/FileCard";
@@ -26,9 +26,10 @@ export default function MesFichiersPage() {
   const theme = useDashboardTheme();
   const isLight = theme === "light";
 
-  const cvQuery = useCandidatCvFiles();
-  const talentcardQuery = useCandidatTalentcardFiles();
-  const portfolioQuery = useCandidatPortfolioPdfs();
+  const [polling, setPolling] = useState(false);
+  const cvQuery = useCandidatCvFiles(polling ? 10000 : false);
+  const talentcardQuery = useCandidatTalentcardFiles(polling ? 10000 : false);
+  const portfolioQuery = useCandidatPortfolioPdfs(polling ? 10000 : false);
   const uploadCv = useUploadCv();
   const deleteCv = useDeleteCvFile();
   const deleteTalentcard = useDeleteTalentcardFile();
@@ -36,6 +37,22 @@ export default function MesFichiersPage() {
   const [portfolioLongModalOpen, setPortfolioLongModalOpen] = useState(false);
 
   const [dragOver, setDragOver] = useState(false);
+
+  // Après upload d'un nouveau CV, activer un polling temporaire
+  // pour afficher automatiquement les fichiers générés sans refresh.
+  useEffect(() => {
+    if (uploadCv.isSuccess) {
+      setPolling(true);
+    }
+  }, [uploadCv.isSuccess]);
+
+  useEffect(() => {
+    if (!polling) return;
+    const timeout = window.setTimeout(() => {
+      setPolling(false);
+    }, 3 * 60 * 1000);
+    return () => window.clearTimeout(timeout);
+  }, [polling]);
 
   const handleDrop = useCallback((e: React.DragEvent) => {
     e.preventDefault();

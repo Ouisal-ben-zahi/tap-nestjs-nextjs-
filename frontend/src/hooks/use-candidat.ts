@@ -114,10 +114,11 @@ export function useCandidatPublicJobs(enabled?: boolean) {
   });
 }
 
-export function useCandidatCvFiles() {
+export function useCandidatCvFiles(refetchInterval?: number | false) {
   return useQuery({
     queryKey: ['candidat', 'cv-files'],
     queryFn: candidatService.getCvFiles,
+    refetchInterval,
   });
 }
 
