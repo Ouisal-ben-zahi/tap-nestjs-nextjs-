@@ -56,6 +56,14 @@ export const candidatService = {
   getApplications: () =>
     api.get<{ applications: Application[] }>('/dashboard/candidat/applications').then((r) => r.data),
 
+  getSavedJobs: () =>
+    api.get<{ jobIds: number[] }>('/dashboard/candidat/saved-jobs').then((r) => r.data),
+
+  toggleSavedJob: (jobId: number) =>
+    api
+      .post<{ success: boolean; saved: boolean; jobId: number }>('/dashboard/candidat/saved-jobs/toggle', { jobId })
+      .then((r) => r.data),
+
   getProfile: () =>
     api.get<CandidatProfile>('/dashboard/candidat/profile').then((r) => r.data),
 

@@ -3,11 +3,18 @@
 import { useEffect, useState } from "react";
 import { useRouter } from "next/navigation";
 import { useAuth } from "@/hooks/use-auth";
-import { useCandidatStats, useCandidatMatchingJobs, useCandidatPublicJobs } from "@/hooks/use-candidat";
+import {
+  useCandidatStats,
+  useCandidatMatchingJobs,
+  useCandidatPublicJobs,
+  useCandidatApplications,
+  useCandidatSavedJobs,
+  useToggleCandidatSavedJob,
+} from "@/hooks/use-candidat";
 import EmptyState from "@/components/ui/EmptyState";
 import ErrorState from "@/components/ui/ErrorState";
 import { Skeleton } from "@/components/ui/Skeleton";
-import { Users, MapPin, Briefcase, Sparkles, SlidersHorizontal, FileText, CheckCircle2, Calendar } from "lucide-react";
+import { Users, MapPin, Briefcase, Sparkles, SlidersHorizontal, FileText, CheckCircle2, Calendar, Eye, Bookmark } from "lucide-react";
 import { formatRelative } from "@/lib/utils";
 import { useDashboardTheme } from "@/hooks/use-dashboard-theme";
 
@@ -25,6 +32,9 @@ export default function MatchingPage() {
   const statsQuery = useCandidatStats(enabled);
   const jobsQuery = useCandidatMatchingJobs(enabled);
   const publicJobsQuery = useCandidatPublicJobs(enabled);
+  const applicationsQuery = useCandidatApplications();
+  const savedJobsQuery = useCandidatSavedJobs(enabled);
+  const toggleSavedJobMutation = useToggleCandidatSavedJob();
   const theme = useDashboardTheme();
   const isLight = theme === "light";
 
@@ -38,6 +48,11 @@ export default function MatchingPage() {
     : matchingJobs.length > 0
       ? matchingJobs
       : allJobs;
+  const appliedJobIds = new Set(
+    (applicationsQuery.data?.applications ?? [])
+      .map((a) => a.jobId)
+      .filter((id): id is number => typeof id === "number" && Number.isFinite(id)),
+  );
 
   const parseCountryCity = (value: string | null | undefined) => {
     const raw = String(value ?? "").trim();
@@ -49,10 +64,19 @@ export default function MatchingPage() {
     return { city: raw, country: "" };
   };
 
+  const getJobLocalisation = (job: { localisation?: string | null; location_type?: string | null }) => {
+    const raw = typeof job.localisation === "string" && job.localisation.trim()
+      ? job.localisation.trim()
+      : typeof job.location_type === "string" && job.location_type.trim()
+        ? job.location_type.trim()
+        : "";
+    return raw;
+  };
+
   const countries = Array.from(
     new Set(
       displayedJobs
-        .map((j) => parseCountryCity(j.localisation).country)
+        .map((j) => parseCountryCity(getJobLocalisation(j as { localisation?: string | null; location_type?: string | null })).country)
         .filter((v): v is string => typeof v === "string" && v.length > 0),
     ),
   );
@@ -60,7 +84,7 @@ export default function MatchingPage() {
   const cities = Array.from(
     new Set(
       displayedJobs
-        .map((j) => parseCountryCity(j.localisation))
+        .map((j) => parseCountryCity(getJobLocalisation(j as { localisation?: string | null; location_type?: string | null })))
         .filter((loc) => (countryQuery === "all" ? true : loc.country === countryQuery))
         .map((loc) => loc.city)
         .filter((v): v is string => typeof v === "string" && v.length > 0),
@@ -88,7 +112,9 @@ export default function MatchingPage() {
       }
     }
 
-    const { city, country } = parseCountryCity(job.localisation);
+    const { city, country } = parseCountryCity(
+      getJobLocalisation(job as { localisation?: string | null; location_type?: string | null }),
+    );
     if (countryQuery !== "all" && country !== countryQuery) return false;
     if (cityQuery !== "all" && city !== cityQuery) return false;
 
@@ -447,17 +473,30 @@ export default function MatchingPage() {
           ) : (
             <div className="space-y-3">
               {filteredJobs.map((job) => {
-                const localisation =
-                  typeof job.localisation === "string" && job.localisation.trim()
-                    ? job.localisation
+                const alreadyApplied = appliedJobIds.has(job.id);
+                const isSaved = (savedJobsQuery.data?.jobIds ?? []).includes(job.id);
+                const locationType =
+                  typeof job.location_type === "string" && job.location_type.trim()
+                    ? job.location_type.trim()
                     : null;
+                const localisation =
+                  typeof (job as { localisation?: string | null }).localisation === "string" &&
+                  (job as { localisation?: string | null }).localisation?.trim()
+                    ? (job as { localisation?: string | null }).localisation!.trim()
+                    : null;
+                const locationLabel =
+                  locationType && localisation
+                    ? `${locationType} - ${localisation}`
+                    : locationType ?? localisation;
                 const scorePct = Math.round((job.score ?? 0) * 100);
                 const scoreColor =
                   scorePct >= 85
                     ? "text-emerald-400 border-emerald-500/30 bg-emerald-500/10"
                     : scorePct >= 70
                     ? "text-amber-400 border-amber-500/30 bg-amber-500/10"
-                    : "text-white/50 border-white/10 bg-white/5";
+                    : scorePct >= 50
+                      ? "text-orange-400 border-orange-500/30 bg-orange-500/10"
+                      : "text-rose-400 border-rose-500/30 bg-rose-500/10";
 
                 return (
                   <div
@@ -469,51 +508,103 @@ export default function MatchingPage() {
                         : "bg-zinc-900/50 border border-white/[0.06] hover:border-white/[0.1]"
                     }`}
                   >
-                    <div className="flex items-start justify-between gap-4">
-                      <div className="flex-1 min-w-0">
-                        <div className="flex items-center gap-2.5 flex-wrap mb-1.5">
-                          <h3 className="text-[15px] font-semibold text-white truncate">
-                            {job.title ?? "Offre sans titre"}
-                          </h3>
-                          {job.categorie_profil && (
-                            <span className="text-[11px] px-2 py-0.5 rounded-full bg-white/[0.05] border border-white/[0.08] text-white/45 shrink-0">
-                              {job.categorie_profil}
-                            </span>
-                          )}
-                          {job.urgent && (
-                            <span className="text-[11px] px-2 py-0.5 rounded-full bg-red-500/10 border border-red-500/20 text-red-400 shrink-0">
-                              Urgent
-                            </span>
-                          )}
-                        </div>
-                        <div className={`mt-1 flex items-center gap-3 text-[12px] ${isLight ? "text-black/70" : "text-white/45"}`}>
-                          {localisation && (
-                            <span className="flex items-center gap-1">
-                              <MapPin size={12} />
-                              {localisation}
-                            </span>
-                          )}
-                        </div>
+                    <div className="grid grid-cols-12 items-center gap-3">
+                      {/* Col 1: nom + catégorie */}
+                      <div className="col-span-12 md:col-span-3 min-w-0">
+                        <h3 className="text-[15px] font-semibold text-white truncate">
+                          {job.title ?? "Offre sans titre"}
+                        </h3>
+                        <p className={`text-[12px] mt-0.5 ${isLight ? "text-black/65" : "text-white/45"}`}>
+                          {job.categorie_profil ?? "Catégorie non précisée"}
+                        </p>
                       </div>
 
-                      <div className="shrink-0 flex flex-col items-end gap-2">
+                      {/* Col 2: localisation */}
+                      <div className={`col-span-12 md:col-span-2 text-center md:text-left text-[12px] ${isLight ? "text-black/70" : "text-white/45"}`}>
+                        {locationLabel ? (
+                          <span className="inline-flex items-center gap-1">
+                            <MapPin size={12} />
+                            {locationLabel}
+                          </span>
+                        ) : (
+                          "—"
+                        )}
+                      </div>
+
+                      {/* Col 3: urgence */}
+                      <div className="col-span-6 md:col-span-1 text-center md:text-left">
+                        {job.urgent ? (
+                          <span className="text-[11px] px-2 py-0.5 rounded-full bg-red-500/10 border border-red-500/20 text-red-400 shrink-0">
+                            Urgent
+                          </span>
+                        ) : (
+                          <span className="text-[11px] text-white/45 shrink-0">--</span>
+                        )}
+                      </div>
+
+                      {/* Col 4: durée */}
+                      <div className={`col-span-6 md:col-span-1 text-center md:text-left text-[11px] ${isLight ? "text-black/50" : "text-white/30"}`}>
+                        {job.created_at ? formatRelative(job.created_at) : "—"}
+                      </div>
+
+                      {/* Col 5: % matching */}
+                      <div className="col-span-6 md:col-span-2 text-center md:text-left">
                         {!showAllOffers && (
-                          <span className={`text-[12px] font-semibold px-2.5 py-1 rounded-full border ${scoreColor}`}>
+                          <span className={`text-[12px] font-semibold px-2.5 py-1 rounded-full border whitespace-nowrap inline-flex ${scoreColor}`}>
                             {scorePct}% match
                           </span>
                         )}
-                        <span className={`text-[11px] ${isLight ? "text-black/50" : "text-white/30"}`}>
-                          {job.created_at && formatRelative(job.created_at)}
-                        </span>
+                      </div>
+
+                      {/* Col 6: action */}
+                      <div className="col-span-12 md:col-span-3 flex justify-end items-center gap-2 ml-auto">
+                        <button
+                          type="button"
+                          onClick={(e) => {
+                            e.stopPropagation();
+                            if (alreadyApplied) return;
+                            router.push(`/app/matching/offres/${job.id}`);
+                          }}
+                          disabled={alreadyApplied}
+                          className="btn-primary !py-1.5 !px-3 text-[12px] whitespace-nowrap disabled:opacity-50 disabled:cursor-not-allowed"
+                        >
+                          {alreadyApplied ? "Déjà postulé" : "Postuler"}
+                        </button>
                         <button
                           type="button"
                           onClick={(e) => {
                             e.stopPropagation();
                             router.push(`/app/matching/offres/${job.id}`);
                           }}
-                          className="btn-primary !py-1.5 !px-3 text-[12px] gap-1"
+                          className={`p-1.5 rounded-full border transition ${
+                            isLight
+                              ? "border-black/10 hover:bg-black/5 text-black/60 hover:text-black"
+                              : "border-white/[0.14] hover:bg-zinc-800 text-zinc-400 hover:text-white"
+                          }`}
+                          aria-label="Voir les détails de l’offre"
+                          title="Voir détails"
                         >
-                          Postuler
+                          <Eye size={14} />
+                        </button>
+                        <button
+                          type="button"
+                          disabled={toggleSavedJobMutation.isPending}
+                          onClick={(e) => {
+                            e.stopPropagation();
+                            if (toggleSavedJobMutation.isPending) return;
+                            toggleSavedJobMutation.mutate(job.id);
+                          }}
+                          className={`p-1.5 rounded-full border transition ${
+                            isSaved
+                              ? "border-emerald-500/35 bg-emerald-500/12 text-emerald-300 hover:bg-emerald-500/20"
+                              : isLight
+                                ? "border-black/10 hover:bg-black/5 text-black/60 hover:text-black"
+                                : "border-white/[0.14] hover:bg-zinc-800 text-zinc-400 hover:text-white"
+                          } ${toggleSavedJobMutation.isPending ? "opacity-60 cursor-not-allowed" : ""}`}
+                          aria-label={isSaved ? "Offre enregistrée" : "Enregistrer l’offre"}
+                          title={isSaved ? "Offre enregistrée" : "Enregistrer"}
+                        >
+                          <Bookmark size={14} fill={isSaved ? "currentColor" : "none"} />
                         </button>
                       </div>
                     </div>

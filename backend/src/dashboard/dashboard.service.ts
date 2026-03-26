@@ -228,6 +228,10 @@ export interface ApplyJobPayload {
   lien?: string | null;
 }
 
+export interface ToggleSavedJobPayload {
+  jobId: number;
+}
+
 export interface RecruiterMatchByOfferPayload {
   job_id: number;
   top_n?: number;
@@ -1108,6 +1112,18 @@ export class DashboardService {
       candidateRow.image_minio_url as string | null,
     );
 
+    let savedOffers = 0;
+    try {
+      const { count } = await this.supabase
+        .from('candidate_saved_jobs')
+        .select('id', { count: 'exact', head: true })
+        .eq('candidate_id', candidateId);
+      savedOffers = count ?? 0;
+    } catch {
+      // Keep dashboard resilient if saved-jobs table is unavailable.
+      savedOffers = 0;
+    }
+
     return {
       candidateId,
       firstProfileDate: candidateRow.created_at as string,
@@ -1115,7 +1131,7 @@ export class DashboardService {
       lastName: (candidateRow.nom as string | null) ?? null,
       applications: applications ?? 0,
       interviews: interviews ?? 0,
-      savedOffers: 0,
+      savedOffers,
       notifications: 0,
       statusPending: statusPending ?? 0,
       statusAccepted: statusAccepted ?? 0,
@@ -3578,6 +3594,89 @@ export class DashboardService {
     }
 
     return { success: true, applicationId: inserted.id as number, status: (inserted.status as string) || 'EN_COURS' };
+  }
+
+  async getCandidateSavedJobs(userId: number): Promise<{ jobIds: number[] }> {
+    if (!userId || Number.isNaN(userId)) {
+      throw new BadRequestException('userId invalide');
+    }
+
+    const candidate = await this.getOrCreateCandidate(userId);
+
+    const { data, error } = await this.supabase
+      .from('candidate_saved_jobs')
+      .select('job_id')
+      .eq('candidate_id', candidate.id);
+
+    if (error) {
+      throw new BadRequestException(
+        error.message || 'Erreur lors du chargement des offres enregistrées',
+      );
+    }
+
+    const jobIds = (data ?? [])
+      .map((row: any) => Number(row?.job_id))
+      .filter((id: number) => Number.isFinite(id) && id > 0);
+
+    return { jobIds };
+  }
+
+  async toggleCandidateSavedJob(
+    userId: number,
+    payload: ToggleSavedJobPayload,
+  ): Promise<{ success: boolean; saved: boolean; jobId: number }> {
+    if (!userId || Number.isNaN(userId)) {
+      throw new BadRequestException('userId invalide');
+    }
+    const jobId = Number(payload?.jobId);
+    if (!jobId || Number.isNaN(jobId)) {
+      throw new BadRequestException("Le champ 'jobId' est requis");
+    }
+
+    const candidate = await this.getOrCreateCandidate(userId);
+
+    const { data: existing, error: existingError } = await this.supabase
+      .from('candidate_saved_jobs')
+      .select('id')
+      .eq('candidate_id', candidate.id)
+      .eq('job_id', jobId)
+      .maybeSingle();
+
+    if (existingError) {
+      throw new BadRequestException(
+        existingError.message || "Erreur lors de la recherche de l'offre enregistrée",
+      );
+    }
+
+    if (existing?.id) {
+      const { error: deleteError } = await this.supabase
+        .from('candidate_saved_jobs')
+        .delete()
+        .eq('id', existing.id);
+
+      if (deleteError) {
+        throw new BadRequestException(
+          deleteError.message || "Erreur lors de la suppression de l'offre enregistrée",
+        );
+      }
+
+      return { success: true, saved: false, jobId };
+    }
+
+    const { error: insertError } = await this.supabase
+      .from('candidate_saved_jobs')
+      .insert({
+        candidate_id: candidate.id,
+        job_id: jobId,
+      });
+
+    if (insertError) {
+      throw new BadRequestException(
+        insertError.message || "Erreur lors de l'enregistrement de l'offre",
+      );
+    }
+
+    return { success: true, saved: true, jobId };
   }
 
   async getCandidateScoreFromJson(

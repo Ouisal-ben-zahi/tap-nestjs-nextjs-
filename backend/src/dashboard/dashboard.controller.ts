@@ -1,7 +1,7 @@
 import { Body, Controller, Delete, Get, HttpCode, Param, Post, Put, Query, Req, UploadedFile, UploadedFiles, UseGuards, UseInterceptors } from '@nestjs/common';
 import { AuthGuard } from '@nestjs/passport';
 import { FileFieldsInterceptor, FileInterceptor } from '@nestjs/platform-express';
-import { DashboardService, type ApplyJobPayload, type RecruiterJobPayload, type RecruiterMatchByOfferPayload, type RecruiterValidateCandidatePayload, type RecruiterSaveInterviewPdfPayload, type RecruiterUpdateCandidateStatusPayload } from './dashboard.service';
+import { DashboardService, type ApplyJobPayload, type RecruiterJobPayload, type RecruiterMatchByOfferPayload, type RecruiterValidateCandidatePayload, type RecruiterSaveInterviewPdfPayload, type RecruiterUpdateCandidateStatusPayload, type ToggleSavedJobPayload } from './dashboard.service';
 
 @Controller('dashboard')
 export class DashboardController {
@@ -490,6 +490,23 @@ export class DashboardController {
     // ApplyJobPayload inclut jobId + chemins de fichiers + lien
     const userId = await this.dashboardService.resolveJwtUserId(req?.user);
     return this.dashboardService.applyToJob(userId, body);
+  }
+
+  @Get('candidat/saved-jobs')
+  @UseGuards(AuthGuard('jwt'))
+  async getCandidateSavedJobsByJwt(@Req() req: any) {
+    const userId = await this.dashboardService.resolveJwtUserId(req?.user);
+    return this.dashboardService.getCandidateSavedJobs(userId);
+  }
+
+  @Post('candidat/saved-jobs/toggle')
+  @UseGuards(AuthGuard('jwt'))
+  async toggleCandidateSavedJobsByJwt(
+    @Req() req: any,
+    @Body() body: ToggleSavedJobPayload,
+  ) {
+    const userId = await this.dashboardService.resolveJwtUserId(req?.user);
+    return this.dashboardService.toggleCandidateSavedJob(userId, body);
   }
 }
 

@@ -45,6 +45,30 @@ export function useCandidatApplications(enabled?: boolean) {
   });
 }
 
+export function useCandidatSavedJobs(enabled?: boolean) {
+  const authEnabled = useAuthEnabled();
+  return useQuery({
+    queryKey: ['candidat', 'saved-jobs'],
+    queryFn: candidatService.getSavedJobs,
+    enabled: enabled ?? authEnabled,
+  });
+}
+
+export function useToggleCandidatSavedJob() {
+  const queryClient = useQueryClient();
+  const addToast = useUiStore((s) => s.addToast);
+  return useMutation({
+    mutationFn: (jobId: number) => candidatService.toggleSavedJob(jobId),
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ['candidat', 'saved-jobs'] });
+      queryClient.invalidateQueries({ queryKey: ['candidat', 'stats'] });
+    },
+    onError: () => {
+      addToast({ message: "Impossible d'enregistrer cette offre", type: 'error' });
+    },
+  });
+}
+
 export function useCandidatProfile(enabled?: boolean) {
   const authEnabled = useAuthEnabled();
   return useQuery({
