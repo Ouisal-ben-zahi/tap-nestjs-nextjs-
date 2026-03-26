@@ -157,6 +157,10 @@ export default function CandidatsPage() {
   const overview = overviewQuery.data;
 
   const jobsById = new Map((jobsQuery.data?.jobs ?? []).map((j: any) => [j.id, j]));
+  const selectedJobTitle =
+    selectedJobId != null
+      ? ((jobsById.get(selectedJobId) as any)?.title as string | null) ?? null
+      : null;
 
   return (
     <div className="max-w-[1100px] mx-auto">
@@ -190,7 +194,14 @@ export default function CandidatsPage() {
                 <div className="flex items-center gap-3">
                   <div className="w-1 h-5 rounded-full bg-emerald-500" />
                   <h2 className="text-[13px] uppercase tracking-[2px] text-white/50 font-semibold">
-                    Candidats matchés par IA
+                    {selectedJobTitle ? (
+                      <>
+                        Candidats matchés par IA:{" "}
+                        <span className="text-tap-red font-bold">{selectedJobTitle}</span>
+                      </>
+                    ) : (
+                      "Candidats matchés par IA"
+                    )}
                   </h2>
                 </div>
                 <Link
