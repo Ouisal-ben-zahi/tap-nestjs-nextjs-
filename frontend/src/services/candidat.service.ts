@@ -127,11 +127,25 @@ export const candidatService = {
   /** Endpoint dédié au matching IA avec fallback défensif côté client. */
   getMatchingJobs: () => fetchMatchingJobs(),
 
-  uploadCv: (file: File) => {
+  uploadCv: (payload: { file: File; imgFile?: File | null }) => {
     const formData = new FormData();
-    formData.append('file', file);
+    formData.append('file', payload.file);
+    if (payload.imgFile) {
+      formData.append('img_file', payload.imgFile);
+    }
     return api.post('/dashboard/candidat/upload-cv', formData).then((r) => r.data);
   },
+
+  checkCvHasPhoto: (file: File) => {
+    const formData = new FormData();
+    formData.append('file', file);
+    return api
+      .post<{ has_photo: boolean }>('/dashboard/candidat/check-cv-photo', formData)
+      .then((r) => r.data);
+  },
+
+  deleteAvatar: () =>
+    api.delete('/dashboard/candidat/avatar').then((r) => r.data as { success: boolean }),
 
   generatePortfolioLong: (lang: 'fr' | 'en' = 'fr') =>
     api

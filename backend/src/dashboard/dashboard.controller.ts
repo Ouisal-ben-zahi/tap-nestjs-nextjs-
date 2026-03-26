@@ -242,6 +242,14 @@ export class DashboardController {
     return { success: true };
   }
 
+  @Delete('candidat/avatar')
+  @UseGuards(AuthGuard('jwt'))
+  async deleteCandidateAvatarByJwt(@Req() req: any) {
+    const userId = await this.dashboardService.resolveJwtUserId(req?.user);
+    await this.dashboardService.deleteCandidateAvatar(userId);
+    return { success: true };
+  }
+
 
   @Get('recruteur/jobs')
   @UseGuards(AuthGuard('jwt'))

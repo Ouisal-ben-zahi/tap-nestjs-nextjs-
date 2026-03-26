@@ -59,13 +59,13 @@ export default function MesFichiersPage() {
     setDragOver(false);
     const file = e.dataTransfer.files[0];
     if (file && file.type === "application/pdf") {
-      uploadCv.mutate(file);
+      uploadCv.mutate({ file });
     }
   }, [uploadCv]);
 
   const handleFileSelect = useCallback((e: React.ChangeEvent<HTMLInputElement>) => {
     const file = e.target.files?.[0];
-    if (file) uploadCv.mutate(file);
+    if (file) uploadCv.mutate({ file });
     e.target.value = "";
   }, [uploadCv]);
 

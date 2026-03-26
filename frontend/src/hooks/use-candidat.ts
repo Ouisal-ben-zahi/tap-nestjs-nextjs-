@@ -229,7 +229,8 @@ export function useUploadCv() {
   const isRegenerationRef = useRef(false);
 
   const mutation = useMutation({
-    mutationFn: candidatService.uploadCv,
+    mutationFn: (payload: { file: File; imgFile?: File | null }) =>
+      candidatService.uploadCv(payload),
     onMutate: () => {
       // Snapshot whether the candidate already had talent-card files before upload
       const existing = queryClient.getQueryData<{ talentcardFiles?: unknown[] }>([
@@ -257,6 +258,27 @@ export function useUploadCv() {
   });
 
   return { ...mutation, isRegeneration, setRegeneration };
+}
+
+export function useCheckCvHasPhoto() {
+  const addToast = useUiStore((s) => s.addToast);
+  return useMutation({
+    mutationFn: (file: File) => candidatService.checkCvHasPhoto(file),
+    onError: () => addToast({ message: "Impossible de vérifier la photo dans le CV", type: "error" }),
+  });
+}
+
+export function useDeleteCandidateAvatar() {
+  const queryClient = useQueryClient();
+  const addToast = useUiStore((s) => s.addToast);
+  return useMutation({
+    mutationFn: () => candidatService.deleteAvatar(),
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ["candidat", "stats"] });
+      addToast({ message: "Ancienne image supprimée", type: "success" });
+    },
+    onError: () => addToast({ message: "Erreur lors de la suppression de l'image", type: "error" }),
+  });
 }
 
 export function useDeleteCvFile() {
