@@ -494,10 +494,7 @@ def safe_str(value, join_lists_with=", "):
 
 
 def _split_name(full_name):
-    """
-    Split full name into (prenom, nom): premier mot = prénom, le reste = nom.
-    Ex: "HAJAR EL AOUNI" -> ("HAJAR", "EL AOUNI"), "Jean Dupont" -> ("Jean", "Dupont").
-    """
+   
     if not full_name or not isinstance(full_name, str):
         return "", ""
     parts = full_name.strip().split()
@@ -574,7 +571,6 @@ def transform_corrected_json_to_cv_context(corrected, lang: str = "fr"):
             "niveau": (L.get("niveau") or "").strip(),
         })
 
-    # nom_complet = nom affiché tel quel (évite "AOUNI HAJAR EL" pour "HAJAR EL AOUNI")
     nom_complet = name
 
     candidate = {

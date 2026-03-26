@@ -169,6 +169,7 @@ export const candidatService = {
       .then((r) => r.data as {
         session_id: string;
         status: string;
+        interview_type?: "technical" | "behavioral" | "presentation" | "hr" | string;
         current_question: number;
         total_questions: number;
         current_question_text: string;

@@ -59,6 +59,7 @@ TTS_SPEAKER = "Dionisio Schuyler"
 TTS_FAST_MODE = (os.environ.get("TTS_FAST_MODE", "1").strip().lower() in ("1", "true", "yes", "on"))
 TTS_SPEED = float(os.environ.get("TTS_SPEED", "1.20"))
 TTS_MAX_CHARS = int(os.environ.get("TTS_MAX_CHARS", "240"))
+TOTAL_QUESTIONS_DEFAULT = int(os.environ.get("INTERVIEW_TOTAL_QUESTIONS", "10"))
 
 # =========================
 # SESSIONS D'ENTRETIEN EN MÉMOIRE
@@ -214,6 +215,48 @@ def _extract_recruiter_question_only(text: str) -> str:
     return t
 
 
+def _normalize_question_for_dedupe(text: str) -> str:
+    """Normalise une question pour détection de répétitions (comparaison robuste)."""
+    if not text:
+        return ""
+    t = str(text).strip().lower()
+    t = re.sub(r"\s+", " ", t)
+    # enlever ponctuation "bruyante" (garder lettres/chiffres/espaces)
+    t = re.sub(r"[^a-z0-9àâçéèêëîïôûùüÿñæœ\s]", " ", t)
+    t = re.sub(r"\s+", " ", t).strip()
+    # supprimer un "bonjour <prenom>" si présent (souvent la cause des doublons)
+    t = re.sub(r"^bonjour\s+\w+\s*", "", t).strip()
+    return t
+
+
+def _clean_llm_question(text: str) -> str:
+    """Nettoie une sortie LLM pour usage 'question': extraire recruteur + retirer bonjour."""
+    return remove_bonjour_prefix(_extract_recruiter_question_only(text or ""))
+
+
+def _set_next_question_state(session_id: str, next_question: str) -> None:
+    """
+    Met à jour l'état session pour une question en attente de TTS.
+    Centralise la logique pour éviter les divergences (next vs repeat).
+    """
+    if session_id not in interview_sessions:
+        return
+    interview_sessions[session_id]["pending_question_text"] = next_question
+    interview_sessions[session_id]["current_question_text"] = ""
+    interview_sessions[session_id]["current_question_audio"] = None
+    interview_sessions[session_id]["status"] = "generating_audio"
+
+
+def _finalize_question_ready(session_id: str, question_text: str, audio_filename: Optional[str] = None) -> None:
+    """Finalise l'état 'question_ready' (avec audio si dispo)."""
+    if session_id not in interview_sessions:
+        return
+    interview_sessions[session_id]["current_question_text"] = question_text
+    if audio_filename:
+        interview_sessions[session_id]["current_question_audio"] = audio_filename
+    interview_sessions[session_id]["status"] = "question_ready"
+    interview_sessions[session_id]["pending_question_text"] = ""
+
 def _get_agent_data_cached(db_candidate_id: int, candidate_uuid: str, retrieve_fn):
     """Retourne agent_data depuis le cache ou appelle retrieve_fn et met en cache."""
     cache_key = (db_candidate_id, candidate_uuid)
@@ -284,7 +327,7 @@ def start_interview(candidate_uuid):
             "created_at": time.time(),
             "status": "starting",
             "current_question": 0,
-            "total_questions": 5,
+            "total_questions": TOTAL_QUESTIONS_DEFAULT,
             "conversation_history": None,
             "agent_data": None,
             "interview_type": interview_type,
@@ -328,15 +371,14 @@ def start_interview(candidate_uuid):
                 conversation_history = interview_prompt
                 interview_sessions[session_id]["conversation_history"] = conversation_history
                 
-                # Message d'introduction personnalisé
+                
                 candidate_db = agent_data.get("candidate_db", {})
                 prenom = candidate_db.get("prenom", "")
-                titre = candidate_db.get("titre_profil", "")
 
-                # Récupérer le poste visé (même logique que dans build_interview_prompt_from_data)
+                
                 job_title = "Ingénieur IA"  # Par défaut
 
-                # 1) Portfolio (section hero)
+                
                 portfolio = agent_data.get("portfolio")
                 if portfolio:
                     portfolio_sections = portfolio.get("portfolio_sections", [])
@@ -346,13 +388,12 @@ def start_interview(candidate_uuid):
                             job_title = content.get("job_title") or content.get("title") or job_title
                             break
 
-                # 2) CV corrigé
+                
                 if job_title == "Ingénieur IA":
                     corrected_cv = agent_data.get("corrected_cv")
                     if corrected_cv:
                         job_title = corrected_cv.get("Titre", job_title)
 
-                # 3) Talent Card
                 if job_title == "Ingénieur IA":
                     talent_card = agent_data.get("talent_card")
                     if talent_card:
@@ -380,7 +421,7 @@ def start_interview(candidate_uuid):
                 
                 # Première question
                 question, conversation_history = ask_gemini("", conversation_history)
-                question = remove_bonjour_prefix(_extract_recruiter_question_only(question))
+                question = _clean_llm_question(question)
                 interview_sessions[session_id]["conversation_history"] = conversation_history
                 interview_sessions[session_id]["current_question"] = 1
                 interview_sessions[session_id]["status"] = "question_ready"
@@ -423,6 +464,7 @@ def _session_status_snapshot(session: Dict, session_id: str) -> Dict[str, Any]:
     return {
         "session_id": session_id,
         "status": session.get("status", "unknown"),
+        "interview_type": session.get("interview_type", "technical"),
         "current_question": session.get("current_question", 0),
         "total_questions": session.get("total_questions", 10),
         "current_question_text": session.get("current_question_text", ""),
@@ -562,6 +604,7 @@ def get_interview_evaluation(session_id):
     success, evaluation_data, error = evaluate_candidate_interview(
         conversation_history=conversation_history,
         candidate_data=candidate_data,
+        interview_type=session.get("interview_type", "technical"),
     )
 
     if not success or not evaluation_data:
@@ -765,14 +808,30 @@ def record_response(session_id):
                     try:
                         conversation_history = session.get("conversation_history", "")
                         if conversation_history:
+                            prev_question_text = session.get("current_question_text", "") or ""
+
                             next_question, updated_history = ask_gemini(transcription_for_llm, conversation_history)
-                            next_question = _extract_recruiter_question_only(next_question)
+                            next_question = _clean_llm_question(next_question)
+
+                            # Anti-répétition: si Gemini ressort la même question, on régénère 1 fois
+                            # avec une instruction explicite (sans "Bonjour", nouvelle question).
+                            if (
+                                _normalize_question_for_dedupe(next_question)
+                                and _normalize_question_for_dedupe(next_question)
+                                == _normalize_question_for_dedupe(prev_question_text)
+                            ):
+                                retry_history = (
+                                    conversation_history
+                                    + "\n\nINSTRUCTION IMPORTANTE: La prochaine question doit être DIFFERENTE de la précédente. "
+                                      "Ne repose pas la même question de présentation. Pose une nouvelle question pertinente "
+                                      "en te basant sur la réponse du candidat et le contexte. Une seule question. Pas de 'Bonjour'."
+                                )
+                                next_question, updated_history = ask_gemini(transcription_for_llm, retry_history)
+                                next_question = _clean_llm_question(next_question)
+
                             interview_sessions[session_id]["conversation_history"] = updated_history
                             interview_sessions[session_id]["current_question"] = question_number + 1
-                            interview_sessions[session_id]["pending_question_text"] = next_question
-                            interview_sessions[session_id]["current_question_text"] = ""
-                            interview_sessions[session_id]["current_question_audio"] = None
-                            interview_sessions[session_id]["status"] = "generating_audio"
+                            _set_next_question_state(session_id, next_question)
                             print(f"🤖 Question {question_number + 1} ({len(next_question)} car.): {next_question}")
                             # Terminer seulement après que le candidat a répondu à la 10e question (pas dès qu'on génère la 10e)
                             if question_number + 1 > session.get("total_questions", 10):
@@ -785,17 +844,12 @@ def record_response(session_id):
                                         q_audio = os.path.join(session_dir, f"question_{qid}.wav")
                                         _tts_to_file_fast(next_question, q_audio)
                                         if session_id in interview_sessions and interview_sessions[session_id].get("status") == "generating_audio":
-                                            interview_sessions[session_id]["current_question_text"] = next_question
-                                            interview_sessions[session_id]["current_question_audio"] = os.path.basename(q_audio)
-                                            interview_sessions[session_id]["status"] = "question_ready"
-                                            interview_sessions[session_id]["pending_question_text"] = ""
+                                            _finalize_question_ready(session_id, next_question, os.path.basename(q_audio))
                                             print(f"🔊 TTS prêt pour question {question_number + 1}")
                                     except Exception as e_tts:
                                         print(f"⚠️ Erreur TTS en arrière-plan: {e_tts}")
                                         if session_id in interview_sessions:
-                                            interview_sessions[session_id]["current_question_text"] = next_question
-                                            interview_sessions[session_id]["status"] = "question_ready"
-                                            interview_sessions[session_id]["pending_question_text"] = ""
+                                            _finalize_question_ready(session_id, next_question, None)
                                 threading.Thread(target=generate_tts_background, daemon=True).start()
                     except Exception as e:
                         print(f"⚠️ Erreur lors de la génération de la question suivante: {e}")
@@ -815,11 +869,8 @@ def record_response(session_id):
                         if conversation_history:
                             repeat_prompt = f"L'intervieweur a dit: '{transcription}'. Cette réponse semble être un test ou trop courte. Demande poliment au candidat de répéter sa réponse de manière plus complète et détaillée. Sois bref et professionnel."
                             repeat_question, _ = ask_gemini(repeat_prompt, conversation_history)
-                            repeat_question = _extract_recruiter_question_only(repeat_question)
-                            interview_sessions[session_id]["pending_question_text"] = repeat_question
-                            interview_sessions[session_id]["current_question_text"] = ""
-                            interview_sessions[session_id]["current_question_audio"] = None
-                            interview_sessions[session_id]["status"] = "generating_audio"
+                            repeat_question = _clean_llm_question(repeat_question)
+                            _set_next_question_state(session_id, repeat_question)
                             interview_sessions[session_id]["error"] = None
                             print(f"🔄 Question de répétition générée: {repeat_question}")
                             print(f"✅ [REPEAT] Session {session_id} → status=generating_audio (len={len(repeat_question)})")
@@ -830,16 +881,11 @@ def record_response(session_id):
                                     question_audio_file = os.path.join(session_dir, f"question_{question_id}.wav")
                                     _tts_to_file_fast(repeat_question, question_audio_file)
                                     if session_id in interview_sessions:
-                                        interview_sessions[session_id]["current_question_text"] = repeat_question
-                                        interview_sessions[session_id]["current_question_audio"] = os.path.basename(question_audio_file)
-                                        interview_sessions[session_id]["status"] = "question_ready"
-                                        interview_sessions[session_id]["pending_question_text"] = ""
+                                        _finalize_question_ready(session_id, repeat_question, os.path.basename(question_audio_file))
                                 except Exception as e_tts:
                                     print(f"⚠️ Erreur TTS répétition: {e_tts}")
                                     if session_id in interview_sessions:
-                                        interview_sessions[session_id]["current_question_text"] = repeat_question
-                                        interview_sessions[session_id]["status"] = "question_ready"
-                                        interview_sessions[session_id]["pending_question_text"] = ""
+                                        _finalize_question_ready(session_id, repeat_question, None)
                             threading.Thread(target=generate_repeat_tts, daemon=True).start()
                     except Exception as e:
                         print(f"⚠️ Erreur lors de la génération de la question de répétition: {e}")
@@ -887,6 +933,9 @@ def start_written_interview(candidate_uuid):
     try:
         data = request.get_json() or {}
         db_candidate_id = data.get("db_candidate_id")
+        interview_type = (data.get("interview_type") or "technical").strip().lower()
+        if interview_type not in ("technical", "behavioral", "presentation", "hr"):
+            interview_type = "technical"
         
         if not db_candidate_id:
             return jsonify({"error": "db_candidate_id is required"}), 400
@@ -902,9 +951,10 @@ def start_written_interview(candidate_uuid):
             "created_at": time.time(),
             "status": "starting",
             "current_question": 0,
-            "total_questions": 5,
+            "total_questions": TOTAL_QUESTIONS_DEFAULT,
             "conversation_history": None,
-            "agent_data": None
+            "agent_data": None,
+            "interview_type": interview_type,
         }
         session_written_responses[session_id] = []
         
@@ -1167,6 +1217,7 @@ def get_written_interview_evaluation(session_id):
     success, evaluation_data, error = evaluate_candidate_interview(
         conversation_history=conversation_history,
         candidate_data=candidate_data,
+        interview_type=session.get("interview_type", "technical"),
     )
 
     if not success or not evaluation_data:

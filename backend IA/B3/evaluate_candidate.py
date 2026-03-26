@@ -19,7 +19,8 @@ gemini_model = genai.GenerativeModel(GEMINI_MODEL)
 
 def evaluate_candidate_interview(
     conversation_history: str,
-    candidate_data: Optional[Dict] = None
+    candidate_data: Optional[Dict] = None,
+    interview_type: str = "technical",
 ) -> Tuple[bool, Optional[Dict], Optional[str]]:
     """
     Évalue le candidat en fonction de l'historique de conversation de l'entretien.
@@ -44,14 +45,141 @@ def evaluate_candidate_interview(
         
         candidat_nom_complet = f"{prenom} {nom}".strip() or "le candidat"
         
+        it = (interview_type or "technical").strip().lower()
+        if it not in ("technical", "behavioral", "presentation", "hr"):
+            it = "technical"
+
+        eval_role = {
+            "technical": "un expert en recrutement et évaluation technique (Data/IA/Software)",
+            "behavioral": "un expert en recrutement spécialisé en entretien comportemental (soft skills, collaboration, méthode STAR)",
+            "presentation": "un coach recruteur spécialisé en pitch et présentation personnelle",
+            "hr": "un expert RH spécialisé en entretien RH (motivation, projection, contraintes, culture)",
+        }[it]
+
+        criteres_bloc = {
+            "technical": """
+1. **CONNAISSANCES TECHNIQUES** (0-10)
+   - Pertinence / exactitude des concepts
+   - Maîtrise des technologies mentionnées
+   - Capacité à aller dans le détail
+
+2. **EXPÉRIENCE PRATIQUE** (0-10)
+   - Qualité des exemples (projets, missions)
+   - Capacité à expliquer défis et décisions
+   - Approche de résolution de problèmes
+
+3. **COMMUNICATION** (0-10)
+   - Clarté, structure, précision
+   - Capacité à vulgariser
+   - Réponses complètes et compréhensibles
+
+4. **GESTION DU STRESS** (0-10)
+   - Confiance, stabilité, cohérence
+   - Gestion des zones d’incertitude
+   - Capacité à rester calme
+
+5. **RÉFLEXION CRITIQUE** (0-10)
+   - Capacité d’analyse
+   - Conscience des limites / trade-offs
+   - Capacité à proposer des améliorations
+
+6. **ADAPTATION AU POSTE** (0-10)
+   - Alignement avec le poste visé
+   - Pertinence du discours au regard du besoin
+   - Potentiel d’évolution
+""",
+            "behavioral": """
+1. **CONNAISSANCES TECHNIQUES** (0-10)
+   - Juste ce qui est nécessaire pour étayer les exemples (ne surpondère pas)
+   - Compréhension de son rôle et de son périmètre
+
+2. **EXPÉRIENCE PRATIQUE** (0-10)
+   - Capacité à décrire des situations réelles
+   - Exemples concrets, contextualisés
+   - Résultats / impact / apprentissages
+
+3. **COMMUNICATION** (0-10)
+   - Structure (idéalement STAR)
+   - Clarté, concision, écoute de la question
+   - Capacité à articuler responsabilités et résultats
+
+4. **GESTION DU STRESS** (0-10)
+   - Réponses posées, cohérentes
+   - Capacité à reconnaître une difficulté sans se perdre
+
+5. **RÉFLEXION CRITIQUE** (0-10)
+   - Capacité à prendre du recul
+   - Apprentissage, remise en question, amélioration continue
+
+6. **ADAPTATION AU POSTE** (0-10)
+   - Alignement soft skills / environnement
+   - Collaboration, ownership, autonomie selon le poste
+""",
+            "presentation": """
+1. **CONNAISSANCES TECHNIQUES** (0-10)
+   - Niveau suffisant pour crédibiliser le pitch (sans exiger un entretien technique)
+   - Capacité à nommer outils/compétences avec précision
+
+2. **EXPÉRIENCE PRATIQUE** (0-10)
+   - Mise en avant de 1–2 expériences/projets pertinents
+   - Clarté sur son rôle et sa contribution
+   - Impact / résultats (même simples)
+
+3. **COMMUNICATION** (0-10)
+   - Pitch clair, structuré, fluide
+   - Storyline (parcours → compétences → motivation)
+   - Langage simple, impactant, sans jargon inutile
+
+4. **GESTION DU STRESS** (0-10)
+   - Aisance, rythme, assurance
+   - Capacité à se reprendre si hésitation
+
+5. **RÉFLEXION CRITIQUE** (0-10)
+   - Capacité à parler de ses limites sans se dévaloriser
+   - Lucidité sur ce qu’il veut apprendre / améliorer
+
+6. **ADAPTATION AU POSTE** (0-10)
+   - Proposition de valeur claire (pourquoi lui/elle)
+   - Motivation spécifique à l’entreprise/poste
+   - Cohérence projet pro ↔ poste
+""",
+            "hr": """
+1. **CONNAISSANCES TECHNIQUES** (0-10)
+   - Juste ce qui est nécessaire (ne surpondère pas)
+   - Capacité à relier compétences ↔ missions
+
+2. **EXPÉRIENCE PRATIQUE** (0-10)
+   - Capacité à raconter son parcours sans zones floues
+   - Cohérence des choix et transitions
+
+3. **COMMUNICATION** (0-10)
+   - Clarté, transparence, cohérence
+   - Réponses directes aux questions RH
+
+4. **GESTION DU STRESS** (0-10)
+   - Réponses posées sur sujets sensibles (salaire, trous, mobilité)
+   - Gestion des objections
+
+5. **RÉFLEXION CRITIQUE** (0-10)
+   - Maturité, projection, prise de recul
+   - Capacité à se situer et à apprendre
+
+6. **ADAPTATION AU POSTE** (0-10)
+   - Motivation, disponibilité, contraintes
+   - Fit culturel / attentes réciproques
+   - Projection à 6–12 mois
+""",
+        }[it]
+
         # Construire le prompt d'évaluation
         evaluation_prompt = f"""
-Tu es un expert en recrutement et évaluation de candidats en Intelligence Artificielle.
+Tu es {eval_role}.
 Tu dois analyser l'entretien ci-dessous et fournir une évaluation détaillée et constructive du candidat.
 
 **INFORMATIONS DU CANDIDAT:**
 - Nom: {candidat_nom_complet}
 - Poste visé: {titre_poste}
+- Type d'entretien: {it}
 
 **HISTORIQUE DE L'ENTRETIEN:**
 {conversation_history}
@@ -60,37 +188,10 @@ Tu dois analyser l'entretien ci-dessous et fournir une évaluation détaillée e
 
 **CONSIGNES D'ÉVALUATION:**
 
-Analyse l'entretien et évalue le candidat sur les critères suivants (note de 0 à 10 pour chaque):
+Analyse l'entretien et évalue le candidat sur les critères suivants (note de 0 à 10 pour chaque).
+La grille ci-dessous dépend du type d'entretien sélectionné.
 
-1. **CONNAISSANCES TECHNIQUES** (0-10)
-   - Profondeur des connaissances en IA/ML
-   - Compréhension des concepts théoriques
-   - Maîtrise des technologies mentionnées
-
-2. **EXPÉRIENCE PRATIQUE** (0-10)
-   - Qualité des exemples de projets donnés
-   - Capacité à expliquer les défis rencontrés
-   - Solutions techniques apportées
-
-3. **COMMUNICATION** (0-10)
-   - Clarté des explications
-   - Structure des réponses
-   - Capacité à vulgariser des concepts complexes
-
-4. **GESTION DU STRESS** (0-10)
-   - Confiance dans les réponses
-   - Gestion des questions difficiles
-   - Cohérence tout au long de l'entretien
-
-5. **RÉFLEXION CRITIQUE** (0-10)
-   - Capacité d'analyse
-   - Remise en question
-   - Conscience des limites et défis
-
-6. **ADAPTATION AU POSTE** (0-10)
-   - Alignement avec le poste visé
-   - Pertinence des compétences
-   - Potentiel d'évolution
+{criteres_bloc}
 
 **FORMAT DE RÉPONSE OBLIGATOIRE (JSON):**
 
@@ -169,6 +270,7 @@ IMPORTANT:
         # Ajouter des métadonnées
         evaluation_data["candidate_name"] = candidat_nom_complet
         evaluation_data["poste_vise"] = titre_poste
+        evaluation_data["interview_type"] = it
         evaluation_data["timestamp"] = time.time()
         evaluation_data["date_evaluation"] = time.strftime("%Y-%m-%d %H:%M:%S")
         

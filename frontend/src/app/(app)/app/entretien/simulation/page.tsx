@@ -97,6 +97,22 @@ export default function EntretienSimulationPage() {
     return questionFiles.length ? questionFiles[questionFiles.length - 1] : null;
   }, [audioQuery.data?.audio_files, statusQuery.data?.current_question]);
 
+  const interviewTypeLabel = useMemo(() => {
+    const t = String((statusQuery.data as any)?.interview_type || "").trim().toLowerCase();
+    switch (t) {
+      case "technical":
+        return "technique";
+      case "behavioral":
+        return "comportemental";
+      case "presentation":
+        return "présentation personnelle";
+      case "hr":
+        return "RH";
+      default:
+        return "technique";
+    }
+  }, [statusQuery.data]);
+
   useEffect(() => {
     return () => {
       try {
@@ -173,7 +189,9 @@ export default function EntretienSimulationPage() {
       <div className={`rounded-2xl p-6 ${isLight ? "card-luxury-light" : "bg-zinc-900/50 border border-white/[0.06]"}`}>
         <div className="flex items-center gap-3 mb-4">
           <MessageSquare className="text-purple-500" size={18} />
-          <h1 className={`text-[22px] font-semibold ${isLight ? "text-black" : "text-white"}`}>Simulation entretien technique</h1>
+          <h1 className={`text-[22px] font-semibold ${isLight ? "text-black" : "text-white"}`}>
+            Simulation entretien {interviewTypeLabel}
+          </h1>
         </div>
 
         {!sessionId ? (
