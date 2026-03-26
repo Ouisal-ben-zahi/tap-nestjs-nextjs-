@@ -8,12 +8,12 @@ import HydrationGate from "@/components/app/HydrationGate";
 import AppSidebar from "@/components/app/AppSidebar";
 import RecruiterTalentCardSidebar from "@/components/app/RecruiterTalentCardSidebar";
 import { useRecruiterTalentPanelStore } from "@/stores/recruiter-talent-panel";
-import { Menu, ArrowUpRight, Moon, Sun } from "lucide-react";
+import { Menu, ArrowUpRight } from "lucide-react";
 
 export default function AppLayout({ children }: { children: React.ReactNode }) {
   const [sidebarOpen, setSidebarOpen] = useState(false);
   const [collapsed, setCollapsed] = useState(false);
-  const [theme, setTheme] = useState<"dark" | "light">("dark");
+  const theme: "dark" | "light" = "dark";
   const pathname = usePathname();
   const recruiterTalentOpen = useRecruiterTalentPanelStore((s) => Boolean(s.talentPanel));
   const closeRecruiterTalentPanel = useRecruiterTalentPanelStore((s) => s.closeTalentPanel);
@@ -43,17 +43,9 @@ export default function AppLayout({ children }: { children: React.ReactNode }) {
 
   useEffect(() => {
     if (typeof window === "undefined") return;
-    const saved = window.localStorage.getItem("dashboard-theme");
-    if (saved === "light" || saved === "dark") {
-      setTheme(saved);
-    }
-  }, []);
-
-  useEffect(() => {
-    if (typeof window === "undefined") return;
-    window.localStorage.setItem("dashboard-theme", theme);
+    window.localStorage.setItem("dashboard-theme", "dark");
     window.dispatchEvent(new Event("dashboard-theme-change"));
-  }, [theme]);
+  }, []);
 
   return (
     <HydrationGate>
@@ -111,23 +103,8 @@ export default function AppLayout({ children }: { children: React.ReactNode }) {
                 {/* Left: (vide) */}
                 <div />
 
-                {/* Right: theme toggle + Retour au site */}
+                {/* Right: Retour au site */}
                 <div className="flex items-center gap-3">
-                  {/* Un seul icon selon le mode actif */}
-                  <button
-                    type="button"
-                    onClick={() => setTheme((prev) => (prev === "dark" ? "light" : "dark"))}
-                    className={`inline-flex items-center justify-center w-9 h-9 rounded-full transition-colors backdrop-blur-md ${
-                      theme === "light"
-                        ? "bg-[#E6E6E6]/70 text-tap-red border-t border-b border-tap-red/25 shadow-[0_0_0_1px_rgba(202,27,40,0.18),0_12px_35px_rgba(202,27,40,0.10)]"
-                        : "text-white/60 hover:text-white hover:bg-white/[0.10] border border-tap-red/25 border-t border-b shadow-[0_0_0_1px_rgba(202,27,40,0.22),0_12px_35px_rgba(202,27,40,0.14)]"
-                    }`}
-                    aria-label="Basculer mode clair/sombre"
-                    title={theme === "dark" ? "Passer en mode clair" : "Passer en mode sombre"}
-                  >
-                    {theme === "dark" ? <Sun size={16} /> : <Moon size={16} />}
-                  </button>
-
                   <Link
                     href="/"
                     className="btn-primary btn-sm gap-2 w-auto !py-1.5 !px-3 text-[12px]"
