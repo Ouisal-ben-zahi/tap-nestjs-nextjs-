@@ -201,7 +201,7 @@ export default function MesFichiersPage() {
             />
           ) : (
             <div className="grid grid-cols-1 gap-3">
-              {talentcardQuery.data.talentcardFiles.slice(0, 4).map((file, i) => (
+              {talentcardQuery.data.talentcardFiles.map((file, i) => (
                 <FileCard
                   key={i}
                   {...file}

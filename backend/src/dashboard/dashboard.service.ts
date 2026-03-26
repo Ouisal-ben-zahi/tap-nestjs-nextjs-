@@ -1369,10 +1369,10 @@ export class DashboardService {
     return { cvFiles };
   }
 
-  /** Talent Card TAP : uniquement les PDF dont le nom commence par talentcard et se termine par Tap.pdf */
+  /** Talent Cards: tous les PDF dont le nom contient "talentcard". */
   private isTalentcardTapPdfFileName(fileName: string): boolean {
     const n = fileName.trim().toLowerCase();
-    return n.startsWith('talentcard') && n.endsWith('tap.pdf');
+    return n.includes('talentcard') && n.endsWith('.pdf');
   }
 
   async getCandidateTalentcardFiles(

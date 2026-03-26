@@ -1,12 +1,14 @@
 "use client";
 
 import { useEffect, useState } from "react";
-import { useCandidatStats, useCandidatApplications } from "@/hooks/use-candidat";
+import Link from "next/link";
+import { useCandidatStats, useCandidatApplications, useCandidatTalentcardFiles } from "@/hooks/use-candidat";
 import StatusBadge from "@/components/ui/StatusBadge";
 import EmptyState from "@/components/ui/EmptyState";
 import ErrorState from "@/components/ui/ErrorState";
 import { StatCardSkeleton } from "@/components/ui/Skeleton";
 import { Skeleton } from "@/components/ui/Skeleton";
+import FileCard from "@/components/ui/FileCard";
 import {
   FileText,
   Calendar,
@@ -16,13 +18,14 @@ import {
   Bookmark,
   XCircle,
   TrendingUp,
+  Award,
 } from "lucide-react";
 import { formatRelative } from "@/lib/utils";
-import { useDashboardTheme } from "@/hooks/use-dashboard-theme";
 
 export default function CandidatDashboard() {
   const statsQuery = useCandidatStats();
   const appsQuery = useCandidatApplications();
+  const talentcardQuery = useCandidatTalentcardFiles();
   const [isMounted, setIsMounted] = useState(false);
   const [hoveredMonth, setHoveredMonth] = useState<string | null>(null);
 
@@ -32,6 +35,7 @@ export default function CandidatDashboard() {
 
   const stats = statsQuery.data;
   const allApps = appsQuery.data?.applications || [];
+  const talentCards = talentcardQuery.data?.talentcardFiles ?? [];
   const apps = [...allApps]
     .sort((a, b) => {
       const aTs = a.validatedAt ? new Date(a.validatedAt).getTime() : 0;
@@ -40,8 +44,7 @@ export default function CandidatDashboard() {
       return (b.id ?? 0) - (a.id ?? 0);
     })
     .slice(0, 5);
-  const theme = useDashboardTheme();
-  const isLight = theme === "light";
+  const isLight = false;
   const totalStatuses = (stats?.statusPending ?? 0) + (stats?.statusAccepted ?? 0) + (stats?.statusRefused ?? 0);
   const acceptanceRate =
     totalStatuses > 0 ? Math.round(((stats?.statusAccepted ?? 0) / totalStatuses) * 100) : 0;
@@ -165,7 +168,6 @@ export default function CandidatDashboard() {
       icon: FileText,
       iconClass: "text-red-500",
       badgeClass: "bg-red-500/10 border-red-500/20",
-      bgClassDark: "bg-[#CA1B28]/90",
     },
     {
       label: "Entretiens",
@@ -174,7 +176,6 @@ export default function CandidatDashboard() {
       icon: Calendar,
       iconClass: "text-blue-500",
       badgeClass: "bg-blue-500/10 border-blue-500/20",
-      bgClassDark: "bg-[#3b82f6]/85",
     },
     {
       label: "Offres sauvegardees",
@@ -183,7 +184,6 @@ export default function CandidatDashboard() {
       icon: Bookmark,
       iconClass: "text-cyan-500",
       badgeClass: "bg-cyan-500/10 border-cyan-500/20",
-      bgClassDark: "bg-[#06b6d4]/85",
     },
     {
       label: "Taux d'acceptation",
@@ -192,7 +192,6 @@ export default function CandidatDashboard() {
       icon: TrendingUp,
       iconClass: "text-emerald-500",
       badgeClass: "bg-emerald-500/10 border-emerald-500/20",
-      bgClassDark: "bg-[#10b981]/85",
     },
   ];
 
@@ -216,7 +215,7 @@ export default function CandidatDashboard() {
                         className={`group rounded-2xl p-5 relative overflow-hidden ${
                       isLight
                         ? "card-luxury-light"
-                        : `${card.bgClassDark} border border-white/10`
+                        : "bg-zinc-900/60 border border-white/[0.07]"
                     } transition-all duration-300 hover:-translate-y-0.5 ${
                       isLight
                         ? "hover:shadow-[0_12px_30px_rgba(0,0,0,0.18)]"
@@ -484,6 +483,42 @@ export default function CandidatDashboard() {
               </div>
             </div>
           </div>
+        </div>
+      )}
+
+      {!statsQuery.isLoading && !statsQuery.isError && (
+        <div className={`rounded-2xl p-6 ${isLight ? "card-luxury-light" : "bg-zinc-900/60 border border-white/[0.07]"}`}>
+          <div className="flex items-center justify-between gap-3 mb-4">
+            <h4 className={`text-[12px] uppercase tracking-[1.8px] font-semibold ${isLight ? "text-black/70" : "text-white/55"}`}>
+              Talent Cards
+            </h4>
+            <Link
+              href="/app/mes-fichiers"
+              className={`text-[11px] underline-offset-2 hover:underline ${isLight ? "text-black/55" : "text-white/40"}`}
+            >
+              Voir tous les fichiers
+            </Link>
+          </div>
+
+          {talentcardQuery.isLoading ? (
+            <div className="grid grid-cols-1 md:grid-cols-2 gap-3">
+              {Array.from({ length: 4 }).map((_, i) => <Skeleton key={i} className="h-20 w-full" />)}
+            </div>
+          ) : talentcardQuery.isError ? (
+            <ErrorState onRetry={() => talentcardQuery.refetch()} />
+          ) : talentCards.length === 0 ? (
+            <EmptyState
+              icon={<Award className="w-8 h-8" />}
+              title="Aucune Talent Card"
+              description="Vos Talent Cards apparaîtront ici après l'analyse de votre CV."
+            />
+          ) : (
+            <div className="grid grid-cols-1 md:grid-cols-2 gap-3">
+              {talentCards.map((file, i) => (
+                <FileCard key={i} {...file} variant="sidebar-active" />
+              ))}
+            </div>
+          )}
         </div>
       )}
 

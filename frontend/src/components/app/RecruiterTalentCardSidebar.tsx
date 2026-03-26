@@ -22,7 +22,14 @@ function pickSingleTalentcardFile(
   files: { publicUrl: string; updatedAt: string | null }[],
 ) {
   if (!files.length) return null;
-  return [...files].sort((a, b) => {
+  const tapFiles = files.filter((f) => {
+    const raw = String(f.publicUrl ?? "");
+    const withoutQuery = raw.split("?")[0] ?? raw;
+    const name = withoutQuery.split("/").pop() ?? "";
+    return name.toLowerCase().endsWith("tap.pdf");
+  });
+  const source = tapFiles.length ? tapFiles : files;
+  return [...source].sort((a, b) => {
     const ta = a.updatedAt ? new Date(a.updatedAt).getTime() : 0;
     const tb = b.updatedAt ? new Date(b.updatedAt).getTime() : 0;
     return tb - ta;

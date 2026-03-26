@@ -14,8 +14,7 @@ import { useRouter } from "next/navigation";
   Bell,
   Activity,
  } from "lucide-react";
-import { formatDateShort, formatRelative, statusBg } from "@/lib/utils";
- import { useDashboardTheme } from "@/hooks/use-dashboard-theme";
+import { formatRelative, statusBg } from "@/lib/utils";
 
 function getInitials(name: string | null | undefined) {
   const parts = String(name ?? "")
@@ -30,8 +29,7 @@ function getInitials(name: string | null | undefined) {
 export default function RecruteurDashboard() {
   const overviewQuery = useRecruteurOverview();
   const overview = overviewQuery.data;
-  const theme = useDashboardTheme();
-  const isLight = theme === "light";
+  const isLight = false;
   const router = useRouter();
 
   if (overviewQuery.isError) return <ErrorState onRetry={() => overviewQuery.refetch()} />;
@@ -54,7 +52,6 @@ export default function RecruteurDashboard() {
       icon: Briefcase,
       iconClass: "text-red-500",
       badgeClass: "bg-red-500/10 border-red-500/20",
-      bgClassDark: "bg-[#CA1B28]/90",
     },
     {
       label: "Candidats",
@@ -63,7 +60,6 @@ export default function RecruteurDashboard() {
       icon: Users,
       iconClass: "text-blue-500",
       badgeClass: "bg-blue-500/10 border-blue-500/20",
-      bgClassDark: "bg-[#3b82f6]/85",
     },
     {
       label: "Candidatures",
@@ -72,7 +68,6 @@ export default function RecruteurDashboard() {
       icon: FileText,
       iconClass: "text-green-500",
       badgeClass: "bg-green-500/10 border-green-500/20",
-      bgClassDark: "bg-[#10b981]/85",
     },
     {
       label: "Postes urgents",
@@ -81,7 +76,6 @@ export default function RecruteurDashboard() {
       icon: AlertTriangle,
       iconClass: "text-yellow-500",
       badgeClass: "bg-yellow-500/10 border-yellow-500/20",
-      bgClassDark: "bg-[#f59e0b]/85",
     },
   ];
 
@@ -104,7 +98,7 @@ export default function RecruteurDashboard() {
                   <div
                     key={card.label}
                     className={`group rounded-2xl p-5 relative overflow-hidden ${
-                      isLight ? "card-luxury-light" : `${card.bgClassDark} border border-white/10`
+                      isLight ? "card-luxury-light" : "bg-zinc-900/60 border border-white/[0.07]"
                     } transition-all duration-300 hover:-translate-y-0.5 ${
                       isLight
                         ? "hover:shadow-[0_12px_30px_rgba(0,0,0,0.18)]"
@@ -545,10 +539,10 @@ export default function RecruteurDashboard() {
                   {overview.recentApplications.slice(0, 5).map((app) => (
                     <div
                       key={app.id}
-                      className={`flex items-center justify-between gap-4 rounded-xl px-5 py-4 transition cursor-pointer ${
+                      className={`rounded-xl px-5 py-4 transition cursor-pointer ${
                         isLight
                           ? "card-luxury-light hover:border-tap-red/70"
-                          : "bg-zinc-900/50 border border-white/[0.06] hover:border-white/[0.1]"
+                          : "bg-zinc-900/50 border border-white/[0.06] hover:border-white/[0.14]"
                       }`}
                       role="button"
                       tabIndex={0}
@@ -561,10 +555,8 @@ export default function RecruteurDashboard() {
                       }}
                     >
                       <div className="grid grid-cols-12 items-center gap-4 w-full">
-                        {/* Gauche : candidat + offre */}
-                        <div className="col-span-12 sm:col-span-5 min-w-0">
-                        <div className="flex items-center gap-3 min-w-0">
-                          <div className="w-9 h-9 rounded-full overflow-hidden border border-white/[0.10] bg-white/[0.04] flex items-center justify-center shrink-0">
+                        <div className="col-span-12 sm:col-span-5 min-w-0 flex items-center gap-4">
+                          <div className="w-10 h-10 rounded-full overflow-hidden border border-white/[0.10] bg-white/[0.04] flex items-center justify-center shrink-0">
                             {app.candidateAvatarUrl ? (
                               <img
                                 src={app.candidateAvatarUrl}
@@ -572,7 +564,7 @@ export default function RecruteurDashboard() {
                                 className="w-full h-full object-cover"
                               />
                             ) : (
-                              <span className="text-[12px] font-semibold text-white/70">
+                              <span className={`text-[12px] font-semibold ${isLight ? "text-black/70" : "text-white/70"}`}>
                                 {getInitials(app.candidateName)}
                               </span>
                             )}
@@ -582,40 +574,32 @@ export default function RecruteurDashboard() {
                             <p className={`text-[14px] font-medium truncate ${isLight ? "text-black" : "text-white"}`}>
                               {app.candidateName}
                             </p>
-
-                            <div className="mt-1 flex items-center gap-2 flex-wrap">
-                              <span className="text-[12px] px-2 py-0.5 rounded-full bg-white/[0.04] border border-white/[0.08] text-white/45 truncate inline-block">
-                                {typeof app.candidateCategory === "string" && app.candidateCategory.trim()
-                                  ? app.candidateCategory
-                                  : "—"}
-                              </span>
-                              <span className={`text-[12px] ${isLight ? "text-black/70" : "text-white/40"} truncate`}>
-                                {app.jobTitle}
-                              </span>
-                            </div>
-                          </div>
-                        </div>
-                        </div>
-
-                        {/* Centre : date + status (aligné au centre) */}
-                        <div className="col-span-12 sm:col-span-4 text-center">
-                          <div className={`text-[11px] ${isLight ? "text-black/55" : "text-white/40"} truncate`}>
-                            {app.validatedAt ? formatDateShort(app.validatedAt) : "—"}
-                          </div>
-                          <div className="mt-2 inline-flex justify-center">
-                            <span
-                              className={`text-[11px] px-2.5 py-1 rounded-full border font-medium ${
-                                statusBg(app.status ?? "Inconnu")
-                              }`}
-                            >
-                              {app.status ?? "Inconnu"}
-                            </span>
                           </div>
                         </div>
 
-                        {/* Droite : CTA */}
-                        <div className="col-span-12 sm:col-span-3 flex justify-end">
-                          <span className={`text-[11px] ${isLight ? "text-black/55" : "text-white/40"}`}>Voir l'offre</span>
+                        <div className="col-span-6 sm:col-span-3 text-center">
+                          <span className={`text-[12px] ${isLight ? "text-black/70" : "text-white/45"} truncate inline-block`}>
+                            {app.jobTitle ?? "—"}
+                          </span>
+                        </div>
+
+                        <div className="col-span-6 sm:col-span-2 text-center">
+                          <span
+                            className={`text-[11px] px-2.5 py-1 rounded-full border font-medium inline-flex ${statusBg(
+                              app.status ?? "Inconnu",
+                            )}`}
+                          >
+                            {app.status ?? "Inconnu"}
+                          </span>
+                        </div>
+
+                        <div className="col-span-12 sm:col-span-2">
+                          <div className="flex items-center justify-center sm:justify-end gap-2">
+                            <p className={`text-[11px] ${isLight ? "text-black/55" : "text-white/35"}`}>
+                              {app.validatedAt ? formatRelative(app.validatedAt) : "—"}
+                            </p>
+                            <span className={`text-[11px] ${isLight ? "text-black/55" : "text-white/35"}`}>Voir l&apos;offre</span>
+                          </div>
                         </div>
                       </div>
                     </div>

@@ -81,4 +81,3 @@ export interface CandidateProfile {
   resume_bref: string | null;
   type_contrat: string | null;
 }
-

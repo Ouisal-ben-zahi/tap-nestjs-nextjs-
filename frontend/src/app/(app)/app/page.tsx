@@ -23,7 +23,6 @@ import {
   Zap,
 } from "lucide-react";
 import type { LucideIcon } from "lucide-react";
-import { useDashboardTheme } from "@/hooks/use-dashboard-theme";
 
 interface Feature {
   href: string;
@@ -70,8 +69,13 @@ export default function DashboardPage() {
     (isRecruteur ? recruiterFullName : candidateFullName) ||
     user?.email?.split("@")[0] ||
     "";
-  const theme = useDashboardTheme();
-  const isLight = theme === "light";
+  const isLight = false;
+
+  useEffect(() => {
+    if (typeof window === "undefined") return;
+    window.localStorage.setItem("dashboard-theme", "dark");
+    window.dispatchEvent(new Event("dashboard-theme-change"));
+  }, []);
 
   // Si candidat connecté mais aucun profil candidat en base, rediriger vers onboarding
   useEffect(() => {
