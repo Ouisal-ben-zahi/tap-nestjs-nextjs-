@@ -3452,7 +3452,6 @@ export class DashboardService {
       .select(
         'id, title, categorie_profil, created_at, urgent, location_type, niveau_attendu, experience_min, presence_sur_site, reason, main_mission, tasks_other, disponibilite, salary_min, salary_max, contrat, niveau_seniorite, entreprise, phone, tasks, skills, languages, status',
       )
-      .eq('status', 'ACTIVE')
       .order('created_at', { ascending: false });
 
     if (error) {

@@ -1,14 +1,11 @@
 "use client";
 
 import { useEffect, useState } from "react";
-import Link from "next/link";
-import { useCandidatStats, useCandidatApplications, useCandidatTalentcardFiles } from "@/hooks/use-candidat";
-import StatusBadge from "@/components/ui/StatusBadge";
+import { useCandidatStats, useCandidatApplications } from "@/hooks/use-candidat";
 import EmptyState from "@/components/ui/EmptyState";
 import ErrorState from "@/components/ui/ErrorState";
 import { StatCardSkeleton } from "@/components/ui/Skeleton";
 import { Skeleton } from "@/components/ui/Skeleton";
-import FileCard from "@/components/ui/FileCard";
 import {
   FileText,
   Calendar,
@@ -18,14 +15,12 @@ import {
   Bookmark,
   XCircle,
   TrendingUp,
-  Award,
 } from "lucide-react";
 import { formatRelative } from "@/lib/utils";
 
 export default function CandidatDashboard() {
   const statsQuery = useCandidatStats();
   const appsQuery = useCandidatApplications();
-  const talentcardQuery = useCandidatTalentcardFiles();
   const [isMounted, setIsMounted] = useState(false);
   const [hoveredMonth, setHoveredMonth] = useState<string | null>(null);
 
@@ -35,15 +30,6 @@ export default function CandidatDashboard() {
 
   const stats = statsQuery.data;
   const allApps = appsQuery.data?.applications || [];
-  const talentCards = talentcardQuery.data?.talentcardFiles ?? [];
-  const apps = [...allApps]
-    .sort((a, b) => {
-      const aTs = a.validatedAt ? new Date(a.validatedAt).getTime() : 0;
-      const bTs = b.validatedAt ? new Date(b.validatedAt).getTime() : 0;
-      if (bTs !== aTs) return bTs - aTs;
-      return (b.id ?? 0) - (a.id ?? 0);
-    })
-    .slice(0, 5);
   const isLight = false;
   const totalStatuses = (stats?.statusPending ?? 0) + (stats?.statusAccepted ?? 0) + (stats?.statusRefused ?? 0);
   const acceptanceRate =
@@ -487,42 +473,6 @@ export default function CandidatDashboard() {
       )}
 
       {!statsQuery.isLoading && !statsQuery.isError && (
-        <div className={`rounded-2xl p-6 ${isLight ? "card-luxury-light" : "bg-zinc-900/60 border border-white/[0.07]"}`}>
-          <div className="flex items-center justify-between gap-3 mb-4">
-            <h4 className={`text-[12px] uppercase tracking-[1.8px] font-semibold ${isLight ? "text-black/70" : "text-white/55"}`}>
-              Talent Cards
-            </h4>
-            <Link
-              href="/app/mes-fichiers"
-              className={`text-[11px] underline-offset-2 hover:underline ${isLight ? "text-black/55" : "text-white/40"}`}
-            >
-              Voir tous les fichiers
-            </Link>
-          </div>
-
-          {talentcardQuery.isLoading ? (
-            <div className="grid grid-cols-1 md:grid-cols-2 gap-3">
-              {Array.from({ length: 4 }).map((_, i) => <Skeleton key={i} className="h-20 w-full" />)}
-            </div>
-          ) : talentcardQuery.isError ? (
-            <ErrorState onRetry={() => talentcardQuery.refetch()} />
-          ) : talentCards.length === 0 ? (
-            <EmptyState
-              icon={<Award className="w-8 h-8" />}
-              title="Aucune Talent Card"
-              description="Vos Talent Cards apparaîtront ici après l'analyse de votre CV."
-            />
-          ) : (
-            <div className="grid grid-cols-1 md:grid-cols-2 gap-3">
-              {talentCards.map((file, i) => (
-                <FileCard key={i} {...file} variant="sidebar-active" />
-              ))}
-            </div>
-          )}
-        </div>
-      )}
-
-      {!statsQuery.isLoading && !statsQuery.isError && (
         <div className="grid grid-cols-1 xl:grid-cols-3 gap-6">
           <div className={`xl:col-span-2 rounded-2xl p-6 ${isLight ? "card-luxury-light" : "bg-zinc-900/60 border border-white/[0.07]"}`}>
             <div className="flex items-center justify-between gap-3 mb-4">
@@ -596,56 +546,7 @@ export default function CandidatDashboard() {
         </div>
       )}
 
-      {!statsQuery.isLoading && !statsQuery.isError && (
-        <div className={`rounded-2xl p-6 ${isLight ? "card-luxury-light" : "bg-zinc-900/60 border border-white/[0.07]"}`}>
-          <div className="flex items-center justify-between gap-3 mb-3">
-            <h4 className={`text-[12px] uppercase tracking-[1.8px] font-semibold ${isLight ? "text-black/70" : "text-white/55"}`}>
-              Candidatures recentes
-            </h4>
-            <span className={`text-[11px] ${isLight ? "text-black/55" : "text-white/40"}`}>Top 5</span>
-          </div>
-
-          {appsQuery.isLoading ? (
-            <div className="grid grid-cols-1 md:grid-cols-2 gap-3">
-              {Array.from({ length: 4 }).map((_, i) => <Skeleton key={i} className="h-20 w-full" />)}
-            </div>
-          ) : appsQuery.isError ? (
-            <ErrorState onRetry={() => appsQuery.refetch()} />
-          ) : apps.length === 0 ? (
-            <EmptyState
-              icon={<FileText className="w-8 h-8" />}
-              title="Aucune candidature"
-              description="Vos candidatures apparaîtront ici une fois que vous aurez postulé."
-            />
-          ) : (
-            <div className="grid grid-cols-1 md:grid-cols-2 gap-3">
-              {apps.map((app) => (
-                <div
-                  key={app.id}
-                  className={`rounded-xl px-4 py-3 transition ${
-                    isLight
-                      ? "bg-black/[0.02] border border-black/10 hover:border-black/20"
-                      : "bg-white/[0.02] border border-white/[0.08] hover:border-white/[0.16]"
-                  }`}
-                >
-                  <p className={`text-[13px] font-medium truncate ${isLight ? "text-black" : "text-white"}`}>
-                    {app.jobTitle ?? "Offre sans titre"}
-                  </p>
-                  <p className={`text-[11px] mt-0.5 ${isLight ? "text-black/65" : "text-white/42"}`}>{app.company}</p>
-                  <div className="flex items-center justify-between gap-2 mt-3">
-                    <StatusBadge status={app.status ?? "Inconnu"} />
-                    {app.validatedAt && (
-                      <span className={`text-[11px] ${isLight ? "text-black/60" : "text-white/35"}`}>
-                        {formatRelative(app.validatedAt)}
-                      </span>
-                    )}
-                  </div>
-                </div>
-              ))}
-            </div>
-          )}
-        </div>
-      )}
+      {/* Carte “Talent Cards” et “Candidatures récentes” supprimées */}
 
     </div>
   );

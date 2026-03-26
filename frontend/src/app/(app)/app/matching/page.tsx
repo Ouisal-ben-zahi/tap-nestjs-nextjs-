@@ -18,12 +18,20 @@ export default function MatchingPage() {
   const [showAllOffers, setShowAllOffers] = useState(false);
   const statsQuery = useCandidatStats(enabled);
   const jobsQuery = useCandidatMatchingJobs(enabled);
-  const publicJobsQuery = useCandidatPublicJobs(enabled && showAllOffers);
+  const publicJobsQuery = useCandidatPublicJobs(enabled);
   const theme = useDashboardTheme();
   const isLight = theme === "light";
 
   const stats = statsQuery.data;
   const hasProfile = stats?.candidateId !== null && stats?.candidateId !== undefined;
+  const matchingJobs = jobsQuery.data?.jobs ?? [];
+  const allJobs = publicJobsQuery.data?.jobs ?? [];
+  const usingFallbackAllJobs = !showAllOffers && matchingJobs.length === 0 && allJobs.length > 0;
+  const displayedJobs = showAllOffers
+    ? allJobs
+    : matchingJobs.length > 0
+      ? matchingJobs
+      : allJobs;
 
   const [isMounted, setIsMounted] = useState(false);
   useEffect(() => {
@@ -214,32 +222,45 @@ export default function MatchingPage() {
                 <SlidersHorizontal size={13} />
                 {showAllOffers ? "Toutes" : "Matching"}
               </button>
-              {(showAllOffers ? publicJobsQuery.data?.jobs?.length : jobsQuery.data?.jobs?.length) ? (
+              {displayedJobs.length ? (
                 <span className="text-[11px] text-emerald-500/70 font-medium">
                   {showAllOffers
-                    ? `${publicJobsQuery.data?.jobs?.length ?? 0} offre${(publicJobsQuery.data?.jobs?.length ?? 0) > 1 ? "s" : ""}`
-                    : `${jobsQuery.data?.jobs?.length ?? 0} offre${(jobsQuery.data?.jobs?.length ?? 0) > 1 ? "s" : ""} matchée${(jobsQuery.data?.jobs?.length ?? 0) > 1 ? "s" : ""}`}
+                    ? `${displayedJobs.length} offre${displayedJobs.length > 1 ? "s" : ""}`
+                    : usingFallbackAllJobs
+                      ? `${displayedJobs.length} offre${displayedJobs.length > 1 ? "s" : ""} (fallback)`
+                      : `${displayedJobs.length} offre${displayedJobs.length > 1 ? "s" : ""} matchée${displayedJobs.length > 1 ? "s" : ""}`}
                 </span>
               ) : null}
             </div>
           </div>
 
-          {(showAllOffers ? publicJobsQuery.isLoading : jobsQuery.isLoading) ? (
+          {(showAllOffers
+            ? publicJobsQuery.isLoading
+            : jobsQuery.isLoading || (matchingJobs.length === 0 && publicJobsQuery.isLoading)) ? (
             <div className="space-y-3">
               {Array.from({ length: 4 }).map((_, i) => (
                 <Skeleton key={i} className="h-20 w-full" />
               ))}
             </div>
-          ) : (showAllOffers ? publicJobsQuery.isError : jobsQuery.isError) ? (
+          ) : (showAllOffers
+            ? publicJobsQuery.isError
+            : jobsQuery.isError && publicJobsQuery.isError) ? (
             <ErrorState
-              onRetry={() => (showAllOffers ? publicJobsQuery.refetch() : jobsQuery.refetch())}
+              onRetry={() => {
+                if (showAllOffers) {
+                  publicJobsQuery.refetch();
+                  return;
+                }
+                jobsQuery.refetch();
+                publicJobsQuery.refetch();
+              }}
               message={String(
                 ((showAllOffers ? publicJobsQuery.error : jobsQuery.error) as any)?.response?.data?.message ??
                   ((showAllOffers ? publicJobsQuery.error : jobsQuery.error) as any)?.message ??
                   "Une erreur est survenue",
               )}
             />
-          ) : !(showAllOffers ? publicJobsQuery.data?.jobs?.length : jobsQuery.data?.jobs?.length) ? (
+          ) : !displayedJobs.length ? (
             <EmptyState
               icon={<Sparkles className="w-10 h-10" />}
               title={showAllOffers ? "Aucune offre pour l'instant" : "Aucune offre matchée pour l'instant"}
@@ -251,7 +272,7 @@ export default function MatchingPage() {
             />
           ) : (
             <div className="space-y-3">
-              {(showAllOffers ? publicJobsQuery.data?.jobs ?? [] : jobsQuery.data?.jobs ?? []).map((job) => {
+              {displayedJobs.map((job) => {
                 const localisation =
                   typeof job.location_type === "string" && job.location_type.trim()
                     ? job.location_type
