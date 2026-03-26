@@ -16,6 +16,12 @@ export default function MatchingPage() {
   const { isCandidat, isHydrated } = useAuth();
   const enabled = Boolean(isCandidat && isHydrated);
   const [showAllOffers, setShowAllOffers] = useState(false);
+  const [filtersOpen, setFiltersOpen] = useState(false);
+  const [nameQuery, setNameQuery] = useState("");
+  const [dateFrom, setDateFrom] = useState("");
+  const [dateTo, setDateTo] = useState("");
+  const [countryQuery, setCountryQuery] = useState("all");
+  const [cityQuery, setCityQuery] = useState("all");
   const statsQuery = useCandidatStats(enabled);
   const jobsQuery = useCandidatMatchingJobs(enabled);
   const publicJobsQuery = useCandidatPublicJobs(enabled);
@@ -32,6 +38,62 @@ export default function MatchingPage() {
     : matchingJobs.length > 0
       ? matchingJobs
       : allJobs;
+
+  const parseCountryCity = (value: string | null | undefined) => {
+    const raw = String(value ?? "").trim();
+    if (!raw) return { city: "", country: "" };
+    const parts = raw.split(",").map((p) => p.trim()).filter(Boolean);
+    if (parts.length >= 2) {
+      return { city: parts[0] ?? "", country: parts[parts.length - 1] ?? "" };
+    }
+    return { city: raw, country: "" };
+  };
+
+  const countries = Array.from(
+    new Set(
+      displayedJobs
+        .map((j) => parseCountryCity(j.localisation).country)
+        .filter((v): v is string => typeof v === "string" && v.length > 0),
+    ),
+  );
+
+  const cities = Array.from(
+    new Set(
+      displayedJobs
+        .map((j) => parseCountryCity(j.localisation))
+        .filter((loc) => (countryQuery === "all" ? true : loc.country === countryQuery))
+        .map((loc) => loc.city)
+        .filter((v): v is string => typeof v === "string" && v.length > 0),
+    ),
+  );
+
+  const filteredJobs = displayedJobs.filter((job) => {
+    const q = nameQuery.trim().toLowerCase();
+    if (q) {
+      const title = String(job.title ?? "").toLowerCase();
+      if (!title.includes(q)) return false;
+    }
+
+    if (dateFrom || dateTo) {
+      if (!job.created_at) return false;
+      const ts = new Date(job.created_at).getTime();
+      if (Number.isNaN(ts)) return false;
+      if (dateFrom) {
+        const fromTs = new Date(`${dateFrom}T00:00:00`).getTime();
+        if (ts < fromTs) return false;
+      }
+      if (dateTo) {
+        const toTs = new Date(`${dateTo}T23:59:59`).getTime();
+        if (ts > toTs) return false;
+      }
+    }
+
+    const { city, country } = parseCountryCity(job.localisation);
+    if (countryQuery !== "all" && country !== countryQuery) return false;
+    if (cityQuery !== "all" && city !== cityQuery) return false;
+
+    return true;
+  });
 
   const [isMounted, setIsMounted] = useState(false);
   useEffect(() => {
@@ -209,6 +271,19 @@ export default function MatchingPage() {
             <div className="flex items-center gap-3">
               <button
                 type="button"
+                onClick={() => setFiltersOpen((v) => !v)}
+                className={`inline-flex items-center justify-center w-9 h-9 rounded-lg border transition ${
+                  isLight
+                    ? "border-black/15 text-black/60 hover:bg-black/5"
+                    : "border-white/[0.12] text-white/50 hover:bg-white/[0.05]"
+                }`}
+                title="Filtres"
+                aria-label="Afficher les filtres"
+              >
+                <SlidersHorizontal size={14} />
+              </button>
+              <button
+                type="button"
                 onClick={() => setShowAllOffers((v) => !v)}
                 className={`inline-flex items-center gap-1.5 px-2.5 py-1.5 rounded-lg border text-[11px] transition ${
                   showAllOffers
@@ -233,6 +308,103 @@ export default function MatchingPage() {
               ) : null}
             </div>
           </div>
+
+          {filtersOpen && (
+            <div className="mb-5 rounded-2xl border border-white/[0.08] bg-[#050505]/95 shadow-lg backdrop-blur-xl p-4">
+              <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-3">
+                <div className="flex flex-col gap-1 lg:col-span-4">
+                  <label className="block text-[10px] font-semibold uppercase tracking-[2px] text-white/40 mb-1">
+                    Recherche par nom
+                  </label>
+                  <input
+                    value={nameQuery}
+                    onChange={(e) => setNameQuery(e.target.value)}
+                    className="input-premium h-9 rounded-xl border border-white/[0.08] bg-white/[0.03] hover:bg-white/[0.06] px-3 text-[12px] text-white/80 outline-none focus:border-white/[0.18]"
+                    placeholder="Ex: Développeur"
+                  />
+                </div>
+
+                <div className="flex flex-col gap-1 lg:col-span-1">
+                  <label className="block text-[10px] font-semibold uppercase tracking-[2px] text-white/40 mb-1">
+                    Date (de)
+                  </label>
+                  <input
+                    type="date"
+                    value={dateFrom}
+                    onChange={(e) => setDateFrom(e.target.value)}
+                    className="input-premium h-9 rounded-xl border border-white/[0.08] bg-white/[0.03] hover:bg-white/[0.06] px-3 text-[12px] text-white/80 outline-none focus:border-white/[0.18]"
+                  />
+                </div>
+
+                <div className="flex flex-col gap-1 lg:col-span-1">
+                  <label className="block text-[10px] font-semibold uppercase tracking-[2px] text-white/40 mb-1">
+                    Date (à)
+                  </label>
+                  <input
+                    type="date"
+                    value={dateTo}
+                    onChange={(e) => setDateTo(e.target.value)}
+                    className="input-premium h-9 rounded-xl border border-white/[0.08] bg-white/[0.03] hover:bg-white/[0.06] px-3 text-[12px] text-white/80 outline-none focus:border-white/[0.18]"
+                  />
+                </div>
+
+                <div className="flex flex-col gap-1 lg:col-span-1">
+                  <label className="block text-[10px] font-semibold uppercase tracking-[2px] text-white/40 mb-1">
+                    Pays
+                  </label>
+                  <select
+                    value={countryQuery}
+                    onChange={(e) => {
+                      setCountryQuery(e.target.value);
+                      setCityQuery("all");
+                    }}
+                    className="input-premium h-9 rounded-xl border border-white/[0.08] bg-white/[0.03] hover:bg-white/[0.06] px-3 text-[12px] text-white/80 outline-none focus:border-white/[0.18]"
+                  >
+                    <option value="all">Tous</option>
+                    {countries.map((c) => (
+                      <option key={c} value={c}>
+                        {c}
+                      </option>
+                    ))}
+                  </select>
+                </div>
+
+                <div className="flex flex-col gap-1 lg:col-span-1">
+                  <label className="block text-[10px] font-semibold uppercase tracking-[2px] text-white/40 mb-1">
+                    Ville
+                  </label>
+                  <select
+                    value={cityQuery}
+                    onChange={(e) => setCityQuery(e.target.value)}
+                    className="input-premium h-9 rounded-xl border border-white/[0.08] bg-white/[0.03] hover:bg-white/[0.06] px-3 text-[12px] text-white/80 outline-none focus:border-white/[0.18]"
+                  >
+                    <option value="all">Toutes</option>
+                    {cities.map((c) => (
+                      <option key={c} value={c}>
+                        {c}
+                      </option>
+                    ))}
+                  </select>
+                </div>
+              </div>
+
+              <div className="mt-4 flex items-center justify-end">
+                <button
+                  type="button"
+                  onClick={() => {
+                    setNameQuery("");
+                    setDateFrom("");
+                    setDateTo("");
+                    setCountryQuery("all");
+                    setCityQuery("all");
+                  }}
+                  className="text-[12px] text-white/60 hover:text-white underline underline-offset-2"
+                >
+                  Réinitialiser
+                </button>
+              </div>
+            </div>
+          )}
 
           {(showAllOffers
             ? publicJobsQuery.isLoading
@@ -260,22 +432,24 @@ export default function MatchingPage() {
                   "Une erreur est survenue",
               )}
             />
-          ) : !displayedJobs.length ? (
+          ) : !filteredJobs.length ? (
             <EmptyState
               icon={<Sparkles className="w-10 h-10" />}
               title={showAllOffers ? "Aucune offre pour l'instant" : "Aucune offre matchée pour l'instant"}
               description={
-                showAllOffers
-                  ? "Aucune offre active n'est disponible pour le moment."
-                  : "L'IA n'a pas encore trouvé d'offres suffisamment proches de votre profil. Revenez bientôt."
+                displayedJobs.length > 0
+                  ? "Aucune offre ne correspond aux filtres sélectionnés."
+                  : showAllOffers
+                    ? "Aucune offre n'est disponible pour le moment."
+                    : "L'IA n'a pas encore trouvé d'offres suffisamment proches de votre profil. Revenez bientôt."
               }
             />
           ) : (
             <div className="space-y-3">
-              {displayedJobs.map((job) => {
+              {filteredJobs.map((job) => {
                 const localisation =
-                  typeof job.location_type === "string" && job.location_type.trim()
-                    ? job.location_type
+                  typeof job.localisation === "string" && job.localisation.trim()
+                    ? job.localisation
                     : null;
                 const scorePct = Math.round((job.score ?? 0) * 100);
                 const scoreColor =
@@ -339,7 +513,6 @@ export default function MatchingPage() {
                           }}
                           className="btn-primary !py-1.5 !px-3 text-[12px] gap-1"
                         >
-                          <Briefcase size={12} />
                           Postuler
                         </button>
                       </div>

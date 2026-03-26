@@ -1,6 +1,6 @@
 import api from '@/lib/api';
 import type { RecruteurOverview, Job, JobPayload } from '@/types/recruteur';
-import type { CandidateCvFileItem, PortfolioPdfFile } from '@/types/candidat';
+import type { CvFile, PortfolioPdfFile } from '@/types/candidat';
 
 export type MatchedCandidate = {
   candidate_id: number | null;
@@ -72,7 +72,7 @@ export const recruteurService = {
 
   getCandidatePortfolioPdfFiles: (candidateId: number) =>
     api
-      .get<{ portfolioShort: CandidateCvFileItem[]; portfolioLong: CandidateCvFileItem[] }>(
+      .get<{ portfolioShort: CvFile[]; portfolioLong: CvFile[] }>(
         `/dashboard/candidat-id/${candidateId}/portfolio-pdf-files`,
       )
       .then((r) => {

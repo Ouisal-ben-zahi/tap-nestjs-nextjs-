@@ -29,12 +29,9 @@ export function useRecruiterCandidatePortfolioPdfFiles(
   candidateId: number | null,
   enabled = true,
 ) {
-  return useQuery({
+  return useQuery<{ portfolioPdfFiles: PortfolioPdfFile[] }>({
     queryKey: ['recruteur', 'candidate-portfolio-pdf-files', candidateId],
-    queryFn: () =>
-      recruteurService.getCandidatePortfolioPdfFiles(candidateId as number) as {
-        portfolioPdfFiles: PortfolioPdfFile[];
-      },
+    queryFn: () => recruteurService.getCandidatePortfolioPdfFiles(candidateId as number),
     enabled: Boolean(enabled && candidateId != null && candidateId > 0),
   });
 }
