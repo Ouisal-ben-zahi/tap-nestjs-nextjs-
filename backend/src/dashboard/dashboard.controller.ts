@@ -303,6 +303,17 @@ export class DashboardController {
     return this.dashboardService.getRecruiterCandidateTalentcardFiles(userId, id);
   }
 
+  @Get('recruteur/candidats/:candidateId/basic-profile')
+  @UseGuards(AuthGuard('jwt'))
+  async getRecruiterCandidateBasicProfileByJwt(
+    @Req() req: any,
+    @Param('candidateId') candidateId: string,
+  ) {
+    const userId = await this.dashboardService.resolveJwtUserId(req?.user);
+    const id = Number.parseInt(candidateId, 10);
+    return this.dashboardService.getRecruiterCandidateBasicProfile(userId, id);
+  }
+
   @Post('recruteur/jobs/:jobId/status')
   @UseGuards(AuthGuard('jwt'))
   async updateRecruiterJobStatusByJwt(

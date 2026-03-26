@@ -1635,6 +1635,53 @@ export class DashboardService {
     return this.getCandidateTalentcardFilesByCandidateId(candidateId);
   }
 
+  async getRecruiterCandidateBasicProfile(
+    recruiterUserId: number,
+    candidateId: number,
+  ): Promise<{
+    candidateId: number;
+    nom: string | null;
+    prenom: string | null;
+    pays: string | null;
+    ville: string | null;
+  }> {
+    if (!recruiterUserId || Number.isNaN(recruiterUserId)) {
+      throw new BadRequestException('userId invalide');
+    }
+    if (!candidateId || Number.isNaN(candidateId)) {
+      throw new BadRequestException('candidateId invalide');
+    }
+
+    await this.assertRecruiterHasCandidateApplication(
+      recruiterUserId,
+      candidateId,
+    );
+
+    const { data, error } = await this.supabase
+      .from('candidates')
+      .select('id, nom, prenom, pays, ville')
+      .eq('id', candidateId)
+      .limit(1)
+      .maybeSingle();
+
+    if (error) {
+      throw new BadRequestException(
+        error.message || 'Erreur lors du chargement du profil candidat',
+      );
+    }
+    if (!data?.id) {
+      throw new BadRequestException('Candidat introuvable');
+    }
+
+    return {
+      candidateId: Number(data.id),
+      nom: (data.nom as string | null) ?? null,
+      prenom: (data.prenom as string | null) ?? null,
+      pays: (data.pays as string | null) ?? null,
+      ville: (data.ville as string | null) ?? null,
+    };
+  }
+
   async getCandidatePortfolioPdfFiles(
     userId: number,
   ): Promise<CandidatePortfolioPdfFiles> {

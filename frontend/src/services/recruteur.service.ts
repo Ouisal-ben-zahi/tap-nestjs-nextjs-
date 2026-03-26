@@ -59,6 +59,14 @@ export type RecruiterTalentcardFile = {
   size: number | null;
 };
 
+export type RecruiterCandidateBasicProfile = {
+  candidateId: number;
+  nom: string | null;
+  prenom: string | null;
+  pays: string | null;
+  ville: string | null;
+};
+
 export const recruteurService = {
   getOverview: () =>
     api.get<RecruteurOverview>('/dashboard/recruteur/overview').then((r) => r.data),
@@ -86,6 +94,13 @@ export const recruteurService = {
         }));
         return { portfolioPdfFiles: [...short, ...long] };
       }),
+
+  getCandidateBasicProfile: (candidateId: number) =>
+    api
+      .get<RecruiterCandidateBasicProfile>(
+        `/dashboard/recruteur/candidats/${candidateId}/basic-profile`,
+      )
+      .then((r) => r.data),
 
   getJobs: () =>
     api.get<{ jobs: Job[] }>('/dashboard/recruteur/jobs').then((r) => r.data),

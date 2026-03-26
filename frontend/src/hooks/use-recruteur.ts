@@ -36,6 +36,17 @@ export function useRecruiterCandidatePortfolioPdfFiles(
   });
 }
 
+export function useRecruiterCandidateBasicProfile(
+  candidateId: number | null,
+  enabled = true,
+) {
+  return useQuery({
+    queryKey: ['recruteur', 'candidate-basic-profile', candidateId],
+    queryFn: () => recruteurService.getCandidateBasicProfile(candidateId as number),
+    enabled: Boolean(enabled && candidateId != null && candidateId > 0),
+  });
+}
+
 export function useRecruteurJobs() {
   return useQuery({
     queryKey: ['recruteur', 'jobs'],

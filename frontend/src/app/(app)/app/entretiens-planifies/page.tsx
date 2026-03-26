@@ -312,7 +312,7 @@ export default function EntretiensPlanifiesPage() {
                     {/* Col action */}
                     <div className="col-span-12 sm:col-span-3 text-center sm:text-right flex justify-center sm:justify-end">
                       <Link
-                        href={`/app/candidats?jobId=${app.jobId ?? ""}`}
+                        href={`/app/entretiens-planifies/planifier?jobId=${app.jobId ?? ""}&candidateId=${app.candidateId ?? ""}&candidateName=${encodeURIComponent(app.candidateName ?? "")}&jobTitle=${encodeURIComponent(app.jobTitle ?? "")}`}
                         className="btn-primary btn-sm w-full justify-center whitespace-nowrap"
                         aria-label="Planifier un entretien"
                         title="Planifier un entretien"
