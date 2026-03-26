@@ -160,6 +160,44 @@ def transform_talent_card_data_for_template(
     Transforme les données talent card (DB ou JSON) en format attendu par le template Jinja2.
     """
     c = talent_card_data
+
+    # Normaliser les langues en liste de chaînes affichables pour le template.
+    raw_languages = (
+        c.get("langues_parlees")
+        or c.get("languages")
+        or c.get("langues")
+        or []
+    )
+    if isinstance(raw_languages, str):
+        stripped = raw_languages.strip()
+        if stripped.startswith("[") and stripped.endswith("]"):
+            try:
+                parsed_lang = json.loads(stripped)
+                raw_languages = parsed_lang if isinstance(parsed_lang, list) else [stripped]
+            except Exception:
+                raw_languages = [x.strip() for x in stripped.split(",") if x and x.strip()]
+        else:
+            raw_languages = [x.strip() for x in stripped.split(",") if x and x.strip()]
+
+    normalized_languages = []
+    for item in (raw_languages if isinstance(raw_languages, list) else []):
+        if isinstance(item, dict):
+            name = (
+                item.get("langue")
+                or item.get("nom")
+                or item.get("name")
+                or item.get("language")
+                or ""
+            )
+            level = item.get("niveau") or item.get("level") or ""
+            label = f"{str(name).strip()}: {str(level).strip()}".strip(": ").strip()
+            if label:
+                normalized_languages.append(label)
+        else:
+            label = str(item).strip()
+            if label:
+                normalized_languages.append(label)
+
     candidate = {
         "nom": c.get("nom", "") or "",
         "prenom": c.get("prenom", "") or "",
@@ -183,6 +221,7 @@ def transform_talent_card_data_for_template(
         "niveau_seniorite": (c.get("niveau_seniorite") or c.get("niveau de seniorite") or "").strip() or "",
         "pays_cible": (c.get("pays_cible") or c.get("target_country") or c.get("pays cible") or "").strip() or "",
         "salaire_minimum": (c.get("salaire_minimum") or "").strip() or "",
+        "langues_parlees": normalized_languages,
     }
     return {"candidate": candidate}
 
@@ -237,7 +276,24 @@ def get_template_path(template_name: str) -> Optional[str]:
             ),
             "frontend",
             "src",
+            "20260312_044613",
+            template_name,
+        ),
+        os.path.join(
+            os.path.dirname(
+                os.path.dirname(os.path.dirname(os.path.abspath(__file__))),
+            ),
+            "frontend",
+            "src",
             "talent card html",
+            template_name,
+        ),
+        os.path.join(
+            os.path.dirname(os.path.dirname(os.path.abspath(__file__))),
+            "..",
+            "frontend",
+            "src",
+            "20260312_044613",
             template_name,
         ),
         os.path.join(
@@ -248,18 +304,21 @@ def get_template_path(template_name: str) -> Optional[str]:
             "talent card html",
             template_name,
         ),
+        "/app/frontend/src/20260312_044613/" + template_name,
+        "/frontend/src/20260312_044613/" + template_name,
+        os.path.join(os.getcwd(), "frontend", "src", "20260312_044613", template_name),
         "/app/frontend/src/talent card html/" + template_name,
         "/frontend/src/talent card html/" + template_name,
-        os.path.join(os.getcwd(), "frontend", "src", "talent card html", template_name),
+        os.path.join(os.getcwd(), "frontend", "src", "20260312_044613", template_name),
         # Depuis le backend (si le frontend est monté)
         os.path.join(os.path.dirname(os.path.dirname(os.path.dirname(os.path.abspath(__file__)))), 
-                     "frontend", "src", "20260312_044613", template_name),
+                     "frontend", "src", "templates_modif", template_name),
         # Depuis le conteneur Docker
-        f"/app/frontend/src/20260312_044613/{template_name}",
+        f"/app/frontend/src/templates_modif/{template_name}",
         # Depuis le volume monté
-        f"/frontend/src/20260312_044613/{template_name}",
+        f"/frontend/src/templates_modif/{template_name}",
         # Depuis le répertoire courant
-        os.path.join(os.path.dirname(__file__), "..", "..", "frontend", "src", "20260312_044613", template_name),
+        os.path.join(os.path.dirname(__file__), "..", "..", "frontend", "src", "templates_modif", template_name),
     ]
     
     for path in possible_paths:
@@ -532,27 +591,18 @@ def convert_talent_card_html_to_pdf(
             except Exception as e:
                 print(f"⚠️ Images de fond Talent Card non intégrées: {e}")
 
-        # Règles @media print : couleurs et alignement identiques au HTML (barre contact)
+        # Règles @media print pour garder le rendu identique au HTML (template2: 16.8cm x 12.3349cm).
         _exact = "-webkit-print-color-adjust: exact !important; print-color-adjust: exact !important;"
-
-        
         pdf_print_style = (
-            " @media print { * { " + _exact + " } "
-            " body { background: #0d0d0d !important; " + _exact + " } "
-            " .talent-card { " + _exact + " } "
-            " .name-bar, .qr-box, .expertise-bar .left, .expertise-bar .right { " + _exact + " } "
-            " .block-header { " + _exact + " } "
-            " .contact-bar { height: 1cm !important; " + _exact + " } "
-            " .contact-bar .icon-btn, .contact-bar .icon-btn .material-symbols-sharp, .contact-bar .deco-block { "
-            "   " + _exact + " background: #C1121F !important; color: #fff !important; "
-            " } "
-            " .contact-bar .icon-btn { width: 1.2cm !important; height: 1.2cm !important; min-height: 1.2cm !important; margin-top: -4px !important; } "
-            " .contact-bar .deco-block { width: 1.3cm !important; height: 1.3cm !important; min-height: 1cm !important; margin-top: -5px !important; } "
-            " .contact-bar .cta-box { height: 1cm !important; min-height: 1cm !important; background: #fff !important; color: #1a1a1a !important; " + _exact + " } "
-            " .contact-bar .separator { width: 0.15cm !important; min-width: 0.15cm !important; height: 1cm !important; min-height: 1cm !important; display: block !important; flex-shrink: 0 !important; background: #fff !important; " + _exact + " } "
+            " @page { size: 16.8cm 12.3349cm; margin: 0; } "
+            " @media print { "
+            " * { " + _exact + " } "
+            " html, body { width: 16.8cm !important; height: 12.3349cm !important; margin: 0 !important; padding: 0 !important; background: #000 !important; overflow: hidden !important; } "
+            " body { display: block !important; } "
+            " .tc { width: 16.8cm !important; height: 12.3349cm !important; margin: 0 !important; } "
+            " .fut { box-shadow: none !important; } "
             " } "
         )
-
 
         html_content = html_content.replace("</style>", pdf_print_style + "\n    </style>", 1)
 
@@ -609,12 +659,12 @@ def convert_talent_card_html_to_pdf(
                 with tempfile.NamedTemporaryFile(suffix=".pdf", delete=False) as pf:
                     pdf_path = pf.name
 
-                # Utiliser un format A4 plein écran pour éviter de couper la Talent Card
-                # en deux pages. La carte est centrée sur une seule page PDF.
                 page.pdf(
                     path=pdf_path,
                     print_background=True,
-                    format="A4",
+                    width="16.8cm",
+                    height="12.3349cm",
+                    prefer_css_page_size=True,
                     margin={"top": "0", "right": "0", "bottom": "0", "left": "0"},
                 )
                 browser.close()

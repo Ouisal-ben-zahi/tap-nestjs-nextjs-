@@ -389,6 +389,50 @@ export class DashboardService {
     return trySign(trimmed);
   }
 
+  async deleteCandidateAvatar(userId: number): Promise<void> {
+    if (!userId || Number.isNaN(userId)) {
+      throw new BadRequestException('userId invalide');
+    }
+
+    const candidate = await this.getOrCreateCandidate(userId);
+    const candidateId = candidate.id as number;
+
+    const { data: row, error } = await this.supabase
+      .from('candidates')
+      .select('image_minio_url')
+      .eq('id', candidateId)
+      .maybeSingle();
+
+    if (error) {
+      throw new BadRequestException(error.message || 'Erreur lors du chargement candidat');
+    }
+
+    const raw = (row as any)?.image_minio_url as string | null | undefined;
+    const trimmed = typeof raw === 'string' ? raw.trim() : '';
+    if (!trimmed) {
+      return;
+    }
+
+    const objectPath =
+      trimmed.startsWith('http://') || trimmed.startsWith('https://')
+        ? this.extractTapFilesObjectPathFromUrl(trimmed)
+        : trimmed;
+
+    if (objectPath) {
+      try {
+        await this.supabase.storage.from('tap_files').remove([objectPath]);
+      } catch (e: any) {
+        // Non bloquant: même si la suppression storage échoue, on nettoie la DB.
+        console.warn('[avatar] remove failed for candidate ' + candidateId + ': ' + (e?.message ?? e));
+      }
+    }
+
+    await this.supabase
+      .from('candidates')
+      .update({ image_minio_url: null })
+      .eq('id', candidateId);
+  }
+
   private async resolveUserId(
     userRef: number | string | { sub?: unknown; id?: unknown; userId?: unknown; email?: unknown } | null | undefined,
   ): Promise<number> {

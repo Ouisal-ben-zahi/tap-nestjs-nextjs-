@@ -3,7 +3,7 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Portfolio - Nom Prenom</title>
+    <title>Portfolio - {{ (candidate.nom or '') ~ ' ' ~ (candidate.prenom or '') }}</title>
     <link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=DM+Sans:wght@400;500;600;700&display=swap" />
     <link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Material+Symbols+Rounded:opsz,wght,FILL,GRAD@20..48,100..700,0..1,-50..200" />
     <style>
@@ -295,10 +295,11 @@
             box-shadow: 0 24px 80px rgba(0,0,0,0.55);
         }
 
-        .skill-bars {
+        .skill-grid {
             display: grid;
-            gap: 0.16cm;
-            width: 4cm;
+            grid-template-columns: repeat(2, minmax(0, 1fr));
+            gap: 0.18cm 0.28cm;
+            width: 100%;
         }
 
         .skill-row {
@@ -486,94 +487,123 @@
     </style>
 </head>
 <body>
+    {% set first_name = (candidate.prenom or '') %}
+    {% set last_name = (candidate.nom or '') %}
+    {% set full_name = ((first_name ~ ' ' ~ last_name).strip()) %}
+    {% set display_name = full_name if full_name else 'NOM PRENOM' %}
+    {% set profile_title = (candidate.titre_profil or candidate.get('Titre de profil') or 'Titre de profil') %}
+    {% set profile_raw = (candidate.profile_image_url or 'candidate_bg_EEEEEE.png') %}
+    {% if profile_raw.startswith('http://') or profile_raw.startswith('https://') or profile_raw.startswith('data:') %}
+        {% set profile_image = profile_raw %}
+    {% else %}
+        {% set profile_image = (assets_base_url ~ profile_raw)|replace(' ', '%20') %}
+    {% endif %}
+
+    {% set qr_raw = (candidate.qr_code_url or 'qr-code.svg') %}
+    {% if qr_raw.startswith('http://') or qr_raw.startswith('https://') or qr_raw.startswith('data:') %}
+        {% set qr_image = qr_raw %}
+    {% else %}
+        {% set qr_image = (assets_base_url ~ qr_raw)|replace(' ', '%20') %}
+    {% endif %}
+
+    {% set logo_fallback = (assets_base_url ~ '1 (1).jpg')|replace(' ', '%20') %}
+    {% set logo_raw = (candidate.logo_url or logo_fallback) %}
+    {% if logo_raw.startswith('http://') or logo_raw.startswith('https://') or logo_raw.startswith('data:') %}
+        {% set logo_image = logo_raw %}
+    {% elif logo_raw.startswith('/') %}
+        {% set logo_image = logo_raw|replace(' ', '%20') %}
+    {% else %}
+        {% set logo_image = (assets_base_url ~ logo_raw)|replace(' ', '%20') %}
+    {% endif %}
+
+    {% set all_skills = candidate.skills if candidate.skills is iterable and candidate.skills is not string else [] %}
+    {% set fallback_skills = [
+        {'name': 'Hard skills fit', 'score': 75, 'color': '#ff2a2a'},
+        {'name': 'BI', 'score': 60, 'color': '#CF0A0A'},
+        {'name': 'Dev', 'score': 40, 'color': '#B33030'},
+        {'name': 'Data', 'score': 66, 'color': '#461111'}
+    ] %}
+    {% set prepared_skills = [] %}
+    {% for s in all_skills %}
+        {% if s is mapping %}
+            {% set n = s.name or s.skill or s.label or 'Skill' %}
+            {% set p = (s.score if s.score is defined else (s.percentage if s.percentage is defined else (s.value if s.value is defined else 0))) %}
+            {% set c = s.color or '#CA1B28' %}
+            {% set _ = prepared_skills.append({'name': n, 'score': p, 'color': c}) %}
+        {% else %}
+            {% set _ = prepared_skills.append({'name': s, 'score': 0, 'color': '#CA1B28'}) %}
+        {% endif %}
+    {% endfor %}
+    {% set final_skills = prepared_skills if prepared_skills else fallback_skills %}
+    {% if final_skills|length < 4 %}
+        {% for fs in fallback_skills %}
+            {% if final_skills|length < 4 %}
+                {% set _ = final_skills.append(fs) %}
+            {% endif %}
+        {% endfor %}
+    {% endif %}
+    {% set final_skills = final_skills[:4] %}
+    {% set left_skills = final_skills[:2] %}
+    {% set right_skills = final_skills[2:4] %}
+
     <div class="talent-card">
         <div class="fut">
             <div class="fut-border"></div>
-           
-            <div class="fut-inner" >
-
+            <div class="fut-inner">
                 <div class="logo-corner">
                     <div class="logo">
-                        <img src="1 (1).jpg" alt="Logo" onerror="this.style.display='none'; this.parentElement.querySelector('.portrait-fallback').style.display='grid';" style="width: 1cm; height: 1cm;">
+                        <img
+                            src="{{ logo_image }}"
+                            alt="Logo"
+                            data-fallback-src="{{ logo_fallback }}"
+                            onerror="if(!this.dataset.fallbackApplied){this.dataset.fallbackApplied='1'; this.src=this.dataset.fallbackSrc; return;} this.style.display='none'; this.parentElement.querySelector('.portrait-fallback').style.display='grid';"
+                            style="width: 1cm; height: 1cm;"
+                        >
                         <div class="portrait-fallback" style="display:none">TAP</div>
                     </div>
                 </div>
+
                 <div class="fut-top">
-
-               
-
-                <div class="fut-top-center">
-                    <div class="portrait-img">
-                        <img src="candidate_bg_EEEEEE.png" alt="Photo" onerror="this.style.display='none'; this.parentElement.querySelector('.portrait-fallback').style.display='grid';" style="width: 100%; height: 100%;">
-                        <div class="portrait-fallback" style="display:none">TAP</div>
-                    </div>
-                    <div class="name-strip">
-                        <h1>NOM PRENOM</h1>
-                    </div>
-    
-                    <div class="subtitle" style="font-size: 12px;">
-                        <h2>Titre de profil</h2>
-                    </div>
-                </div>  
-                
-               
-               
-            </div>
-
-            <div class="stats" style="display: flex;">
-                
-                <div class="stats-grid" >
-                    <div class="skill-bars-container" style="display: flex; gap: 20px;">
-                    <div class="skill-bars">
-                        <div class="skill-row" style="--pct: 75; --skill-color: #ff2a2a;">
-                            <div class="skill-row-top">
-                                <div class="skill-name">Hard skills fit</div>
-                                <div class="skill-pct">75%</div>
-                            </div>
-                            <div class="skill-track"><div class="skill-fill"></div></div>
-                        </div>
-
-                        <div class="skill-row" style="--pct: 60; --skill-color: #CF0A0A">
-                            <div class="skill-row-top">
-                                <div class="skill-name">BI</div>
-                                <div class="skill-pct">60%</div>
-                            </div>
-                            <div class="skill-track"><div class="skill-fill"></div></div>
-                        </div>
-                    </div>
-                    <div class="skill-bars">
-                        <div class="skill-row" style="--pct: 40; --skill-color: #B33030;">
-                            <div class="skill-row-top">
-                                <div class="skill-name">Dev</div>
-                                <div class="skill-pct">40%</div>
-                            </div>
-                            <div class="skill-track"><div class="skill-fill"></div></div>
-                        </div>
-
-                        <div class="skill-row" style="--pct: 66; --skill-color: #461111;">
-                            <div class="skill-row-top">
-                                <div class="skill-name">Data</div>
-                                <div class="skill-pct">66%</div>
-                            </div>
-                            <div class="skill-track"><div class="skill-fill"></div></div>
-                        </div>
-                    </div>
-                    </div>
-
-                        
-
-                    <div class="fut-top-left">
-                        <div class="qr-code">
-                            <img src="qr-code.svg" alt="QR code" onerror="this.style.display='none'; this.parentElement.querySelector('.portrait-fallback').style.display='grid';">
+                    <div class="fut-top-center">
+                        <div class="portrait-img">
+                            <img src="{{ profile_image }}" alt="Photo" onerror="this.style.display='none'; this.parentElement.querySelector('.portrait-fallback').style.display='grid';" style="width: 100%; height: 100%;">
                             <div class="portrait-fallback" style="display:none">TAP</div>
                         </div>
-                    </div>
+                        <div class="name-strip">
+                            <h1>{{ display_name }}</h1>
+                        </div>
+                        <div class="subtitle" style="font-size: 12px;">
+                            <h2>{{ profile_title }}</h2>
+                        </div>
                     </div>
                 </div>
-            </div>
 
-            </div>
+                <div class="stats stats-flex">
+                    <div class="stats-grid">
+                        <div class="skill-grid">
+                            {% for skill in final_skills %}
+                            {% set pct_raw = (skill.score|string)|replace('%', '')|trim %}
+                            {% set pct = (pct_raw | int) %}
+                            <div class="skill-row" style="--pct: {{ 0 if pct < 0 else (100 if pct > 100 else pct) }}; --skill-color: {{ skill.color }};">
+                                <div class="skill-row-top">
+                                    <div class="skill-name">{{ skill.name }}</div>
+                                    <div class="skill-pct">{{ pct }}%</div>
+                                </div>
+                                <div class="skill-track"><div class="skill-fill"></div></div>
+                            </div>
+                            {% endfor %}
+                        </div>
+
+                        <div class="fut-top-left">
+                            <div class="qr-code">
+                                <img src="{{ qr_image }}" alt="QR code" onerror="this.style.display='none'; this.parentElement.querySelector('.portrait-fallback').style.display='grid';">
+                                <div class="portrait-fallback" style="display:none">TAP</div>
+                            </div>
+                        </div>
+                    </div>
+                </div>
             </div>
         </div>
     </div>
 </body>
+</html>

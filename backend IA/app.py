@@ -23,6 +23,7 @@ from A1.insert_data import insert_talent_card, generate_unique_id_agent, create_
 from A1.talent_html import generate_and_save_talent_card_html
 from A1.ocr import ocr_pdf_bytes, ocr_image_bytes, extract_text_from_pdf_bytes, extract_text_from_image_bytes
 from A1.extract_image import extract_top_image_from_bytes
+from A1.remove_bg import remove_background_from_bytes
 from B1.generate_corrected_cv import (
     generate_corrected_cv as generate_corrected_cv_agent2,
     transform_corrected_json_to_cv_context,
@@ -1370,6 +1371,15 @@ def process_candidate():
     if auto_img_content:
         img_content = auto_img_content
         img_file = None
+
+    # Supprimer le background de la photo (image extraite du CV ou upload formulaire)
+    if img_content:
+        try:
+            img_content = remove_background_from_bytes(img_content, crop_to_subject=True)
+            print("✅ Background supprimé de la photo candidat (PNG transparent)")
+        except Exception as e:
+            # Fallback: conserver l'image originale si rembg échoue
+            print(f"⚠️ Suppression du background échouée, image originale conservée: {e}")
     
     # Si aucun CV n'est fourni, retourner une erreur claire
     if not cv_content:
@@ -5828,11 +5838,23 @@ def serve_talent_static(filename):
     """
     try:
         project_root = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
-        static_dir = os.path.join(project_root, "frontend", "src", "talent card html")
-        static_path = os.path.join(static_dir, filename)
-        if not os.path.abspath(static_path).startswith(os.path.abspath(static_dir)):
-            return "Accès non autorisé", 403
-        if not os.path.exists(static_path):
+        static_dirs = [
+            os.path.join(project_root, "frontend", "src", "talent card html"),
+            os.path.join(project_root, "frontend", "src", "templates_modif"),
+        ]
+
+        static_path = None
+        for static_dir in static_dirs:
+            candidate_path = os.path.join(static_dir, filename)
+            abs_candidate_path = os.path.abspath(candidate_path)
+            abs_static_dir = os.path.abspath(static_dir)
+            if not abs_candidate_path.startswith(abs_static_dir):
+                continue
+            if os.path.exists(abs_candidate_path):
+                static_path = abs_candidate_path
+                break
+
+        if not static_path:
             return f"Fichier introuvable: {filename}", 404
         mime_types = {
             ".jpg": "image/jpeg",

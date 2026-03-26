@@ -114,6 +114,7 @@ pdf2image==1.17.0
 pdfminer.six==20251107
 pdfplumber==0.11.8
 pillow==12.0.0
+rembg==2.0.74
 platformdirs==4.5.1
 playwright==1.57.0
 pooch==1.8.2
