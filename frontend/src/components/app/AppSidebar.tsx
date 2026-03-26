@@ -181,8 +181,8 @@ export default function AppSidebar({
               : "relative flex items-center gap-3 px-3 py-2.5 rounded-full text-[13px] border border-transparent transition-all duration-300 group";
             const activeClasses = isActive
               ? isLight
-                ? "bg-white/[0.06] text-tap-red font-medium shadow-none !rounded-full overflow-hidden"
-                : "bg-white/[0.06] text-tap-red font-medium shadow-none !rounded-full overflow-hidden"
+                ? "bg-white/[0.06] text-[#ECF4E8] font-bold border border-tap-red shadow-none !rounded-full overflow-hidden"
+                : "bg-white/[0.06] text-[#ECF4E8] font-bold border border-tap-red shadow-none !rounded-full overflow-hidden"
               : isLight
                 ? "text-white/80 hover:text-white hover:bg-white/10 hover:border-tap-red/40"
                 : "text-white/70 hover:text-white hover:bg-white/5 hover:border-white/[0.14]";
@@ -194,7 +194,7 @@ export default function AppSidebar({
                 <div
                   className={`w-8 h-8 flex items-center justify-center transition-colors duration-300 ${
                     isActive
-                      ? "rounded-full bg-white/[0.12] backdrop-blur-md border-t border-b border-tap-red/25 shadow-[0_0_0_1px_rgba(202,27,40,0.18)]"
+                      ? "rounded-full bg-[#ECF4E8] border-t border-b border-t-[#252426] border-b-[#252426]"
                       : ""
                   }`}
                 >
