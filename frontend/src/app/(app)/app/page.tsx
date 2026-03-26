@@ -33,8 +33,8 @@ interface Feature {
 
 const candidatFeatures: Feature[] = [
   { href: "/app/analyse-cv", icon: FileText, title: "Analyse CV", color: "#ef4444" },
-  { href: "/app/scoring", icon: BarChart3, title: "Scoring", color: "#3b82f6" },
-  { href: "/app/matching", icon: Users, title: "Matching", color: "#10b981" },
+  { href: "/app/scoring", icon: BarChart3, title: "Évaluation", color: "#3b82f6" },
+  { href: "/app/matching", icon: Users, title: "Offres IA", color: "#10b981" },
   { href: "/app/formation", icon: GraduationCap, title: "Formation", color: "#f59e0b" },
   { href: "/app/entretien", icon: MessageSquare, title: "Entretien IA", color: "#a855f7" },
   { href: "/app/mes-fichiers", icon: FolderOpen, title: "Mes fichiers", color: "#06b6d4" },
@@ -43,7 +43,7 @@ const candidatFeatures: Feature[] = [
 const recruteurFeatures: Feature[] = [
   { href: "/app/offres", icon: Briefcase, title: "Mes offres", color: "#ef4444" },
   { href: "/app/candidats", icon: Search, title: "Candidats", color: "#3b82f6" },
-  { href: "/app/matching-recruteur", icon: UserCheck, title: "Matching IA", color: "#10b981" },
+  { href: "/app/matching-recruteur", icon: UserCheck, title: "Appariement IA", color: "#10b981" },
   { href: "/app/entretiens-planifies", icon: MessageSquare, title: "Entretiens", color: "#a855f7" },
   { href: "/app/statistiques", icon: LayoutList, title: "Statistiques", color: "#f59e0b" },
 ];

@@ -25,10 +25,10 @@ import {
 } from "lucide-react";
 
 const candidatNavItems = [
-  { href: "/app", label: "Dashboard", icon: LayoutDashboard },
+  { href: "/app", label: "Tableau de bord", icon: LayoutDashboard },
   { href: "/app/analyse-cv", label: "Analyse CV", icon: FileText },
-  { href: "/app/scoring", label: "Scoring", icon: BarChart3 },
-  { href: "/app/matching", label: "Matching", icon: Users },
+  { href: "/app/scoring", label: "Évaluation", icon: BarChart3 },
+  { href: "/app/matching", label: "Offres IA", icon: Users },
   { href: "/app/formation", label: "Formation", icon: GraduationCap },
   { href: "/app/entretien", label: "Entretien IA", icon: MessageSquare },
   { href: "/app/mes-fichiers", label: "Mes fichiers", icon: FolderOpen },
@@ -37,10 +37,10 @@ const candidatNavItems = [
 ];
 
 const recruteurNavItems = [
-  { href: "/app", label: "Dashboard", icon: LayoutDashboard },
+  { href: "/app", label: "Tableau de bord", icon: LayoutDashboard },
   { href: "/app/offres", label: "Mes offres", icon: Briefcase },
   { href: "/app/candidats", label: "Candidats", icon: Search },
-  { href: "/app/matching-recruteur", label: "Matching IA", icon: UserCheck },
+  { href: "/app/matching-recruteur", label: "Appariement IA", icon: UserCheck },
   { href: "/app/entretiens-planifies", label: "Entretiens", icon: MessageSquare },
   { href: "/app/parametres", label: "Paramètres", icon: Settings },
 ];

@@ -36,7 +36,7 @@ export default function MatchingRecruteurPage() {
         <div className="absolute top-[-80px] left-[-100px] w-[350px] h-[350px] rounded-full bg-[radial-gradient(circle,rgba(16,185,129,0.08),transparent_60%)] blur-3xl pointer-events-none" />
         <div className="relative">
           <h1 className="text-[28px] sm:text-[36px] font-bold text-white tracking-[-0.04em] font-heading">
-            Matching intelligent
+            Appariement intelligent
           </h1>
           <p className="text-white/45 text-[14px] mt-2 font-light">
             Notre IA identifie les candidats les plus adaptés à chacune de vos offres.
@@ -124,7 +124,7 @@ export default function MatchingRecruteurPage() {
           <div>
             <div className="flex items-center gap-3 mb-5">
               <div className="w-1 h-5 rounded-full bg-emerald-500" />
-              <h2 className="text-[13px] uppercase tracking-[2px] text-white/50 font-semibold">Vos offres — Matching</h2>
+              <h2 className="text-[13px] uppercase tracking-[2px] text-white/50 font-semibold">Vos offres — Appariement</h2>
             </div>
 
             <div className="space-y-3">
@@ -190,7 +190,7 @@ export default function MatchingRecruteurPage() {
               {[
                 { step: "1", title: "Analyse de l'offre", desc: "L'IA extrait les compétences clés et critères requis de votre offre." },
                 { step: "2", title: "Scan des profils", desc: "Chaque CV et talent card est analysé pour identifier les correspondances." },
-                { step: "3", title: "Score de matching", desc: "Un score de compatibilité est calculé pour classer les meilleurs profils." },
+                { step: "3", title: "Score d'appariement", desc: "Un score de compatibilité est calculé pour classer les meilleurs profils." },
               ].map((item) => (
                 <div key={item.step} className="flex items-start gap-3 p-4 rounded-xl bg-white/[0.02] border border-white/[0.04]">
                   <span className="w-6 h-6 rounded-full bg-emerald-500/10 text-emerald-400 text-[11px] font-bold flex items-center justify-center shrink-0">{item.step}</span>
