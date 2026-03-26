@@ -1,7 +1,7 @@
 import { Body, Controller, Delete, Get, HttpCode, Param, Post, Put, Query, Req, UploadedFile, UploadedFiles, UseGuards, UseInterceptors } from '@nestjs/common';
 import { AuthGuard } from '@nestjs/passport';
 import { FileFieldsInterceptor, FileInterceptor } from '@nestjs/platform-express';
-import { DashboardService, type ApplyJobPayload, type RecruiterJobPayload, type RecruiterMatchByOfferPayload, type RecruiterValidateCandidatePayload, type RecruiterSaveInterviewPdfPayload } from './dashboard.service';
+import { DashboardService, type ApplyJobPayload, type RecruiterJobPayload, type RecruiterMatchByOfferPayload, type RecruiterValidateCandidatePayload, type RecruiterSaveInterviewPdfPayload, type RecruiterUpdateCandidateStatusPayload } from './dashboard.service';
 
 @Controller('dashboard')
 export class DashboardController {
@@ -337,6 +337,16 @@ export class DashboardController {
   ) {
     const userId = await this.dashboardService.resolveJwtUserId(req?.user);
     return this.dashboardService.validateCandidateApplication(userId, body);
+  }
+
+  @Post('recruteur/candidatures/status')
+  @UseGuards(AuthGuard('jwt'))
+  async updateRecruiterCandidateStatusByJwt(
+    @Req() req: any,
+    @Body() body: RecruiterUpdateCandidateStatusPayload,
+  ) {
+    const userId = await this.dashboardService.resolveJwtUserId(req?.user);
+    return this.dashboardService.updateCandidateApplicationStatus(userId, body);
   }
 
   @Post('recruteur/interview-questions/save-pdf')

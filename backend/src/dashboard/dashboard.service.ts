@@ -179,6 +179,17 @@ export interface RecruiterOverviewStats {
     status: string | null;
     validatedAt: string | null;
   }[];
+  acceptedApplications: {
+    id: number;
+    jobId: number;
+    candidateId: number | null;
+    candidateName: string | null;
+    candidateCategory: string | null;
+    candidateAvatarUrl: string | null;
+    jobTitle: string | null;
+    status: string | null;
+    validatedAt: string | null;
+  }[];
   alerts: { type: string; message: string }[];
 }
 
@@ -226,6 +237,12 @@ export interface RecruiterMatchByOfferPayload {
 export interface RecruiterValidateCandidatePayload {
   job_id: number;
   candidate_id: number;
+}
+
+export interface RecruiterUpdateCandidateStatusPayload {
+  job_id: number;
+  candidate_id: number;
+  status: 'EN_COURS' | 'ACCEPTEE' | 'REFUSEE';
 }
 
 export interface RecruiterSaveInterviewPdfPayload {
@@ -2607,6 +2624,88 @@ export class DashboardService {
     };
   }
 
+  async updateCandidateApplicationStatus(
+    userId: number,
+    payload: RecruiterUpdateCandidateStatusPayload,
+  ): Promise<{
+    success: boolean;
+    applicationId: number;
+    status: RecruiterUpdateCandidateStatusPayload['status'];
+    validate: boolean;
+    validatedAt: string | null;
+  }> {
+    if (!userId || Number.isNaN(userId)) {
+      throw new BadRequestException('userId invalide');
+    }
+
+    const jobId = Number(payload?.job_id);
+    const candidateId = Number(payload?.candidate_id);
+    const status = payload?.status;
+
+    if (!jobId || Number.isNaN(jobId)) {
+      throw new BadRequestException("Le champ 'job_id' est requis");
+    }
+    if (!candidateId || Number.isNaN(candidateId)) {
+      throw new BadRequestException("Le champ 'candidate_id' est requis");
+    }
+    if (!status || !['EN_COURS', 'ACCEPTEE', 'REFUSEE'].includes(status)) {
+      throw new BadRequestException("Le champ 'status' est invalide");
+    }
+
+    // Security: ensure recruiter can only update on their own jobs.
+    const { data: job, error: jobError } = await this.supabase
+      .from('jobs')
+      .select('id')
+      .eq('id', jobId)
+      .eq('user_id', userId)
+      .limit(1)
+      .maybeSingle();
+
+    if (jobError) {
+      throw new BadRequestException(
+        jobError.message || "Erreur lors de la mise à jour de la candidature",
+      );
+    }
+    if (!job) {
+      throw new BadRequestException('Offre introuvable pour ce recruteur');
+    }
+
+    const nowIso = new Date().toISOString();
+    const nextValidate = status === 'ACCEPTEE';
+    const nextValidatedAt = status === 'ACCEPTEE' ? nowIso : null;
+
+    const { data: updated, error: updateError } = await this.supabase
+      .from('candidate_postule')
+      .update({
+        status,
+        validate: nextValidate,
+        validated_at: nextValidatedAt,
+      })
+      .eq('job_id', jobId)
+      .eq('candidate_id', candidateId)
+      .select('id, status, validate, validated_at')
+      .maybeSingle();
+
+    if (updateError) {
+      throw new BadRequestException(
+        updateError.message || 'Erreur lors de la mise à jour de la candidature',
+      );
+    }
+    if (!updated?.id) {
+      throw new BadRequestException(
+        "Candidature introuvable pour ce candidat et cette offre",
+      );
+    }
+
+    return {
+      success: true,
+      applicationId: Number(updated.id),
+      status: updated.status as RecruiterUpdateCandidateStatusPayload['status'],
+      validate: Boolean(updated.validate),
+      validatedAt: (updated.validated_at as string) ?? null,
+    };
+  }
+
   async saveInterviewQuestionsPdf(
     userId: number,
     payload: RecruiterSaveInterviewPdfPayload,
@@ -2904,6 +3003,7 @@ export class DashboardService {
     });
 
     let recentApplications: RecruiterOverviewStats['recentApplications'] = [];
+    let acceptedApplications: RecruiterOverviewStats['acceptedApplications'] = [];
 
     if (recentSorted.length > 0) {
       const candidateIdsArr = Array.from(
@@ -2963,6 +3063,84 @@ export class DashboardService {
           validatedAt: a.validatedAt,
         };
       });
+    }
+
+    // Applications acceptées : tous les candidats "acceptés" (dédupliqués par candidateId)
+    const isAcceptedStatus = (s: string | null) => {
+      const v = (s ?? '').toLowerCase();
+      return v === 'accepted' || v === 'accepté' || v === 'active' || v === 'acceptee' || v === 'acceptee';
+    };
+
+    const acceptedSorted = allApplications
+      .filter((a) => a.candidateId !== null && a.validatedAt && isAcceptedStatus(a.status ?? null))
+      .sort((a, b) => {
+        const da = a.validatedAt ? new Date(a.validatedAt).getTime() : 0;
+        const db = b.validatedAt ? new Date(b.validatedAt).getTime() : 0;
+        if (db !== da) return db - da;
+        return (b.id ?? 0) - (a.id ?? 0);
+      });
+
+    if (acceptedSorted.length > 0) {
+      // Keep only the most recent application per candidate
+      const bestByCandidate = new Map<number, (typeof acceptedSorted)[0]>();
+      for (const a of acceptedSorted) {
+        const cid = a.candidateId as number;
+        if (!bestByCandidate.has(cid)) bestByCandidate.set(cid, a);
+      }
+
+      const acceptedCandidateIdsArr = Array.from(bestByCandidate.keys());
+
+      const { data: candidatesRows } = await this.supabase
+        .from('candidates')
+        .select('id, nom, prenom, categorie_profil, image_minio_url')
+        .in('id', acceptedCandidateIdsArr);
+
+      const candidatesMapAccepted = new Map<
+        number,
+        { nom: string | null; prenom: string | null; categorie_profil: string | null; avatarUrl: string | null }
+      >();
+
+      await Promise.all(
+        (candidatesRows ?? []).map(async (row: any) => {
+          const avatarUrl = await this.resolveCandidateAvatarUrl(row.image_minio_url as string | null);
+          candidatesMapAccepted.set(row.id as number, {
+            nom: (row.nom as string) ?? null,
+            prenom: (row.prenom as string) ?? null,
+            categorie_profil: (row.categorie_profil as string) ?? null,
+            avatarUrl,
+          });
+        }),
+      );
+
+      const jobTitleMap = new Map<number, string>();
+      safeJobs.forEach((job: any) => {
+        jobTitleMap.set(job.id as number, (job.title as string) ?? 'Offre');
+      });
+
+      acceptedApplications = Array.from(bestByCandidate.values())
+        .sort((a, b) => {
+          const da = a.validatedAt ? new Date(a.validatedAt).getTime() : 0;
+          const db = b.validatedAt ? new Date(b.validatedAt).getTime() : 0;
+          return db - da;
+        })
+        .map((a) => {
+          const c = candidatesMapAccepted.get(a.candidateId as number);
+          const name =
+            c && (c.nom || c.prenom)
+              ? [c.prenom, c.nom].filter(Boolean).join(' ')
+              : null;
+          return {
+            id: a.id,
+            jobId: a.jobId,
+            candidateId: a.candidateId,
+            candidateName: name,
+            candidateCategory: c?.categorie_profil ?? null,
+            candidateAvatarUrl: c?.avatarUrl ?? null,
+            jobTitle: jobTitleMap.get(a.jobId) ?? 'Offre',
+            status: a.status ?? null,
+            validatedAt: a.validatedAt,
+          };
+        });
     }
 
     // Alertes recruteur simples
@@ -3027,6 +3205,7 @@ export class DashboardService {
       jobsPerCategory,
       applicationsPerJob,
       recentApplications,
+      acceptedApplications,
       alerts,
     };
   }

@@ -1,5 +1,6 @@
 import api from '@/lib/api';
 import type { RecruteurOverview, Job, JobPayload } from '@/types/recruteur';
+import type { CandidateCvFileItem, PortfolioPdfFile } from '@/types/candidat';
 
 export type MatchedCandidate = {
   candidate_id: number | null;
@@ -69,6 +70,23 @@ export const recruteurService = {
       )
       .then((r) => r.data),
 
+  getCandidatePortfolioPdfFiles: (candidateId: number) =>
+    api
+      .get<{ portfolioShort: CandidateCvFileItem[]; portfolioLong: CandidateCvFileItem[] }>(
+        `/dashboard/candidat-id/${candidateId}/portfolio-pdf-files`,
+      )
+      .then((r) => {
+        const short: PortfolioPdfFile[] = (r.data.portfolioShort || []).map((f) => ({
+          ...f,
+          type: 'short',
+        }));
+        const long: PortfolioPdfFile[] = (r.data.portfolioLong || []).map((f) => ({
+          ...f,
+          type: 'long',
+        }));
+        return { portfolioPdfFiles: [...short, ...long] };
+      }),
+
   getJobs: () =>
     api.get<{ jobs: Job[] }>('/dashboard/recruteur/jobs').then((r) => r.data),
 
@@ -118,6 +136,25 @@ export const recruteurService = {
         job_id: jobId,
         candidate_id: candidateId,
         questions,
+      })
+      .then((r) => r.data),
+
+  updateCandidateApplicationStatus: (params: {
+    jobId: number;
+    candidateId: number;
+    status: 'EN_COURS' | 'ACCEPTEE' | 'REFUSEE';
+  }) =>
+    api
+      .post<{
+        success: boolean;
+        applicationId: number;
+        status: 'EN_COURS' | 'ACCEPTEE' | 'REFUSEE';
+        validate: boolean;
+        validatedAt: string | null;
+      }>('/dashboard/recruteur/candidatures/status', {
+        job_id: params.jobId,
+        candidate_id: params.candidateId,
+        status: params.status,
       })
       .then((r) => r.data),
 };

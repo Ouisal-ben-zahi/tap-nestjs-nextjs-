@@ -10,6 +10,7 @@ import {
   useRecruteurOverview,
   useRecruteurJobs,
   useSaveInterviewPdf,
+  useUpdateCandidateApplicationStatus,
   useValidateCandidate,
 } from "@/hooks/use-recruteur";
 import { recruteurService, type ValidateCandidateResponse } from "@/services/recruteur.service";
@@ -51,6 +52,28 @@ function getInitials(name: string | null | undefined) {
   return `${first}${second}`.toUpperCase() || "C";
 }
 
+function normalizeRecruiterCandidateStatus(
+  status: string | null | undefined,
+): 'EN_COURS' | 'ACCEPTEE' | 'REFUSEE' {
+  const s = status?.toLowerCase?.() ?? '';
+  if (s === 'acceptee' || s === 'accepté' || s === 'accepted' || s === 'active') return 'ACCEPTEE';
+  if (s === 'refusee' || s === 'refusé' || s === 'refused' || s === 'rejected') return 'REFUSEE';
+  // Default / everything else -> pending.
+  return 'EN_COURS';
+}
+
+function recruiterCandidateStatusLabel(status: 'EN_COURS' | 'ACCEPTEE' | 'REFUSEE'): string {
+  switch (status) {
+    case 'ACCEPTEE':
+      return 'Acceptée';
+    case 'REFUSEE':
+      return 'Refusée';
+    case 'EN_COURS':
+    default:
+      return 'En cours';
+  }
+}
+
 export default function CandidatsPage() {
   const searchParams = useSearchParams();
   const jobIdParam = searchParams.get("jobId");
@@ -66,12 +89,14 @@ export default function CandidatsPage() {
   const addToast = useUiStore((s) => s.addToast);
   const validateCandidateMutation = useValidateCandidate();
   const saveInterviewPdfMutation = useSaveInterviewPdf();
+  const updateCandidateStatusMutation = useUpdateCandidateApplicationStatus();
   const [interviewModalOpen, setInterviewModalOpen] = useState(false);
   const [interviewQuestions, setInterviewQuestions] = useState<InterviewQuestion[]>([]);
   const [interviewCandidateName, setInterviewCandidateName] = useState<string>("Candidat");
   const [interviewCandidateId, setInterviewCandidateId] = useState<number | null>(null);
   const [interviewPdfUrlsByCandidate, setInterviewPdfUrlsByCandidate] = useState<Record<number, string>>({});
   const [validatedCandidates, setValidatedCandidates] = useState<Record<number, boolean>>({});
+  const [statusSelectAppId, setStatusSelectAppId] = useState<number | null>(null);
   /** Message si la modale s’ouvre sans liste de questions (ex. timeout IA). */
   const [interviewQuestionsNotice, setInterviewQuestionsNotice] = useState<string | null>(null);
   const [regeneratingCandidateId, setRegeneratingCandidateId] = useState<number | null>(null);
@@ -467,38 +492,38 @@ export default function CandidatsPage() {
                   const canOpenTalent =
                     typeof cid === "number" && Number.isFinite(cid) && cid > 0;
                   const isTalentSelected = talentPanel?.candidateId === cid;
+                  const normalizedStatus = normalizeRecruiterCandidateStatus(app.status ?? null);
+                  const canChangeStatus =
+                    typeof app.candidateId === "number" &&
+                    Number.isFinite(app.candidateId) &&
+                    app.candidateId > 0 &&
+                    typeof app.jobId === "number" &&
+                    Number.isFinite(app.jobId) &&
+                    app.jobId > 0;
                   return (
                   <div
                     key={app.id}
-                    role={canOpenTalent ? "button" : undefined}
-                    tabIndex={canOpenTalent ? 0 : undefined}
-                    onClick={() => {
-                      if (!canOpenTalent) return;
-                      openTalentPanel({
-                        candidateId: cid,
-                        candidateName: app.candidateName?.trim() || "Candidat",
-                      });
-                    }}
-                    onKeyDown={(e) => {
-                      if (!canOpenTalent) return;
-                      if (e.key === "Enter" || e.key === " ") {
-                        e.preventDefault();
+                    className={`grid grid-cols-12 items-center gap-4 bg-zinc-900/50 border rounded-xl px-5 py-4 transition ${
+                      isTalentSelected
+                        ? "border-2 border-[#CA1B28] shadow-[0_0_24px_rgba(202,27,40,0.2)]"
+                        : "border-white/[0.06] hover:border-white/[0.1]"
+                    }`}
+                  >
+                    {/* Col 1: avatar + nom (seul endroit cliquable) */}
+                    <button
+                      type="button"
+                      disabled={!canOpenTalent}
+                      onClick={() => {
+                        if (!canOpenTalent) return;
                         openTalentPanel({
                           candidateId: cid,
                           candidateName: app.candidateName?.trim() || "Candidat",
                         });
-                      }
-                    }}
-                    className={`grid grid-cols-12 items-center gap-4 bg-zinc-900/50 border rounded-xl px-5 py-4 transition ${
-                      isTalentSelected
-                        ? "cursor-pointer border-2 border-[#CA1B28] shadow-[0_0_24px_rgba(202,27,40,0.2)]"
-                        : canOpenTalent
-                          ? "cursor-pointer hover:border-white/[0.14] border-white/[0.06]"
-                          : "border-white/[0.06] hover:border-white/[0.1]"
-                    }`}
-                  >
-                    {/* Col 1: avatar + nom + titre offre */}
-                    <div className="col-span-12 sm:col-span-5 min-w-0 flex items-center gap-4">
+                      }}
+                      className="col-span-12 sm:col-span-5 min-w-0 flex items-center gap-4 text-left rounded-lg px-1 py-1 cursor-pointer disabled:cursor-not-allowed disabled:opacity-50 focus:outline-none focus-visible:ring-2 focus-visible:ring-tap-red/50"
+                      aria-label={app.candidateName ? `Voir le portfolio de ${app.candidateName}` : "Voir le portfolio du candidat"}
+                      title={app.candidateName ? `Voir le portfolio de ${app.candidateName}` : "Voir le portfolio du candidat"}
+                    >
                       <div className="w-10 h-10 rounded-full overflow-hidden border border-white/[0.10] bg-white/[0.04] flex items-center justify-center shrink-0">
                         {app.candidateAvatarUrl ? (
                           <img
@@ -514,7 +539,7 @@ export default function CandidatsPage() {
                       <div className="min-w-0">
                         <p className="text-[14px] font-medium text-white truncate">{app.candidateName}</p>
                       </div>
-                    </div>
+                    </button>
 
                     {/* Col 2: catégorie */}
                     <div className="col-span-6 sm:col-span-2 text-center">
@@ -525,13 +550,69 @@ export default function CandidatsPage() {
 
                     {/* Col 3: statut */}
                     <div className="col-span-6 sm:col-span-2 text-center">
-                      <span
-                        className={`text-[11px] px-2.5 py-1 rounded-full border font-medium shrink-0 inline-flex ${statusBg(
-                          app.status ?? "Inconnu",
-                        )}`}
-                      >
-                        {app.status ?? "Inconnu"}
-                      </span>
+                      <div className="relative inline-block w-full max-w-[140px]">
+                        <button
+                          type="button"
+                          disabled={!canChangeStatus}
+                          onClick={() => {
+                            if (!canChangeStatus) return;
+                            setStatusSelectAppId((current) => (current === app.id ? null : app.id));
+                          }}
+                          className={`w-full text-[11px] px-2.5 py-1 rounded-full border font-medium shrink-0 inline-flex justify-center ${statusBg(
+                            normalizedStatus,
+                          )} disabled:cursor-not-allowed disabled:opacity-60 hover:opacity-95 transition`}
+                          aria-label="Modifier le statut de la candidature"
+                          title="Cliquer pour modifier"
+                        >
+                          {recruiterCandidateStatusLabel(normalizedStatus)}
+                        </button>
+
+                        {statusSelectAppId === app.id && (
+                          <div className="absolute left-0 top-full mt-2 w-full bg-[#050505]/95 border border-white/[0.08] rounded-2xl shadow-lg backdrop-blur-xl overflow-hidden z-50">
+                            <div>
+                              {(
+                                [
+                                  { status: 'EN_COURS', label: 'En cours' },
+                                  { status: 'ACCEPTEE', label: 'Acceptée' },
+                                  { status: 'REFUSEE', label: 'Refusée' },
+                                ] as const
+                              ).map((opt) => {
+                                const active = opt.status === normalizedStatus;
+                                return (
+                                  <button
+                                    key={opt.status}
+                                    type="button"
+                                    onClick={() => {
+                                      if (!canChangeStatus) return;
+                                      if (!app.jobId || app.candidateId == null) return;
+                                      updateCandidateStatusMutation.mutate(
+                                        {
+                                          jobId: app.jobId,
+                                          candidateId: app.candidateId,
+                                          status: opt.status,
+                                        },
+                                        {
+                                          onSuccess: () => {
+                                            setStatusSelectAppId(null);
+                                          },
+                                        },
+                                      );
+                                    }}
+                                    disabled={!canChangeStatus || updateCandidateStatusMutation.isPending}
+                                    className={`w-full flex items-center justify-center px-4 py-3 text-[13px] transition-colors focus:outline-none focus-visible:outline-none border border-white/[0.08] rounded-none ${
+                                      active
+                                        ? statusBg(opt.status)
+                                        : "text-white/80 hover:text-white hover:bg-white/[0.06] bg-white/[0.02]"
+                                    } ${!canChangeStatus ? "opacity-50 cursor-not-allowed" : ""}`}
+                                  >
+                                    {opt.label}
+                                  </button>
+                                );
+                              })}
+                            </div>
+                          </div>
+                        )}
+                      </div>
                     </div>
 
                     {/* Col 4: durée */}

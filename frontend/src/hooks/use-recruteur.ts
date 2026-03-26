@@ -5,6 +5,7 @@ import { getApiErrorMessage } from '@/lib/api-error';
 import { recruteurService } from '@/services/recruteur.service';
 import { useUiStore } from '@/stores/ui';
 import type { JobPayload } from '@/types/recruteur';
+import type { PortfolioPdfFile } from '@/types/candidat';
 
 export function useRecruteurOverview() {
   return useQuery({
@@ -20,6 +21,20 @@ export function useRecruiterCandidateTalentcardFiles(
   return useQuery({
     queryKey: ['recruteur', 'candidate-talentcard-files', candidateId],
     queryFn: () => recruteurService.getCandidateTalentcardFiles(candidateId as number),
+    enabled: Boolean(enabled && candidateId != null && candidateId > 0),
+  });
+}
+
+export function useRecruiterCandidatePortfolioPdfFiles(
+  candidateId: number | null,
+  enabled = true,
+) {
+  return useQuery({
+    queryKey: ['recruteur', 'candidate-portfolio-pdf-files', candidateId],
+    queryFn: () =>
+      recruteurService.getCandidatePortfolioPdfFiles(candidateId as number) as {
+        portfolioPdfFiles: PortfolioPdfFile[];
+      },
     enabled: Boolean(enabled && candidateId != null && candidateId > 0),
   });
 }
@@ -154,6 +169,28 @@ export function useValidateCandidate() {
     },
     onError: () => {
       addToast({ message: 'Impossible de valider ce candidat', type: 'error' });
+    },
+  });
+}
+
+export function useUpdateCandidateApplicationStatus() {
+  const queryClient = useQueryClient();
+  const addToast = useUiStore((s) => s.addToast);
+
+  return useMutation({
+    mutationFn: (params: {
+      jobId: number;
+      candidateId: number;
+      status: 'EN_COURS' | 'ACCEPTEE' | 'REFUSEE';
+    }) => recruteurService.updateCandidateApplicationStatus(params),
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ['recruteur', 'overview'] });
+    },
+    onError: () => {
+      addToast({
+        message: "Impossible de mettre à jour le statut de la candidature",
+        type: 'error',
+      });
     },
   });
 }

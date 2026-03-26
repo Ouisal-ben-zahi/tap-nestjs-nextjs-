@@ -14,7 +14,7 @@ import { useRouter } from "next/navigation";
   Bell,
   Activity,
  } from "lucide-react";
-import { formatRelative, statusBg } from "@/lib/utils";
+import { formatRelative } from "@/lib/utils";
 
 function getInitials(name: string | null | undefined) {
   const parts = String(name ?? "")
@@ -577,28 +577,24 @@ export default function RecruteurDashboard() {
                           </div>
                         </div>
 
-                        <div className="col-span-6 sm:col-span-3 text-center">
+                        <div className="col-span-12 sm:col-span-5 text-center sm:text-left">
                           <span className={`text-[12px] ${isLight ? "text-black/70" : "text-white/45"} truncate inline-block`}>
                             {app.jobTitle ?? "—"}
                           </span>
                         </div>
 
-                        <div className="col-span-6 sm:col-span-2 text-center">
-                          <span
-                            className={`text-[11px] px-2.5 py-1 rounded-full border font-medium inline-flex ${statusBg(
-                              app.status ?? "Inconnu",
-                            )}`}
-                          >
-                            {app.status ?? "Inconnu"}
-                          </span>
-                        </div>
-
                         <div className="col-span-12 sm:col-span-2">
-                          <div className="flex items-center justify-center sm:justify-end gap-2">
-                            <p className={`text-[11px] ${isLight ? "text-black/55" : "text-white/35"}`}>
+                          <div className="flex items-center sm:justify-end justify-between gap-2">
+                            <p className={`text-[11px] ${isLight ? "text-black/55" : "text-white/35"} whitespace-nowrap`}>
                               {app.validatedAt ? formatRelative(app.validatedAt) : "—"}
                             </p>
-                            <span className={`text-[11px] ${isLight ? "text-black/55" : "text-white/35"}`}>Voir l&apos;offre</span>
+                            <span
+                              className={`text-[11px] whitespace-nowrap underline underline-offset-2 ${
+                                isLight ? "text-tap-red" : "text-tap-red"
+                              } hover:opacity-90 transition-opacity`}
+                            >
+                              Voir l&apos;offre
+                            </span>
                           </div>
                         </div>
                       </div>

@@ -5,7 +5,7 @@ import { useRecruteurOverview, useRecruteurJobs } from "@/hooks/use-recruteur";
 import EmptyState from "@/components/ui/EmptyState";
 import ErrorState from "@/components/ui/ErrorState";
 import { Skeleton } from "@/components/ui/Skeleton";
-import { UserCheck, Sparkles, Briefcase, Users, Target, ArrowRight, Zap, TrendingUp } from "lucide-react";
+import { UserCheck, Briefcase, Users, Target, ArrowRight, TrendingUp } from "lucide-react";
 import Link from "next/link";
 
 export default function MatchingRecruteurPage() {
@@ -44,58 +44,6 @@ export default function MatchingRecruteurPage() {
         </div>
       </div>
 
-      {/* AI Banner (premium - hover plus doux) */}
-      <div className="relative mb-8 group">
-        <div className="relative bg-white/[0.02] border border-white/[0.06] rounded-2xl p-6 glass glass-hover overflow-hidden">
-          <div
-            aria-hidden="true"
-            className="absolute inset-0 pointer-events-none opacity-0 group-hover:opacity-100 transition-opacity"
-            style={{
-              background:
-                "radial-gradient(circle at top, rgba(202, 27, 40, 0.22), transparent 55%)",
-            }}
-          />
-          <div className="flex items-start justify-between gap-4">
-            <div className="flex items-start gap-4 min-w-0">
-              <div className="w-10 h-10 rounded-xl bg-emerald-500/10 border border-emerald-500/20 flex items-center justify-center shrink-0">
-                <Sparkles size={18} className="text-emerald-400" />
-              </div>
-
-              <div className="min-w-0">
-                <h3 className="text-[14px] font-semibold text-white mb-1">Matching IA, calibreur de pertinence</h3>
-                <p className="text-[13px] text-white/45 font-light">
-                  L&apos;IA compare votre offre et le profil candidat pour optimiser les correspondances (compétences, expérience, et alignement).
-                </p>
-
-                <div className="flex flex-wrap gap-2 mt-3">
-                  <span className="inline-flex items-center gap-2 text-[11px] px-3 py-1 rounded-full border border-white/[0.08] bg-white/[0.03] text-white/60">
-                    <span className="w-1.5 h-1.5 rounded-full bg-emerald-400" />
-                    Analyse CV
-                  </span>
-                  <span className="inline-flex items-center gap-2 text-[11px] px-3 py-1 rounded-full border border-white/[0.08] bg-white/[0.03] text-white/60">
-                    <span className="w-1.5 h-1.5 rounded-full bg-tap-red" />
-                    Critères de l&apos;offre
-                  </span>
-                  <span className="inline-flex items-center gap-2 text-[11px] px-3 py-1 rounded-full border border-white/[0.08] bg-white/[0.03] text-white/60">
-                    <span className="w-1.5 h-1.5 rounded-full bg-blue-400" />
-                    Score de matching
-                  </span>
-                </div>
-              </div>
-            </div>
-
-            <a
-              href="#how-matching-recruteur"
-              className="hidden sm:inline-flex items-center gap-2 px-3 py-2 rounded-xl border border-white/[0.12] bg-white/[0.03] text-white/70 hover:text-white hover:bg-white/[0.06] transition shrink-0"
-              aria-label="Voir comment fonctionne le matching"
-              title="Voir comment fonctionne le matching"
-            >
-              <span className="text-[12px] font-medium">Comment ça marche</span>
-            </a>
-          </div>
-        </div>
-      </div>
-
       {isLoading ? (
         <div className="space-y-4">
           {Array.from({ length: 3 }).map((_, i) => (
@@ -119,31 +67,55 @@ export default function MatchingRecruteurPage() {
         <>
           {/* Stats rapides */}
           <div className="grid grid-cols-1 sm:grid-cols-3 gap-3 mb-8">
-            <div className="bg-zinc-900/50 border border-white/[0.06] rounded-xl p-5 flex items-center gap-4">
-              <div className="w-10 h-10 rounded-xl bg-emerald-500/10 border border-emerald-500/20 flex items-center justify-center">
-                <Briefcase size={18} className="text-emerald-500" />
+            <div className="group rounded-2xl p-5 relative overflow-hidden bg-zinc-900/60 border border-white/[0.07] transition-all duration-300 hover:-translate-y-0.5 hover:brightness-105 shadow-[0_18px_40px_rgba(0,0,0,0.25)]">
+              {/* Overlay glint */}
+              <div className="pointer-events-none absolute inset-0 opacity-0 group-hover:opacity-100 transition-opacity duration-500">
+                <div className="absolute -top-20 -right-10 w-48 h-48 rounded-full bg-white/10 blur-2xl" />
+                <div className="absolute -bottom-24 -left-20 w-56 h-56 rounded-full bg-tap-red/10 blur-2xl opacity-40" />
               </div>
-              <div>
-                <p className="text-[22px] font-bold text-white">{overview?.totalJobs ?? 0}</p>
-                <p className="text-[11px] text-white/40">Offres actives</p>
+              <div className="flex items-start justify-between gap-3 relative">
+                <div>
+                  <p className="text-[11px] uppercase tracking-[1.5px] text-white/85">Offres actives</p>
+                  <p className="mt-2 text-[30px] font-bold tracking-[-0.03em] text-white">{overview?.totalJobs ?? 0}</p>
+                  <p className="mt-1 text-[12px] text-white/70">{overview?.urgentJobs ?? 0} postes urgents</p>
+                </div>
+                <div className="w-11 h-11 rounded-xl border flex items-center justify-center bg-white/15 border-white/25">
+                  <Briefcase size={18} className="text-white" />
+                </div>
               </div>
             </div>
-            <div className="bg-zinc-900/50 border border-white/[0.06] rounded-xl p-5 flex items-center gap-4">
-              <div className="w-10 h-10 rounded-xl bg-blue-500/10 border border-blue-500/20 flex items-center justify-center">
-                <Users size={18} className="text-blue-500" />
+
+            <div className="group rounded-2xl p-5 relative overflow-hidden bg-zinc-900/60 border border-white/[0.07] transition-all duration-300 hover:-translate-y-0.5 hover:brightness-105 shadow-[0_18px_40px_rgba(0,0,0,0.25)]">
+              <div className="pointer-events-none absolute inset-0 opacity-0 group-hover:opacity-100 transition-opacity duration-500">
+                <div className="absolute -top-20 -right-10 w-48 h-48 rounded-full bg-white/10 blur-2xl" />
+                <div className="absolute -bottom-24 -left-20 w-56 h-56 rounded-full bg-tap-red/10 blur-2xl opacity-40" />
               </div>
-              <div>
-                <p className="text-[22px] font-bold text-white">{overview?.totalCandidates ?? 0}</p>
-                <p className="text-[11px] text-white/40">Candidats disponibles</p>
+              <div className="flex items-start justify-between gap-3 relative">
+                <div>
+                  <p className="text-[11px] uppercase tracking-[1.5px] text-white/85">Candidats disponibles</p>
+                  <p className="mt-2 text-[30px] font-bold tracking-[-0.03em] text-white">{overview?.totalCandidates ?? 0}</p>
+                  <p className="mt-1 text-[12px] text-white/70">{overview?.totalApplications ?? 0} candidatures</p>
+                </div>
+                <div className="w-11 h-11 rounded-xl border flex items-center justify-center bg-white/15 border-white/25">
+                  <Users size={18} className="text-white" />
+                </div>
               </div>
             </div>
-            <div className="bg-zinc-900/50 border border-white/[0.06] rounded-xl p-5 flex items-center gap-4">
-              <div className="w-10 h-10 rounded-xl bg-purple-500/10 border border-purple-500/20 flex items-center justify-center">
-                <Target size={18} className="text-purple-500" />
+
+            <div className="group rounded-2xl p-5 relative overflow-hidden bg-zinc-900/60 border border-white/[0.07] transition-all duration-300 hover:-translate-y-0.5 hover:brightness-105 shadow-[0_18px_40px_rgba(0,0,0,0.25)]">
+              <div className="pointer-events-none absolute inset-0 opacity-0 group-hover:opacity-100 transition-opacity duration-500">
+                <div className="absolute -top-20 -right-10 w-48 h-48 rounded-full bg-white/10 blur-2xl" />
+                <div className="absolute -bottom-24 -left-20 w-56 h-56 rounded-full bg-tap-red/10 blur-2xl opacity-40" />
               </div>
-              <div>
-                <p className="text-[22px] font-bold text-white">{overview?.totalApplications ?? 0}</p>
-                <p className="text-[11px] text-white/40">Matchs réalisés</p>
+              <div className="flex items-start justify-between gap-3 relative">
+                <div>
+                  <p className="text-[11px] uppercase tracking-[1.5px] text-white/85">Matchs réalisés</p>
+                  <p className="mt-2 text-[30px] font-bold tracking-[-0.03em] text-white">{overview?.totalApplications ?? 0}</p>
+                  <p className="mt-1 text-[12px] text-white/70">{overview?.totalCandidates ?? 0} profils</p>
+                </div>
+                <div className="w-11 h-11 rounded-xl border flex items-center justify-center bg-white/15 border-white/25">
+                  <Target size={18} className="text-white" />
+                </div>
               </div>
             </div>
           </div>

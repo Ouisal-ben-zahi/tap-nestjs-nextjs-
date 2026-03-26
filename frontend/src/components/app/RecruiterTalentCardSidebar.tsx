@@ -1,7 +1,7 @@
 "use client";
 
 import { useMemo } from "react";
-import { useRecruiterCandidateTalentcardFiles } from "@/hooks/use-recruteur";
+import { useRecruiterCandidatePortfolioPdfFiles } from "@/hooks/use-recruteur";
 import { useRecruiterTalentPanelStore } from "@/stores/recruiter-talent-panel";
 import ErrorState from "@/components/ui/ErrorState";
 import { Skeleton } from "@/components/ui/Skeleton";
@@ -19,17 +19,16 @@ function pdfEmbedPreviewSrc(url: string): string {
   }
 }
 
-function pickSingleTalentcardFile(
-  files: { publicUrl: string; updatedAt: string | null }[],
+function pickSinglePortfolioFile(
+  files: { publicUrl: string; updatedAt: string | null; type?: "short" | "long" }[],
 ) {
   if (!files.length) return null;
-  const tapFiles = files.filter((f) => {
-    const raw = String(f.publicUrl ?? "");
-    const withoutQuery = raw.split("?")[0] ?? raw;
-    const name = withoutQuery.split("/").pop() ?? "";
-    return name.toLowerCase().endsWith("tap.pdf");
-  });
-  const source = tapFiles.length ? tapFiles : files;
+
+  // Prefer "short" portfolio (one-page), then "long".
+  const short = files.filter((f) => f.type === "short");
+  const long = files.filter((f) => f.type === "long");
+  const source = short.length ? short : long.length ? long : files;
+
   return [...source].sort((a, b) => {
     const ta = a.updatedAt ? new Date(a.updatedAt).getTime() : 0;
     const tb = b.updatedAt ? new Date(b.updatedAt).getTime() : 0;
@@ -39,33 +38,32 @@ function pickSingleTalentcardFile(
 
 export default function RecruiterTalentCardSidebar() {
   const talentPanel = useRecruiterTalentPanelStore((s) => s.talentPanel);
-  const zoom = 1;
 
-  const talentCardQuery = useRecruiterCandidateTalentcardFiles(
+  const portfolioQuery = useRecruiterCandidatePortfolioPdfFiles(
     talentPanel?.candidateId ?? null,
     Boolean(talentPanel),
   );
 
   const singleFile = useMemo(
-    () => pickSingleTalentcardFile(talentCardQuery.data?.talentcardFiles ?? []),
-    [talentCardQuery.data?.talentcardFiles],
+    () => pickSinglePortfolioFile(portfolioQuery.data?.portfolioPdfFiles ?? []),
+    [portfolioQuery.data?.portfolioPdfFiles],
   );
 
   if (!talentPanel) return null;
 
   return (
     <div className="flex flex-col w-full h-auto shrink-0 gap-3">
-      {talentCardQuery.isLoading ? (
+      {portfolioQuery.isLoading ? (
         <div className="relative w-full max-w-[min(320px,92vw)] mx-auto aspect-[210/297] min-h-[280px] overflow-hidden rounded-2xl bg-white">
           <Skeleton className="absolute inset-0 h-full w-full rounded-2xl" />
         </div>
-      ) : talentCardQuery.isError ? (
+      ) : portfolioQuery.isError ? (
         <div className="w-full max-w-[min(320px,92vw)] mx-auto min-h-[160px] flex items-center justify-center px-1">
-          <ErrorState onRetry={() => talentCardQuery.refetch()} />
+          <ErrorState onRetry={() => portfolioQuery.refetch()} />
         </div>
       ) : !singleFile ? (
         <div className="w-full max-w-[min(320px,92vw)] mx-auto min-h-[120px] flex items-center justify-center text-center px-2">
-          <p className="text-[12px] text-white/50">Aucune talent card pour ce profil.</p>
+          <p className="text-[12px] text-white/50">Aucun portfolio pour ce profil.</p>
         </div>
       ) : (
         <>
@@ -77,7 +75,7 @@ export default function RecruiterTalentCardSidebar() {
               >
                 <div className="relative aspect-[210/297] w-full min-h-[260px]">
                   <iframe
-                    title="Talent card"
+                    title="Portfolio"
                     src={pdfEmbedPreviewSrc(singleFile.publicUrl)}
                     className="absolute inset-0 h-full w-full border-0"
                   />

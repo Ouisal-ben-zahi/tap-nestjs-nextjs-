@@ -123,13 +123,13 @@ export default function AppLayout({ children }: { children: React.ReactNode }) {
             className="fixed inset-0 z-[60] flex items-center justify-center p-0 sm:p-6"
             role="dialog"
             aria-modal="true"
-            aria-label="Talent card"
+            aria-label="Portfolio"
           >
             <button
               type="button"
               className="absolute inset-0 cursor-default border-0 bg-transparent p-0"
               onClick={closeRecruiterTalentPanel}
-              aria-label="Fermer la talent card"
+              aria-label="Fermer le portfolio"
             />
             <div
               className="relative z-10 w-full h-full sm:h-auto sm:max-h-[92vh] shrink-0 overflow-y-auto pointer-events-auto bg-[#020001] rounded-none sm:rounded-2xl lg:w-[420px] lg:min-w-[420px] lg:max-w-[420px]"
