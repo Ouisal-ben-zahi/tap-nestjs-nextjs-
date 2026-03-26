@@ -232,14 +232,6 @@ export default function CandidatsPage() {
                         .join(" ")
                         .trim() ||
                       "Candidat sans nom";
-                    const missingSkills = Array.isArray(item.missing_skills)
-                      ? item.missing_skills
-                      : typeof item.missing_skills === "string"
-                        ? item.missing_skills
-                            .split(",")
-                            .map((skill) => skill.trim())
-                            .filter((skill) => skill && skill.toLowerCase() !== "aucune")
-                        : [];
                     const candidateId = Number(item.candidate_id ?? 0);
                     const isValidatingThisCandidate =
                       validateCandidateMutation.isPending &&
@@ -250,149 +242,123 @@ export default function CandidatsPage() {
                     return (
                       <div
                         key={`${item.candidate_id ?? candidateName}-${scorePct}`}
-                        className="bg-zinc-900/50 border border-white/[0.06] rounded-xl p-5 hover:border-white/[0.1] transition"
+                        className="grid grid-cols-12 items-center gap-4 bg-zinc-900/50 border border-white/[0.06] rounded-xl px-5 py-4 hover:border-white/[0.1] transition"
                       >
-                        <div className="flex items-start justify-between gap-4">
-                          <div className="min-w-0 flex-1">
-                            <p className="text-[15px] font-semibold text-white truncate">{candidateName}</p>
-                            <p className="text-[12px] text-white/45 mt-1">
-                              {item.candidate?.titre_profil || "Profil non renseigné"}
-                            </p>
-                            <div className="mt-2 flex flex-wrap items-center gap-2 text-[11px] text-white/40">
-                              {item.candidate?.categorie_profil ? (
-                                <span className="px-2 py-0.5 rounded-full bg-white/[0.04] border border-white/[0.08]">
-                                  {item.candidate.categorie_profil}
-                                </span>
-                              ) : null}
-                              {item.candidate?.niveau_seniorite ? (
-                                <span className="px-2 py-0.5 rounded-full bg-white/[0.04] border border-white/[0.08]">
-                                  {item.candidate.niveau_seniorite}
-                                </span>
-                              ) : null}
-                              {item.candidate?.ville || item.candidate?.pays ? (
-                                <span>
-                                  {[item.candidate?.ville, item.candidate?.pays].filter(Boolean).join(", ")}
-                                </span>
-                              ) : null}
-                            </div>
-                            {missingSkills.length ? (
-                              <p className="text-[11px] text-amber-300/80 mt-2">
-                                Compétences manquantes: {missingSkills.slice(0, 4).join(", ")}
-                              </p>
-                            ) : null}
-                          </div>
-                          <div className="shrink-0 text-right">
-                            <p className="text-[20px] font-bold text-emerald-400">{scorePct}%</p>
-                            <p className="text-[10px] text-white/30">score global</p>
-                            <div className="mt-2 inline-flex items-center gap-2">
-                              <button
-                                type="button"
-                                onClick={async () => {
-                                  if (!selectedJobId || !candidateId) return;
-                                  const isRegenerate =
-                                    alreadyValidated || Boolean(existingInterviewPdfUrl);
+                        {/* Col 1: nom + titre profil */}
+                        <div className="col-span-12 sm:col-span-7 min-w-0">
+                          <p className="text-[15px] font-semibold text-white truncate">{candidateName}</p>
+                          <p className="text-[12px] text-white/45 mt-1">
+                            {item.candidate?.titre_profil || "Profil non renseigné"}
+                          </p>
+                        </div>
 
-                                  if (!isRegenerate) {
-                                    validateCandidateMutation.mutate(
-                                      { jobId: selectedJobId, candidateId },
-                                      {
-                                        onSuccess: (data) =>
-                                          openModalFromValidateResponse(data, candidateName, candidateId),
-                                      },
-                                    );
-                                    return;
+                        {/* Col 2: % matching */}
+                        <div className="col-span-6 sm:col-span-2 text-center sm:text-right">
+                          <p className="text-[20px] font-bold text-emerald-400">{scorePct}%</p>
+                        </div>
+
+                        {/* Col 3: bouton valider */}
+                        <div className="col-span-6 sm:col-span-3 flex justify-center sm:justify-end items-center gap-2">
+                          <button
+                            type="button"
+                            onClick={async () => {
+                              if (!selectedJobId || !candidateId) return;
+                              const isRegenerate =
+                                alreadyValidated || Boolean(existingInterviewPdfUrl);
+
+                              if (!isRegenerate) {
+                                validateCandidateMutation.mutate(
+                                  { jobId: selectedJobId, candidateId },
+                                  {
+                                    onSuccess: (data) =>
+                                      openModalFromValidateResponse(data, candidateName, candidateId),
+                                  },
+                                );
+                                return;
+                              }
+
+                              setRegeneratingCandidateId(candidateId);
+                              try {
+                                let last: ValidateCandidateResponse | null = null;
+                                for (let attempt = 0; attempt < REGENERATE_MAX_ATTEMPTS; attempt++) {
+                                  if (attempt > 0) {
+                                    await new Promise((r) => setTimeout(r, REGENERATE_DELAY_MS));
                                   }
-
-                                  setRegeneratingCandidateId(candidateId);
-                                  try {
-                                    let last: ValidateCandidateResponse | null = null;
-                                    for (let attempt = 0; attempt < REGENERATE_MAX_ATTEMPTS; attempt++) {
-                                      if (attempt > 0) {
-                                        await new Promise((r) => setTimeout(r, REGENERATE_DELAY_MS));
-                                      }
-                                      last = await recruteurService.validateCandidateForJob(
-                                        selectedJobId,
-                                        candidateId,
-                                      );
-                                      const qs = normalizeInterviewQuestions(last);
-                                      if (qs.length > 0) {
-                                        await queryClient.invalidateQueries({
-                                          queryKey: ["recruteur", "matched-candidates", selectedJobId],
-                                        });
-                                        await queryClient.invalidateQueries({
-                                          queryKey: ["recruteur", "overview"],
-                                        });
-                                        openModalFromValidateResponse(last, candidateName, candidateId);
-                                        addToast({
-                                          message: `${qs.length} question(s) d’entretien générée(s).`,
-                                          type: "success",
-                                        });
-                                        return;
-                                      }
-                                    }
+                                  last = await recruteurService.validateCandidateForJob(
+                                    selectedJobId,
+                                    candidateId,
+                                  );
+                                  const qs = normalizeInterviewQuestions(last);
+                                  if (qs.length > 0) {
                                     await queryClient.invalidateQueries({
                                       queryKey: ["recruteur", "matched-candidates", selectedJobId],
                                     });
                                     await queryClient.invalidateQueries({
                                       queryKey: ["recruteur", "overview"],
                                     });
-                                    if (last) {
-                                      openModalFromValidateResponse(last, candidateName, candidateId, {
-                                        emptyNoticeOverride:
-                                          "Après plusieurs tentatives automatiques, aucune question n’a été reçue. Utilisez « Générer le PDF (questions IA) » dans la modale ou réessayez plus tard.",
-                                      });
-                                      addToast({
-                                        message:
-                                          "Aucune question reçue après plusieurs tentatives. Voir la modale.",
-                                        type: "error",
-                                      });
-                                    }
-                                  } catch {
+                                    openModalFromValidateResponse(last, candidateName, candidateId);
                                     addToast({
-                                      message: "Impossible de régénérer les questions pour le moment.",
-                                      type: "error",
+                                      message: `${qs.length} question(s) d’entretien générée(s).`,
+                                      type: "success",
                                     });
-                                  } finally {
-                                    setRegeneratingCandidateId(null);
+                                    return;
                                   }
-                                }}
-                                disabled={
-                                  !selectedJobId ||
-                                  !candidateId ||
-                                  isValidatingThisCandidate ||
-                                  regeneratingCandidateId === candidateId
                                 }
-                                className="inline-flex items-center gap-1.5 px-2.5 py-1 text-[11px] rounded-md border border-emerald-500/40 text-emerald-300 hover:bg-emerald-500/10 disabled:opacity-50 disabled:cursor-not-allowed"
-                              >
-                                <CheckCircle2 size={13} />
-                                {regeneratingCandidateId === candidateId
-                                  ? "Régénération en cours..."
-                                  : isValidatingThisCandidate
-                                    ? "Validation..."
-                                    : alreadyValidated || existingInterviewPdfUrl
-                                      ? "Régénérer d'autres questions"
-                                      : "Valider"}
-                              </button>
-                              {existingInterviewPdfUrl ? (
-                                <a
-                                  href={existingInterviewPdfUrl}
-                                  target="_blank"
-                                  rel="noopener noreferrer"
-                                  className="p-1.5 rounded-full border border-white/[0.14] hover:bg-zinc-800 text-zinc-400 hover:text-white transition"
-                                  title="Télécharger les questions d'entretien"
-                                  aria-label="Télécharger les questions d'entretien"
-                                >
-                                  <Download size={14} />
-                                </a>
-                              ) : null}
-                            </div>
-                          </div>
-                        </div>
-                        <div className="mt-3 h-1.5 bg-zinc-800 rounded-full overflow-hidden">
-                          <div
-                            className="h-full bg-emerald-500/60 rounded-full transition-all duration-700"
-                            style={{ width: `${Math.max(0, Math.min(100, scorePct))}%` }}
-                          />
+                                await queryClient.invalidateQueries({
+                                  queryKey: ["recruteur", "matched-candidates", selectedJobId],
+                                });
+                                await queryClient.invalidateQueries({
+                                  queryKey: ["recruteur", "overview"],
+                                });
+                                if (last) {
+                                  openModalFromValidateResponse(last, candidateName, candidateId, {
+                                    emptyNoticeOverride:
+                                      "Après plusieurs tentatives automatiques, aucune question n’a été reçue. Utilisez « Générer le PDF (questions IA) » dans la modale ou réessayez plus tard.",
+                                  });
+                                  addToast({
+                                    message:
+                                      "Aucune question reçue après plusieurs tentatives. Voir la modale.",
+                                    type: "error",
+                                  });
+                                }
+                              } catch {
+                                addToast({
+                                  message: "Impossible de régénérer les questions pour le moment.",
+                                  type: "error",
+                                });
+                              } finally {
+                                setRegeneratingCandidateId(null);
+                              }
+                            }}
+                            disabled={
+                              !selectedJobId ||
+                              !candidateId ||
+                              isValidatingThisCandidate ||
+                              regeneratingCandidateId === candidateId
+                            }
+                            className="inline-flex items-center gap-1.5 px-2.5 py-1 text-[11px] rounded-md border border-emerald-500/40 text-emerald-300 hover:bg-emerald-500/10 disabled:opacity-50 disabled:cursor-not-allowed"
+                          >
+                            <CheckCircle2 size={13} />
+                            {regeneratingCandidateId === candidateId
+                              ? "Régénération en cours..."
+                              : isValidatingThisCandidate
+                                ? "Validation..."
+                                : alreadyValidated || existingInterviewPdfUrl
+                                  ? "Régénérer d'autres questions"
+                                  : "Valider"}
+                          </button>
+                          {existingInterviewPdfUrl ? (
+                            <a
+                              href={existingInterviewPdfUrl}
+                              target="_blank"
+                              rel="noopener noreferrer"
+                              className="p-1.5 rounded-full border border-white/[0.14] hover:bg-zinc-800 text-zinc-400 hover:text-white transition"
+                              title="Télécharger les questions d'entretien"
+                              aria-label="Télécharger les questions d'entretien"
+                            >
+                              <Download size={14} />
+                            </a>
+                          ) : null}
                         </div>
                       </div>
                     );

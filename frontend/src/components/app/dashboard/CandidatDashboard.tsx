@@ -473,8 +473,8 @@ export default function CandidatDashboard() {
       )}
 
       {!statsQuery.isLoading && !statsQuery.isError && (
-        <div className="grid grid-cols-1 xl:grid-cols-3 gap-6">
-          <div className={`xl:col-span-2 rounded-2xl p-6 ${isLight ? "card-luxury-light" : "bg-zinc-900/60 border border-white/[0.07]"}`}>
+        <div>
+          <div className={`rounded-2xl p-6 ${isLight ? "card-luxury-light" : "bg-zinc-900/60 border border-white/[0.07]"}`}>
             <div className="flex items-center justify-between gap-3 mb-4">
               <h3 className={`text-[13px] uppercase tracking-[2px] font-semibold ${isLight ? "text-black" : "text-white/50"}`}>
                 Pipeline de conversion
@@ -521,28 +521,6 @@ export default function CandidatDashboard() {
 
           </div>
 
-          <div className={`rounded-2xl p-6 ${isLight ? "card-luxury-light" : "bg-zinc-900/60 border border-white/[0.07]"}`}>
-            <h3 className={`text-[13px] uppercase tracking-[2px] font-semibold mb-4 ${isLight ? "text-black" : "text-white/50"}`}>
-              Insights IA
-            </h3>
-            <div className="space-y-3">
-              <div className="rounded-xl border border-emerald-500/20 bg-emerald-500/5 p-3">
-                <p className={`text-[12px] ${isLight ? "text-black/80" : "text-white/70"}`}>
-                  Votre performance est <span className="font-semibold">{performanceTone.toLowerCase()}</span>.
-                </p>
-              </div>
-              <div className="rounded-xl border border-blue-500/20 bg-blue-500/5 p-3">
-                <p className={`text-[12px] ${isLight ? "text-black/80" : "text-white/70"}`}>
-                  Priorite: augmenter les candidatures qualifiees pour faire monter le taux d&apos;entretien.
-                </p>
-              </div>
-              <div className="rounded-xl border border-amber-500/20 bg-amber-500/5 p-3">
-                <p className={`text-[12px] ${isLight ? "text-black/80" : "text-white/70"}`}>
-                  Conseil: completez votre profil et votre CV pour booster le matching.
-                </p>
-              </div>
-            </div>
-          </div>
         </div>
       )}
 

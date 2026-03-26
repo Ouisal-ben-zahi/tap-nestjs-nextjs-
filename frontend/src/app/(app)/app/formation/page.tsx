@@ -51,21 +51,6 @@ export default function FormationPage() {
           action={<Link href="/app/analyse-cv" className="btn-primary gap-2 mt-2"><Upload size={14} /> Analyser mon CV</Link>} />
       ) : (
         <>
-          <div
-            className={`rounded-2xl p-6 mb-8 flex items-start gap-4 ${
-              isLight
-                ? "card-luxury-light"
-                : "bg-amber-500/[0.06] border border-amber-500/15"
-            }`}
-          >
-            <div className="w-10 h-10 rounded-xl bg-amber-500/10 border border-amber-500/20 flex items-center justify-center shrink-0">
-              <Lightbulb size={18} className="text-amber-500" />
-            </div>
-            <div>
-              <h3 className={`text-[14px] font-semibold mb-1 ${isLight ? "text-black" : "text-white"}`}>Recommandations IA</h3>
-            </div>
-          </div>
-
           <div className="flex items-center gap-3 mb-5">
             <div className="w-1 h-5 rounded-full bg-amber-500" />
             <h2 className={`text-[13px] uppercase tracking-[2px] font-semibold ${isLight ? "text-black" : "text-white/50"}`}>Modules disponibles</h2>
