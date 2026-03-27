@@ -599,7 +599,8 @@ def convert_talent_card_html_to_pdf(
             " * { " + _exact + " } "
             " html, body { width: 16.8cm !important; height: 12.3349cm !important; margin: 0 !important; padding: 0 !important; background: #000 !important; overflow: hidden !important; } "
             " body { display: block !important; } "
-            " .tc { width: 16.8cm !important; height: 12.3349cm !important; margin: 0 !important; } "
+            " .tc { width: 100% !important; height: 100% !important; max-width: none !important; margin: 0 !important; border-radius: 0 !important; } "
+            " .tc-inner { height: 100% !important; } "
             " .fut { box-shadow: none !important; } "
             " } "
         )

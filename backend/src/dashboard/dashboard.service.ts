@@ -617,6 +617,26 @@ export class DashboardService {
     return base;
   }
 
+  /**
+   * URL publique utilisée dans les réponses API renvoyées au navigateur.
+   * Elle doit être HTTPS (ou relative) pour éviter le Mixed Content.
+   *
+   * Exemples recommandés en prod:
+   * - FLASK_AI_PUBLIC_URL=/ia
+   * - FLASK_AI_PUBLIC_URL=https://demo.tap-hr.com/ia
+   */
+  private getFlaskPublicBaseUrl(): string {
+    const raw =
+      this.config.get<string>('FLASK_AI_PUBLIC_URL') ||
+      this.config.get<string>('NEXT_PUBLIC_FLASK_AI_URL') ||
+      '/ia';
+    const value = String(raw || '').trim().replace(/\/$/, '');
+    if (!value) return '/ia';
+    if (value.startsWith('/')) return value;
+    if (/^https?:\/\//i.test(value)) return value;
+    return `/${value.replace(/^\/+/, '')}`;
+  }
+
   private async callFlaskJsonWithBase<T>(
     base: string,
     method: 'GET' | 'POST',
@@ -960,7 +980,7 @@ export class DashboardService {
     );
 
     const sessionId = result?.session_id ? String(result.session_id) : null;
-    const flaskBase = this.getFlaskBaseUrl();
+    const flaskBase = this.getFlaskPublicBaseUrl();
     return {
       success: Boolean(result?.success),
       session_id: sessionId ?? undefined,
@@ -1010,7 +1030,7 @@ export class DashboardService {
       `/interview/${encodeURIComponent(sessionId)}/audio`,
     );
 
-    const flaskBase = this.getFlaskBaseUrl();
+    const flaskBase = this.getFlaskPublicBaseUrl();
     const audio_files = (data?.audio_files || []).map((f: any) => ({
       ...f,
       file_url:
@@ -2267,27 +2287,8 @@ export class DashboardService {
             res.on('end', () => {
               if (res.statusCode >= 200 && res.statusCode < 300) {
                 console.log('[AI] Analyse lancee pour candidat ' + candidateId);
-                // Enchaîner automatiquement le scoring après la fin du pipeline /process.
-                void this
-                  .callFlaskJsonWithBase<any>(
-                    normalizedFlaskBase,
-                    'POST',
-                    `/api/scoring/${encodeURIComponent(String(candidateId))}`,
-                    {},
-                  )
-                  .then(() => {
-                    console.log(
-                      '[AI] Scoring lance pour candidat ' + candidateId,
-                    );
-                  })
-                  .catch((scoringErr: any) => {
-                    console.error(
-                      '[AI] Echec lancement scoring pour candidat ' +
-                        candidateId +
-                        ': ' +
-                        (scoringErr?.message ?? scoringErr),
-                    );
-                  });
+                // Le scoring est deja declenche dans Flask /process.
+                // Ne pas relancer ici pour eviter un double scoring.
               } else {
                 console.error('[AI] Erreur ' + res.statusCode + ' pour candidat ' + candidateId + ': ' + body);
               }
