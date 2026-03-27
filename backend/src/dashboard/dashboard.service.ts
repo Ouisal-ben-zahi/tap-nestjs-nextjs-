@@ -6,6 +6,7 @@ import {
 import { ConfigService } from '@nestjs/config';
 import { SupabaseClient, createClient } from '@supabase/supabase-js';
 import PDFDocument from 'pdfkit';
+import * as nodemailer from 'nodemailer';
 
 export interface CandidateDashboardStats {
   candidateId: number | null;
@@ -279,6 +280,14 @@ export interface RecruiterInterviewQuestion {
   category: string;
 }
 
+export interface RecruiterScheduleInterviewPayload {
+  job_id: number;
+  candidate_id: number;
+  interview_type: 'EN_LIGNE' | 'PRESENTIEL' | 'TELEPHONIQUE' | string;
+  interview_date: string; // YYYY-MM-DD
+  interview_time: string; // HH:MM
+}
+
 export interface CandidateScoreFromJson {
   candidateId: number | null;
   scoreGlobal: number | null;
@@ -321,6 +330,7 @@ export interface CandidateProfile {
 @Injectable()
 export class DashboardService {
   private supabase: SupabaseClient;
+  private mailer: nodemailer.Transporter | null = null;
 
   constructor(private config: ConfigService) {
     const url = this.config.get<string>('SUPABASE_URL');
@@ -333,6 +343,15 @@ export class DashboardService {
     }
 
     this.supabase = createClient(url, key);
+
+    const user = this.config.get<string>('MAILER_USER');
+    const pass = this.config.get<string>('MAILER_PASS');
+    if (user && pass) {
+      this.mailer = nodemailer.createTransport({
+        service: 'gmail',
+        auth: { user, pass },
+      });
+    }
   }
 
   private async getCandidateIdForUser(userId: number): Promise<{ id: number; created_at: string } | null> {
@@ -2919,6 +2938,200 @@ export class DashboardService {
       status: updated.status as RecruiterUpdateCandidateStatusPayload['status'],
       validate: Boolean(updated.validate),
       validatedAt: (updated.validated_at as string) ?? null,
+    };
+  }
+
+  async scheduleRecruiterInterview(
+    recruiterUserId: number,
+    payload: RecruiterScheduleInterviewPayload,
+  ): Promise<{
+    success: boolean;
+    interviewId: number;
+    mailSent: boolean;
+    mailError?: string | null;
+  }> {
+    if (!recruiterUserId || Number.isNaN(recruiterUserId)) {
+      throw new BadRequestException('userId invalide');
+    }
+
+    const jobId = Number(payload?.job_id);
+    const candidateId = Number(payload?.candidate_id);
+    const rawInterviewType = String(payload?.interview_type ?? '').trim();
+    const interviewDate = String(payload?.interview_date ?? '').trim();
+    const interviewTime = String(payload?.interview_time ?? '').trim();
+
+    if (!jobId || Number.isNaN(jobId)) throw new BadRequestException("Le champ 'job_id' est requis");
+    if (!candidateId || Number.isNaN(candidateId)) throw new BadRequestException("Le champ 'candidate_id' est requis");
+
+    if (!rawInterviewType) throw new BadRequestException("Le champ 'interview_type' est requis");
+    if (!interviewDate) throw new BadRequestException("Le champ 'interview_date' est requis");
+    if (!interviewTime) throw new BadRequestException("Le champ 'interview_time' est requis");
+
+    if (!/^\d{4}-\d{2}-\d{2}$/.test(interviewDate)) {
+      throw new BadRequestException("Le champ 'interview_date' doit être au format YYYY-MM-DD");
+    }
+    if (!/^\d{2}:\d{2}$/.test(interviewTime)) {
+      throw new BadRequestException("Le champ 'interview_time' doit être au format HH:MM");
+    }
+
+    // Normalise les libellés UI (Visio/Présentiel/Téléphone) vers les valeurs SQL attendues.
+    const normalizedInterviewType =
+      rawInterviewType.toLowerCase() === 'visio'
+        ? 'EN_LIGNE'
+        : rawInterviewType.toLowerCase() === 'présentiel' || rawInterviewType.toLowerCase() === 'presentiel'
+          ? 'PRESENTIEL'
+          : rawInterviewType.toLowerCase() === 'téléphone' || rawInterviewType.toLowerCase() === 'telephone'
+            ? 'TELEPHONIQUE'
+            : rawInterviewType;
+
+    const allowed = ['EN_LIGNE', 'PRESENTIEL', 'TELEPHONIQUE'];
+    if (!allowed.includes(normalizedInterviewType)) {
+      throw new BadRequestException("Type d'entretien invalide");
+    }
+
+    // Security: le recruteur ne peut planifier que sur ses propres offres.
+    const { data: job, error: jobError } = await this.supabase
+      .from('jobs')
+      .select('id, title, entreprise, user_id')
+      .eq('id', jobId)
+      .eq('user_id', recruiterUserId)
+      .limit(1)
+      .maybeSingle();
+
+    if (jobError) {
+      throw new BadRequestException(jobError.message || "Erreur lors du chargement de l'offre");
+    }
+    if (!job) {
+      throw new BadRequestException('Offre introuvable pour ce recruteur');
+    }
+
+    // candidate_postule_id = table pivot (job_id + candidate_id).
+    const { data: candidatePostule, error: postuleError } = await this.supabase
+      .from('candidate_postule')
+      .select('id')
+      .eq('job_id', jobId)
+      .eq('candidate_id', candidateId)
+      .maybeSingle();
+
+    if (postuleError) {
+      throw new BadRequestException(postuleError.message || 'Erreur lors de la recherche candidature');
+    }
+    if (!candidatePostule?.id) {
+      throw new BadRequestException("Candidature introuvable pour ce candidat et cette offre");
+    }
+
+    const { data: inserted, error: insertError } = await this.supabase
+      .from('recruiter_scheduled_interviews')
+      .insert({
+        recruiter_user_id: recruiterUserId,
+        job_id: jobId,
+        candidate_id: candidateId,
+        candidate_postule_id: candidatePostule.id,
+        interview_type: normalizedInterviewType,
+        interview_date: interviewDate,
+        interview_time: interviewTime,
+        status: 'PLANIFIE',
+      })
+      .select('id')
+      .single();
+
+    if (insertError || !inserted?.id) {
+      throw new BadRequestException(insertError?.message || "Erreur lors de la planification de l'entretien");
+    }
+
+    // Envoi e-mail best-effort (on ne bloque pas la DB si l'e-mail échoue).
+    let mailSent = false;
+    let mailError: string | null = null;
+
+    try {
+      if (!this.mailer) {
+        mailError = 'Mailer non configuré';
+      } else {
+        const { data: candidate, error: candidateError } = await this.supabase
+          .from('candidates')
+          .select('id, email, nom, prenom')
+          .eq('id', candidateId)
+          .maybeSingle();
+
+        if (candidateError) {
+          throw new Error(candidateError.message || 'Erreur lors du chargement du candidat');
+        }
+
+        const candidateEmail = (candidate?.email as string | null) ?? null;
+        if (!candidateEmail) {
+          mailError = 'Email candidat introuvable';
+        } else {
+          const from =
+            this.config.get<string>('MAILER_FROM') ||
+            this.config.get<string>('MAILER_USER') ||
+            'noreply@tap.com';
+
+          const candidateFirstName = (candidate?.prenom as string | null) ?? '';
+          const candidateLastName = (candidate?.nom as string | null) ?? '';
+          const candidateName = [candidateFirstName, candidateLastName].filter(Boolean).join(' ').trim();
+
+          const formatDisplayType =
+            normalizedInterviewType === 'EN_LIGNE'
+              ? 'Visio'
+              : normalizedInterviewType === 'PRESENTIEL'
+                ? 'Présentiel'
+                : 'Téléphone';
+
+          const dateDisplay = new Date(`${interviewDate}T00:00:00`).toLocaleDateString('fr-FR', {
+            year: 'numeric',
+            month: 'long',
+            day: 'numeric',
+          });
+
+          const subject = `Entretien planifié (${formatDisplayType}) - ${String(job.title ?? 'Offre')}`;
+
+          const html = `
+            <p>Bonjour${candidateName ? ` ${candidateName}` : ''},</p>
+            <p>Votre entretien a bien été planifié.</p>
+            <ul>
+              <li><strong>Offre :</strong> ${String(job.title ?? '')}</li>
+              <li><strong>Format :</strong> ${formatDisplayType}</li>
+              <li><strong>Date :</strong> ${dateDisplay}</li>
+              <li><strong>Heure :</strong> ${interviewTime}</li>
+            </ul>
+            <p>Nous vous contacterons avant l’entretien si nécessaire.</p>
+            <p>Cordialement,<br/>${String(job.entreprise ?? 'L’équipe recrutement')}</p>
+          `;
+
+          const text = [
+            `Bonjour${candidateName ? ` ${candidateName}` : ''},`,
+            '',
+            'Votre entretien a bien été planifié.',
+            '',
+            `Offre : ${String(job.title ?? '')}`,
+            `Format : ${formatDisplayType}`,
+            `Date : ${dateDisplay}`,
+            `Heure : ${interviewTime}`,
+            '',
+            'Cordialement,',
+            String(job.entreprise ?? 'L’équipe recrutement'),
+          ].join('\n');
+
+          await this.mailer.sendMail({
+            from: `"TAP" <${from}>`,
+            to: candidateEmail,
+            subject,
+            text,
+            html,
+          });
+
+          mailSent = true;
+        }
+      }
+    } catch (err: any) {
+      mailError = String(err?.message ?? err ?? 'Erreur envoi e-mail');
+    }
+
+    return {
+      success: true,
+      interviewId: Number(inserted.id),
+      mailSent,
+      mailError,
     };
   }
 

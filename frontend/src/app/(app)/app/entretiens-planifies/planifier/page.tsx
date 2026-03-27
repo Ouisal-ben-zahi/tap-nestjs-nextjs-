@@ -3,6 +3,7 @@
 import { useEffect, useMemo, useState } from "react";
 import Link from "next/link";
 import { useSearchParams } from "next/navigation";
+import { useRouter } from "next/navigation";
 import { User, ArrowLeft, ChevronDown, ChevronLeft, ChevronRight } from "lucide-react";
 import { useAuth } from "@/hooks/use-auth";
 import {
@@ -11,6 +12,9 @@ import {
 } from "@/hooks/use-recruteur";
 import { useUiStore } from "@/stores/ui";
 import EmptyState from "@/components/ui/EmptyState";
+import { useMutation } from "@tanstack/react-query";
+import { recruteurService } from "@/services/recruteur.service";
+import { getApiErrorMessage } from "@/lib/api-error";
 
 type InterviewType = "Visio" | "Présentiel" | "Téléphone";
 
@@ -36,6 +40,7 @@ export default function PlanifierEntretienPage() {
   const { user } = useAuth();
   const addToast = useUiStore((s) => s.addToast);
   const isRecruteur = user?.role === "recruteur";
+  const router = useRouter();
 
   const jobId = Number(searchParams.get("jobId") ?? 0);
   const candidateId = Number(searchParams.get("candidateId") ?? 0);
@@ -116,6 +121,31 @@ export default function PlanifierEntretienPage() {
     setCity(basicProfileQuery.data?.ville ?? matchedCandidate?.candidate?.ville ?? "");
   }, [basicProfileQuery.data, candidateNameFromQuery, matchedCandidate]);
 
+  const scheduleInterviewMutation = useMutation({
+    mutationFn: (payload: {
+      job_id: number;
+      candidate_id: number;
+      interview_type: string;
+      interview_date: string;
+      interview_time: string;
+    }) => recruteurService.scheduleRecruiterInterview(payload),
+    onSuccess: (res) => {
+      addToast({
+        message: res.mailSent
+          ? "Entretien planifié et e-mail envoyé au candidat."
+          : `Entretien planifié, mais envoi d'e-mail impossible: ${res.mailError ?? "inconnu"}`,
+        type: "success",
+      });
+      router.push("/app/entretiens-planifies");
+    },
+    onError: (error) => {
+      addToast({
+        message: getApiErrorMessage(error, "Impossible de planifier l'entretien."),
+        type: "error",
+      });
+    },
+  });
+
   if (!isRecruteur) {
     return (
       <EmptyState
@@ -156,9 +186,22 @@ export default function PlanifierEntretienPage() {
           className="grid grid-cols-1 sm:grid-cols-2 gap-4"
           onSubmit={(e) => {
             e.preventDefault();
-            addToast({
-              message: "Entretien planifié avec succès",
-              type: "success",
+
+            if (!jobId || !candidateId) {
+              addToast({ message: "Données de planification invalides.", type: "error" });
+              return;
+            }
+            if (!interviewDate || !interviewTime) {
+              addToast({ message: "Choisissez une date et un horaire.", type: "error" });
+              return;
+            }
+
+            scheduleInterviewMutation.mutate({
+              job_id: jobId,
+              candidate_id: candidateId,
+              interview_type: interviewType,
+              interview_date: interviewDate,
+              interview_time: interviewTime,
             });
           }}
         >
@@ -361,7 +404,11 @@ export default function PlanifierEntretienPage() {
           </div>
 
           <div className="sm:col-span-2 flex justify-end pt-2">
-            <button type="submit" className="btn-primary whitespace-nowrap">
+            <button
+              type="submit"
+              className="btn-primary whitespace-nowrap disabled:opacity-70 disabled:cursor-not-allowed"
+              disabled={scheduleInterviewMutation.isPending}
+            >
               Confirmer l&apos;entretien
             </button>
           </div>

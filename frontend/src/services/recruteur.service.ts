@@ -67,6 +67,21 @@ export type RecruiterCandidateBasicProfile = {
   ville: string | null;
 };
 
+export type ScheduleRecruiterInterviewPayload = {
+  job_id: number;
+  candidate_id: number;
+  interview_type: 'EN_LIGNE' | 'PRESENTIEL' | 'TELEPHONIQUE' | string;
+  interview_date: string; // YYYY-MM-DD
+  interview_time: string; // HH:MM
+};
+
+export type ScheduleRecruiterInterviewResponse = {
+  success: boolean;
+  interviewId: number;
+  mailSent: boolean;
+  mailError?: string | null;
+};
+
 export const recruteurService = {
   getOverview: () =>
     api.get<RecruteurOverview>('/dashboard/recruteur/overview').then((r) => r.data),
@@ -171,5 +186,13 @@ export const recruteurService = {
         candidate_id: params.candidateId,
         status: params.status,
       })
+      .then((r) => r.data),
+
+  scheduleRecruiterInterview: (payload: ScheduleRecruiterInterviewPayload) =>
+    api
+      .post<ScheduleRecruiterInterviewResponse>(
+        '/dashboard/recruteur/scheduled-interviews',
+        payload,
+      )
       .then((r) => r.data),
 };
