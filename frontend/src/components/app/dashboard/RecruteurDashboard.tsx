@@ -78,6 +78,9 @@ export default function RecruteurDashboard() {
       badgeClass: "bg-yellow-500/10 border-yellow-500/20",
     },
   ];
+  const themedCardClass =
+    "group card-animated-border relative overflow-hidden rounded-2xl border border-white/[0.08] bg-[linear-gradient(180deg,rgba(202,27,40,0.08)_0%,rgba(10,10,10,0.96)_30%,rgba(10,10,10,0.96)_100%)] shadow-[0_10px_28px_rgba(0,0,0,0.45)] hover:border-tap-red/15 transition-all duration-500";
+  const themedParagraphClass = isLight ? "text-black/60" : "text-white/60";
 
   return (
     <div className="space-y-8">
@@ -97,8 +100,8 @@ export default function RecruteurDashboard() {
                 return (
                   <div
                     key={card.label}
-                    className={`group rounded-2xl p-5 relative overflow-hidden ${
-                      isLight ? "card-luxury-light" : "bg-zinc-900/60 border border-white/[0.07]"
+                    className={`${themedCardClass} p-5 ${
+                      isLight ? "card-luxury-light" : ""
                     } transition-all duration-300 hover:-translate-y-0.5 ${
                       isLight
                         ? "hover:shadow-[0_12px_30px_rgba(0,0,0,0.18)]"
@@ -131,16 +134,16 @@ export default function RecruteurDashboard() {
                         <p className={`mt-2 text-[30px] font-bold tracking-[-0.03em] ${isLight ? "text-black" : "text-white"}`}>
                           {card.value}
                         </p>
-                        <p className={`mt-1 text-[12px] ${isLight ? "text-black/55" : "text-white/70"}`}>
+                        <p className={`mt-1 text-[12px] ${themedParagraphClass}`}>
                           {card.meta}
                         </p>
                       </div>
                       <div
                         className={`w-11 h-11 rounded-xl border flex items-center justify-center ${
-                          isLight ? card.badgeClass : "bg-white/15 border-white/25"
+                          isLight ? card.badgeClass : "bg-tap-red/[0.08] border-tap-red/20"
                         }`}
                       >
-                        <Icon size={18} className={isLight ? card.iconClass : "text-white"} />
+                        <Icon size={18} className={isLight ? card.iconClass : "text-tap-red"} />
                       </div>
                     </div>
                   </div>
@@ -155,10 +158,10 @@ export default function RecruteurDashboard() {
       {!overviewQuery.isLoading && overview && (
         <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
           {/* Candidatures par offre */}
-          <div className={`rounded-2xl p-6 ${isLight ? "card-luxury-light" : "bg-zinc-900/50 border border-white/[0.06]"}`}>
+          <div className={`${themedCardClass} p-6 ${isLight ? "card-luxury-light" : ""}`}>
             <h3 className={`text-[13px] uppercase tracking-[2px] font-semibold mb-5 ${isLight ? "text-black" : "text-white/50"}`}>Candidatures par offre</h3>
             {!overview.applicationsPerJob?.length ? (
-              <p className={`text-[13px] ${isLight ? "text-black/70" : "text-white/30"}`}>Aucune donnée</p>
+              <p className={`text-[13px] ${themedParagraphClass}`}>Aucune donnée</p>
             ) : (
               (() => {
                 const items = (overview.applicationsPerJob ?? []).slice(0, 6);
@@ -195,7 +198,7 @@ export default function RecruteurDashboard() {
                         );
                       })}
                     </div>
-                    <div className={`text-[11px] ${isLight ? "text-black/55" : "text-white/40"}`}>
+                    <div className={`text-[11px] ${themedParagraphClass}`}>
                       Affichage des {items.length} meilleures offres (sur vos données).
                     </div>
                   </div>
@@ -205,10 +208,10 @@ export default function RecruteurDashboard() {
           </div>
 
           {/* Offres par catégorie */}
-          <div className={`rounded-2xl p-6 ${isLight ? "card-luxury-light" : "bg-zinc-900/50 border border-white/[0.06]"}`}>
+          <div className={`${themedCardClass} p-6 ${isLight ? "card-luxury-light" : ""}`}>
             <h3 className={`text-[13px] uppercase tracking-[2px] font-semibold mb-5 ${isLight ? "text-black" : "text-white/50"}`}>Offres par catégorie</h3>
             {!overview.jobsPerCategory?.length ? (
-              <p className={`text-[13px] ${isLight ? "text-black/70" : "text-white/30"}`}>Aucune donnée</p>
+              <p className={`text-[13px] ${themedParagraphClass}`}>Aucune donnée</p>
             ) : (
               <div className="space-y-4">
                 {(() => {
@@ -304,11 +307,7 @@ export default function RecruteurDashboard() {
       {/* Répartition des candidatures */}
       {!overviewQuery.isLoading && overview && (
         <div className="rounded-2xl p-6">
-          <div
-            className={`${
-              isLight ? "card-luxury-light" : "bg-zinc-900/50 border border-white/[0.06]"
-            } rounded-2xl p-6`}
-          >
+          <div className={`${themedCardClass} rounded-2xl p-6 ${isLight ? "card-luxury-light" : ""}`}>
             <div className="flex items-center gap-2 mb-5">
               <Activity size={14} className="text-amber-500" />
               <h3 className={`text-[13px] uppercase tracking-[2px] font-semibold ${isLight ? "text-black" : "text-white/50"}`}>
@@ -317,7 +316,7 @@ export default function RecruteurDashboard() {
             </div>
 
             {!overview?.recentApplications?.length ? (
-              <p className={`text-[13px] py-4 text-center ${isLight ? "text-black/60" : "text-white/30"}`}>
+              <p className={`text-[13px] py-4 text-center ${themedParagraphClass}`}>
                 Aucune candidature
               </p>
             ) : (
@@ -422,7 +421,7 @@ export default function RecruteurDashboard() {
                     {/* Line chart (points colorés par status) */}
                     <div className="w-full">
                       {entries.length <= 1 ? (
-                        <div className={`text-[12px] ${isLight ? "text-black/60" : "text-white/40"} text-center py-6`}>
+                        <div className={`text-[12px] ${themedParagraphClass} text-center py-6`}>
                           Pas assez de données pour tracer la courbe.
                         </div>
                       ) : (
@@ -517,7 +516,7 @@ export default function RecruteurDashboard() {
       {/* Candidatures récentes + Alertes */}
       <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
         <div className={hasAlerts ? "" : "lg:col-span-2"}>
-          <div className={`rounded-2xl p-6 ${isLight ? "card-luxury-light" : "bg-zinc-900/50 border border-white/[0.06]"}`}>
+          <div className={`${themedCardClass} p-6 ${isLight ? "card-luxury-light" : ""}`}>
             <h2 className={`text-[13px] uppercase tracking-[2px] font-semibold ${isLight ? "text-black/60" : "text-white/60"}`}>
               Candidatures récentes
             </h2>
@@ -542,7 +541,7 @@ export default function RecruteurDashboard() {
                       className={`rounded-xl px-5 py-4 transition cursor-pointer ${
                         isLight
                           ? "card-luxury-light hover:border-tap-red/70"
-                          : "bg-zinc-900/50 border border-white/[0.06] hover:border-white/[0.14]"
+                          : "bg-[#0A0A0A] border border-white/[0.06] hover:border-tap-red/15"
                       }`}
                       role="button"
                       tabIndex={0}
@@ -608,7 +607,7 @@ export default function RecruteurDashboard() {
 
         {hasAlerts && (
           <div>
-            <div className={`rounded-2xl p-6 ${isLight ? "card-luxury-light" : "bg-zinc-900/50 border border-white/[0.06]"}`}>
+            <div className={`${themedCardClass} p-6 ${isLight ? "card-luxury-light" : ""}`}>
               <h2 className={`text-[13px] uppercase tracking-[2px] font-semibold flex items-center gap-2 ${isLight ? "text-black" : "text-white/60"}`}>
                 <Bell size={13} className="text-yellow-500" /> Alertes
               </h2>

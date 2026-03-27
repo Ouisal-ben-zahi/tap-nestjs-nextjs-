@@ -521,72 +521,71 @@ export default function AnalyseCvAppPage() {
         )}
       </div>
 
-      {/* Talent Cards */}
-      <div>
-        <div className="mb-5">
-          <sup className="relative z-10 inline-flex items-center gap-2 rounded-full bg-blue-500/[0.08] border border-blue-500/20 px-3 py-1">
-            <Award size={12} className="text-blue-500" />
-            <span className="text-[10px] uppercase tracking-[2.5px] text-blue-500/80 font-semibold leading-none">Talent Cards</span>
-          </sup>
-        </div>
+      {hasCvs ? (
+        <>
+          {/* Talent Cards */}
+          <div>
+            <div className="mb-5">
+              <sup className="relative z-10 inline-flex items-center gap-2 rounded-full bg-blue-500/[0.08] border border-blue-500/20 px-3 py-1">
+                <Award size={12} className="text-blue-500" />
+                <span className="text-[10px] uppercase tracking-[2.5px] text-blue-500/80 font-semibold leading-none">Talent Cards</span>
+              </sup>
+              <p className={`mt-2 text-[12px] ${isLight ? "text-black/55" : "text-white/45"}`}>
+                Cartes générées par IA à partir de votre CV.
+              </p>
+            </div>
 
-        {talentcardQuery.isLoading ? (
-          <div className="grid gap-3">{Array.from({ length: 2 }).map((_, i) => <Skeleton key={i} className="h-20 w-full" />)}</div>
-        ) : talentcardQuery.isError ? (
-          <ErrorState onRetry={() => talentcardQuery.refetch()} />
-        ) : !talentcardQuery.data?.talentcardFiles?.length ? (
-          <EmptyState
-            icon={<Award className="w-10 h-10" />}
-            title=""
-            description={hasCvs
-              ? "Vos Talent Cards seront générées automatiquement après l'analyse de votre CV."
-              : "Uploadez d'abord un CV pour que l'IA génère vos Talent Cards."
-            }
-            action={!hasCvs ? (
-              <button onClick={() => fileRef.current?.click()} className="btn-primary gap-2 mt-2">
-                <Upload size={14} /> Uploader un CV
-              </button>
-            ) : undefined}
-          />
-        ) : (
-          <div className="grid gap-3">
-            {talentcardQuery.data.talentcardFiles.map((file, i) => (
-              <FileCard key={i} {...file} variant="sidebar-active" onDelete={(path) => deleteTalentcard.mutate(path)} />
-            ))}
+            {talentcardQuery.isLoading ? (
+              <div className="grid gap-3">{Array.from({ length: 2 }).map((_, i) => <Skeleton key={i} className="h-20 w-full" />)}</div>
+            ) : talentcardQuery.isError ? (
+              <ErrorState onRetry={() => talentcardQuery.refetch()} />
+            ) : !talentcardQuery.data?.talentcardFiles?.length ? (
+              <EmptyState
+                icon={<Award className="w-10 h-10" />}
+                title=""
+                description="Vos Talent Cards seront générées automatiquement après l'analyse de votre CV."
+              />
+            ) : (
+              <div className="grid gap-3">
+                {talentcardQuery.data.talentcardFiles.map((file, i) => (
+                  <FileCard key={i} {...file} variant="sidebar-active" onDelete={(path) => deleteTalentcard.mutate(path)} />
+                ))}
+              </div>
+            )}
           </div>
-        )}
-      </div>
 
-      {/* Portfolio */}
-      <div className="mt-8">
-        <div className="mb-5">
-          <sup className="relative z-10 inline-flex items-center gap-2 rounded-full bg-emerald-500/[0.08] border border-emerald-500/20 px-3 py-1">
-            <Briefcase size={12} className="text-emerald-500" />
-            <span className="text-[10px] uppercase tracking-[2.5px] text-emerald-500/80 font-semibold leading-none">Portfolio</span>
-          </sup>
-        </div>
+          {/* Portfolio */}
+          <div className="mt-8">
+            <div className="mb-5">
+              <sup className="relative z-10 inline-flex items-center gap-2 rounded-full bg-emerald-500/[0.08] border border-emerald-500/20 px-3 py-1">
+                <Briefcase size={12} className="text-emerald-500" />
+                <span className="text-[10px] uppercase tracking-[2.5px] text-emerald-500/80 font-semibold leading-none">Portfolio</span>
+              </sup>
+              <p className={`mt-2 text-[12px] ${isLight ? "text-black/55" : "text-white/45"}`}>
+                Portfolios PDF générés automatiquement par IA.
+              </p>
+            </div>
 
-        {portfolioQuery.isLoading ? (
-          <div className="grid gap-3">{Array.from({ length: 2 }).map((_, i) => <Skeleton key={i} className="h-20 w-full" />)}</div>
-        ) : portfolioQuery.isError ? (
-          <ErrorState onRetry={() => portfolioQuery.refetch()} />
-        ) : !portfolioQuery.data?.portfolioPdfFiles?.length ? (
-          <EmptyState
-            icon={<Briefcase className="w-10 h-10" />}
-            title=""
-            description={hasCvs
-              ? "Vos portfolios seront générés automatiquement après l'analyse."
-              : "Uploadez d'abord un CV pour que l'IA génère vos portfolios."
-            }
-          />
-        ) : (
-          <div className="grid gap-3">
-            {portfolioQuery.data.portfolioPdfFiles.map((file, i) => (
-              <FileCard key={i} {...file} variant="sidebar-active" onDelete={(path) => deletePortfolioPdf.mutate(path)} />
-            ))}
+            {portfolioQuery.isLoading ? (
+              <div className="grid gap-3">{Array.from({ length: 2 }).map((_, i) => <Skeleton key={i} className="h-20 w-full" />)}</div>
+            ) : portfolioQuery.isError ? (
+              <ErrorState onRetry={() => portfolioQuery.refetch()} />
+            ) : !portfolioQuery.data?.portfolioPdfFiles?.length ? (
+              <EmptyState
+                icon={<Briefcase className="w-10 h-10" />}
+                title=""
+                description="Vos portfolios seront générés automatiquement après l'analyse."
+              />
+            ) : (
+              <div className="grid gap-3">
+                {portfolioQuery.data.portfolioPdfFiles.map((file, i) => (
+                  <FileCard key={i} {...file} variant="sidebar-active" onDelete={(path) => deletePortfolioPdf.mutate(path)} />
+                ))}
+              </div>
+            )}
           </div>
-        )}
-      </div>
+        </>
+      ) : null}
 
       {/* Link to scoring */}
       {hasTalentCards && (

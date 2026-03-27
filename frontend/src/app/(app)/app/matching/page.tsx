@@ -1,10 +1,11 @@
 "use client";
 
-import { useEffect, useState } from "react";
+import { useEffect, useMemo, useState } from "react";
 import { useRouter } from "next/navigation";
 import { useAuth } from "@/hooks/use-auth";
 import {
   useCandidatStats,
+  useCandidatCvFiles,
   useCandidatMatchingJobs,
   useCandidatPublicJobs,
   useCandidatApplications,
@@ -14,22 +15,23 @@ import {
 import EmptyState from "@/components/ui/EmptyState";
 import ErrorState from "@/components/ui/ErrorState";
 import { Skeleton } from "@/components/ui/Skeleton";
-import { Users, MapPin, Briefcase, Sparkles, SlidersHorizontal, FileText, CheckCircle2, Calendar, Eye, Bookmark } from "lucide-react";
+import { Users, MapPin, Briefcase, Sparkles, SlidersHorizontal, FileText, CheckCircle2, Calendar, Eye, Bookmark, ArrowRight, Share2, Clock3 } from "lucide-react";
 import { formatRelative } from "@/lib/utils";
 import { useDashboardTheme } from "@/hooks/use-dashboard-theme";
+import DropdownSelect from "@/components/app/DropdownSelect";
 
 export default function MatchingPage() {
   const router = useRouter();
   const { isCandidat, isHydrated } = useAuth();
   const enabled = Boolean(isCandidat && isHydrated);
-  const [showAllOffers, setShowAllOffers] = useState(false);
-  const [filtersOpen, setFiltersOpen] = useState(false);
+  const [viewMode, setViewMode] = useState<"all" | "match" | "recent">("match");
+  const filtersOpen = true;
   const [nameQuery, setNameQuery] = useState("");
-  const [dateFrom, setDateFrom] = useState("");
-  const [dateTo, setDateTo] = useState("");
   const [countryQuery, setCountryQuery] = useState("all");
   const [cityQuery, setCityQuery] = useState("all");
+  const [selectedJobId, setSelectedJobId] = useState<number | null>(null);
   const statsQuery = useCandidatStats(enabled);
+  const cvFilesQuery = useCandidatCvFiles();
   const jobsQuery = useCandidatMatchingJobs(enabled);
   const publicJobsQuery = useCandidatPublicJobs(enabled);
   const applicationsQuery = useCandidatApplications();
@@ -39,15 +41,29 @@ export default function MatchingPage() {
   const isLight = theme === "light";
 
   const stats = statsQuery.data;
+  const hasCvs = (cvFilesQuery.data?.cvFiles?.length ?? 0) > 0;
   const hasProfile = stats?.candidateId !== null && stats?.candidateId !== undefined;
   const matchingJobs = jobsQuery.data?.jobs ?? [];
   const allJobs = publicJobsQuery.data?.jobs ?? [];
-  const usingFallbackAllJobs = !showAllOffers && matchingJobs.length === 0 && allJobs.length > 0;
-  const displayedJobs = showAllOffers
-    ? allJobs
-    : matchingJobs.length > 0
-      ? matchingJobs
-      : allJobs;
+  const effectiveViewMode = !hasCvs && viewMode === "match" ? "all" : viewMode;
+  const sortedRecentJobs = useMemo(
+    () =>
+      [...allJobs].sort((a, b) => {
+        const aTime = a.created_at ? new Date(a.created_at).getTime() : 0;
+        const bTime = b.created_at ? new Date(b.created_at).getTime() : 0;
+        return bTime - aTime;
+      }),
+    [allJobs],
+  );
+  const usingFallbackAllJobs = effectiveViewMode === "match" && matchingJobs.length === 0 && allJobs.length > 0;
+  const displayedJobs =
+    effectiveViewMode === "recent"
+      ? sortedRecentJobs
+      : effectiveViewMode === "all"
+        ? allJobs
+        : matchingJobs.length > 0
+          ? matchingJobs
+          : allJobs;
   const appliedJobIds = new Set(
     (applicationsQuery.data?.applications ?? [])
       .map((a) => a.jobId)
@@ -98,20 +114,6 @@ export default function MatchingPage() {
       if (!title.includes(q)) return false;
     }
 
-    if (dateFrom || dateTo) {
-      if (!job.created_at) return false;
-      const ts = new Date(job.created_at).getTime();
-      if (Number.isNaN(ts)) return false;
-      if (dateFrom) {
-        const fromTs = new Date(`${dateFrom}T00:00:00`).getTime();
-        if (ts < fromTs) return false;
-      }
-      if (dateTo) {
-        const toTs = new Date(`${dateTo}T23:59:59`).getTime();
-        if (ts > toTs) return false;
-      }
-    }
-
     const { city, country } = parseCountryCity(
       getJobLocalisation(job as { localisation?: string | null; location_type?: string | null }),
     );
@@ -120,6 +122,63 @@ export default function MatchingPage() {
 
     return true;
   });
+
+  useEffect(() => {
+    if (!filteredJobs.length) {
+      setSelectedJobId(null);
+      return;
+    }
+    const selectedStillExists = filteredJobs.some((job) => job.id === selectedJobId);
+    if (!selectedStillExists) {
+      setSelectedJobId(filteredJobs[filteredJobs.length - 1]?.id ?? null);
+    }
+  }, [filteredJobs, selectedJobId]);
+
+  const selectedJob =
+    filteredJobs.find((job) => job.id === selectedJobId) ??
+    (filteredJobs.length ? filteredJobs[filteredJobs.length - 1] : null);
+  const selectedJobIsSaved = selectedJob ? (savedJobsQuery.data?.jobIds ?? []).includes(selectedJob.id) : false;
+  const selectedJobSkillNames = selectedJob
+    ? Array.isArray((selectedJob as { skills?: unknown }).skills)
+      ? ((selectedJob as { skills?: unknown }).skills as unknown[])
+          .map((item) => {
+            if (typeof item === "string") return item.trim();
+            if (item && typeof item === "object" && "name" in item) {
+              return String((item as { name?: unknown }).name ?? "").trim();
+            }
+            return "";
+          })
+          .filter(Boolean)
+      : []
+    : [];
+  const selectedJobLanguageNames = selectedJob
+    ? Array.isArray((selectedJob as { languages?: unknown }).languages)
+      ? ((selectedJob as { languages?: unknown }).languages as unknown[])
+          .map((item) => {
+            if (typeof item === "string") return item.trim();
+            if (item && typeof item === "object" && "name" in item) {
+              return String((item as { name?: unknown }).name ?? "").trim();
+            }
+            return "";
+          })
+          .filter(Boolean)
+      : []
+    : [];
+  const selectedJobSalaryMin = selectedJob ? Number((selectedJob as { salary_min?: unknown }).salary_min ?? NaN) : NaN;
+  const selectedJobSalaryMax = selectedJob ? Number((selectedJob as { salary_max?: unknown }).salary_max ?? NaN) : NaN;
+  const selectedJobSalaryLabel =
+    Number.isFinite(selectedJobSalaryMin) && Number.isFinite(selectedJobSalaryMax)
+      ? `${selectedJobSalaryMin} - ${selectedJobSalaryMax} MAD`
+      : Number.isFinite(selectedJobSalaryMin)
+        ? `${selectedJobSalaryMin} MAD`
+        : Number.isFinite(selectedJobSalaryMax)
+          ? `${selectedJobSalaryMax} MAD`
+          : "Non précisé";
+  const selectedJobScorePct = selectedJob
+    ? Math.max(0, Math.min(100, Math.round((Number((selectedJob as { score?: unknown }).score ?? 0) || 0) * 100)))
+    : 0;
+  const selectedJobScoreColor =
+    selectedJobScorePct <= 50 ? "#ef4444" : selectedJobScorePct <= 75 ? "#f59e0b" : "#10b981";
 
   const [isMounted, setIsMounted] = useState(false);
   useEffect(() => {
@@ -178,7 +237,7 @@ export default function MatchingPage() {
         <div className="absolute top-[-80px] left-[-100px] w-[350px] h-[350px] rounded-full bg-[radial-gradient(circle,rgba(16,185,129,0.08),transparent_60%)] blur-3xl pointer-events-none" />
         <div className="relative">
           <h1 className={`text-[28px] sm:text-[36px] font-bold tracking-[-0.04em] font-heading ${isLight ? "text-black" : "text-white"}`}>
-            Offres qui vous correspondent
+            Offres intéressantes pour vous
           </h1>
           <p className={`text-[14px] mt-2 font-light ${isLight ? "text-black/60" : "text-white/45"}`}>
             Notre IA analyse votre profil et vous connecte aux offres les plus pertinentes.
@@ -222,61 +281,35 @@ export default function MatchingPage() {
               return (
                 <div
                   key={card.key}
-                  className={`group rounded-2xl p-5 relative overflow-hidden ${
-                    isLight
-                      ? "card-luxury-light"
-                      : "bg-zinc-900/60 border border-white/[0.07]"
-                  } transition-all duration-300 hover:-translate-y-0.5 ${
-                    isLight
-                      ? "hover:shadow-[0_12px_30px_rgba(0,0,0,0.18)]"
-                      : "hover:brightness-105 shadow-[0_18px_40px_rgba(0,0,0,0.25)]"
-                  }`}
+                  className="group relative card-animated-border rounded-2xl overflow-hidden p-5 bg-[#0A0A0A] border border-white/[0.06] hover:border-tap-red/15 transition-all duration-500 ease-[cubic-bezier(.22,1,.36,1)] cursor-default transform-gpu will-change-transform hover:-translate-y-1 hover:scale-[1.02] hover:shadow-[0_18px_60px_rgba(0,0,0,0.55),0_0_40px_rgba(202,27,40,0.10)]"
                   style={{
                     opacity: isMounted ? 1 : 0,
                     transform: isMounted ? "translateY(0px)" : "translateY(8px)",
                     transitionDelay: isMounted ? `${40 * idx}ms` : "0ms",
                   }}
                 >
-                  {/* Overlay glint premium */}
+                  <div className={`absolute top-0 left-0 right-0 h-[120px] bg-gradient-to-b ${card.gradient ?? "from-tap-red/14 via-tap-red/4 to-transparent"} pointer-events-none`} />
+                  {/* Hover premium (comme accueil) */}
                   <div className="pointer-events-none absolute inset-0 opacity-0 group-hover:opacity-100 transition-opacity duration-500">
-                    <div className="absolute -top-20 -right-10 w-48 h-48 rounded-full bg-white/10 blur-2xl" />
-                    <div className="absolute -bottom-24 -left-20 w-56 h-56 rounded-full bg-tap-red/10 blur-2xl opacity-40" />
+                    <div className="absolute inset-0 bg-[radial-gradient(circle_at_25%_0%,rgba(202,27,40,0.28),transparent_55%)] blur-[2px] mix-blend-screen" />
+                    <div className="absolute inset-0 bg-[linear-gradient(180deg,rgba(202,27,40,0.10),transparent_55%)]" />
                   </div>
-
-                  {isLight && (
-                    <>
-                      <div className="absolute top-[-45px] right-[-45px] w-28 h-28 rounded-full bg-white/5 blur-2xl pointer-events-none" />
-                      <div className="absolute bottom-[-40px] left-[-50px] w-28 h-28 rounded-full bg-tap-red/10 blur-2xl pointer-events-none" />
-                    </>
-                  )}
 
                   <div className="flex items-start justify-between gap-3 relative">
                     <div>
-                      <p
-                        className={`text-[11px] uppercase tracking-[1.5px] ${
-                          isLight ? "text-black/55" : "text-white/85"
-                        }`}
-                      >
+                      <p className="text-[13px] uppercase tracking-[1.5px] text-white/85">
                         {card.label}
                       </p>
-                      <p
-                        className={`mt-2 text-[30px] font-bold tracking-[-0.03em] ${
-                          isLight ? "text-black" : "text-white"
-                        }`}
-                      >
+                      <p className="mt-2 text-[30px] font-bold tracking-[-0.03em] text-white">
                         {card.value}
                       </p>
-                      <p className={`mt-1 text-[12px] ${isLight ? "text-black/55" : "text-white/70"}`}>
-                        {card.meta}
-                      </p>
+                      <p className="mt-1 text-[12px] text-white/70">{card.meta}</p>
                     </div>
 
                     <div
-                      className={`w-11 h-11 rounded-xl border flex items-center justify-center ${
-                        isLight ? card.badgeClass : "bg-white/15 border-white/25"
-                      }`}
+                      className="w-11 h-11 rounded-xl border flex items-center justify-center bg-tap-red/[0.08] border-tap-red/20"
                     >
-                      <Icon size={18} className={isLight ? card.iconClass : "text-white"} />
+                      <Icon size={18} className="text-tap-red" />
                     </div>
                   </div>
                 </div>
@@ -291,41 +324,17 @@ export default function MatchingPage() {
             <div className="flex items-center gap-3">
               <div className="w-1 h-5 rounded-full bg-emerald-500" />
               <h2 className={`text-[13px] uppercase tracking-[2px] font-semibold ${isLight ? "text-black" : "text-white/50"}`}>
-                {showAllOffers ? "Toutes les offres" : "Offres recommandées par l'IA"}
+                {effectiveViewMode === "all"
+                  ? "Toutes les offres"
+                  : effectiveViewMode === "recent"
+                    ? "Offres récentes"
+                    : "Offres recommandées par l'IA"}
               </h2>
             </div>
             <div className="flex items-center gap-3">
-              <button
-                type="button"
-                onClick={() => setFiltersOpen((v) => !v)}
-                className={`inline-flex items-center justify-center w-9 h-9 rounded-lg border transition ${
-                  isLight
-                    ? "border-black/15 text-black/60 hover:bg-black/5"
-                    : "border-white/[0.12] text-white/50 hover:bg-white/[0.05]"
-                }`}
-                title="Filtres"
-                aria-label="Afficher les filtres"
-              >
-                <SlidersHorizontal size={14} />
-              </button>
-              <button
-                type="button"
-                onClick={() => setShowAllOffers((v) => !v)}
-                className={`inline-flex items-center gap-1.5 px-2.5 py-1.5 rounded-lg border text-[11px] transition ${
-                  showAllOffers
-                    ? "border-emerald-500/40 bg-emerald-500/10 text-emerald-400"
-                    : isLight
-                      ? "border-black/15 text-black/60 hover:bg-black/5"
-                      : "border-white/[0.12] text-white/50 hover:bg-white/[0.05]"
-                }`}
-                title={showAllOffers ? "Afficher le matching IA" : "Afficher toutes les offres"}
-              >
-                <SlidersHorizontal size={13} />
-                {showAllOffers ? "Toutes" : "Matching"}
-              </button>
               {displayedJobs.length ? (
                 <span className="text-[11px] text-emerald-500/70 font-medium">
-                  {showAllOffers
+                  {effectiveViewMode !== "match"
                     ? `${displayedJobs.length} offre${displayedJobs.length > 1 ? "s" : ""}`
                     : usingFallbackAllJobs
                       ? `${displayedJobs.length} offre${displayedJobs.length > 1 ? "s" : ""} (fallback)`
@@ -336,103 +345,158 @@ export default function MatchingPage() {
           </div>
 
           {filtersOpen && (
-            <div className="mb-5 rounded-2xl border border-white/[0.08] bg-[#050505]/95 shadow-lg backdrop-blur-xl p-4">
-              <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-3">
-                <div className="flex flex-col gap-1 lg:col-span-4">
+            <div className="mb-5 p-4">
+              <div className="grid grid-cols-1 md:grid-cols-3 gap-3">
+                <div className="flex flex-col gap-1 md:col-span-1">
                   <label className="block text-[10px] font-semibold uppercase tracking-[2px] text-white/40 mb-1">
                     Recherche par nom
                   </label>
                   <input
                     value={nameQuery}
                     onChange={(e) => setNameQuery(e.target.value)}
-                    className="input-premium h-9 rounded-xl border border-white/[0.08] bg-white/[0.03] hover:bg-white/[0.06] px-3 text-[12px] text-white/80 outline-none focus:border-white/[0.18]"
+                    className={`input-premium rounded-xl border px-3 text-[12px] outline-none ${
+                      isLight
+                        ? "bg-white border-black/10 hover:bg-black/5 text-black/80 focus:border-black/20"
+                        : "bg-black/20 border-white/[0.08] hover:bg-white/[0.06] text-white/80 focus:border-white/[0.18]"
+                    }`}
                     placeholder="Ex: Développeur"
                   />
                 </div>
 
-                <div className="flex flex-col gap-1 lg:col-span-1">
-                  <label className="block text-[10px] font-semibold uppercase tracking-[2px] text-white/40 mb-1">
-                    Date (de)
-                  </label>
-                  <input
-                    type="date"
-                    value={dateFrom}
-                    onChange={(e) => setDateFrom(e.target.value)}
-                    className="input-premium h-9 rounded-xl border border-white/[0.08] bg-white/[0.03] hover:bg-white/[0.06] px-3 text-[12px] text-white/80 outline-none focus:border-white/[0.18]"
-                  />
-                </div>
-
-                <div className="flex flex-col gap-1 lg:col-span-1">
-                  <label className="block text-[10px] font-semibold uppercase tracking-[2px] text-white/40 mb-1">
-                    Date (à)
-                  </label>
-                  <input
-                    type="date"
-                    value={dateTo}
-                    onChange={(e) => setDateTo(e.target.value)}
-                    className="input-premium h-9 rounded-xl border border-white/[0.08] bg-white/[0.03] hover:bg-white/[0.06] px-3 text-[12px] text-white/80 outline-none focus:border-white/[0.18]"
-                  />
-                </div>
-
-                <div className="flex flex-col gap-1 lg:col-span-1">
+                <div className="flex flex-col gap-1 md:col-span-1">
                   <label className="block text-[10px] font-semibold uppercase tracking-[2px] text-white/40 mb-1">
                     Pays
                   </label>
-                  <select
+                  <DropdownSelect
                     value={countryQuery}
-                    onChange={(e) => {
-                      setCountryQuery(e.target.value);
+                    onChange={(value) => {
+                      setCountryQuery(value);
                       setCityQuery("all");
                     }}
-                    className="input-premium h-9 rounded-xl border border-white/[0.08] bg-white/[0.03] hover:bg-white/[0.06] px-3 text-[12px] text-white/80 outline-none focus:border-white/[0.18]"
-                  >
-                    <option value="all">Tous</option>
-                    {countries.map((c) => (
-                      <option key={c} value={c}>
-                        {c}
-                      </option>
-                    ))}
-                  </select>
+                    placeholder="Tous"
+                    groups={[
+                      {
+                        options: [
+                          { value: "all", label: "Tous" },
+                          ...countries.map((c) => ({ value: c, label: c })),
+                        ],
+                      },
+                    ]}
+                    isLight={isLight}
+                  />
                 </div>
 
-                <div className="flex flex-col gap-1 lg:col-span-1">
-                  <label className="block text-[10px] font-semibold uppercase tracking-[2px] text-white/40 mb-1">
-                    Ville
-                  </label>
-                  <select
-                    value={cityQuery}
-                    onChange={(e) => setCityQuery(e.target.value)}
-                    className="input-premium h-9 rounded-xl border border-white/[0.08] bg-white/[0.03] hover:bg-white/[0.06] px-3 text-[12px] text-white/80 outline-none focus:border-white/[0.18]"
-                  >
-                    <option value="all">Toutes</option>
-                    {cities.map((c) => (
-                      <option key={c} value={c}>
-                        {c}
-                      </option>
-                    ))}
-                  </select>
+                <div className="md:col-span-1">
+                  <div className="flex items-end gap-2">
+                    <div className="flex-1 flex flex-col gap-1">
+                      <label className="block text-[10px] font-semibold uppercase tracking-[2px] text-white/40 mb-1">
+                        Ville
+                      </label>
+                      <DropdownSelect
+                        value={cityQuery}
+                        onChange={(value) => setCityQuery(value)}
+                        placeholder="Toutes"
+                        groups={[
+                          {
+                            options: [
+                              { value: "all", label: "Toutes" },
+                              ...cities.map((c) => ({ value: c, label: c })),
+                            ],
+                          },
+                        ]}
+                        disabled={countryQuery === "all"}
+                        isLight={isLight}
+                      />
+                    </div>
+                    <button
+                      type="button"
+                      onClick={() => {
+                        setNameQuery("");
+                        setCountryQuery("all");
+                        setCityQuery("all");
+                      }}
+                      className={`h-[50px] px-4 rounded-full inline-flex items-center justify-center text-[12px] font-medium transition whitespace-nowrap ${
+                        isLight
+                          ? "bg-[#E6E6E6] text-tap-red border border-tap-red/20 hover:bg-[#E6E6E6]/85"
+                          : "bg-tap-red text-white border border-tap-red/40 hover:bg-[#b71724]"
+                      }`}
+                    >
+                      Réinitialiser
+                    </button>
+                  </div>
                 </div>
               </div>
-
-              <div className="mt-4 flex items-center justify-end">
-                <button
-                  type="button"
-                  onClick={() => {
-                    setNameQuery("");
-                    setDateFrom("");
-                    setDateTo("");
-                    setCountryQuery("all");
-                    setCityQuery("all");
-                  }}
-                  className="text-[12px] text-white/60 hover:text-white underline underline-offset-2"
+              <div className="mt-3 flex items-center justify-end gap-3">
+                <div
+                  className={`rounded-2xl border p-1.5 ${
+                    isLight ? "border-black/15 bg-black/[0.02]" : "border-white/[0.12] bg-white/[0.02]"
+                  }`}
                 >
-                  Réinitialiser
-                </button>
+                  <p className={`px-2 py-1 text-[10px] uppercase tracking-[1.5px] ${isLight ? "text-black/45" : "text-white/45"}`}>
+                    Mode d&apos;affichage
+                  </p>
+                  <div className="flex items-center gap-1">
+                    <button
+                      type="button"
+                      onClick={() => setViewMode("all")}
+                      className={`inline-flex items-center gap-1.5 px-2.5 py-1.5 rounded-xl text-[11px] transition ${
+                        effectiveViewMode === "all"
+                          ? "bg-emerald-500/15 text-emerald-400"
+                          : isLight
+                            ? "text-black/60 hover:bg-black/5"
+                            : "text-white/55 hover:bg-white/[0.05]"
+                      }`}
+                      title="Afficher toutes les offres"
+                    >
+                      <Briefcase size={12} />
+                      Toutes
+                    </button>
+                    <button
+                      type="button"
+                      onClick={() => setViewMode("match")}
+                      className={`inline-flex items-center gap-1.5 px-2.5 py-1.5 rounded-xl text-[11px] transition ${
+                        effectiveViewMode === "match"
+                          ? "bg-emerald-500/15 text-emerald-400"
+                          : isLight
+                            ? "text-black/60 hover:bg-black/5"
+                            : "text-white/55 hover:bg-white/[0.05]"
+                      }`}
+                      title="Afficher les offres matchées par IA"
+                    >
+                      <Sparkles size={12} />
+                      Match IA
+                    </button>
+                    <button
+                      type="button"
+                      onClick={() => setViewMode("recent")}
+                      className={`inline-flex items-center gap-1.5 px-2.5 py-1.5 rounded-xl text-[11px] transition ${
+                        effectiveViewMode === "recent"
+                          ? "bg-emerald-500/15 text-emerald-400"
+                          : isLight
+                            ? "text-black/60 hover:bg-black/5"
+                            : "text-white/55 hover:bg-white/[0.05]"
+                      }`}
+                      title="Afficher les offres les plus récentes"
+                    >
+                      <Clock3 size={12} />
+                      Récentes
+                    </button>
+                  </div>
+                </div>
+                {displayedJobs.length ? (
+                  <span className="text-[11px] text-emerald-500/70 font-medium">
+                    {effectiveViewMode !== "match"
+                      ? `${displayedJobs.length} offre${displayedJobs.length > 1 ? "s" : ""}`
+                      : usingFallbackAllJobs
+                        ? `${displayedJobs.length} offre${displayedJobs.length > 1 ? "s" : ""} (fallback)`
+                        : `${displayedJobs.length} offre${displayedJobs.length > 1 ? "s" : ""} matchée${displayedJobs.length > 1 ? "s" : ""}`}
+                  </span>
+                ) : null}
               </div>
             </div>
           )}
 
-          {(showAllOffers
+          {(effectiveViewMode !== "match"
             ? publicJobsQuery.isLoading
             : jobsQuery.isLoading || (matchingJobs.length === 0 && publicJobsQuery.isLoading)) ? (
             <div className="space-y-3">
@@ -440,12 +504,12 @@ export default function MatchingPage() {
                 <Skeleton key={i} className="h-20 w-full" />
               ))}
             </div>
-          ) : (showAllOffers
+          ) : (effectiveViewMode !== "match"
             ? publicJobsQuery.isError
             : jobsQuery.isError && publicJobsQuery.isError) ? (
             <ErrorState
               onRetry={() => {
-                if (showAllOffers) {
+                if (effectiveViewMode !== "match") {
                   publicJobsQuery.refetch();
                   return;
                 }
@@ -453,26 +517,27 @@ export default function MatchingPage() {
                 publicJobsQuery.refetch();
               }}
               message={String(
-                ((showAllOffers ? publicJobsQuery.error : jobsQuery.error) as any)?.response?.data?.message ??
-                  ((showAllOffers ? publicJobsQuery.error : jobsQuery.error) as any)?.message ??
+                ((effectiveViewMode !== "match" ? publicJobsQuery.error : jobsQuery.error) as any)?.response?.data?.message ??
+                  ((effectiveViewMode !== "match" ? publicJobsQuery.error : jobsQuery.error) as any)?.message ??
                   "Une erreur est survenue",
               )}
             />
           ) : !filteredJobs.length ? (
             <EmptyState
               icon={<Sparkles className="w-10 h-10" />}
-              title={showAllOffers ? "Aucune offre pour l'instant" : "Aucune offre matchée pour l'instant"}
+              title={effectiveViewMode === "match" ? "Aucune offre matchée pour l'instant" : "Aucune offre pour l'instant"}
               description={
                 displayedJobs.length > 0
                   ? "Aucune offre ne correspond aux filtres sélectionnés."
-                  : showAllOffers
+                  : effectiveViewMode !== "match"
                     ? "Aucune offre n'est disponible pour le moment."
                     : "L'IA n'a pas encore trouvé d'offres suffisamment proches de votre profil. Revenez bientôt."
               }
             />
           ) : (
-            <div className="space-y-3">
-              {filteredJobs.map((job) => {
+            <div className="grid grid-cols-1 lg:grid-cols-10 gap-4">
+              <div className="lg:col-span-4 space-y-3">
+                {filteredJobs.map((job) => {
                 const alreadyApplied = appliedJobIds.has(job.id);
                 const isSaved = (savedJobsQuery.data?.jobIds ?? []).includes(job.id);
                 const locationType =
@@ -488,129 +553,253 @@ export default function MatchingPage() {
                   locationType && localisation
                     ? `${locationType} - ${localisation}`
                     : locationType ?? localisation;
-                const scorePct = Math.round((job.score ?? 0) * 100);
-                const scoreColor =
-                  scorePct >= 85
-                    ? "text-emerald-400 border-emerald-500/30 bg-emerald-500/10"
-                    : scorePct >= 70
-                    ? "text-amber-400 border-amber-500/30 bg-amber-500/10"
-                    : scorePct >= 50
-                      ? "text-orange-400 border-orange-500/30 bg-orange-500/10"
-                      : "text-rose-400 border-rose-500/30 bg-rose-500/10";
+                const isSelected = selectedJob?.id === job.id;
 
                 return (
                   <div
                     key={job.id}
-                    onClick={() => router.push(`/app/matching/offres/${job.id}`)}
-                    className={`rounded-xl p-5 transition group cursor-pointer ${
-                      isLight
-                      ? "card-luxury-light hover:border-tap-red/70"
-                        : "bg-zinc-900/50 border border-white/[0.06] hover:border-white/[0.1]"
+                    onClick={() => setSelectedJobId(job.id)}
+                    className={`group relative card-animated-border rounded-2xl overflow-hidden p-5 border cursor-pointer transform-gpu will-change-transform transition-all duration-500 ease-[cubic-bezier(.22,1,.36,1)] hover:-translate-y-1 hover:scale-[1.02] ${
+                      isSelected
+                        ? isLight
+                          ? "bg-[#0A0A0A] border-tap-red/35 shadow-[0_18px_60px_rgba(0,0,0,0.55),0_0_30px_rgba(202,27,40,0.14)]"
+                          : "bg-[#0A0A0A] border-tap-red/30 shadow-[0_18px_60px_rgba(0,0,0,0.55),0_0_30px_rgba(202,27,40,0.14)]"
+                        : isLight
+                          ? "bg-[#0A0A0A] border-white/[0.08] hover:border-tap-red/20 hover:shadow-[0_18px_60px_rgba(0,0,0,0.55),0_0_24px_rgba(202,27,40,0.10)]"
+                          : "bg-[#0A0A0A] border-white/[0.06] hover:border-tap-red/15 hover:shadow-[0_18px_60px_rgba(0,0,0,0.55),0_0_24px_rgba(202,27,40,0.10)]"
                     }`}
                   >
-                    <div className="grid grid-cols-12 items-center gap-3">
-                      {/* Col 1: nom + catégorie */}
-                      <div className="col-span-12 md:col-span-3 min-w-0">
-                        <h3 className="text-[15px] font-semibold text-white truncate">
+                    <div className="absolute top-0 left-0 right-0 h-[110px] bg-gradient-to-b from-tap-red/14 via-tap-red/4 to-transparent pointer-events-none" />
+                    <div className="absolute inset-0 opacity-0 group-hover:opacity-100 transition-opacity duration-500 pointer-events-none">
+                      <div className="absolute inset-0 bg-[radial-gradient(circle_at_20%_0%,rgba(202,27,40,0.20),transparent_55%)]" />
+                    </div>
+                    <div className="flex items-stretch justify-between gap-3">
+                      <div className="min-w-0">
+                        <h3 className={`text-[20px] font-semibold truncate uppercase ${isLight ? "text-black" : "text-white"}`}>
                           {job.title ?? "Offre sans titre"}
                         </h3>
-                        <p className={`text-[12px] mt-0.5 ${isLight ? "text-black/65" : "text-white/45"}`}>
+                        <p className={`text-[12px] mt-1 ${isLight ? "text-black/65" : "text-white/50"}`}>
                           {job.categorie_profil ?? "Catégorie non précisée"}
                         </p>
+                        <p className={`text-[12px] mt-1 inline-flex items-center gap-1 ${isLight ? "text-black/70" : "text-white/55"}`}>
+                          <MapPin size={12} />
+                          {locationLabel ?? "Localisation non précisée"}
+                        </p>
                       </div>
-
-                      {/* Col 2: localisation */}
-                      <div className={`col-span-12 md:col-span-2 text-center md:text-left text-[12px] ${isLight ? "text-black/70" : "text-white/45"}`}>
-                        {locationLabel ? (
-                          <span className="inline-flex items-center gap-1">
-                            <MapPin size={12} />
-                            {locationLabel}
+                      <div className="flex flex-col justify-between items-end shrink-0 min-h-[84px]">
+                        <div className="inline-flex items-center gap-2">
+                          <span className={`text-[11px] ${isLight ? "text-black/50" : "text-white/35"}`}>
+                            {job.created_at ? formatRelative(job.created_at) : "—"}
                           </span>
-                        ) : (
-                          "—"
-                        )}
-                      </div>
-
-                      {/* Col 3: urgence */}
-                      <div className="col-span-6 md:col-span-1 text-center md:text-left">
-                        {job.urgent ? (
-                          <span className="text-[11px] px-2 py-0.5 rounded-full bg-red-500/10 border border-red-500/20 text-red-400 shrink-0">
-                            Urgent
-                          </span>
-                        ) : (
-                          <span className="text-[11px] text-white/45 shrink-0">--</span>
-                        )}
-                      </div>
-
-                      {/* Col 4: durée */}
-                      <div className={`col-span-6 md:col-span-1 text-center md:text-left text-[11px] ${isLight ? "text-black/50" : "text-white/30"}`}>
-                        {job.created_at ? formatRelative(job.created_at) : "—"}
-                      </div>
-
-                      {/* Col 5: % matching */}
-                      <div className="col-span-6 md:col-span-2 text-center md:text-left">
-                        {!showAllOffers && (
-                          <span className={`text-[12px] font-semibold px-2.5 py-1 rounded-full border whitespace-nowrap inline-flex ${scoreColor}`}>
-                            {scorePct}% match
-                          </span>
-                        )}
-                      </div>
-
-                      {/* Col 6: action */}
-                      <div className="col-span-12 md:col-span-3 flex justify-end items-center gap-2 ml-auto">
-                        <button
-                          type="button"
-                          onClick={(e) => {
-                            e.stopPropagation();
-                            if (alreadyApplied) return;
-                            router.push(`/app/matching/offres/${job.id}`);
-                          }}
-                          disabled={alreadyApplied}
-                          className="btn-primary !py-1.5 !px-3 text-[12px] whitespace-nowrap disabled:opacity-50 disabled:cursor-not-allowed"
-                        >
-                          {alreadyApplied ? "Déjà postulé" : "Postuler"}
-                        </button>
-                        <button
-                          type="button"
-                          onClick={(e) => {
-                            e.stopPropagation();
-                            router.push(`/app/matching/offres/${job.id}`);
-                          }}
-                          className={`p-1.5 rounded-full border transition ${
-                            isLight
-                              ? "border-black/10 hover:bg-black/5 text-black/60 hover:text-black"
-                              : "border-white/[0.14] hover:bg-zinc-800 text-zinc-400 hover:text-white"
-                          }`}
-                          aria-label="Voir les détails de l’offre"
-                          title="Voir détails"
-                        >
-                          <Eye size={14} />
-                        </button>
-                        <button
-                          type="button"
-                          disabled={toggleSavedJobMutation.isPending}
-                          onClick={(e) => {
-                            e.stopPropagation();
-                            if (toggleSavedJobMutation.isPending) return;
-                            toggleSavedJobMutation.mutate(job.id);
-                          }}
-                          className={`p-1.5 rounded-full border transition ${
-                            isSaved
-                              ? "border-emerald-500/35 bg-emerald-500/12 text-emerald-300 hover:bg-emerald-500/20"
-                              : isLight
-                                ? "border-black/10 hover:bg-black/5 text-black/60 hover:text-black"
-                                : "border-white/[0.14] hover:bg-zinc-800 text-zinc-400 hover:text-white"
-                          } ${toggleSavedJobMutation.isPending ? "opacity-60 cursor-not-allowed" : ""}`}
-                          aria-label={isSaved ? "Offre enregistrée" : "Enregistrer l’offre"}
-                          title={isSaved ? "Offre enregistrée" : "Enregistrer"}
-                        >
-                          <Bookmark size={14} fill={isSaved ? "currentColor" : "none"} />
-                        </button>
+                          <button
+                            type="button"
+                            disabled={toggleSavedJobMutation.isPending}
+                            onClick={(e) => {
+                              e.stopPropagation();
+                              if (toggleSavedJobMutation.isPending) return;
+                              toggleSavedJobMutation.mutate(job.id);
+                            }}
+                            className={`inline-flex items-center justify-center w-8 h-8 rounded-full border transition ${
+                              isSaved
+                                ? "border-emerald-500/35 bg-emerald-500/12 text-emerald-300 hover:bg-emerald-500/20"
+                                : isLight
+                                  ? "border-black/10 hover:bg-black/5 text-black/60 hover:text-black"
+                                  : "border-white/[0.14] hover:bg-zinc-800 text-zinc-300 hover:text-white"
+                            } ${toggleSavedJobMutation.isPending ? "opacity-60 cursor-not-allowed" : ""}`}
+                            aria-label={isSaved ? "Offre enregistrée" : "Enregistrer l’offre"}
+                            title={isSaved ? "Offre enregistrée" : "Enregistrer l’offre"}
+                          >
+                            <Bookmark size={13} fill={isSaved ? "currentColor" : "none"} />
+                          </button>
+                        </div>
+                        <span className="inline-flex items-center gap-1 text-[11px] font-medium underline underline-offset-2 text-[#CA1B28]">
+                          Voir le détail
+                          <ArrowRight size={12} />
+                        </span>
                       </div>
                     </div>
                   </div>
                 );
-              })}
+                })}
+              </div>
+
+              <div
+                className={`lg:col-span-6 relative rounded-2xl p-5 sm:p-6 h-fit ${
+                  isLight
+                    ? "card-luxury-light"
+                    : "bg-zinc-900/50 border border-white/[0.08]"
+                }`}
+              >
+                {selectedJob ? (
+                  <>
+                    <div className="absolute top-[-18px] right-[-18px] z-10">
+                      <div
+                        className="w-16 h-16 rounded-full p-[2px] shadow-[0_10px_30px_rgba(0,0,0,0.45)]"
+                        style={{
+                          background: `conic-gradient(${selectedJobScoreColor} ${selectedJobScorePct}%, rgba(255,255,255,0.14) ${selectedJobScorePct}% 100%)`,
+                        }}
+                      >
+                        <div className="w-full h-full rounded-full bg-zinc-900/50 backdrop-blur-md flex items-center justify-center">
+                          <span className="text-[13px] font-bold text-white">{selectedJobScorePct}%</span>
+                        </div>
+                      </div>
+                    </div>
+                    <div className="flex items-start justify-between gap-3">
+                      <div className="min-w-0">
+                        <h3 className={`text-[26px] font-semibold leading-tight uppercase ${isLight ? "text-black" : "text-white"}`}>
+                          {selectedJob.title ?? "Offre sans titre"}
+                        </h3>
+                        <p className={`mt-1 text-[13px] ${isLight ? "text-black/60" : "text-white/55"}`}>
+                          {selectedJob.categorie_profil ?? "Catégorie non précisée"}
+                        </p>
+                      </div>
+                      <div className="flex flex-col items-end gap-2 shrink-0">
+                        <div className="flex items-center gap-2">
+                          {selectedJob.urgent ? (
+                            <span className="text-[11px] px-2 py-1 rounded-full bg-red-500/10 border border-red-500/20 text-red-400 shrink-0">
+                              Urgent
+                            </span>
+                          ) : null}
+                          <button
+                            type="button"
+                            onClick={() => {
+                              const detailsUrl =
+                                typeof window !== "undefined"
+                                  ? `${window.location.origin}/app/matching/offres/${selectedJob.id}`
+                                  : `/app/matching/offres/${selectedJob.id}`;
+                              if (typeof navigator !== "undefined" && typeof navigator.share === "function") {
+                                void navigator.share({
+                                  title: selectedJob.title ?? "Offre",
+                                  url: detailsUrl,
+                                });
+                                return;
+                              }
+                              if (typeof navigator !== "undefined" && navigator.clipboard?.writeText) {
+                                void navigator.clipboard.writeText(detailsUrl);
+                              }
+                            }}
+                            className={`inline-flex items-center justify-center w-9 h-9 rounded-full border transition ${
+                              isLight
+                                ? "border-black/10 hover:bg-black/5 text-black/60 hover:text-black"
+                                : "border-white/[0.14] hover:bg-zinc-800 text-zinc-300 hover:text-white"
+                            }`}
+                            aria-label="Partager l’offre"
+                            title="Partager"
+                          >
+                            <Share2 size={14} />
+                          </button>
+                          <button
+                            type="button"
+                            disabled={toggleSavedJobMutation.isPending}
+                            onClick={() => {
+                              if (toggleSavedJobMutation.isPending) return;
+                              toggleSavedJobMutation.mutate(selectedJob.id);
+                            }}
+                            className={`inline-flex items-center justify-center w-9 h-9 rounded-full border transition ${
+                              selectedJobIsSaved
+                                ? "border-emerald-500/35 bg-emerald-500/12 text-emerald-300 hover:bg-emerald-500/20"
+                                : isLight
+                                  ? "border-black/10 hover:bg-black/5 text-black/60 hover:text-black"
+                                  : "border-white/[0.14] hover:bg-zinc-800 text-zinc-300 hover:text-white"
+                            } ${toggleSavedJobMutation.isPending ? "opacity-60 cursor-not-allowed" : ""}`}
+                            aria-label={selectedJobIsSaved ? "Offre enregistrée" : "Enregistrer l’offre"}
+                            title={selectedJobIsSaved ? "Offre enregistrée" : "Enregistrer l’offre"}
+                          >
+                            <Bookmark size={14} fill={selectedJobIsSaved ? "currentColor" : "none"} />
+                          </button>
+                        </div>
+                        <button
+                          type="button"
+                          disabled={appliedJobIds.has(selectedJob.id)}
+                          onClick={() => router.push(`/app/matching/offres/${selectedJob.id}`)}
+                          className="btn-primary !py-1.5 !px-3 text-[12px] disabled:opacity-50 disabled:cursor-not-allowed"
+                        >
+                          {appliedJobIds.has(selectedJob.id) ? "Déjà postulé" : "Postuler"}
+                        </button>
+                      </div>
+                    </div>
+
+                    {(typeof selectedJob.reason === "string" && selectedJob.reason.trim()) ||
+                    (typeof selectedJob.main_mission === "string" && selectedJob.main_mission.trim()) ||
+                    (typeof selectedJob.tasks_other === "string" && selectedJob.tasks_other.trim()) ? (
+                      <div className="mt-5">
+                        <p className="text-[11px] uppercase tracking-[1.5px] mb-1.5 text-[#CA1B28]">
+                          Description
+                        </p>
+                        <div className={`text-[13px] leading-relaxed whitespace-pre-line ${isLight ? "text-black/80" : "text-white/80"}`}>
+                          {[
+                            typeof selectedJob.reason === "string" ? selectedJob.reason.trim() : "",
+                            typeof selectedJob.main_mission === "string" ? selectedJob.main_mission.trim() : "",
+                            typeof selectedJob.tasks_other === "string" ? selectedJob.tasks_other.trim() : "",
+                          ]
+                            .filter(Boolean)
+                            .join("\n\n")}
+                        </div>
+                      </div>
+                    ) : null}
+
+                    <div className="mt-5">
+                      <p className="text-[11px] uppercase tracking-[1.5px] mb-2 text-[#CA1B28]">
+                        Compétences demandées
+                      </p>
+                      {selectedJobSkillNames.length ? (
+                        <p className={`text-[13px] ${isLight ? "text-black/80" : "text-white/80"}`}>
+                          {selectedJobSkillNames.join(", ")}
+                        </p>
+                      ) : (
+                        <p className={`text-[13px] ${isLight ? "text-black/60" : "text-white/60"}`}>Non précisé</p>
+                      )}
+                    </div>
+
+                    <div className="mt-5">
+                      <p className="text-[11px] uppercase tracking-[1.5px] mb-2 text-[#CA1B28]">
+                        Langues
+                      </p>
+                      {selectedJobLanguageNames.length ? (
+                        <p className={`text-[13px] ${isLight ? "text-black/80" : "text-white/80"}`}>
+                          {selectedJobLanguageNames.join(", ")}
+                        </p>
+                      ) : (
+                        <p className={`text-[13px] ${isLight ? "text-black/60" : "text-white/60"}`}>Non précisé</p>
+                      )}
+                    </div>
+
+                    <div className="mt-5">
+                      <p className="text-[11px] uppercase tracking-[1.5px] mb-2 text-[#CA1B28]">
+                        Détails du poste
+                      </p>
+                      <div className={`grid grid-cols-1 sm:grid-cols-2 gap-x-6 gap-y-1.5 text-[13px] ${isLight ? "text-black/80" : "text-white/80"}`}>
+                        <div className="space-y-1.5">
+                          <p>Contrat : {selectedJob.contrat ?? "Non précisé"}</p>
+                          <p>Niveau de séniorité : {selectedJob.niveau_seniorite ?? "Non précisé"}</p>
+                          <p>Niveau attendu : {selectedJob.niveau_attendu ?? "Non précisé"}</p>
+                          <p>Expérience minimum : {selectedJob.experience_min ?? "Non précisé"}</p>
+                        </div>
+                        <div className="space-y-1.5">
+                          <p>Présence sur site : {selectedJob.presence_sur_site ?? "Non précisé"}</p>
+                          <p>Disponibilité : {selectedJob.disponibilite ?? "Non précisé"}</p>
+                          <p>Salaire : {selectedJobSalaryLabel}</p>
+                        </div>
+                      </div>
+                    </div>
+
+                    <div className="mt-6 flex items-center justify-end gap-2">
+                      <button
+                        type="button"
+                        disabled={appliedJobIds.has(selectedJob.id)}
+                        onClick={() => router.push(`/app/matching/offres/${selectedJob.id}`)}
+                        className="btn-primary !py-2 !px-4 text-[12px] disabled:opacity-50 disabled:cursor-not-allowed"
+                      >
+                        {appliedJobIds.has(selectedJob.id) ? "Déjà postulé" : "Postuler"}
+                      </button>
+                    </div>
+                  </>
+                ) : (
+                  <p className={`text-[13px] ${isLight ? "text-black/60" : "text-white/55"}`}>
+                    Sélectionnez une offre à gauche pour afficher ses détails.
+                  </p>
+                )}
+              </div>
             </div>
           )}
         </div>

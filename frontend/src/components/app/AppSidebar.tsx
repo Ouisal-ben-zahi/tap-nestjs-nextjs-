@@ -97,8 +97,8 @@ export default function AppSidebar({
             collapsed ? "w-[80px]" : "w-[250px]"
           } ${
             isLight
-              ? "bg-tap-red text-white"
-              : "bg-zinc-900/60 text-white border border-white/[0.07]"
+              ? "text-white border border-white/20"
+              : "text-white border border-white/[0.12]"
           } z-50 flex flex-col transition-transform duration-300 lg:translate-x-0 ${
             open ? "translate-x-0" : "-translate-x-full"
           } rounded-2xl overflow-hidden`}
@@ -110,11 +110,21 @@ export default function AppSidebar({
             onToggleCollapsed();
           }}
         >
-        {/* Overlay blanc translucide (effet premium) */}
-        <div className={`absolute inset-0 pointer-events-none ${isLight ? "bg-white/10" : "bg-white/[0.03]"}`} />
+        {/* Fond hero + effet glass blanc */}
+        <div className="absolute inset-0 pointer-events-none">
+          <Image
+            src="/images/bgaccueil.webp"
+            alt=""
+            fill
+            priority
+            className="object-cover"
+          />
+          <div className={`${isLight ? "absolute inset-0 bg-white/20 backdrop-blur-lg" : "absolute inset-0 bg-black/45"}`} />
+          <div className={`${isLight ? "absolute inset-0 bg-gradient-to-b from-white/18 via-white/10 to-white/14" : "absolute inset-0 bg-gradient-to-b from-white/[0.10] via-white/[0.04] to-white/[0.06]"}`} />
+        </div>
 
         {/* Mobile close */}
-        <div className="lg:hidden flex items-center justify-end p-3">
+        <div className="lg:hidden relative z-10 flex items-center justify-end p-3">
           <button
             onClick={onClose}
             className={`w-8 h-8 flex items-center justify-center rounded-lg transition-colors ${
@@ -128,7 +138,7 @@ export default function AppSidebar({
         </div>
 
         {/* Top profil (double-clic sur la zone vide de la sidebar) */}
-        <div className="hidden lg:flex flex-col items-center px-3 pt-5 pb-4">
+        <div className="hidden lg:flex relative z-10 flex-col items-center px-3 pt-5 pb-4">
           <div
             className={`w-12 h-12 rounded-full overflow-hidden flex items-center justify-center border border-[#CA1B28]/80 ${
               isLight
@@ -167,7 +177,7 @@ export default function AppSidebar({
           )}
         </div>
 
-        <nav className="flex-1 pl-3 pr-2 py-4 space-y-0.5 overflow-y-auto [scrollbar-width:none] [&::-webkit-scrollbar]:hidden">
+        <nav className="relative z-10 flex-1 pl-3 pr-2 py-4 space-y-0.5 overflow-y-auto [scrollbar-width:none] [&::-webkit-scrollbar]:hidden">
           {navItems.map((item) => {
             const isActive = pathname === item.href;
             const Icon = item.icon;
@@ -251,7 +261,7 @@ export default function AppSidebar({
 
         {/* Footer */}
         <div
-          className="p-3 space-y-2"
+          className="relative z-10 p-3 space-y-2"
         >
           <button
             onClick={handleLogout}

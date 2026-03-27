@@ -59,6 +59,8 @@ export default function ScoringAppPage() {
           color,
           value: 0,
         }));
+  const themedCardClass =
+    "group card-animated-border relative overflow-hidden rounded-2xl border border-white/[0.08] bg-[linear-gradient(180deg,rgba(202,27,40,0.08)_0%,rgba(10,10,10,0.96)_30%,rgba(10,10,10,0.96)_100%)] shadow-[0_10px_28px_rgba(0,0,0,0.45)] hover:border-tap-red/15 transition-all duration-500";
 
   return (
     <div className="max-w-[1100px] mx-auto">
@@ -109,7 +111,7 @@ export default function ScoringAppPage() {
         <>
           <div className="grid grid-cols-1 lg:grid-cols-2 gap-8 mb-8">
             {/* Score Ring */}
-            <div className={`flex flex-col items-center justify-center py-8 rounded-2xl ${isLight ? "card-luxury-light" : "bg-zinc-900/50 border border-white/[0.06]"}`}>
+            <div className={`flex flex-col items-center justify-center py-8 ${themedCardClass} ${isLight ? "card-luxury-light" : ""}`}>
               <ScoreRing score={score} size={200} label="Score global" />
               <div className={`mt-6 flex items-center gap-2 text-[13px] ${isLight ? "text-black/60" : "text-white/40"}`}>
                 <TrendingUp size={14} className="text-green-500" />
@@ -118,7 +120,7 @@ export default function ScoringAppPage() {
             </div>
 
             {/* Dimensions */}
-            <div className={`rounded-2xl p-6 sm:p-8 ${isLight ? "card-luxury-light" : "bg-zinc-900/50 border border-white/[0.06]"}`}>
+            <div className={`${themedCardClass} p-6 sm:p-8 ${isLight ? "card-luxury-light" : ""}`}>
               <h3 className={`text-[13px] uppercase tracking-[2px] font-semibold mb-6 ${isLight ? "text-black" : "text-white/50"}`}>Dimensions évaluées</h3>
               <div className="space-y-5">
                 {dimensions.map((dim) => (
@@ -140,7 +142,7 @@ export default function ScoringAppPage() {
           </div>
 
           {/* Tips */}
-          <div className={`rounded-2xl p-6 ${isLight ? "card-luxury-light" : "bg-zinc-900/50 border border-white/[0.06]"}`}>
+          <div className={`${themedCardClass} p-6 ${isLight ? "card-luxury-light" : ""}`}>
             <h3 className={`text-[13px] uppercase tracking-[2px] font-semibold mb-4 ${isLight ? "text-black" : "text-white/50"}`}>Conseils pour améliorer votre score</h3>
             <div className="grid grid-cols-1 sm:grid-cols-3 gap-4">
               {[
@@ -154,7 +156,7 @@ export default function ScoringAppPage() {
                   className={`flex items-start gap-3 p-4 rounded-xl transition group ${
                     isLight
                       ? "bg-white border border-tap-red/30 hover:border-tap-red/60"
-                      : "bg-white/[0.02] border border-white/[0.04] hover:border-white/[0.1]"
+                      : "bg-[#0A0A0A] border border-white/[0.06] hover:border-tap-red/15"
                   }`}
                 >
                   <span className="w-6 h-6 rounded-full bg-tap-red/10 text-tap-red text-[11px] font-bold flex items-center justify-center shrink-0">{i + 1}</span>
