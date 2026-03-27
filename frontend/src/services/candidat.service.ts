@@ -10,18 +10,35 @@ import type {
   CandidatProfile,
 } from '@/types/candidat';
 
-/** Jobs listés côté dashboard (et scoring optionnel pour le matching IA). */
-type DashboardJobsResponse = {
-  jobs: Array<{
-    id: number;
-    title: string | null;
-    categorie_profil: string | null;
-    created_at: string | null;
-    urgent: boolean;
-    location_type: string | null;
-    score?: number | null;
-  }>;
+/** Offre telle que renvoyée par `/dashboard/jobs` et `/dashboard/candidat/matching-jobs`. */
+export type CandidatDashboardJob = {
+  id: number;
+  title: string | null;
+  categorie_profil: string | null;
+  created_at: string | null;
+  urgent: boolean;
+  location_type: string | null;
+  score?: number | null;
+  niveau_attendu: string | null;
+  experience_min: string | null;
+  presence_sur_site: string | null;
+  localisation: string | null;
+  reason: string | null;
+  main_mission: string | null;
+  tasks_other: string | null;
+  disponibilite: string | null;
+  salary_min: number | null;
+  salary_max: number | null;
+  contrat: string | null;
+  niveau_seniorite: string | null;
+  entreprise: string | null;
+  phone: string | null;
+  tasks: unknown[] | null;
+  skills: unknown[] | null;
+  languages: unknown[] | null;
 };
+
+type DashboardJobsResponse = { jobs: CandidatDashboardJob[] };
 
 const fetchDashboardJobs = () =>
   api.get<DashboardJobsResponse>('/dashboard/jobs').then((r) => r.data);
@@ -96,35 +113,7 @@ export const candidatService = {
       return { portfolioPdfFiles: [...short, ...long] };
     }),
 
-  getPublicJobs: () =>
-    api.get<{
-      jobs: {
-        id: number;
-        title: string | null;
-        categorie_profil: string | null;
-        created_at: string | null;
-        urgent: boolean;
-        location_type: string | null;
-        score?: number | null;
-        niveau_attendu: string | null;
-        experience_min: string | null;
-        presence_sur_site: string | null;
-        localisation: string | null;
-        reason: string | null;
-        main_mission: string | null;
-        tasks_other: string | null;
-        disponibilite: string | null;
-        salary_min: number | null;
-        salary_max: number | null;
-        contrat: string | null;
-        niveau_seniorite: string | null;
-        entreprise: string | null;
-        phone: string | null;
-        tasks: any[] | null;
-        skills: any[] | null;
-        languages: any[] | null;
-      }[];
-    }>('/dashboard/jobs').then((r) => r.data),
+  getPublicJobs: () => api.get<DashboardJobsResponse>('/dashboard/jobs').then((r) => r.data),
 
   applyToJob: (payload: {
     jobId: number;

@@ -11,7 +11,7 @@ except ImportError:
     genai = None
     types = None
 
-# ✅ CORRECTION : nom du modèle correct
+# CORRECTION : nom du modèle correct
 _GEMINI_MODEL_NAME = os.getenv("GEMINI_EMBEDDING_MODEL", "gemini-embedding-2-preview")
 _GEMINI_API_KEY = os.getenv("GEMINI_API_KEY") or os.getenv("GOOGLE_API_KEY")
 
