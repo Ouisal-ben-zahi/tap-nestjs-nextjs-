@@ -4,6 +4,7 @@ import { useAuth } from "@/hooks/use-auth";
 import { useCandidatScheduledInterviews, useCandidatStats } from "@/hooks/use-candidat";
 import EmptyState from "@/components/ui/EmptyState";
 import { Skeleton } from "@/components/ui/Skeleton";
+import PlannedInterviewsAgendaSection from "@/components/app/entretien/PlannedInterviewsAgendaSection";
 import { MessageSquare, FileText, Upload, Brain, Cpu, Mic, ClipboardList, Clock, ArrowRight } from "lucide-react";
 import Link from "next/link";
 import { useDashboardTheme } from "@/hooks/use-dashboard-theme";
@@ -11,6 +12,7 @@ import { useMutation } from "@tanstack/react-query";
 import { candidatService } from "@/services/candidat.service";
 import { useUiStore } from "@/stores/ui";
 import { useRouter } from "next/navigation";
+import { formatInterviewType } from "@/lib/format-interview-type";
 
 const interviewTypes = [
   {
@@ -91,16 +93,9 @@ export default function EntretienPage() {
 
   const hasProfile = statsQuery.data?.candidateId !== null && statsQuery.data?.candidateId !== undefined;
   const plannedInterviews = scheduledInterviewsQuery.data?.scheduledInterviews || [];
-  const formatInterviewType = (type: string | null | undefined) => {
-    const normalized = String(type ?? "").toUpperCase();
-    if (normalized === "EN_LIGNE") return "En ligne";
-    if (normalized === "PRESENTIEL") return "Présentiel";
-    if (normalized === "TELEPHONIQUE") return "Téléphonique";
-    return type || "—";
-  };
 
   return (
-    <div className="max-w-[1100px] mx-auto">
+    <div className="max-w-[1200px] mx-auto">
       <div className={`relative mb-8 pb-8 ${isLight ? "border-b border-black/10" : "border-b border-white/[0.04]"}`}>
         <div className="absolute top-[-80px] left-[-100px] w-[350px] h-[350px] rounded-full bg-[radial-gradient(circle,rgba(168,85,247,0.08),transparent_60%)] blur-3xl pointer-events-none" />
         <div className="relative">
@@ -116,39 +111,18 @@ export default function EntretienPage() {
           action={<Link href="/app/analyse-cv" className="btn-primary gap-2 mt-2"><Upload size={14} /> Analyser mon CV</Link>} />
       ) : (
         <>
-          {plannedInterviews.length > 0 && (
-            <div className="mb-6">
-              <div className="flex items-center gap-3 mb-4">
-                <div className="w-1 h-5 rounded-full bg-purple-500" />
-                <h2 className={`text-[13px] uppercase tracking-[2px] font-semibold ${isLight ? "text-black" : "text-white/50"}`}>
-                  Entretiens déjà planifiés
-                </h2>
-              </div>
-              <div className="space-y-2">
-                {plannedInterviews.slice(0, 3).map((item) => (
-                  <div
-                    key={item.id}
-                    className={`grid grid-cols-1 sm:grid-cols-4 gap-2 items-center rounded-xl px-4 py-3 ${
-                      isLight ? "bg-black/[0.03] border border-black/10" : "bg-white/[0.02] border border-white/[0.06]"
-                    }`}
-                  >
-                    <p className={`text-[13px] font-medium truncate ${isLight ? "text-black" : "text-white"}`}>
-                      {item.jobTitle ?? "Offre sans titre"}
-                    </p>
-                    <p className={`text-[12px] ${isLight ? "text-black/75" : "text-white/60"}`}>
-                      {formatInterviewType(item.interviewType)}
-                    </p>
-                    <p className={`text-[12px] ${isLight ? "text-black/75" : "text-white/60"}`}>
-                      {item.interviewDate ? new Date(item.interviewDate).toLocaleDateString("fr-FR") : "Non définie"}
-                    </p>
-                    <p className={`text-[12px] ${isLight ? "text-black/75" : "text-white/60"}`}>
-                      {item.interviewTime ? item.interviewTime.slice(0, 5) : "Non définie"}
-                    </p>
-                  </div>
+          {hasProfile && scheduledInterviewsQuery.isLoading ? (
+            <div className="mb-10 grid grid-cols-1 lg:grid-cols-12 gap-6">
+              <div className="lg:col-span-7 space-y-3">
+                {Array.from({ length: 3 }).map((_, i) => (
+                  <Skeleton key={i} className="h-24 w-full rounded-2xl" />
                 ))}
               </div>
+              <Skeleton className="lg:col-span-5 h-[380px] w-full rounded-2xl" />
             </div>
-          )}
+          ) : plannedInterviews.length > 0 ? (
+            <PlannedInterviewsAgendaSection items={plannedInterviews} isLight={isLight} />
+          ) : null}
 
           <div className="flex items-center gap-3 mb-5">
             <div className="w-1 h-5 rounded-full shrink-0 bg-tap-red" />

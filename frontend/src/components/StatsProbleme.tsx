@@ -138,12 +138,12 @@ export default function StatsProbleme() {
                   key={card.title}
                   className={[
                     "absolute left-1/2 top-1/2",
-                    "flex w-[min(280px,86vw)] flex-col aspect-[3/4]",
+                    "flex w-[min(300px,88vw)] flex-col aspect-[3/4]",
                     "rounded-2xl overflow-hidden",
                     "transition-[transform,opacity,filter] duration-700 ease-[cubic-bezier(.22,1,.36,1)]",
                     isActive
-                      ? "bg-[#0C0C0C] border-l border-r border-[#CA1B28] shadow-[0_2px_16px_rgba(0,0,0,0.3)]"
-                      : "bg-[#0A0A0A] border-l border-r border-white/[0.06] pointer-events-none",
+                      ? "bg-[#0C0C0C] border-2 border-[#CA1B28] shadow-[0_8px_36px_rgba(202,27,40,0.22),0_2px_20px_rgba(0,0,0,0.45)] ring-1 ring-[#CA1B28]/30"
+                      : "bg-[#0A0A0A] border border-white/[0.08] pointer-events-none",
                     "will-change-transform",
                   ].join(" ")}
                   style={{
@@ -169,13 +169,34 @@ export default function StatsProbleme() {
                     </>
                   )}
                   <div className="relative flex flex-1 flex-col justify-center p-6 sm:p-7 text-center min-h-0">
-                    <div className="mb-4 sm:mb-5 mx-auto flex h-11 w-11 shrink-0 items-center justify-center rounded-full border border-white/[0.08] bg-white/[0.04] sm:h-12 sm:w-12">
-                      <card.icon className="text-tap-red" strokeWidth={1.2} size={22} />
+                    <div
+                      className={[
+                        "mb-5 sm:mb-6 mx-auto flex shrink-0 items-center justify-center rounded-full border transition-colors duration-700",
+                        isActive
+                          ? "h-16 w-16 sm:h-[4.5rem] sm:w-[4.5rem] border-[#CA1B28]/55 bg-[#CA1B28]/18 shadow-[0_0_28px_rgba(202,27,40,0.35)]"
+                          : "h-14 w-14 sm:h-16 sm:w-16 border-white/[0.08] bg-white/[0.04]",
+                      ].join(" ")}
+                    >
+                      <card.icon
+                        className={isActive ? "text-[#ff5c6a]" : "text-tap-red"}
+                        strokeWidth={isActive ? 1.4 : 1.25}
+                        size={isActive ? 32 : 28}
+                      />
                     </div>
-                    <h3 className="text-[16px] sm:text-[17px] font-bold text-white tracking-[-0.01em] mb-2">
+                    <h3
+                      className={[
+                        "text-[19px] sm:text-[22px] md:text-[24px] font-bold tracking-[-0.02em] mb-2.5 leading-tight",
+                        isActive ? "text-white drop-shadow-[0_1px_12px_rgba(0,0,0,0.45)]" : "text-white/88",
+                      ].join(" ")}
+                    >
                       {card.title}
                     </h3>
-                    <p className="text-[13px] text-white/35 font-light leading-[1.7]">
+                    <p
+                      className={[
+                        "text-[13px] font-light leading-[1.75]",
+                        isActive ? "text-white/80" : "text-white/35",
+                      ].join(" ")}
+                    >
                       {card.desc}
                     </p>
                   </div>
