@@ -39,8 +39,8 @@ export default function AppLayout({ children }: { children: React.ReactNode }) {
       el.removeEventListener("wheel", close);
     };
   }, [recruiterTalentOpen, closeRecruiterTalentPanel]);
-  // La sidebar : margin gauche (left-3 => 12px). La talent card est centrée en overlay (pas de décalage du main).
-  const sidebarLeftPaddingClass = collapsed ? "lg:pl-[112px]" : "lg:pl-[300px]";
+  // Sidebar collée au bord gauche / haut / bas (sans marge) : largeur + même espacement qu’avant vers le contenu.
+  const sidebarLeftPaddingClass = collapsed ? "lg:pl-[100px]" : "lg:pl-[288px]";
 
   useEffect(() => {
     if (typeof window === "undefined") return;

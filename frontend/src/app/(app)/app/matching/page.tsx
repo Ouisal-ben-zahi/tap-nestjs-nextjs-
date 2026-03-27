@@ -1,6 +1,6 @@
 "use client";
 
-import { useEffect, useMemo, useState } from "react";
+import { useEffect, useLayoutEffect, useMemo, useRef, useState } from "react";
 import { useRouter } from "next/navigation";
 import { useAuth } from "@/hooks/use-auth";
 import {
@@ -15,7 +15,7 @@ import {
 import EmptyState from "@/components/ui/EmptyState";
 import ErrorState from "@/components/ui/ErrorState";
 import { Skeleton } from "@/components/ui/Skeleton";
-import { Users, MapPin, Briefcase, Sparkles, SlidersHorizontal, FileText, CheckCircle2, Calendar, Eye, Bookmark, ArrowRight, Share2, Clock3 } from "lucide-react";
+import { Users, MapPin, Sparkles, FileText, CheckCircle2, Calendar, Bookmark, ArrowRight, Share2, ChevronLeft, ChevronRight } from "lucide-react";
 import { formatRelative } from "@/lib/utils";
 import { useDashboardTheme } from "@/hooks/use-dashboard-theme";
 import DropdownSelect from "@/components/app/DropdownSelect";
@@ -24,12 +24,25 @@ export default function MatchingPage() {
   const router = useRouter();
   const { isCandidat, isHydrated } = useAuth();
   const enabled = Boolean(isCandidat && isHydrated);
-  const [viewMode, setViewMode] = useState<"all" | "match" | "recent">("match");
+  const [viewMode, setViewMode] = useState<"all" | "match">("match");
   const filtersOpen = true;
   const [nameQuery, setNameQuery] = useState("");
   const [countryQuery, setCountryQuery] = useState("all");
   const [cityQuery, setCityQuery] = useState("all");
   const [selectedJobId, setSelectedJobId] = useState<number | null>(null);
+  /** Hors lg : pagination fixe. Sur lg : calculée pour épouser la hauteur de la carte détail. */
+  const FALLBACK_LIST_PAGE_SIZE = 9;
+  const LIST_GAP_PX = 12;
+  const LEFT_CARD_FALLBACK_PX = 118;
+  const MAX_LIST_PAGE_SIZE = 28;
+  const [listPage, setListPage] = useState(1);
+  const detailCardRef = useRef<HTMLDivElement>(null);
+  const leftListFooterRef = useRef<HTMLDivElement>(null);
+  const firstLeftCardRef = useRef<HTMLDivElement>(null);
+  const [matchLg, setMatchLg] = useState(false);
+  const [detailHeightPx, setDetailHeightPx] = useState(0);
+  const [leftFooterHeightPx, setLeftFooterHeightPx] = useState(0);
+  const [leftCardHeightPx, setLeftCardHeightPx] = useState(0);
   const statsQuery = useCandidatStats(enabled);
   const cvFilesQuery = useCandidatCvFiles();
   const jobsQuery = useCandidatMatchingJobs(enabled);
@@ -46,24 +59,23 @@ export default function MatchingPage() {
   const matchingJobs = jobsQuery.data?.jobs ?? [];
   const allJobs = publicJobsQuery.data?.jobs ?? [];
   const effectiveViewMode = !hasCvs && viewMode === "match" ? "all" : viewMode;
-  const sortedRecentJobs = useMemo(
-    () =>
-      [...allJobs].sort((a, b) => {
-        const aTime = a.created_at ? new Date(a.created_at).getTime() : 0;
-        const bTime = b.created_at ? new Date(b.created_at).getTime() : 0;
-        return bTime - aTime;
-      }),
-    [allJobs],
-  );
-  const usingFallbackAllJobs = effectiveViewMode === "match" && matchingJobs.length === 0 && allJobs.length > 0;
+  /** Match IA : offres du matching ; si l’IA ne renvoie rien mais des offres publiques existent → fallback (toutes les offres). */
+  const usingFallbackAllJobs =
+    effectiveViewMode === "match" && matchingJobs.length === 0 && allJobs.length > 0;
+  const jobsSectionLoading =
+    effectiveViewMode !== "match"
+      ? publicJobsQuery.isLoading
+      : jobsQuery.isLoading || (matchingJobs.length === 0 && publicJobsQuery.isLoading);
+  const jobsSectionError =
+    effectiveViewMode !== "match"
+      ? publicJobsQuery.isError
+      : jobsQuery.isError && publicJobsQuery.isError;
   const displayedJobs =
-    effectiveViewMode === "recent"
-      ? sortedRecentJobs
-      : effectiveViewMode === "all"
-        ? allJobs
-        : matchingJobs.length > 0
-          ? matchingJobs
-          : allJobs;
+    effectiveViewMode === "all"
+      ? allJobs
+      : matchingJobs.length > 0
+        ? matchingJobs
+        : allJobs;
   const appliedJobIds = new Set(
     (applicationsQuery.data?.applications ?? [])
       .map((a) => a.jobId)
@@ -122,6 +134,39 @@ export default function MatchingPage() {
 
     return true;
   });
+
+  /** Même condition que le rendu de la grille liste + détail (refs mesurables). */
+  const offersGridMounted =
+    !statsQuery.isLoading &&
+    !jobsSectionLoading &&
+    !jobsSectionError &&
+    filteredJobs.length > 0;
+
+  const effectivePageSize = useMemo(() => {
+    if (!matchLg) return FALLBACK_LIST_PAGE_SIZE;
+    const footer = leftFooterHeightPx > 0 ? leftFooterHeightPx : 92;
+    const cardH = Math.max(leftCardHeightPx || LEFT_CARD_FALLBACK_PX, 72);
+    const detailH = detailHeightPx;
+    if (detailH < 64) return FALLBACK_LIST_PAGE_SIZE;
+    const avail = Math.max(0, detailH - footer);
+    const n = Math.floor((avail + LIST_GAP_PX) / (cardH + LIST_GAP_PX));
+    return Math.max(1, Math.min(MAX_LIST_PAGE_SIZE, n));
+  }, [matchLg, detailHeightPx, leftFooterHeightPx, leftCardHeightPx]);
+
+  const totalListPages = Math.max(1, Math.ceil(filteredJobs.length / effectivePageSize));
+  const paginatedJobs = useMemo(() => {
+    const start = (listPage - 1) * effectivePageSize;
+    return filteredJobs.slice(start, start + effectivePageSize);
+  }, [filteredJobs, listPage, effectivePageSize]);
+  const firstListJobId = paginatedJobs[0]?.id;
+
+  useEffect(() => {
+    setListPage(1);
+  }, [nameQuery, countryQuery, cityQuery, effectiveViewMode]);
+
+  useEffect(() => {
+    setListPage((p) => Math.min(p, totalListPages));
+  }, [totalListPages, filteredJobs.length]);
 
   useEffect(() => {
     if (!filteredJobs.length) {
@@ -185,6 +230,58 @@ export default function MatchingPage() {
     setIsMounted(true);
   }, []);
 
+  useLayoutEffect(() => {
+    if (typeof window === "undefined") return;
+    const mq = window.matchMedia("(min-width: 1024px)");
+    const apply = () => setMatchLg(mq.matches);
+    apply();
+    mq.addEventListener("change", apply);
+    return () => mq.removeEventListener("change", apply);
+  }, []);
+
+  useLayoutEffect(() => {
+    const el = detailCardRef.current;
+    if (!el) {
+      if (offersGridMounted) {
+        setDetailHeightPx(0);
+      }
+      return;
+    }
+    const ro = new ResizeObserver(() => {
+      setDetailHeightPx(el.getBoundingClientRect().height);
+    });
+    ro.observe(el);
+    setDetailHeightPx(el.getBoundingClientRect().height);
+    return () => ro.disconnect();
+  }, [selectedJob?.id, isMounted, offersGridMounted]);
+
+  useLayoutEffect(() => {
+    const el = leftListFooterRef.current;
+    if (!el) {
+      return;
+    }
+    const ro = new ResizeObserver(() => {
+      setLeftFooterHeightPx(el.getBoundingClientRect().height);
+    });
+    ro.observe(el);
+    setLeftFooterHeightPx(el.getBoundingClientRect().height);
+    return () => ro.disconnect();
+  }, [filteredJobs.length, listPage, effectivePageSize, isMounted, offersGridMounted]);
+
+  useLayoutEffect(() => {
+    const el = firstLeftCardRef.current;
+    if (!el) {
+      setLeftCardHeightPx(0);
+      return;
+    }
+    const ro = new ResizeObserver(() => {
+      setLeftCardHeightPx(el.getBoundingClientRect().height);
+    });
+    ro.observe(el);
+    setLeftCardHeightPx(el.getBoundingClientRect().height);
+    return () => ro.disconnect();
+  }, [firstListJobId, isMounted, offersGridMounted, effectivePageSize]);
+
   const totalStatuses =
     (stats?.statusPending ?? 0) + (stats?.statusAccepted ?? 0) + (stats?.statusRefused ?? 0);
   const acceptanceRate =
@@ -232,7 +329,7 @@ export default function MatchingPage() {
   }
 
   return (
-    <div className="max-w-[1100px] mx-auto">
+    <div className="max-w-[1320px] mx-auto">
       <div className={`relative mb-8 pb-8 ${isLight ? "border-b border-black/10" : "border-b border-white/[0.04]"}`}>
         <div className="absolute top-[-80px] left-[-100px] w-[350px] h-[350px] rounded-full bg-[radial-gradient(circle,rgba(16,185,129,0.08),transparent_60%)] blur-3xl pointer-events-none" />
         <div className="relative">
@@ -320,28 +417,46 @@ export default function MatchingPage() {
 
         {/* Offres matchées par IA */}
         <div className="mb-10">
-          <div className="flex items-center justify-between mb-5">
-            <div className="flex items-center gap-3">
-              <div className="w-1 h-5 rounded-full bg-emerald-500" />
-              <h2 className={`text-[13px] uppercase tracking-[2px] font-semibold ${isLight ? "text-black" : "text-white/50"}`}>
-                {effectiveViewMode === "all"
-                  ? "Toutes les offres"
-                  : effectiveViewMode === "recent"
-                    ? "Offres récentes"
-                    : "Offres recommandées par l'IA"}
-              </h2>
-            </div>
-            <div className="flex items-center gap-3">
-              {displayedJobs.length ? (
-                <span className="text-[11px] text-emerald-500/70 font-medium">
-                  {effectiveViewMode !== "match"
-                    ? `${displayedJobs.length} offre${displayedJobs.length > 1 ? "s" : ""}`
+          <div className="mb-5">
+            <div className="flex items-center justify-between gap-3">
+              <div className="flex flex-wrap items-center gap-3 min-w-0">
+                <div className="w-1 h-5 rounded-full shrink-0 bg-tap-red" />
+                <h2 className={`text-[13px] uppercase tracking-[2px] font-semibold ${isLight ? "text-black" : "text-white/50"}`}>
+                  {effectiveViewMode === "all"
+                    ? "Toutes les offres"
                     : usingFallbackAllJobs
-                      ? `${displayedJobs.length} offre${displayedJobs.length > 1 ? "s" : ""} (fallback)`
-                      : `${displayedJobs.length} offre${displayedJobs.length > 1 ? "s" : ""} matchée${displayedJobs.length > 1 ? "s" : ""}`}
-                </span>
-              ) : null}
+                      ? "Toutes les offres"
+                      : "Offres matchées par l'IA"}
+                </h2>
+                {usingFallbackAllJobs ? (
+                  <span
+                    className={`text-[10px] uppercase tracking-[1.2px] px-2 py-0.5 rounded-full border shrink-0 ${
+                      isLight
+                        ? "border-tap-red/30 bg-tap-red/10 text-tap-red"
+                        : "border-tap-red/35 bg-tap-red/15 text-[#f87171]"
+                    }`}
+                  >
+                    Mode fallback
+                  </span>
+                ) : null}
+              </div>
+              <div className="flex items-center gap-3 shrink-0">
+                {displayedJobs.length ? (
+                  <span className="text-[11px] text-emerald-500/70 font-medium">
+                    {effectiveViewMode !== "match"
+                      ? `${displayedJobs.length} offre${displayedJobs.length > 1 ? "s" : ""}`
+                      : usingFallbackAllJobs
+                        ? `${displayedJobs.length} offre${displayedJobs.length > 1 ? "s" : ""}`
+                        : `${displayedJobs.length} offre${displayedJobs.length > 1 ? "s" : ""} matchée${displayedJobs.length > 1 ? "s" : ""}`}
+                  </span>
+                ) : null}
+              </div>
             </div>
+            {effectiveViewMode === "match" && usingFallbackAllJobs ? (
+              <p className={`mt-2 text-[12px] leading-snug max-w-2xl ${isLight ? "text-black/55" : "text-white/45"}`}>
+                Aucune offre ne correspond encore à votre profil via l’IA : affichage de toutes les offres disponibles.
+              </p>
+            ) : null}
           </div>
 
           {filtersOpen && (
@@ -426,75 +541,63 @@ export default function MatchingPage() {
                   </div>
                 </div>
               </div>
-              <div className="mt-3 flex items-center justify-end gap-3">
-                <div
-                  className={`rounded-2xl border p-1.5 ${
-                    isLight ? "border-black/15 bg-black/[0.02]" : "border-white/[0.12] bg-white/[0.02]"
-                  }`}
-                >
-                  <p className={`px-2 py-1 text-[10px] uppercase tracking-[1.5px] ${isLight ? "text-black/45" : "text-white/45"}`}>
-                    Mode d&apos;affichage
-                  </p>
-                  <div className="flex items-center gap-1">
-                    <button
-                      type="button"
-                      onClick={() => setViewMode("all")}
-                      className={`inline-flex items-center gap-1.5 px-2.5 py-1.5 rounded-xl text-[11px] transition ${
-                        effectiveViewMode === "all"
-                          ? "bg-emerald-500/15 text-emerald-400"
-                          : isLight
-                            ? "text-black/60 hover:bg-black/5"
-                            : "text-white/55 hover:bg-white/[0.05]"
-                      }`}
-                      title="Afficher toutes les offres"
-                    >
-                      <Briefcase size={12} />
-                      Toutes
-                    </button>
-                    <button
-                      type="button"
-                      onClick={() => setViewMode("match")}
-                      className={`inline-flex items-center gap-1.5 px-2.5 py-1.5 rounded-xl text-[11px] transition ${
-                        effectiveViewMode === "match"
-                          ? "bg-emerald-500/15 text-emerald-400"
-                          : isLight
-                            ? "text-black/60 hover:bg-black/5"
-                            : "text-white/55 hover:bg-white/[0.05]"
-                      }`}
-                      title="Afficher les offres matchées par IA"
-                    >
-                      <Sparkles size={12} />
-                      Match IA
-                    </button>
-                    <button
-                      type="button"
-                      onClick={() => setViewMode("recent")}
-                      className={`inline-flex items-center gap-1.5 px-2.5 py-1.5 rounded-xl text-[11px] transition ${
-                        effectiveViewMode === "recent"
-                          ? "bg-emerald-500/15 text-emerald-400"
-                          : isLight
-                            ? "text-black/60 hover:bg-black/5"
-                            : "text-white/55 hover:bg-white/[0.05]"
-                      }`}
-                      title="Afficher les offres les plus récentes"
-                    >
-                      <Clock3 size={12} />
-                      Récentes
-                    </button>
-                  </div>
-                </div>
-                {displayedJobs.length ? (
-                  <span className="text-[11px] text-emerald-500/70 font-medium">
-                    {effectiveViewMode !== "match"
-                      ? `${displayedJobs.length} offre${displayedJobs.length > 1 ? "s" : ""}`
-                      : usingFallbackAllJobs
-                        ? `${displayedJobs.length} offre${displayedJobs.length > 1 ? "s" : ""} (fallback)`
-                        : `${displayedJobs.length} offre${displayedJobs.length > 1 ? "s" : ""} matchée${displayedJobs.length > 1 ? "s" : ""}`}
-                  </span>
-                ) : null}
-              </div>
             </div>
           )}
+
+          {/* Mode d’affichage : aligné sur la colonne gauche des cartes (lg), style segmented arrondi */}
+          <div className="mb-4 lg:grid lg:grid-cols-12 lg:gap-8">
+            <div className="w-full min-w-0 lg:col-span-4">
+              <p
+                className={`mb-2 text-[10px] uppercase tracking-[1.5px] font-semibold ${
+                  isLight ? "text-black/45" : "text-white/40"
+                }`}
+              >
+                Mode d&apos;affichage
+              </p>
+              <div
+                className={`flex w-full items-center gap-1 rounded-full border p-1 ${
+                  isLight
+                    ? "border-black/12 bg-black/[0.03]"
+                    : "border-white/[0.12] bg-[#0C0C0C]/90 backdrop-blur-sm"
+                }`}
+                role="group"
+                aria-label="Mode d'affichage des offres"
+              >
+                <button
+                  type="button"
+                  onClick={() => setViewMode("all")}
+                  className={`min-w-0 flex-1 rounded-full px-3 py-2.5 text-[11px] font-semibold uppercase tracking-[0.12em] transition ${
+                    viewMode === "all"
+                      ? isLight
+                        ? "bg-[#CA1B28] text-white shadow-[0_4px_14px_rgba(202,27,40,0.4)]"
+                        : "bg-[#CA1B28] text-white shadow-[0_4px_18px_rgba(202,27,40,0.45)] ring-1 ring-white/15"
+                      : isLight
+                        ? "text-black/60 hover:bg-black/[0.06]"
+                        : "text-white/55 hover:bg-white/[0.07]"
+                  }`}
+                  title="Afficher toutes les offres"
+                >
+                  Toutes
+                </button>
+                <button
+                  type="button"
+                  onClick={() => setViewMode("match")}
+                  className={`min-w-0 flex-1 rounded-full px-3 py-2.5 text-[11px] font-semibold uppercase tracking-[0.12em] transition ${
+                    viewMode === "match"
+                      ? isLight
+                        ? "bg-[#CA1B28] text-white shadow-[0_4px_14px_rgba(202,27,40,0.4)]"
+                        : "bg-[#CA1B28] text-white shadow-[0_4px_18px_rgba(202,27,40,0.45)] ring-1 ring-white/15"
+                      : isLight
+                        ? "text-black/60 hover:bg-black/[0.06]"
+                        : "text-white/55 hover:bg-white/[0.07]"
+                  }`}
+                  title="Afficher les offres matchées par IA"
+                >
+                  Match IA
+                </button>
+              </div>
+            </div>
+          </div>
 
           {(effectiveViewMode !== "match"
             ? publicJobsQuery.isLoading
@@ -535,10 +638,14 @@ export default function MatchingPage() {
               }
             />
           ) : (
-            <div className="grid grid-cols-1 lg:grid-cols-10 gap-4">
-              <div className="lg:col-span-4 space-y-3">
-                {filteredJobs.map((job) => {
-                const alreadyApplied = appliedJobIds.has(job.id);
+            <div
+              className="grid grid-cols-1 lg:grid-cols-12 gap-4 lg:gap-8 lg:items-stretch"
+              aria-label="Liste des offres et détail"
+            >
+              {/* Gauche : nombre de cartes calé sur la hauteur de la carte détail (lg) ; scroll = page principale */}
+              <div className="flex w-full min-w-0 flex-col lg:col-span-4 lg:h-full lg:min-h-0">
+                <div className="flex w-full flex-col gap-3 lg:flex-1 lg:min-h-0">
+                {paginatedJobs.map((job, index) => {
                 const isSaved = (savedJobsQuery.data?.jobIds ?? []).includes(job.id);
                 const locationType =
                   typeof job.location_type === "string" && job.location_type.trim()
@@ -558,37 +665,38 @@ export default function MatchingPage() {
                 return (
                   <div
                     key={job.id}
+                    ref={index === 0 ? firstLeftCardRef : undefined}
                     onClick={() => setSelectedJobId(job.id)}
-                    className={`group relative card-animated-border rounded-2xl overflow-hidden p-5 border cursor-pointer transform-gpu will-change-transform transition-all duration-500 ease-[cubic-bezier(.22,1,.36,1)] hover:-translate-y-1 hover:scale-[1.02] ${
+                    className={`group relative card-animated-border rounded-2xl overflow-hidden border p-4 sm:p-5 lg:p-6 cursor-pointer transform-gpu will-change-transform transition-all duration-300 hover:-translate-y-0.5 w-full ${
                       isSelected
                         ? isLight
-                          ? "bg-[#0A0A0A] border-tap-red/35 shadow-[0_18px_60px_rgba(0,0,0,0.55),0_0_30px_rgba(202,27,40,0.14)]"
-                          : "bg-[#0A0A0A] border-tap-red/30 shadow-[0_18px_60px_rgba(0,0,0,0.55),0_0_30px_rgba(202,27,40,0.14)]"
+                          ? "bg-[#0A0A0A] border-tap-red/35 shadow-[0_12px_40px_rgba(0,0,0,0.45),0_0_24px_rgba(202,27,40,0.14)]"
+                          : "bg-[#0A0A0A] border-tap-red/30 shadow-[0_12px_40px_rgba(0,0,0,0.45),0_0_24px_rgba(202,27,40,0.14)]"
                         : isLight
-                          ? "bg-[#0A0A0A] border-white/[0.08] hover:border-tap-red/20 hover:shadow-[0_18px_60px_rgba(0,0,0,0.55),0_0_24px_rgba(202,27,40,0.10)]"
-                          : "bg-[#0A0A0A] border-white/[0.06] hover:border-tap-red/15 hover:shadow-[0_18px_60px_rgba(0,0,0,0.55),0_0_24px_rgba(202,27,40,0.10)]"
+                          ? "bg-[#0A0A0A] border-white/[0.08] hover:border-tap-red/20 hover:shadow-[0_12px_40px_rgba(0,0,0,0.45),0_0_18px_rgba(202,27,40,0.10)]"
+                          : "bg-[#0A0A0A] border-white/[0.06] hover:border-tap-red/15 hover:shadow-[0_12px_40px_rgba(0,0,0,0.45),0_0_18px_rgba(202,27,40,0.10)]"
                     }`}
                   >
-                    <div className="absolute top-0 left-0 right-0 h-[110px] bg-gradient-to-b from-tap-red/14 via-tap-red/4 to-transparent pointer-events-none" />
+                    <div className="absolute top-0 left-0 right-0 h-[100px] bg-gradient-to-b from-tap-red/14 via-tap-red/4 to-transparent pointer-events-none" />
                     <div className="absolute inset-0 opacity-0 group-hover:opacity-100 transition-opacity duration-500 pointer-events-none">
                       <div className="absolute inset-0 bg-[radial-gradient(circle_at_20%_0%,rgba(202,27,40,0.20),transparent_55%)]" />
                     </div>
-                    <div className="flex items-stretch justify-between gap-3">
-                      <div className="min-w-0">
-                        <h3 className={`text-[20px] font-semibold truncate uppercase ${isLight ? "text-black" : "text-white"}`}>
+                    <div className="relative flex flex-row items-stretch justify-between gap-3 sm:gap-4 min-w-0">
+                      <div className="min-w-0 flex-1">
+                        <h3 className={`text-[15px] sm:text-[17px] font-semibold uppercase truncate ${isLight ? "text-black" : "text-white"}`}>
                           {job.title ?? "Offre sans titre"}
                         </h3>
-                        <p className={`text-[12px] mt-1 ${isLight ? "text-black/65" : "text-white/50"}`}>
+                        <p className={`text-[11px] sm:text-[12px] mt-0.5 truncate ${isLight ? "text-black/65" : "text-white/50"}`}>
                           {job.categorie_profil ?? "Catégorie non précisée"}
                         </p>
-                        <p className={`text-[12px] mt-1 inline-flex items-center gap-1 ${isLight ? "text-black/70" : "text-white/55"}`}>
-                          <MapPin size={12} />
-                          {locationLabel ?? "Localisation non précisée"}
+                        <p className={`text-[11px] sm:text-[12px] mt-0.5 inline-flex items-center gap-1 min-w-0 ${isLight ? "text-black/70" : "text-white/55"}`}>
+                          <MapPin size={12} className="shrink-0" />
+                          <span className="truncate">{locationLabel ?? "Localisation non précisée"}</span>
                         </p>
                       </div>
-                      <div className="flex flex-col justify-between items-end shrink-0 min-h-[84px]">
+                      <div className="flex flex-col justify-between items-end shrink-0 gap-0.5 min-h-[72px] sm:min-h-[76px]">
                         <div className="inline-flex items-center gap-2">
-                          <span className={`text-[11px] ${isLight ? "text-black/50" : "text-white/35"}`}>
+                          <span className={`text-[10px] sm:text-[11px] whitespace-nowrap ${isLight ? "text-black/50" : "text-white/35"}`}>
                             {job.created_at ? formatRelative(job.created_at) : "—"}
                           </span>
                           <button
@@ -612,7 +720,7 @@ export default function MatchingPage() {
                             <Bookmark size={13} fill={isSaved ? "currentColor" : "none"} />
                           </button>
                         </div>
-                        <span className="inline-flex items-center gap-1 text-[11px] font-medium underline underline-offset-2 text-[#CA1B28]">
+                        <span className="inline-flex items-center gap-1 text-[11px] font-medium underline underline-offset-2 text-[#CA1B28] whitespace-nowrap">
                           Voir le détail
                           <ArrowRight size={12} />
                         </span>
@@ -621,45 +729,101 @@ export default function MatchingPage() {
                   </div>
                 );
                 })}
+                </div>
+                {filteredJobs.length > 0 ? (
+                  <div
+                    ref={leftListFooterRef}
+                    className={`mt-auto pt-3 shrink-0 flex items-center justify-center border-t ${
+                      isLight ? "border-black/10" : "border-white/[0.08]"
+                    }`}
+                  >
+                    <div className="flex items-center justify-center gap-2">
+                      <button
+                        type="button"
+                        disabled={listPage <= 1}
+                        onClick={() => setListPage((p) => Math.max(1, p - 1))}
+                        className={`inline-flex items-center justify-center w-9 h-9 rounded-xl border transition disabled:opacity-35 disabled:cursor-not-allowed ${
+                          isLight
+                            ? "border-black/15 hover:bg-black/5 text-black/70"
+                            : "border-white/[0.12] hover:bg-white/[0.06] text-white/80"
+                        }`}
+                        aria-label="Page précédente"
+                      >
+                        <ChevronLeft size={18} />
+                      </button>
+                      <span className={`text-[12px] tabular-nums min-w-[7rem] text-center ${isLight ? "text-black/70" : "text-white/70"}`}>
+                        Page {listPage} / {totalListPages}
+                      </span>
+                      <button
+                        type="button"
+                        disabled={listPage >= totalListPages}
+                        onClick={() => setListPage((p) => Math.min(totalListPages, p + 1))}
+                        className={`inline-flex items-center justify-center w-9 h-9 rounded-xl border transition disabled:opacity-35 disabled:cursor-not-allowed ${
+                          isLight
+                            ? "border-black/15 hover:bg-black/5 text-black/70"
+                            : "border-white/[0.12] hover:bg-white/[0.06] text-white/80"
+                        }`}
+                        aria-label="Page suivante"
+                      >
+                        <ChevronRight size={18} />
+                      </button>
+                    </div>
+                  </div>
+                ) : null}
               </div>
 
-              <div
-                className={`lg:col-span-6 relative rounded-2xl p-5 sm:p-6 h-fit ${
-                  isLight
-                    ? "card-luxury-light"
-                    : "bg-zinc-900/50 border border-white/[0.08]"
-                }`}
-              >
+              {/* Droite : carte détail naturelle (sans scroll interne) — sert de référence de hauteur pour la liste (lg) */}
+              <div className="min-w-0 flex flex-col lg:col-span-8 lg:min-h-0">
+                <div
+                  ref={detailCardRef}
+                  className={`relative h-fit overflow-visible rounded-2xl p-5 sm:p-6 lg:p-6 ${
+                    isLight
+                      ? "card-luxury-light"
+                      : "border border-white/[0.08] bg-zinc-900/50"
+                  }`}
+                >
                 {selectedJob ? (
                   <>
-                    <div className="absolute top-[-18px] right-[-18px] z-10">
+                    {/* Badge score matching — position absolue coin supérieur droit de la carte */}
+                    <div
+                      className="pointer-events-none absolute -top-2 -right-2 z-20 size-[3.75rem] rounded-full p-[2px] shadow-[0_8px_28px_rgba(0,0,0,0.45)] ring-2 ring-white/10 sm:-top-2.5 sm:-right-2.5 sm:size-16 lg:size-[4.25rem]"
+                      style={{
+                        background: `conic-gradient(${selectedJobScoreColor} ${selectedJobScorePct}%, rgba(255,255,255,0.14) ${selectedJobScorePct}% 100%)`,
+                      }}
+                    >
                       <div
-                        className="w-16 h-16 rounded-full p-[2px] shadow-[0_10px_30px_rgba(0,0,0,0.45)]"
-                        style={{
-                          background: `conic-gradient(${selectedJobScoreColor} ${selectedJobScorePct}%, rgba(255,255,255,0.14) ${selectedJobScorePct}% 100%)`,
-                        }}
+                        className={`pointer-events-auto flex size-full items-center justify-center rounded-full ${
+                          isLight ? "bg-white shadow-inner" : "bg-zinc-900/90"
+                        }`}
+                        role="img"
+                        aria-label={`Score de correspondance ${selectedJobScorePct} pour cent`}
                       >
-                        <div className="w-full h-full rounded-full bg-zinc-900/50 backdrop-blur-md flex items-center justify-center">
-                          <span className="text-[13px] font-bold text-white">{selectedJobScorePct}%</span>
-                        </div>
+                        <span
+                          className={`text-[12px] font-bold tabular-nums sm:text-[13px] lg:text-[14px] ${isLight ? "text-zinc-900" : "text-white"}`}
+                        >
+                          {selectedJobScorePct}%
+                        </span>
                       </div>
                     </div>
-                    <div className="flex items-start justify-between gap-3">
-                      <div className="min-w-0">
-                        <h3 className={`text-[26px] font-semibold leading-tight uppercase ${isLight ? "text-black" : "text-white"}`}>
-                          {selectedJob.title ?? "Offre sans titre"}
-                        </h3>
-                        <p className={`mt-1 text-[13px] ${isLight ? "text-black/60" : "text-white/55"}`}>
-                          {selectedJob.categorie_profil ?? "Catégorie non précisée"}
-                        </p>
-                      </div>
-                      <div className="flex flex-col items-end gap-2 shrink-0">
-                        <div className="flex items-center gap-2">
-                          {selectedJob.urgent ? (
-                            <span className="text-[11px] px-2 py-1 rounded-full bg-red-500/10 border border-red-500/20 text-red-400 shrink-0">
-                              Urgent
-                            </span>
-                          ) : null}
+
+                    <div className="flex flex-col gap-3 pr-14 sm:pr-16 lg:pr-[4.75rem]">
+                      {selectedJob.urgent ? (
+                        <span className="w-fit text-[11px] px-2.5 py-1 rounded-full bg-red-500/10 border border-red-500/20 text-red-400">
+                          Urgent
+                        </span>
+                      ) : null}
+
+                      {/* Titre à gauche, actions à droite */}
+                      <div className="flex min-w-0 items-start justify-between gap-3 sm:gap-6">
+                        <div className="min-w-0 flex-1 text-left">
+                          <h3 className={`text-[22px] sm:text-[24px] lg:text-[28px] font-semibold leading-tight uppercase ${isLight ? "text-black" : "text-white"}`}>
+                            {selectedJob.title ?? "Offre sans titre"}
+                          </h3>
+                          <p className={`mt-1 text-[13px] lg:text-[14px] ${isLight ? "text-black/60" : "text-white/55"}`}>
+                            {selectedJob.categorie_profil ?? "Catégorie non précisée"}
+                          </p>
+                        </div>
+                        <div className="flex shrink-0 items-center gap-2 self-start pt-0.5 sm:pt-1">
                           <button
                             type="button"
                             onClick={() => {
@@ -678,15 +842,15 @@ export default function MatchingPage() {
                                 void navigator.clipboard.writeText(detailsUrl);
                               }
                             }}
-                            className={`inline-flex items-center justify-center w-9 h-9 rounded-full border transition ${
+                            className={`inline-flex items-center justify-center size-10 rounded-full border transition ${
                               isLight
-                                ? "border-black/10 hover:bg-black/5 text-black/60 hover:text-black"
-                                : "border-white/[0.14] hover:bg-zinc-800 text-zinc-300 hover:text-white"
+                                ? "border-black/10 bg-black/[0.03] hover:bg-black/[0.08] text-black/70"
+                                : "border-white/[0.14] bg-white/[0.04] hover:bg-white/[0.08] text-zinc-200"
                             }`}
                             aria-label="Partager l’offre"
                             title="Partager"
                           >
-                            <Share2 size={14} />
+                            <Share2 size={16} strokeWidth={1.75} />
                           </button>
                           <button
                             type="button"
@@ -695,27 +859,19 @@ export default function MatchingPage() {
                               if (toggleSavedJobMutation.isPending) return;
                               toggleSavedJobMutation.mutate(selectedJob.id);
                             }}
-                            className={`inline-flex items-center justify-center w-9 h-9 rounded-full border transition ${
+                            className={`inline-flex items-center justify-center size-10 rounded-full border transition ${
                               selectedJobIsSaved
-                                ? "border-emerald-500/35 bg-emerald-500/12 text-emerald-300 hover:bg-emerald-500/20"
+                                ? "border-emerald-500/40 bg-emerald-500/12 text-emerald-300 hover:bg-emerald-500/18"
                                 : isLight
-                                  ? "border-black/10 hover:bg-black/5 text-black/60 hover:text-black"
-                                  : "border-white/[0.14] hover:bg-zinc-800 text-zinc-300 hover:text-white"
+                                  ? "border-black/10 bg-black/[0.03] hover:bg-black/[0.08] text-black/70"
+                                  : "border-white/[0.14] bg-white/[0.04] hover:bg-white/[0.08] text-zinc-200"
                             } ${toggleSavedJobMutation.isPending ? "opacity-60 cursor-not-allowed" : ""}`}
                             aria-label={selectedJobIsSaved ? "Offre enregistrée" : "Enregistrer l’offre"}
                             title={selectedJobIsSaved ? "Offre enregistrée" : "Enregistrer l’offre"}
                           >
-                            <Bookmark size={14} fill={selectedJobIsSaved ? "currentColor" : "none"} />
+                            <Bookmark size={16} strokeWidth={1.75} fill={selectedJobIsSaved ? "currentColor" : "none"} />
                           </button>
                         </div>
-                        <button
-                          type="button"
-                          disabled={appliedJobIds.has(selectedJob.id)}
-                          onClick={() => router.push(`/app/matching/offres/${selectedJob.id}`)}
-                          className="btn-primary !py-1.5 !px-3 text-[12px] disabled:opacity-50 disabled:cursor-not-allowed"
-                        >
-                          {appliedJobIds.has(selectedJob.id) ? "Déjà postulé" : "Postuler"}
-                        </button>
                       </div>
                     </div>
 
@@ -783,22 +939,27 @@ export default function MatchingPage() {
                       </div>
                     </div>
 
-                    <div className="mt-6 flex items-center justify-end gap-2">
+                    <div
+                      className={`mt-8 flex flex-col gap-3 border-t pt-6 sm:flex-row sm:items-center sm:justify-end ${
+                        isLight ? "border-black/10" : "border-white/[0.08]"
+                      }`}
+                    >
                       <button
                         type="button"
                         disabled={appliedJobIds.has(selectedJob.id)}
                         onClick={() => router.push(`/app/matching/offres/${selectedJob.id}`)}
-                        className="btn-primary !py-2 !px-4 text-[12px] disabled:opacity-50 disabled:cursor-not-allowed"
+                        className="btn-primary w-full !py-3 !px-6 text-[12px] sm:w-auto sm:!py-2.5 disabled:opacity-50 disabled:cursor-not-allowed"
                       >
                         {appliedJobIds.has(selectedJob.id) ? "Déjà postulé" : "Postuler"}
                       </button>
                     </div>
                   </>
                 ) : (
-                  <p className={`text-[13px] ${isLight ? "text-black/60" : "text-white/55"}`}>
+                  <p className={`text-[13px] lg:text-[14px] ${isLight ? "text-black/60" : "text-white/55"}`}>
                     Sélectionnez une offre à gauche pour afficher ses détails.
                   </p>
                 )}
+                </div>
               </div>
             </div>
           )}

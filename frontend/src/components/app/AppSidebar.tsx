@@ -10,9 +10,7 @@ import {
   LayoutDashboard,
   FileText,
   BarChart3,
-  Users,
   GraduationCap,
-  MessageSquare,
   FolderOpen,
   X,
   Briefcase,
@@ -22,15 +20,18 @@ import {
   LogOut,
   Settings,
   ClipboardList,
+  Mic,
+  Megaphone,
+  Calendar,
 } from "lucide-react";
 
 const candidatNavItems = [
   { href: "/app", label: "Tableau de bord", icon: LayoutDashboard },
   { href: "/app/analyse-cv", label: "Analyse CV", icon: FileText },
   { href: "/app/scoring", label: "Évaluation", icon: BarChart3 },
-  { href: "/app/matching", label: "Offres IA", icon: Users },
+  { href: "/app/matching", label: "Offres IA", icon: Briefcase },
   { href: "/app/formation", label: "Formation", icon: GraduationCap },
-  { href: "/app/entretien", label: "Entretien IA", icon: MessageSquare },
+  { href: "/app/entretien", label: "Entretien IA", icon: Mic },
   { href: "/app/mes-fichiers", label: "Mes fichiers", icon: FolderOpen },
   { href: "/app/mes-candidatures", label: "Mes candidatures", icon: ClipboardList },
   { href: "/app/parametres", label: "Paramètres", icon: Settings },
@@ -38,10 +39,10 @@ const candidatNavItems = [
 
 const recruteurNavItems = [
   { href: "/app", label: "Tableau de bord", icon: LayoutDashboard },
-  { href: "/app/offres", label: "Mes offres", icon: Briefcase },
+  { href: "/app/offres", label: "Mes offres", icon: Megaphone },
   { href: "/app/candidats", label: "Candidats", icon: Search },
   { href: "/app/matching-recruteur", label: "Appariement IA", icon: UserCheck },
-  { href: "/app/entretiens-planifies", label: "Entretiens", icon: MessageSquare },
+  { href: "/app/entretiens-planifies", label: "Entretiens", icon: Calendar },
   { href: "/app/parametres", label: "Paramètres", icon: Settings },
 ];
 
@@ -91,17 +92,17 @@ export default function AppSidebar({
         />
       )}
 
-      <div className="fixed top-3 bottom-3 left-3 z-50 flex flex-row gap-2 items-stretch">
+      <div className="fixed top-0 bottom-0 left-0 z-50 flex flex-row items-stretch h-full min-h-0">
         <aside
           className={`relative shrink-0 self-stretch min-h-0 top-0 bottom-0 left-0 ${
             collapsed ? "w-[80px]" : "w-[250px]"
           } ${
             isLight
-              ? "text-white border border-white/20"
-              : "text-white border border-white/[0.12]"
+              ? "text-white border border-white/20 border-l-0 border-y-0"
+              : "text-white border border-white/[0.12] border-l-0 border-y-0"
           } z-50 flex flex-col transition-transform duration-300 lg:translate-x-0 ${
             open ? "translate-x-0" : "-translate-x-full"
-          } rounded-2xl overflow-hidden`}
+          } rounded-none rounded-r-2xl overflow-hidden`}
           onDoubleClick={(e) => {
             const target = e.target as HTMLElement;
             // Evite de replier/déplier si l'utilisateur double-clic sur un lien ou un bouton
@@ -110,13 +111,41 @@ export default function AppSidebar({
             onToggleCollapsed();
           }}
         >
-        {/* Fond simple : noir -> rouge -> noir */}
-        <div className="absolute inset-0 pointer-events-none">
+        {/* Fond luxe : charbon, halos bordeaux/champagne, reflet bord */}
+        <div className="absolute inset-0 pointer-events-none overflow-hidden">
+          <div
+            className={
+              isLight
+                ? "absolute inset-0 bg-[#141416]"
+                : "absolute inset-0 bg-[#070708]"
+            }
+          />
           <div
             className={`absolute inset-0 ${
               isLight
-                ? "bg-[linear-gradient(180deg,rgba(202,27,40,0.30)_0%,rgba(10,10,10,0.90)_50%,rgba(202,27,40,0.28)_100%)]"
-                : "bg-[linear-gradient(180deg,rgba(202,27,40,0.36)_0%,rgba(6,6,6,0.98)_50%,rgba(202,27,40,0.34)_100%)]"
+                ? "bg-[radial-gradient(ellipse_140%_90%_at_0%_-10%,rgba(202,27,40,0.18)_0%,transparent_52%)]"
+                : "bg-[radial-gradient(ellipse_130%_85%_at_0%_-5%,rgba(90,20,32,0.45)_0%,transparent_55%)]"
+            }`}
+          />
+          <div
+            className={`absolute inset-0 ${
+              isLight
+                ? "bg-[radial-gradient(ellipse_100%_70%_at_100%_110%,rgba(202,27,40,0.12)_0%,transparent_45%)]"
+                : "bg-[radial-gradient(ellipse_90%_60%_at_100%_100%,rgba(202,27,40,0.14)_0%,transparent_48%)]"
+            }`}
+          />
+          <div
+            className={`absolute inset-0 ${
+              isLight
+                ? "bg-[linear-gradient(155deg,rgba(214,190,160,0.07)_0%,transparent_42%,rgba(255,255,255,0.02)_100%)]"
+                : "bg-[linear-gradient(158deg,rgba(200,170,120,0.06)_0%,transparent_38%,rgba(255,255,255,0.02)_55%,transparent_100%)]"
+            }`}
+          />
+          <div
+            className={`absolute inset-0 ${
+              isLight
+                ? "bg-[linear-gradient(90deg,transparent_0%,rgba(255,255,255,0.06)_100%)]"
+                : "bg-[linear-gradient(90deg,transparent_0%,rgba(255,255,255,0.045)_100%)]"
             }`}
           />
         </div>
