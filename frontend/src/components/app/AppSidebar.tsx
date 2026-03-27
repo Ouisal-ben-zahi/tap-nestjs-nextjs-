@@ -110,17 +110,15 @@ export default function AppSidebar({
             onToggleCollapsed();
           }}
         >
-        {/* Fond hero + effet glass blanc */}
+        {/* Fond simple : noir -> rouge -> noir */}
         <div className="absolute inset-0 pointer-events-none">
-          <Image
-            src="/images/bgaccueil.webp"
-            alt=""
-            fill
-            priority
-            className="object-cover"
+          <div
+            className={`absolute inset-0 ${
+              isLight
+                ? "bg-[linear-gradient(180deg,rgba(202,27,40,0.30)_0%,rgba(10,10,10,0.90)_50%,rgba(202,27,40,0.28)_100%)]"
+                : "bg-[linear-gradient(180deg,rgba(202,27,40,0.36)_0%,rgba(6,6,6,0.98)_50%,rgba(202,27,40,0.34)_100%)]"
+            }`}
           />
-          <div className={`${isLight ? "absolute inset-0 bg-white/20 backdrop-blur-lg" : "absolute inset-0 bg-black/45"}`} />
-          <div className={`${isLight ? "absolute inset-0 bg-gradient-to-b from-white/18 via-white/10 to-white/14" : "absolute inset-0 bg-gradient-to-b from-white/[0.10] via-white/[0.04] to-white/[0.06]"}`} />
         </div>
 
         {/* Mobile close */}

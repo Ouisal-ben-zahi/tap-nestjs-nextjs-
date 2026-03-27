@@ -181,7 +181,7 @@ export default function CandidatDashboard() {
     },
   ];
   const themedCardClass =
-    "group card-animated-border relative overflow-hidden rounded-2xl border border-white/[0.08] bg-[linear-gradient(180deg,rgba(202,27,40,0.08)_0%,rgba(10,10,10,0.96)_30%,rgba(10,10,10,0.96)_100%)] shadow-[0_10px_28px_rgba(0,0,0,0.45)] hover:border-tap-red/15 transition-all duration-500";
+    "group card-animated-border relative overflow-hidden rounded-2xl border border-white/[0.08] bg-[linear-gradient(180deg,rgba(202,27,40,0.08)_0%,rgba(10,10,10,0.96)_30%,rgba(10,10,10,0.96)_100%)] hover:bg-none hover:bg-[#020001] shadow-[0_10px_28px_rgba(0,0,0,0.45)] hover:border-tap-red/15 transition-all duration-500";
   const themedParagraphClass = isLight ? "text-black/60" : "text-white/60";
 
   return (

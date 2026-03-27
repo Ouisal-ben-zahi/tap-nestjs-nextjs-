@@ -14,6 +14,8 @@ export default function AppLayout({ children }: { children: React.ReactNode }) {
   const [sidebarOpen, setSidebarOpen] = useState(false);
   const [collapsed, setCollapsed] = useState(false);
   const pathname = usePathname();
+  const layoutCardLikeBgClass =
+    "bg-[linear-gradient(180deg,rgba(202,27,40,0.08)_0%,rgba(10,10,10,0.96)_30%,rgba(10,10,10,0.96)_100%)]";
   const recruiterTalentOpen = useRecruiterTalentPanelStore((s) => Boolean(s.talentPanel));
   const closeRecruiterTalentPanel = useRecruiterTalentPanelStore((s) => s.closeTalentPanel);
   const mainScrollRef = useRef<HTMLElement | null>(null);
@@ -49,7 +51,7 @@ export default function AppLayout({ children }: { children: React.ReactNode }) {
   return (
     <HydrationGate>
     <AuthGuard>
-      <div className="h-screen relative overflow-hidden bg-black">
+      <div className={`h-screen relative overflow-hidden ${layoutCardLikeBgClass}`}>
         {/* Background effects (dark only) */}
         <div className="fixed inset-0 pointer-events-none">
           <div className="absolute top-[5%] right-[-8%] w-[500px] h-[500px] rounded-full bg-[radial-gradient(circle,rgba(202,27,40,0.04),transparent_60%)] blur-3xl" />
@@ -74,7 +76,7 @@ export default function AppLayout({ children }: { children: React.ReactNode }) {
           />
           <main
             ref={mainScrollRef}
-            className={`flex-1 min-h-0 ${sidebarLeftPaddingClass} p-5 sm:p-8 lg:p-10 pb-20 overflow-y-auto overflow-x-hidden relative bg-[#020001]`}
+            className={`flex-1 min-h-0 ${sidebarLeftPaddingClass} p-5 sm:p-8 lg:p-10 pb-20 overflow-y-auto overflow-x-hidden relative ${layoutCardLikeBgClass}`}
           >
             {/* Burger mobile (seul en haut à gauche) */}
             <button
@@ -89,9 +91,7 @@ export default function AppLayout({ children }: { children: React.ReactNode }) {
             {/* Header fixe du dashboard (comme avant) */}
             <div className="fixed top-0 left-0 right-0 z-30">
               <div
-                className={`flex items-center justify-between px-3 py-2 sm:px-6 sm:py-3 ${sidebarLeftPaddingClass} ${
-                  "bg-[#020001]"
-                }`}
+                className={`flex items-center justify-between px-3 py-2 sm:px-6 sm:py-3 ${sidebarLeftPaddingClass} bg-transparent`}
               >
                 {/* Left: (vide) */}
                 <div />
@@ -132,7 +132,7 @@ export default function AppLayout({ children }: { children: React.ReactNode }) {
               aria-label="Fermer le portfolio"
             />
             <div
-              className="relative z-10 w-full h-full sm:h-auto sm:max-h-[92vh] shrink-0 overflow-y-auto pointer-events-auto bg-[#020001] rounded-none sm:rounded-2xl lg:w-[420px] lg:min-w-[420px] lg:max-w-[420px]"
+              className={`relative z-10 w-full h-full sm:h-auto sm:max-h-[92vh] shrink-0 overflow-y-auto pointer-events-auto ${layoutCardLikeBgClass} rounded-none sm:rounded-2xl lg:w-[420px] lg:min-w-[420px] lg:max-w-[420px]`}
               data-recruiter-talent-panel
               onClick={(e) => e.stopPropagation()}
             >
