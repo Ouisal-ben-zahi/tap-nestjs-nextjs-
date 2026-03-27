@@ -36,9 +36,27 @@ export interface CandidateApplicationItem {
   jobId: number | null;
   jobTitle: string | null;
   company: string | null;
+  jobCategory: string | null;
+  jobLocationType: string | null;
+  jobDuration: string | null;
+  applicationLink: string | null;
+  cvPath: string | null;
+  cvUrl: string | null;
+  portfolioPath: string | null;
+  portfolioUrl: string | null;
+  talentCardPath: string | null;
+  talentCardUrl: string | null;
   status: string | null;
   validate: boolean;
   validatedAt: string | null;
+}
+
+export interface CandidateScheduledInterviewItem {
+  id: number;
+  jobTitle: string | null;
+  interviewType: 'EN_LIGNE' | 'PRESENTIEL' | 'TELEPHONIQUE' | string;
+  interviewDate: string | null;
+  interviewTime: string | null;
 }
 
 export interface CandidateCvFileItem {
@@ -1251,7 +1269,7 @@ export class DashboardService {
     const { data, error } = await this.supabase
       .from('candidate_postule')
       .select(
-        'id, job_id, validated_at, status, validate, jobs ( id, title, entreprise )',
+        'id, job_id, validated_at, status, validate, note, jobs ( id, title, entreprise, categorie_profil, location_type, contrat )',
       )
       .eq('candidate_id', candidate.id)
       .order('validated_at', { ascending: false });
@@ -1262,22 +1280,113 @@ export class DashboardService {
       );
     }
 
-    const applications: CandidateApplicationItem[] = (data ?? []).map(
-      (row: any) => {
+    const applications: CandidateApplicationItem[] = await Promise.all(
+      (data ?? []).map(async (row: any) => {
         const job = row.jobs || row.job || null;
+        const rawNote = typeof row?.note === 'string' ? row.note : null;
+        let parsedNote: any = null;
+        if (rawNote) {
+          try {
+            parsedNote = JSON.parse(rawNote);
+          } catch {
+            parsedNote = null;
+          }
+        }
+
+        const signStoragePath = async (path: string | null): Promise<string | null> => {
+          if (!path) return null;
+          const { data: signed, error: signError } = await this.supabase.storage
+            .from('tap_files')
+            .createSignedUrl(path, 60 * 60);
+          if (!signError && signed?.signedUrl) {
+            return signed.signedUrl;
+          }
+          return null;
+        };
+
+        const cvPath =
+          parsedNote && typeof parsedNote.cvPath === 'string'
+            ? (parsedNote.cvPath as string)
+            : null;
+        const portfolioPath =
+          parsedNote && typeof parsedNote.portfolioPath === 'string'
+            ? (parsedNote.portfolioPath as string)
+            : null;
+        const talentCardPath =
+          parsedNote && typeof parsedNote.talentCardPath === 'string'
+            ? (parsedNote.talentCardPath as string)
+            : null;
+        const [cvUrl, portfolioUrl, talentCardUrl] = await Promise.all([
+          signStoragePath(cvPath),
+          signStoragePath(portfolioPath),
+          signStoragePath(talentCardPath),
+        ]);
+
         return {
           id: row.id as number,
           jobId: (row.job_id as number) ?? (job?.id ?? null),
           jobTitle: (job?.title as string) ?? null,
           company: (job?.entreprise as string) ?? null,
+          jobCategory: (job?.categorie_profil as string) ?? null,
+          jobLocationType: (job?.location_type as string) ?? null,
+          jobDuration: (job?.contrat as string) ?? null,
+          applicationLink:
+            parsedNote && typeof parsedNote.lien === 'string'
+              ? (parsedNote.lien as string)
+              : null,
+          cvPath,
+          cvUrl,
+          portfolioPath,
+          portfolioUrl,
+          talentCardPath,
+          talentCardUrl,
           status: (row.status as string) ?? null,
           validate: Boolean(row.validate),
           validatedAt: (row.validated_at as string) ?? null,
         };
-      },
+      }),
     );
 
     return { applications };
+  }
+
+  async getCandidateScheduledInterviews(
+    userId: number,
+  ): Promise<{ scheduledInterviews: CandidateScheduledInterviewItem[] }> {
+    if (userId === null || userId === undefined || Number.isNaN(userId)) {
+      throw new BadRequestException('userId invalide');
+    }
+
+    const candidate = await this.getCandidateIdForUser(userId);
+    if (!candidate) {
+      return { scheduledInterviews: [] };
+    }
+
+    const { data, error } = await this.supabase
+      .from('recruiter_scheduled_interviews')
+      .select('id, interview_type, interview_date, interview_time, jobs ( title )')
+      .eq('candidate_id', candidate.id)
+      .order('interview_date', { ascending: true })
+      .order('interview_time', { ascending: true });
+
+    if (error) {
+      throw new BadRequestException(
+        error.message || 'Erreur lors du chargement des entretiens planifiés',
+      );
+    }
+
+    const scheduledInterviews: CandidateScheduledInterviewItem[] = (data ?? []).map((row: any) => {
+      const job = row.jobs || row.job || null;
+      return {
+        id: Number(row.id),
+        jobTitle: (job?.title as string) ?? null,
+        interviewType: (row.interview_type as string) ?? 'EN_LIGNE',
+        interviewDate: (row.interview_date as string) ?? null,
+        interviewTime: (row.interview_time as string) ?? null,
+      };
+    });
+
+    return { scheduledInterviews };
   }
 
   async getCandidateCvFiles(

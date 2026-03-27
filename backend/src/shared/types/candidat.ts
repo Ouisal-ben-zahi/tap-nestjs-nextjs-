@@ -25,6 +25,16 @@ export interface CandidateApplicationItem {
   jobId: number | null;
   jobTitle: string | null;
   company: string | null;
+  jobCategory: string | null;
+  jobLocationType: string | null;
+  jobDuration: string | null;
+  applicationLink: string | null;
+  cvPath: string | null;
+  cvUrl: string | null;
+  portfolioPath: string | null;
+  portfolioUrl: string | null;
+  talentCardPath: string | null;
+  talentCardUrl: string | null;
   status: string | null;
   validate: boolean;
   validatedAt: string | null;

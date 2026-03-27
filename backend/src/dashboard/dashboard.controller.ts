@@ -38,6 +38,13 @@ export class DashboardController {
     return this.dashboardService.getCandidateApplications(userId);
   }
 
+  @Get('candidat/scheduled-interviews')
+  @UseGuards(AuthGuard('jwt'))
+  async getCandidateScheduledInterviewsByJwt(@Req() req: any) {
+    const userId = await this.dashboardService.resolveJwtUserId(req?.user);
+    return this.dashboardService.getCandidateScheduledInterviews(userId);
+  }
+
   @Get('candidat/profile')
   @UseGuards(AuthGuard('jwt'))
   async getCandidateProfileByJwt(@Req() req: any) {

@@ -45,6 +45,15 @@ export function useCandidatApplications(enabled?: boolean) {
   });
 }
 
+export function useCandidatScheduledInterviews(enabled?: boolean) {
+  const authEnabled = useAuthEnabled();
+  return useQuery({
+    queryKey: ['candidat', 'scheduled-interviews'],
+    queryFn: candidatService.getScheduledInterviews,
+    enabled: enabled ?? authEnabled,
+  });
+}
+
 export function useCandidatSavedJobs(enabled?: boolean) {
   const authEnabled = useAuthEnabled();
   return useQuery({

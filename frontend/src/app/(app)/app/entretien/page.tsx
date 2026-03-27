@@ -1,10 +1,10 @@
 "use client";
 
 import { useAuth } from "@/hooks/use-auth";
-import { useCandidatStats } from "@/hooks/use-candidat";
+import { useCandidatScheduledInterviews, useCandidatStats } from "@/hooks/use-candidat";
 import EmptyState from "@/components/ui/EmptyState";
 import { Skeleton } from "@/components/ui/Skeleton";
-import { MessageSquare, Mic, FileText, Upload, Brain, Target, Clock, ArrowRight, Sparkles } from "lucide-react";
+import { MessageSquare, Mic, FileText, Upload, Brain, Target, Clock, ArrowRight } from "lucide-react";
 import Link from "next/link";
 import { useDashboardTheme } from "@/hooks/use-dashboard-theme";
 import { useMutation } from "@tanstack/react-query";
@@ -22,6 +22,7 @@ const interviewTypes = [
 export default function EntretienPage() {
   const { isCandidat } = useAuth();
   const statsQuery = useCandidatStats();
+  const scheduledInterviewsQuery = useCandidatScheduledInterviews();
   const theme = useDashboardTheme();
   const isLight = theme === "light";
   const addToast = useUiStore((s) => s.addToast);
@@ -47,6 +48,14 @@ export default function EntretienPage() {
   }
 
   const hasProfile = statsQuery.data?.candidateId !== null && statsQuery.data?.candidateId !== undefined;
+  const plannedInterviews = scheduledInterviewsQuery.data?.scheduledInterviews || [];
+  const formatInterviewType = (type: string | null | undefined) => {
+    const normalized = String(type ?? "").toUpperCase();
+    if (normalized === "EN_LIGNE") return "En ligne";
+    if (normalized === "PRESENTIEL") return "Présentiel";
+    if (normalized === "TELEPHONIQUE") return "Téléphonique";
+    return type || "—";
+  };
 
   return (
     <div className="max-w-[1100px] mx-auto">
@@ -65,19 +74,39 @@ export default function EntretienPage() {
           action={<Link href="/app/analyse-cv" className="btn-primary gap-2 mt-2"><Upload size={14} /> Analyser mon CV</Link>} />
       ) : (
         <>
-          <div
-            className={`rounded-2xl p-6 mb-8 flex items-start gap-4 ${
-              isLight
-                ? "card-luxury-light"
-                : "bg-purple-500/[0.06] border border-purple-500/15"
-            }`}
-          >
-            <div className="w-10 h-10 rounded-xl bg-purple-500/10 border border-purple-500/20 flex items-center justify-center shrink-0">
-              <Sparkles size={18} className="text-purple-500" />
+          {plannedInterviews.length > 0 && (
+            <div className="mb-6">
+              <div className="flex items-center gap-3 mb-4">
+                <div className="w-1 h-5 rounded-full bg-purple-500" />
+                <h2 className={`text-[13px] uppercase tracking-[2px] font-semibold ${isLight ? "text-black" : "text-white/50"}`}>
+                  Entretiens déjà planifiés
+                </h2>
+              </div>
+              <div className="space-y-2">
+                {plannedInterviews.slice(0, 3).map((item) => (
+                  <div
+                    key={item.id}
+                    className={`grid grid-cols-1 sm:grid-cols-4 gap-2 items-center rounded-xl px-4 py-3 ${
+                      isLight ? "bg-black/[0.03] border border-black/10" : "bg-white/[0.02] border border-white/[0.06]"
+                    }`}
+                  >
+                    <p className={`text-[13px] font-medium truncate ${isLight ? "text-black" : "text-white"}`}>
+                      {item.jobTitle ?? "Offre sans titre"}
+                    </p>
+                    <p className={`text-[12px] ${isLight ? "text-black/75" : "text-white/60"}`}>
+                      {formatInterviewType(item.interviewType)}
+                    </p>
+                    <p className={`text-[12px] ${isLight ? "text-black/75" : "text-white/60"}`}>
+                      {item.interviewDate ? new Date(item.interviewDate).toLocaleDateString("fr-FR") : "Non définie"}
+                    </p>
+                    <p className={`text-[12px] ${isLight ? "text-black/75" : "text-white/60"}`}>
+                      {item.interviewTime ? item.interviewTime.slice(0, 5) : "Non définie"}
+                    </p>
+                  </div>
+                ))}
+              </div>
             </div>
-            <div>
-            </div>
-          </div>
+          )}
 
           <div className="flex items-center gap-3 mb-5">
             <div className="w-1 h-5 rounded-full bg-purple-500" />

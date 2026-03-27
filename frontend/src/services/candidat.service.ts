@@ -56,6 +56,19 @@ export const candidatService = {
   getApplications: () =>
     api.get<{ applications: Application[] }>('/dashboard/candidat/applications').then((r) => r.data),
 
+  getScheduledInterviews: () =>
+    api
+      .get<{
+        scheduledInterviews: Array<{
+          id: number;
+          jobTitle: string | null;
+          interviewType: 'EN_LIGNE' | 'PRESENTIEL' | 'TELEPHONIQUE' | string;
+          interviewDate: string | null;
+          interviewTime: string | null;
+        }>;
+      }>('/dashboard/candidat/scheduled-interviews')
+      .then((r) => r.data),
+
   getSavedJobs: () =>
     api.get<{ jobIds: number[] }>('/dashboard/candidat/saved-jobs').then((r) => r.data),
 
