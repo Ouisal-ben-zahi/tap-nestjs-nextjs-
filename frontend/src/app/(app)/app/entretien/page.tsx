@@ -4,7 +4,7 @@ import { useAuth } from "@/hooks/use-auth";
 import { useCandidatScheduledInterviews, useCandidatStats } from "@/hooks/use-candidat";
 import EmptyState from "@/components/ui/EmptyState";
 import { Skeleton } from "@/components/ui/Skeleton";
-import { MessageSquare, Mic, FileText, Upload, Brain, Target, Clock, ArrowRight } from "lucide-react";
+import { MessageSquare, FileText, Upload, Brain, Cpu, Mic, ClipboardList, Clock, ArrowRight } from "lucide-react";
 import Link from "next/link";
 import { useDashboardTheme } from "@/hooks/use-dashboard-theme";
 import { useMutation } from "@tanstack/react-query";
@@ -13,10 +13,46 @@ import { useUiStore } from "@/stores/ui";
 import { useRouter } from "next/navigation";
 
 const interviewTypes = [
-  { key: "behavioral", title: "Entretien comportemental", description: "Questions sur vos expériences passées et votre gestion des situations.", icon: Brain, color: "#a855f7", duration: "20 min", questions: 10 },
-  { key: "technical", title: "Entretien technique", description: "Évaluez vos compétences techniques avec des questions adaptées.", icon: Target, color: "#3b82f6", duration: "30 min", questions: 15 },
-  { key: "presentation", title: "Présentation personnelle", description: "Entraînez-vous à vous présenter de manière concise et impactante.", icon: Mic, color: "#10b981", duration: "10 min", questions: 5 },
-  { key: "hr", title: "Questions RH classiques", description: "Motivation, prétentions salariales, disponibilité et plus.", icon: MessageSquare, color: "#f59e0b", duration: "15 min", questions: 8 },
+  {
+    key: "behavioral",
+    title: "Entretien comportemental",
+    description: "Questions sur vos expériences passées et votre gestion des situations.",
+    icon: Brain,
+    badgeClass: "bg-red-500/10 border-red-500/20",
+    iconClass: "text-red-500",
+    duration: "20 min",
+    questions: 10,
+  },
+  {
+    key: "technical",
+    title: "Entretien technique",
+    description: "Évaluez vos compétences techniques avec des questions adaptées.",
+    icon: Cpu,
+    badgeClass: "bg-blue-500/10 border-blue-500/20",
+    iconClass: "text-blue-500",
+    duration: "30 min",
+    questions: 15,
+  },
+  {
+    key: "presentation",
+    title: "Présentation personnelle",
+    description: "Entraînez-vous à vous présenter de manière concise et impactante.",
+    icon: Mic,
+    badgeClass: "bg-emerald-500/10 border-emerald-500/20",
+    iconClass: "text-emerald-500",
+    duration: "10 min",
+    questions: 5,
+  },
+  {
+    key: "hr",
+    title: "Questions RH classiques",
+    description: "Motivation, prétentions salariales, disponibilité et plus.",
+    icon: ClipboardList,
+    badgeClass: "bg-amber-500/10 border-amber-500/20",
+    iconClass: "text-amber-500",
+    duration: "15 min",
+    questions: 8,
+  },
 ] as const;
 
 export default function EntretienPage() {
@@ -25,6 +61,12 @@ export default function EntretienPage() {
   const scheduledInterviewsQuery = useCandidatScheduledInterviews();
   const theme = useDashboardTheme();
   const isLight = theme === "light";
+  /** Aligné sur les cartes liste `/app/matching` (fond plat, dégradé au survol, halos). */
+  const interviewTypeCardClass = `group relative card-animated-border rounded-2xl overflow-hidden border p-5 sm:p-6 cursor-pointer transform-gpu will-change-transform transition-all duration-300 hover:-translate-y-0.5 w-full ${
+    isLight
+      ? "bg-[#020001] border-white/[0.08] hover:border-tap-red/20 hover:shadow-[0_12px_40px_rgba(0,0,0,0.45),0_0_18px_rgba(202,27,40,0.10)]"
+      : "bg-[#020001] border-white/[0.08] shadow-[0_10px_28px_rgba(0,0,0,0.45)] hover:bg-[linear-gradient(180deg,rgba(202,27,40,0.08)_0%,rgba(10,10,10,0.96)_30%,rgba(10,10,10,0.96)_100%)] hover:border-tap-red/15 hover:shadow-[0_12px_40px_rgba(0,0,0,0.45),0_0_18px_rgba(202,27,40,0.10)]"
+  }`;
   const addToast = useUiStore((s) => s.addToast);
   const router = useRouter();
 
@@ -109,7 +151,7 @@ export default function EntretienPage() {
           )}
 
           <div className="flex items-center gap-3 mb-5">
-            <div className="w-1 h-5 rounded-full bg-purple-500" />
+            <div className="w-1 h-5 rounded-full shrink-0 bg-tap-red" />
             <h2 className={`text-[13px] uppercase tracking-[2px] font-semibold ${isLight ? "text-black" : "text-white/50"}`}>Types d&apos;entretien</h2>
           </div>
 
@@ -119,30 +161,50 @@ export default function EntretienPage() {
               return (
                 <div
                   key={i}
+                  role="button"
+                  tabIndex={0}
+                  onKeyDown={(e) => {
+                    if (e.key === "Enter" || e.key === " ") {
+                      e.preventDefault();
+                      if (!startInterviewMutation.isPending) startInterviewMutation.mutate(type.key);
+                    }
+                  }}
                   onClick={() => {
                     if (!startInterviewMutation.isPending) {
                       startInterviewMutation.mutate(type.key);
                     }
                   }}
-                  className={`group rounded-2xl p-6 transition-all duration-300 cursor-pointer ${
-                    isLight
-                      ? "card-luxury-light hover:border-tap-red/70"
-                      : "bg-zinc-900/50 border border-white/[0.06] hover:border-white/[0.12]"
-                  } ${startInterviewMutation.isPending ? "opacity-70 pointer-events-none" : ""}`}
+                  className={`${interviewTypeCardClass} ${startInterviewMutation.isPending ? "opacity-70 pointer-events-none" : ""}`}
                 >
-                  <div className="flex items-start justify-between mb-4">
-                    <div className="w-11 h-11 rounded-xl flex items-center justify-center border transition-transform group-hover:scale-110"
-                      style={{ background: `${type.color}0D`, borderColor: `${type.color}20` }}>
-                      <Icon size={20} style={{ color: type.color }} />
+                  {!isLight && (
+                    <div className="pointer-events-none absolute inset-0 opacity-100 group-hover:opacity-0 transition-opacity duration-500">
+                      <div className="absolute -top-16 -right-8 w-48 h-48 rounded-full bg-white/5 blur-2xl" />
+                      <div className="absolute -bottom-12 -left-8 w-56 h-56 rounded-full bg-tap-red/10 blur-2xl opacity-40" />
                     </div>
-                    <ArrowRight size={14} className={`transition-all ${isLight ? "text-black/0 group-hover:text-black/40" : "text-white/0 group-hover:text-white/40"}`} />
-                  </div>
-                  <h3 className={`text-[15px] font-semibold mb-2 ${isLight ? "text-black" : "text-white"}`}>{type.title}</h3>
-                  <p className={`text-[12px] leading-relaxed mb-4 ${isLight ? "text-black/70" : "text-white/40"}`}>{type.description}</p>
-                  <div className={`flex items-center gap-4 text-[11px] ${isLight ? "text-black/60" : "text-white/30"}`}>
-                    <span className="flex items-center gap-1"><Clock size={11} />{type.duration}</span>
-                    <span>{type.questions} questions</span>
-                    <span className="text-purple-500">Lance entretien</span>
+                  )}
+                  <div className="relative flex items-start justify-between gap-3 min-w-0">
+                    <div className="min-w-0 flex-1 flex flex-col pr-2">
+                      <h3 className={`text-[15px] font-semibold mb-2 ${isLight ? "text-black" : "text-white"}`}>{type.title}</h3>
+                      <p className={`text-[12px] leading-relaxed mb-4 flex-1 ${isLight ? "text-black/70" : "text-white/50"}`}>{type.description}</p>
+                      <div className={`flex flex-wrap items-center gap-x-4 gap-y-1 text-[11px] mt-auto ${isLight ? "text-black/60" : "text-white/35"}`}>
+                        <span className="flex items-center gap-1">
+                          <Clock size={11} />
+                          {type.duration}
+                        </span>
+                        <span>{type.questions} questions</span>
+                        <span className="font-medium text-[#CA1B28] inline-flex items-center gap-1">
+                          Lance entretien
+                          <ArrowRight size={12} className="opacity-80" />
+                        </span>
+                      </div>
+                    </div>
+                    <div
+                      className={`w-11 h-11 shrink-0 rounded-xl border flex items-center justify-center ${
+                        isLight ? type.badgeClass : "bg-tap-red/[0.08] border-tap-red/20"
+                      }`}
+                    >
+                      <Icon size={18} className={isLight ? type.iconClass : "text-tap-red"} strokeWidth={1.75} />
+                    </div>
                   </div>
                 </div>
               );

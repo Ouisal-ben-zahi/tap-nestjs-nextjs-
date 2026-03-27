@@ -111,43 +111,10 @@ export default function AppSidebar({
             onToggleCollapsed();
           }}
         >
-        {/* Fond luxe : charbon, halos bordeaux/champagne, reflet bord */}
+        {/* Fond brand #CA1B28 + overlay noir semi-transparent */}
         <div className="absolute inset-0 pointer-events-none overflow-hidden">
-          <div
-            className={
-              isLight
-                ? "absolute inset-0 bg-[#141416]"
-                : "absolute inset-0 bg-[#070708]"
-            }
-          />
-          <div
-            className={`absolute inset-0 ${
-              isLight
-                ? "bg-[radial-gradient(ellipse_140%_90%_at_0%_-10%,rgba(202,27,40,0.18)_0%,transparent_52%)]"
-                : "bg-[radial-gradient(ellipse_130%_85%_at_0%_-5%,rgba(90,20,32,0.45)_0%,transparent_55%)]"
-            }`}
-          />
-          <div
-            className={`absolute inset-0 ${
-              isLight
-                ? "bg-[radial-gradient(ellipse_100%_70%_at_100%_110%,rgba(202,27,40,0.12)_0%,transparent_45%)]"
-                : "bg-[radial-gradient(ellipse_90%_60%_at_100%_100%,rgba(202,27,40,0.14)_0%,transparent_48%)]"
-            }`}
-          />
-          <div
-            className={`absolute inset-0 ${
-              isLight
-                ? "bg-[linear-gradient(155deg,rgba(214,190,160,0.07)_0%,transparent_42%,rgba(255,255,255,0.02)_100%)]"
-                : "bg-[linear-gradient(158deg,rgba(200,170,120,0.06)_0%,transparent_38%,rgba(255,255,255,0.02)_55%,transparent_100%)]"
-            }`}
-          />
-          <div
-            className={`absolute inset-0 ${
-              isLight
-                ? "bg-[linear-gradient(90deg,transparent_0%,rgba(255,255,255,0.06)_100%)]"
-                : "bg-[linear-gradient(90deg,transparent_0%,rgba(255,255,255,0.045)_100%)]"
-            }`}
-          />
+          <div className="absolute inset-0 bg-[#CA1B28]" aria-hidden />
+          <div className="absolute inset-0 bg-black/50" aria-hidden />
         </div>
 
         {/* Mobile close */}

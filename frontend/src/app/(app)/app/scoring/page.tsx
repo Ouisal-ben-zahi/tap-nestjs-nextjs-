@@ -60,7 +60,7 @@ export default function ScoringAppPage() {
           value: 0,
         }));
   const themedCardClass =
-    "group card-animated-border relative overflow-hidden rounded-2xl border border-white/[0.08] bg-[linear-gradient(180deg,rgba(202,27,40,0.08)_0%,rgba(10,10,10,0.96)_30%,rgba(10,10,10,0.96)_100%)] shadow-[0_10px_28px_rgba(0,0,0,0.45)] hover:border-tap-red/15 transition-all duration-500";
+    "group card-animated-border relative overflow-hidden rounded-2xl border border-white/[0.08] bg-[#020001] shadow-[0_10px_28px_rgba(0,0,0,0.45)] hover:bg-[linear-gradient(180deg,rgba(202,27,40,0.08)_0%,rgba(10,10,10,0.96)_30%,rgba(10,10,10,0.96)_100%)] hover:border-tap-red/15 transition-all duration-500";
 
   return (
     <div className="max-w-[1100px] mx-auto">
@@ -111,25 +111,59 @@ export default function ScoringAppPage() {
         <>
           <div className="grid grid-cols-1 lg:grid-cols-2 gap-8 mb-8">
             {/* Score Ring */}
-            <div className={`flex flex-col items-center justify-center py-8 ${themedCardClass} ${isLight ? "card-luxury-light" : ""}`}>
-              <ScoreRing score={score} size={200} label="Score global" />
-              <div className={`mt-6 flex items-center gap-2 text-[13px] ${isLight ? "text-black/60" : "text-white/40"}`}>
+            <div
+              className={`flex flex-col items-center justify-center p-6 sm:p-8 transition-all duration-300 hover:-translate-y-0.5 ${
+                isLight
+                  ? "hover:shadow-[0_12px_30px_rgba(0,0,0,0.18)]"
+                  : "hover:brightness-105 hover:shadow-[0_18px_45px_rgba(0,0,0,0.35)]"
+              } ${themedCardClass} ${isLight ? "card-luxury-light" : ""}`}
+            >
+              {!isLight && (
+                <div className="pointer-events-none absolute inset-0 opacity-100 transition-opacity duration-500 group-hover:opacity-0">
+                  <div className="absolute -top-24 -right-28 h-72 w-72 rounded-full bg-white/5 blur-2xl" />
+                  <div className="absolute -bottom-28 -left-24 h-72 w-72 rounded-full bg-blue-500/10 opacity-60 blur-2xl" />
+                </div>
+              )}
+              {isLight && (
+                <>
+                  <div className="pointer-events-none absolute -right-[45px] -top-[45px] h-28 w-28 rounded-full bg-white/5 blur-2xl" />
+                  <div className="pointer-events-none absolute -bottom-10 -left-[50px] h-28 w-28 rounded-full bg-tap-red/10 blur-2xl" />
+                </>
+              )}
+              <div className="relative z-10">
+                <ScoreRing score={score} size={200} label="Score global" />
+              </div>
+              <div className={`relative mt-6 flex items-center gap-2 text-[13px] ${isLight ? "text-black/60" : "text-white/40"}`}>
                 <TrendingUp size={14} className="text-green-500" />
                 <span>Basé sur votre activité et votre profil</span>
               </div>
             </div>
 
             {/* Dimensions */}
-            <div className={`${themedCardClass} p-6 sm:p-8 ${isLight ? "card-luxury-light" : ""}`}>
-              <h3 className={`text-[13px] uppercase tracking-[2px] font-semibold mb-6 ${isLight ? "text-black" : "text-white/50"}`}>Dimensions évaluées</h3>
-              <div className="space-y-5">
+            <div
+              className={`${themedCardClass} p-6 transition-all duration-300 hover:-translate-y-0.5 sm:p-8 ${
+                isLight
+                  ? "hover:shadow-[0_12px_30px_rgba(0,0,0,0.18)]"
+                  : "hover:brightness-105 hover:shadow-[0_18px_45px_rgba(0,0,0,0.35)]"
+              } ${isLight ? "card-luxury-light" : ""}`}
+            >
+              {!isLight && (
+                <div className="pointer-events-none absolute inset-0 opacity-100 transition-opacity duration-500 group-hover:opacity-0">
+                  <div className="absolute -top-24 -right-28 h-72 w-72 rounded-full bg-white/5 blur-2xl" />
+                  <div className="absolute -bottom-28 -left-24 h-72 w-72 rounded-full bg-emerald-500/10 opacity-60 blur-2xl" />
+                </div>
+              )}
+              <h3 className={`relative mb-6 text-[13px] font-semibold uppercase tracking-[2px] ${isLight ? "text-black" : "text-white/50"}`}>
+                Dimensions évaluées
+              </h3>
+              <div className="relative space-y-5">
                 {dimensions.map((dim) => (
                   <div key={dim.label}>
                     <div className="flex justify-between text-[13px] mb-2">
                       <span className={isLight ? "text-black/70" : "text-white/60"}>{dim.label}</span>
                       <span className={isLight ? "text-black font-medium" : "text-white/80 font-medium"}>{dim.value}/100</span>
                     </div>
-                    <div className={`h-2.5 rounded-full overflow-hidden ${isLight ? "bg-black/10" : "bg-zinc-800"}`}>
+                    <div className={`h-2.5 rounded-full overflow-hidden ${isLight ? "bg-black/10" : "bg-white/10"}`}>
                       <div
                         className={`h-full ${dim.color} rounded-full transition-all duration-1000 ease-out`}
                         style={{ width: `${dim.value}%` }}
@@ -142,9 +176,23 @@ export default function ScoringAppPage() {
           </div>
 
           {/* Tips */}
-          <div className={`${themedCardClass} p-6 ${isLight ? "card-luxury-light" : ""}`}>
-            <h3 className={`text-[13px] uppercase tracking-[2px] font-semibold mb-4 ${isLight ? "text-black" : "text-white/50"}`}>Conseils pour améliorer votre score</h3>
-            <div className="grid grid-cols-1 sm:grid-cols-3 gap-4">
+          <div
+            className={`${themedCardClass} p-6 transition-all duration-300 hover:-translate-y-0.5 ${
+              isLight
+                ? "hover:shadow-[0_12px_30px_rgba(0,0,0,0.18)]"
+                : "hover:brightness-105 hover:shadow-[0_18px_45px_rgba(0,0,0,0.35)]"
+            } ${isLight ? "card-luxury-light" : ""}`}
+          >
+            {!isLight && (
+              <div className="pointer-events-none absolute inset-0 opacity-100 transition-opacity duration-500 group-hover:opacity-0">
+                <div className="absolute -top-24 -right-28 h-72 w-72 rounded-full bg-white/5 blur-2xl" />
+                <div className="absolute -bottom-28 -left-24 h-72 w-72 rounded-full bg-tap-red/10 opacity-40 blur-2xl" />
+              </div>
+            )}
+            <h3 className={`relative mb-4 text-[13px] font-semibold uppercase tracking-[2px] ${isLight ? "text-black" : "text-white/50"}`}>
+              Conseils pour améliorer votre score
+            </h3>
+            <div className="relative grid grid-cols-1 gap-4 sm:grid-cols-3">
               {[
                 { text: "Complétez votre profil en uploadant un CV détaillé", href: "/app/analyse-cv" },
                 { text: "Postulez à des offres qui correspondent à votre profil", href: "/app/matching" },
@@ -156,7 +204,7 @@ export default function ScoringAppPage() {
                   className={`flex items-start gap-3 p-4 rounded-xl transition group ${
                     isLight
                       ? "bg-white border border-tap-red/30 hover:border-tap-red/60"
-                      : "bg-[#0A0A0A] border border-white/[0.06] hover:border-tap-red/15"
+                      : "bg-[#020001] border border-white/[0.08] hover:border-tap-red/15"
                   }`}
                 >
                   <span className="w-6 h-6 rounded-full bg-tap-red/10 text-tap-red text-[11px] font-bold flex items-center justify-center shrink-0">{i + 1}</span>

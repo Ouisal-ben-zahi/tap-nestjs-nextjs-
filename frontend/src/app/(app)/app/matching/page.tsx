@@ -52,6 +52,12 @@ export default function MatchingPage() {
   const toggleSavedJobMutation = useToggleCandidatSavedJob();
   const theme = useDashboardTheme();
   const isLight = theme === "light";
+  /** Même logique que CandidatDashboard (fond plat au repos, dégradé au survol, halos inversés). */
+  const matchingThemedCardClass =
+    "group card-animated-border relative overflow-hidden rounded-2xl border border-white/[0.08] bg-[#020001] shadow-[0_10px_28px_rgba(0,0,0,0.45)] hover:bg-[linear-gradient(180deg,rgba(202,27,40,0.08)_0%,rgba(10,10,10,0.96)_30%,rgba(10,10,10,0.96)_100%)] hover:border-tap-red/15 transition-all duration-500";
+  /** Carte détail : inverse de la liste (dégradé au repos → plat au survol ; halos cachés au repos → visibles au survol). */
+  const matchingDetailCardInvertedDarkClass =
+    "group relative card-animated-border border border-tap-red/15 bg-[linear-gradient(180deg,rgba(202,27,40,0.08)_0%,rgba(10,10,10,0.96)_30%,rgba(10,10,10,0.96)_100%)] shadow-[0_12px_40px_rgba(0,0,0,0.45),0_0_18px_rgba(202,27,40,0.10)] hover:bg-[#020001] hover:border-white/[0.08] hover:shadow-[0_10px_28px_rgba(0,0,0,0.45)] transition-all duration-500";
 
   const stats = statsQuery.data;
   const hasCvs = (cvFilesQuery.data?.cvFiles?.length ?? 0) > 0;
@@ -378,35 +384,56 @@ export default function MatchingPage() {
               return (
                 <div
                   key={card.key}
-                  className="group relative card-animated-border rounded-2xl overflow-hidden p-5 bg-[#0A0A0A] border border-white/[0.06] hover:border-tap-red/15 transition-all duration-500 ease-[cubic-bezier(.22,1,.36,1)] cursor-default transform-gpu will-change-transform hover:-translate-y-1 hover:scale-[1.02] hover:shadow-[0_18px_60px_rgba(0,0,0,0.55),0_0_40px_rgba(202,27,40,0.10)]"
+                  className={`${matchingThemedCardClass} p-5 ${
+                    isLight ? "card-luxury-light" : ""
+                  } cursor-default transform-gpu will-change-transform transition-all duration-300 hover:-translate-y-0.5 ${
+                    isLight
+                      ? "hover:shadow-[0_12px_30px_rgba(0,0,0,0.18)]"
+                      : "hover:brightness-105 shadow-[0_18px_40px_rgba(0,0,0,0.25)]"
+                  }`}
                   style={{
                     opacity: isMounted ? 1 : 0,
                     transform: isMounted ? "translateY(0px)" : "translateY(8px)",
                     transitionDelay: isMounted ? `${40 * idx}ms` : "0ms",
                   }}
                 >
-                  <div className={`absolute top-0 left-0 right-0 h-[120px] bg-gradient-to-b ${card.gradient ?? "from-tap-red/14 via-tap-red/4 to-transparent"} pointer-events-none`} />
-                  {/* Hover premium (comme accueil) */}
-                  <div className="pointer-events-none absolute inset-0 opacity-0 group-hover:opacity-100 transition-opacity duration-500">
-                    <div className="absolute inset-0 bg-[radial-gradient(circle_at_25%_0%,rgba(202,27,40,0.28),transparent_55%)] blur-[2px] mix-blend-screen" />
-                    <div className="absolute inset-0 bg-[linear-gradient(180deg,rgba(202,27,40,0.10),transparent_55%)]" />
-                  </div>
-
+                  {!isLight && (
+                    <div className="pointer-events-none absolute inset-0 opacity-100 group-hover:opacity-0 transition-opacity duration-500">
+                      <div className="absolute -top-20 -right-10 w-48 h-48 rounded-full bg-white/10 blur-2xl" />
+                      <div className="absolute -bottom-24 -left-20 w-56 h-56 rounded-full bg-tap-red/10 blur-2xl opacity-40" />
+                    </div>
+                  )}
+                  {isLight && (
+                    <>
+                      <div className="absolute top-[-45px] right-[-45px] w-28 h-28 rounded-full bg-white/5 blur-2xl pointer-events-none" />
+                      <div className="absolute bottom-[-40px] left-[-50px] w-28 h-28 rounded-full bg-tap-red/10 blur-2xl pointer-events-none" />
+                    </>
+                  )}
                   <div className="flex items-start justify-between gap-3 relative">
                     <div>
-                      <p className="text-[13px] uppercase tracking-[1.5px] text-white/85">
+                      <p
+                        className={`text-[13px] uppercase tracking-[1.5px] ${
+                          isLight ? "text-black/55" : "text-white/85"
+                        }`}
+                      >
                         {card.label}
                       </p>
-                      <p className="mt-2 text-[30px] font-bold tracking-[-0.03em] text-white">
+                      <p
+                        className={`mt-2 text-[30px] font-bold tracking-[-0.03em] ${
+                          isLight ? "text-black" : "text-white"
+                        }`}
+                      >
                         {card.value}
                       </p>
-                      <p className="mt-1 text-[12px] text-white/70">{card.meta}</p>
+                      <p className={`mt-1 text-[12px] ${isLight ? "text-black/60" : "text-white/70"}`}>{card.meta}</p>
                     </div>
 
                     <div
-                      className="w-11 h-11 rounded-xl border flex items-center justify-center bg-tap-red/[0.08] border-tap-red/20"
+                      className={`w-11 h-11 rounded-xl border flex items-center justify-center ${
+                        isLight ? card.badgeClass : "bg-tap-red/[0.08] border-tap-red/20"
+                      }`}
                     >
-                      <Icon size={18} className="text-tap-red" />
+                      <Icon size={18} className={isLight ? card.iconClass : "text-tap-red"} />
                     </div>
                   </div>
                 </div>
@@ -670,17 +697,19 @@ export default function MatchingPage() {
                     className={`group relative card-animated-border rounded-2xl overflow-hidden border p-4 sm:p-5 lg:p-6 cursor-pointer transform-gpu will-change-transform transition-all duration-300 hover:-translate-y-0.5 w-full ${
                       isSelected
                         ? isLight
-                          ? "bg-[#0A0A0A] border-tap-red/35 shadow-[0_12px_40px_rgba(0,0,0,0.45),0_0_24px_rgba(202,27,40,0.14)]"
-                          : "bg-[#0A0A0A] border-tap-red/30 shadow-[0_12px_40px_rgba(0,0,0,0.45),0_0_24px_rgba(202,27,40,0.14)]"
+                          ? "bg-[#020001] border-tap-red/35 shadow-[0_12px_40px_rgba(0,0,0,0.45),0_0_24px_rgba(202,27,40,0.14)]"
+                          : "bg-[#020001] border-tap-red/30 shadow-[0_12px_40px_rgba(0,0,0,0.45),0_0_24px_rgba(202,27,40,0.14)]"
                         : isLight
-                          ? "bg-[#0A0A0A] border-white/[0.08] hover:border-tap-red/20 hover:shadow-[0_12px_40px_rgba(0,0,0,0.45),0_0_18px_rgba(202,27,40,0.10)]"
-                          : "bg-[#0A0A0A] border-white/[0.06] hover:border-tap-red/15 hover:shadow-[0_12px_40px_rgba(0,0,0,0.45),0_0_18px_rgba(202,27,40,0.10)]"
+                          ? "bg-[#020001] border-white/[0.08] hover:border-tap-red/20 hover:shadow-[0_12px_40px_rgba(0,0,0,0.45),0_0_18px_rgba(202,27,40,0.10)]"
+                          : "bg-[#020001] border-white/[0.08] shadow-[0_10px_28px_rgba(0,0,0,0.45)] hover:bg-[linear-gradient(180deg,rgba(202,27,40,0.08)_0%,rgba(10,10,10,0.96)_30%,rgba(10,10,10,0.96)_100%)] hover:border-tap-red/15 hover:shadow-[0_12px_40px_rgba(0,0,0,0.45),0_0_18px_rgba(202,27,40,0.10)]"
                     }`}
                   >
-                    <div className="absolute top-0 left-0 right-0 h-[100px] bg-gradient-to-b from-tap-red/14 via-tap-red/4 to-transparent pointer-events-none" />
-                    <div className="absolute inset-0 opacity-0 group-hover:opacity-100 transition-opacity duration-500 pointer-events-none">
-                      <div className="absolute inset-0 bg-[radial-gradient(circle_at_20%_0%,rgba(202,27,40,0.20),transparent_55%)]" />
-                    </div>
+                    {!isLight && (
+                      <div className="pointer-events-none absolute inset-0 opacity-100 group-hover:opacity-0 transition-opacity duration-500">
+                        <div className="absolute -top-16 -right-8 w-48 h-48 rounded-full bg-white/5 blur-2xl" />
+                        <div className="absolute -bottom-12 -left-8 w-56 h-56 rounded-full bg-tap-red/10 blur-2xl opacity-40" />
+                      </div>
+                    )}
                     <div className="relative flex flex-row items-stretch justify-between gap-3 sm:gap-4 min-w-0">
                       <div className="min-w-0 flex-1">
                         <h3 className={`text-[15px] sm:text-[17px] font-semibold uppercase truncate ${isLight ? "text-black" : "text-white"}`}>
@@ -777,11 +806,21 @@ export default function MatchingPage() {
                 <div
                   ref={detailCardRef}
                   className={`relative h-fit overflow-visible rounded-2xl p-5 sm:p-6 lg:p-6 ${
-                    isLight
-                      ? "card-luxury-light"
-                      : "border border-white/[0.08] bg-zinc-900/50"
+                    selectedJob
+                      ? isLight
+                        ? "group card-luxury-light border border-tap-red/25 shadow-[0_12px_40px_rgba(0,0,0,0.12)] hover:border-black/10 hover:shadow-[0_8px_24px_rgba(0,0,0,0.08)] transition-all duration-500"
+                        : matchingDetailCardInvertedDarkClass
+                      : isLight
+                        ? "card-luxury-light"
+                        : "border border-white/[0.08] bg-zinc-900/50"
                   }`}
                 >
+                {selectedJob && !isLight ? (
+                  <div className="pointer-events-none absolute inset-0 opacity-0 group-hover:opacity-100 transition-opacity duration-500 rounded-2xl">
+                    <div className="absolute -top-16 -right-8 w-48 h-48 rounded-full bg-white/5 blur-2xl" />
+                    <div className="absolute -bottom-12 -left-8 w-56 h-56 rounded-full bg-tap-red/10 blur-2xl opacity-40" />
+                  </div>
+                ) : null}
                 {selectedJob ? (
                   <>
                     {/* Badge score matching — position absolue coin supérieur droit de la carte */}

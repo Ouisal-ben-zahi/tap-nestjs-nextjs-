@@ -1,11 +1,9 @@
 "use client";
 
-import { useEffect, useState } from "react";
+import { useEffect, useId, useMemo, useState } from "react";
 import { useCandidatStats, useCandidatApplications } from "@/hooks/use-candidat";
-import EmptyState from "@/components/ui/EmptyState";
 import ErrorState from "@/components/ui/ErrorState";
 import { StatCardSkeleton } from "@/components/ui/Skeleton";
-import { Skeleton } from "@/components/ui/Skeleton";
 import {
   FileText,
   Calendar,
@@ -15,14 +13,101 @@ import {
   Bookmark,
   XCircle,
   TrendingUp,
+  ChevronDown,
+  Briefcase,
 } from "lucide-react";
-import { formatRelative } from "@/lib/utils";
+function buildSmoothLinePath(pts: { x: number; y: number }[]): string {
+  if (pts.length === 0) return "";
+  if (pts.length === 1) return `M ${pts[0].x} ${pts[0].y}`;
+  let d = `M ${pts[0].x} ${pts[0].y}`;
+  for (let i = 0; i < pts.length - 1; i++) {
+    const p0 = pts[i];
+    const p1 = pts[i + 1];
+    const dx = (p1.x - p0.x) * 0.35;
+    d += ` C ${p0.x + dx} ${p0.y}, ${p1.x - dx} ${p1.y}, ${p1.x} ${p1.y}`;
+  }
+  return d;
+}
+
+function buildAreaPath(pts: { x: number; y: number }[], baseY: number): string {
+  if (!pts.length) return "";
+  const line = buildSmoothLinePath(pts);
+  const last = pts[pts.length - 1];
+  const first = pts[0];
+  return `${line} L ${last.x} ${baseY} L ${first.x} ${baseY} Z`;
+}
+
+function buildYTicks5(maxY: number): number[] {
+  if (maxY <= 0) return [0];
+  const raw = Array.from({ length: 5 }, (_, i) => Math.round((maxY * i) / 4));
+  return [...new Set(raw)].sort((a, b) => a - b);
+}
+
+type DualAreaChartGeom = {
+  vbW: number;
+  vbH: number;
+  pl: number;
+  pr: number;
+  pt: number;
+  pb: number;
+  iw: number;
+  ih: number;
+  baseY: number;
+  maxY: number;
+  ptsA: { x: number; y: number }[];
+  ptsB: { x: number; y: number }[];
+  pathA: string;
+  pathB: string;
+  areaA: string;
+  areaB: string;
+  yTicks: number[];
+};
+
+function computeDualAreaChartFromValues(aVals: number[], bVals: number[]): DualAreaChartGeom {
+  const vbW = 640;
+  const vbH = 268;
+  const pl = 48;
+  const pr = 20;
+  const pt = 28;
+  const pb = 52;
+  const iw = vbW - pl - pr;
+  const ih = vbH - pt - pb;
+  const baseY = pt + ih;
+  const n = aVals.length;
+  const maxY = Math.max(...aVals, ...bVals, 1);
+  const yAt = (v: number) => baseY - (v / maxY) * ih;
+  const xAt = (i: number) => pl + (n <= 1 ? iw / 2 : (i / (n - 1)) * iw);
+  const ptsA = aVals.map((v, i) => ({ x: xAt(i), y: yAt(v) }));
+  const ptsB = bVals.map((v, i) => ({ x: xAt(i), y: yAt(v) }));
+  return {
+    vbW,
+    vbH,
+    pl,
+    pr,
+    pt,
+    pb,
+    iw,
+    ih,
+    baseY,
+    maxY,
+    ptsA,
+    ptsB,
+    pathA: buildSmoothLinePath(ptsA),
+    pathB: buildSmoothLinePath(ptsB),
+    areaA: buildAreaPath(ptsA, baseY),
+    areaB: buildAreaPath(ptsB, baseY),
+    yTicks: buildYTicks5(maxY),
+  };
+}
 
 export default function CandidatDashboard() {
   const statsQuery = useCandidatStats();
   const appsQuery = useCandidatApplications();
   const [isMounted, setIsMounted] = useState(false);
-  const [hoveredMonth, setHoveredMonth] = useState<string | null>(null);
+  const [hoveredActivityIndex, setHoveredActivityIndex] = useState<number | null>(null);
+  const [hoveredChartIndex, setHoveredChartIndex] = useState<number | null>(null);
+  const chartUid = useId().replace(/:/g, "");
+  const [ageNowMs] = useState(() => Date.now());
 
   useEffect(() => {
     setIsMounted(true);
@@ -47,18 +132,12 @@ export default function CandidatDashboard() {
     if (!raw) return null;
     const d = new Date(raw);
     if (Number.isNaN(d.getTime())) return null;
-    const diffMs = Date.now() - d.getTime();
+    const diffMs = ageNowMs - d.getTime();
     const days = Math.floor(diffMs / (1000 * 60 * 60 * 24));
     return Number.isFinite(days) ? Math.max(0, days) : null;
   })();
 
   const profileAgeLabel = profileAgeDays === null ? "Profil récent" : `Profil: ${profileAgeDays}j`;
-  const statusBars = [
-    { key: "pending", label: "En attente", value: stats?.statusPending ?? 0, color: "bg-yellow-500/60" },
-    { key: "accepted", label: "Acceptées", value: stats?.statusAccepted ?? 0, color: "bg-green-500/60" },
-    { key: "refused", label: "Refusées", value: stats?.statusRefused ?? 0, color: "bg-rose-500/60" },
-  ];
-  const maxStatusValue = Math.max(...statusBars.map((s) => s.value), 1);
 
   const monthNames = ["Jan", "Fev", "Mar", "Avr", "Mai", "Jun", "Jul", "Aou", "Sep", "Oct", "Nov", "Dec"];
   const now = new Date();
@@ -88,7 +167,7 @@ export default function CandidatDashboard() {
       bucket.refusedValue += 1;
     }
   });
-  const maxActivityValue = Math.max(...activitySeries.map((m) => m.value), 1);
+  const totalVolume6m = activitySeries.reduce((sum, m) => sum + m.value, 0);
 
   const acceptedTotal6m = activitySeries.reduce((sum, m) => sum + (m.acceptedValue ?? 0), 0);
   const refusedTotal6m = activitySeries.reduce((sum, m) => sum + (m.refusedValue ?? 0), 0);
@@ -97,34 +176,26 @@ export default function CandidatDashboard() {
       ? Math.round((acceptedTotal6m / (acceptedTotal6m + refusedTotal6m)) * 100)
       : 0;
 
-  const acceptedSparklinePoints = activitySeries
-    .map((m, i) => {
-      const x = i * 52 + 8;
-      const y = 110 - Math.round(((m.acceptedValue ?? 0) / maxActivityValue) * 96);
-      return `${x},${y}`;
-    })
-    .join(" ");
+  const activityChart = useMemo(
+    () =>
+      computeDualAreaChartFromValues(
+        activitySeries.map((m) => m.value),
+        activitySeries.map((m) => m.acceptedValue ?? 0),
+      ),
+    [activitySeries],
+  );
 
-  const refusedSparklinePoints = activitySeries
-    .map((m, i) => {
-      const x = i * 52 + 8;
-      const y = 110 - Math.round(((m.refusedValue ?? 0) / maxActivityValue) * 96);
-      return `${x},${y}`;
-    })
-    .join(" ");
+  const statusChart = useMemo(
+    () =>
+      computeDualAreaChartFromValues(
+        activitySeries.map((m) => m.acceptedValue ?? 0),
+        activitySeries.map((m) => m.refusedValue ?? 0),
+      ),
+    [activitySeries],
+  );
 
-  const sparklinePoints = activitySeries
-    .map((m, i) => {
-      const x = i * 52 + 8;
-      const y = 110 - Math.round((m.value / maxActivityValue) * 96);
-      return `${x},${y}`;
-    })
-    .join(" ");
-  const hoveredPoint = hoveredMonth
-    ? activitySeries.find((m) => m.key === hoveredMonth) ?? null
-    : null;
-
-  const donutCirc = 2 * Math.PI * 44;
+  const donutRadius = 54;
+  const donutCirc = 2 * Math.PI * donutRadius;
   const acceptedRatio = totalStatuses > 0 ? (stats?.statusAccepted ?? 0) / totalStatuses : 0;
   const acceptedDash = Math.round(donutCirc * acceptedRatio);
   const responseRate =
@@ -141,10 +212,24 @@ export default function CandidatDashboard() {
     (stats?.applications ?? 0) > 0
       ? Math.round(((stats?.interviews ?? 0) / (stats?.applications ?? 1)) * 100)
       : 0;
-  const acceptedStageRate =
-    (stats?.applications ?? 0) > 0
-      ? Math.round(((stats?.statusAccepted ?? 0) / (stats?.applications ?? 1)) * 100)
-      : 0;
+
+  const recentApplications = useMemo(() => {
+    return [...allApps]
+      .filter((a) => a.validatedAt)
+      .sort((a, b) => new Date(b.validatedAt!).getTime() - new Date(a.validatedAt!).getTime())
+      .slice(0, 3);
+  }, [allApps]);
+
+  const last3MonthsSeries = useMemo(() => activitySeries.slice(-3), [activitySeries]);
+
+  const engagementChart = useMemo(
+    () =>
+      computeDualAreaChartFromValues(
+        last3MonthsSeries.map((m) => m.value),
+        last3MonthsSeries.map((m) => m.refusedValue ?? 0),
+      ),
+    [last3MonthsSeries],
+  );
 
   const kpiCards = [
     {
@@ -181,7 +266,7 @@ export default function CandidatDashboard() {
     },
   ];
   const themedCardClass =
-    "group card-animated-border relative overflow-hidden rounded-2xl border border-white/[0.08] bg-[linear-gradient(180deg,rgba(202,27,40,0.08)_0%,rgba(10,10,10,0.96)_30%,rgba(10,10,10,0.96)_100%)] hover:bg-none hover:bg-[#020001] shadow-[0_10px_28px_rgba(0,0,0,0.45)] hover:border-tap-red/15 transition-all duration-500";
+    "group card-animated-border relative overflow-hidden rounded-2xl border border-white/[0.08] bg-[#020001] shadow-[0_10px_28px_rgba(0,0,0,0.45)] hover:bg-[linear-gradient(180deg,rgba(202,27,40,0.08)_0%,rgba(10,10,10,0.96)_30%,rgba(10,10,10,0.96)_100%)] hover:border-tap-red/15 transition-all duration-500";
   const themedParagraphClass = isLight ? "text-black/60" : "text-white/60";
 
   return (
@@ -217,7 +302,7 @@ export default function CandidatDashboard() {
                     }}
                   >
                         {/* Overlay glint premium */}
-                        <div className="pointer-events-none absolute inset-0 opacity-0 group-hover:opacity-100 transition-opacity duration-500">
+                        <div className="pointer-events-none absolute inset-0 opacity-100 group-hover:opacity-0 transition-opacity duration-500">
                           <div className="absolute -top-20 -right-10 w-48 h-48 rounded-full bg-white/10 blur-2xl" />
                           <div className="absolute -bottom-24 -left-20 w-56 h-56 rounded-full bg-tap-red/10 blur-2xl opacity-40" />
                         </div>
@@ -260,81 +345,191 @@ export default function CandidatDashboard() {
       </div>
 
       {!statsQuery.isLoading && !statsQuery.isError && (
-        <div className="grid grid-cols-1 xl:grid-cols-3 gap-6">
+        <div className="grid grid-cols-1 gap-6 xl:grid-cols-3">
           <div
-            className={`xl:col-span-2 ${themedCardClass} p-6 transition-all duration-300 hover:-translate-y-0.5 hover:shadow-[0_18px_45px_rgba(0,0,0,0.35)] ${
-              isLight
-                ? "card-luxury-light"
-                : ""
+            className={`${themedCardClass} p-6 transition-all duration-300 hover:-translate-y-0.5 hover:shadow-[0_18px_45px_rgba(0,0,0,0.35)] ${
+              isLight ? "card-luxury-light" : ""
             }`}
           >
-            <div className="pointer-events-none absolute inset-0 opacity-0 group-hover:opacity-100 transition-opacity duration-500">
+            <div className="pointer-events-none absolute inset-0 opacity-100 group-hover:opacity-0 transition-opacity duration-500">
               <div className="absolute -top-24 -right-28 w-72 h-72 rounded-full bg-white/5 blur-2xl" />
               <div className="absolute -bottom-28 -left-24 w-72 h-72 rounded-full bg-blue-500/10 blur-2xl opacity-60" />
             </div>
-            <div className="mb-5">
-              <h3 className={`text-[13px] uppercase tracking-[2px] font-semibold ${isLight ? "text-black" : "text-white/50"}`}>
-                Activité sur 6 mois
-              </h3>
+            <div className="mb-4 flex flex-wrap items-start justify-between gap-4">
+              <div>
+                <h3 className={`text-[13px] uppercase tracking-[2px] font-semibold ${isLight ? "text-black" : "text-white/50"}`}>
+                  Activité sur 6 mois
+                </h3>
+                <p className={`mt-1 text-[12px] ${isLight ? "text-black/55" : "text-white/40"}`}>
+                  Volume de candidatures traitées et réponses positives
+                </p>
+                <div className="mt-2 flex flex-wrap items-center gap-4 text-[11px]">
+                  <span className="flex items-center gap-1.5">
+                    <span className="h-2 w-2 shrink-0 rounded-full bg-[#CA1B28]" />
+                    <span className={isLight ? "text-black/70" : "text-white/60"}>Candidatures</span>
+                  </span>
+                  <span className="flex items-center gap-1.5">
+                    <span className="h-2 w-2 shrink-0 rounded-full bg-[#F472B6]" />
+                    <span className={isLight ? "text-black/70" : "text-white/60"}>Acceptées</span>
+                  </span>
+                </div>
+              </div>
+              <button
+                type="button"
+                className={`inline-flex shrink-0 items-center gap-1 rounded-lg border px-2.5 py-1.5 text-[11px] ${
+                  isLight ? "border-black/15 text-black/70" : "border-white/12 text-white/55"
+                }`}
+              >
+                6 derniers mois
+                <ChevronDown size={12} className="opacity-70" aria-hidden />
+              </button>
             </div>
-            <div className="w-full overflow-x-auto">
-              <svg width="320" height="120" viewBox="0 0 320 120" className="w-full min-w-[320px]">
+
+            <div className="relative overflow-hidden rounded-xl bg-transparent">
+              <svg
+                viewBox={`0 0 ${activityChart.vbW} ${activityChart.vbH}`}
+                className="block h-auto min-h-[220px] w-full"
+                preserveAspectRatio="xMidYMid meet"
+                role="img"
+                aria-label="Volume de candidatures et acceptations sur six mois"
+                onMouseLeave={() => setHoveredActivityIndex(null)}
+              >
                 <defs>
-                  <linearGradient id="candLine" x1="0" y1="0" x2="0" y2="1">
-                    <stop offset="0%" stopColor="rgb(59 130 246 / 0.8)" />
-                    <stop offset="100%" stopColor="rgb(59 130 246 / 0.08)" />
+                  <linearGradient id={`${chartUid}-actFillA`} x1="0" y1="0" x2="0" y2="1">
+                    <stop offset="0%" stopColor="#CA1B28" stopOpacity="0.45" />
+                    <stop offset="100%" stopColor="#CA1B28" stopOpacity="0" />
+                  </linearGradient>
+                  <linearGradient id={`${chartUid}-actFillB`} x1="0" y1="0" x2="0" y2="1">
+                    <stop offset="0%" stopColor="#F472B6" stopOpacity="0.38" />
+                    <stop offset="100%" stopColor="#F472B6" stopOpacity="0" />
                   </linearGradient>
                 </defs>
-                {/* Courbes acceptées / refusées (6 mois) */}
-                <polyline fill="none" stroke="rgb(34 197 94)" strokeWidth="2.2" opacity="0.9" points={acceptedSparklinePoints} />
-                <polyline fill="none" stroke="rgb(244 63 94)" strokeWidth="2.2" opacity="0.85" points={refusedSparklinePoints} />
-                <polyline fill="none" stroke="rgb(96 165 250)" strokeWidth="2.5" points={sparklinePoints} />
-                {activitySeries.map((item, i) => {
-                  const x = i * 52 + 8;
-                  const y = 110 - Math.round((item.value / maxActivityValue) * 96);
-                  const isHovered = hoveredMonth === item.key;
+                {activityChart.yTicks.map((tv) => {
+                  const y = activityChart.baseY - (tv / activityChart.maxY) * activityChart.ih;
                   return (
-                    <g
-                      key={item.key}
-                      onMouseEnter={() => setHoveredMonth(item.key)}
-                      onMouseLeave={() => setHoveredMonth(null)}
+                    <g key={`act-grid-${tv}`}>
+                      <line
+                        x1={activityChart.pl}
+                        x2={activityChart.vbW - activityChart.pr}
+                        y1={y}
+                        y2={y}
+                        stroke={isLight ? "rgb(0 0 0 / 0.08)" : "rgb(255 255 255 / 0.06)"}
+                        strokeWidth="1"
+                      />
+                      <text
+                        x={activityChart.pl - 8}
+                        y={y + 4}
+                        textAnchor="end"
+                        fill={isLight ? "rgb(0 0 0 / 0.45)" : "rgb(255 255 255 / 0.38)"}
+                        style={{ fontSize: 10 }}
+                      >
+                        {tv}
+                      </text>
+                    </g>
+                  );
+                })}
+                <path d={activityChart.areaA} fill={`url(#${chartUid}-actFillA)`} />
+                <path d={activityChart.areaB} fill={`url(#${chartUid}-actFillB)`} />
+                <path
+                  d={activityChart.pathB}
+                  fill="none"
+                  stroke="#F472B6"
+                  strokeWidth="2"
+                  strokeLinecap="round"
+                  strokeLinejoin="round"
+                />
+                <path
+                  d={activityChart.pathA}
+                  fill="none"
+                  stroke="#CA1B28"
+                  strokeWidth="2.25"
+                  strokeLinecap="round"
+                  strokeLinejoin="round"
+                />
+                {activitySeries.map((m, i) => {
+                  const xa = activityChart.ptsA[i];
+                  if (!xa) return null;
+                  return (
+                    <text
+                      key={`act-xlab-${m.key}`}
+                      x={xa.x}
+                      y={activityChart.vbH - 16}
+                      textAnchor="middle"
+                      fill={isLight ? "rgb(0 0 0 / 0.45)" : "rgb(255 255 255 / 0.38)"}
+                      style={{ fontSize: 10 }}
                     >
-                      <circle cx={x} cy={y} r={isHovered ? "5.5" : "3.4"} fill="rgb(147 197 253)" />
-                      <circle cx={x} cy={y} r="12" fill="transparent" />
+                      {m.label}
+                    </text>
+                  );
+                })}
+                {activitySeries.map((m, i) => {
+                  const xa = activityChart.ptsA[i];
+                  const xb = activityChart.ptsB[i];
+                  if (!xa || !xb) return null;
+                  const active = hoveredActivityIndex === i;
+                  return (
+                    <g key={`act-hit-${m.key}`}>
+                      <rect
+                        x={xa.x - (activityChart.iw / Math.max(activitySeries.length - 1, 1)) * 0.45}
+                        y={activityChart.pt}
+                        width={(activityChart.iw / Math.max(activitySeries.length - 1, 1)) * 0.9}
+                        height={activityChart.vbH - activityChart.pt - activityChart.pb + 8}
+                        fill="transparent"
+                        className="cursor-crosshair"
+                        onMouseEnter={() => setHoveredActivityIndex(i)}
+                      />
+                      {active && (
+                        <>
+                          <line
+                            x1={xa.x}
+                            x2={xa.x}
+                            y1={activityChart.pt}
+                            y2={activityChart.baseY}
+                            stroke={isLight ? "rgb(0 0 0 / 0.12)" : "rgb(255 255 255 / 0.12)"}
+                            strokeDasharray="4 4"
+                          />
+                          <circle cx={xa.x} cy={xa.y} r="5" fill="#CA1B28" stroke="white" strokeWidth="1.5" />
+                          <circle cx={xb.x} cy={xb.y} r="4" fill="#F472B6" stroke="white" strokeWidth="1.25" />
+                        </>
+                      )}
                     </g>
                   );
                 })}
               </svg>
-            </div>
-            {hoveredPoint && (
-              <div className={`mt-2 inline-flex items-center gap-2 rounded-full px-3 py-1 text-[11px] border ${
-                isLight ? "bg-black/[0.03] border-black/15 text-black/70" : "bg-white/[0.03] border-white/15 text-white/70"
-              }`}>
-                <span>{hoveredPoint.label}</span>
-                <span className="font-semibold">{hoveredPoint.value} candidatures</span>
-                <span className="inline-flex items-center gap-1 text-green-400">
-                  {hoveredPoint.acceptedValue} acceptées
-                </span>
-                <span className="inline-flex items-center gap-1 text-rose-400">
-                  {hoveredPoint.refusedValue} refusées
-                </span>
-              </div>
-            )}
-            <div className="mt-3 grid grid-cols-6 gap-2">
-              {activitySeries.map((m) => (
-                <div key={m.key} className="text-center">
-                  <p className={`text-[10px] ${isLight ? "text-black/55" : "text-white/38"}`}>{m.label}</p>
-                  <p className={`text-[12px] font-semibold ${isLight ? "text-black/80" : "text-white/65"}`}>{m.value}</p>
+              {hoveredActivityIndex !== null && activitySeries[hoveredActivityIndex] && (
+                <div
+                  className={`pointer-events-none absolute z-10 rounded-full px-3 py-1.5 text-[11px] shadow-lg ${
+                    isLight ? "bg-black text-white" : "bg-[#CA1B28] text-white"
+                  }`}
+                  style={{
+                    left: `calc(${(activityChart.ptsA[hoveredActivityIndex].x / activityChart.vbW) * 100}%)`,
+                    top: 10,
+                    transform: "translateX(-50%)",
+                  }}
+                >
+                  <span className="font-semibold tabular-nums">
+                    {activitySeries[hoveredActivityIndex].value} traitées · {activitySeries[hoveredActivityIndex].acceptedValue ?? 0}{" "}
+                    acceptées
+                  </span>
                 </div>
-              ))}
+              )}
             </div>
+
             <div className="mt-4 flex flex-wrap items-center gap-3 text-[11px]">
               <span
                 className={`inline-flex items-center gap-2 rounded-full px-3 py-1 border ${
                   isLight ? "bg-black/[0.03] border-black/15 text-black/70" : "bg-white/[0.03] border-white/15 text-white/70"
                 }`}
               >
-                <span className="w-2 h-2 rounded-full bg-emerald-400" />
+                <span className="h-2 w-2 rounded-full bg-[#CA1B28]" />
+                {totalVolume6m} candidatures (6 mois)
+              </span>
+              <span
+                className={`inline-flex items-center gap-2 rounded-full px-3 py-1 border ${
+                  isLight ? "bg-black/[0.03] border-black/15 text-black/70" : "bg-white/[0.03] border-white/15 text-white/70"
+                }`}
+              >
+                <span className="h-2 w-2 rounded-full bg-[#F472B6]" />
                 {acceptedTotal6m} acceptées
               </span>
               <span
@@ -342,7 +537,7 @@ export default function CandidatDashboard() {
                   isLight ? "bg-black/[0.03] border-black/15 text-black/70" : "bg-white/[0.03] border-white/15 text-white/70"
                 }`}
               >
-                <span className="w-2 h-2 rounded-full bg-rose-400" />
+                <span className="h-2 w-2 rounded-full bg-rose-400" />
                 {refusedTotal6m} refusées
               </span>
               <span
@@ -350,7 +545,7 @@ export default function CandidatDashboard() {
                   isLight ? "bg-black/[0.03] border-black/15 text-black/70" : "bg-white/[0.03] border-white/15 text-white/70"
                 }`}
               >
-                <span className="w-2 h-2 rounded-full bg-tap-red" />
+                <span className="h-2 w-2 rounded-full bg-tap-red" />
                 {acceptanceRate6m}% taux acceptation (6 mois)
               </span>
             </div>
@@ -358,12 +553,226 @@ export default function CandidatDashboard() {
 
           <div
             className={`${themedCardClass} p-6 transition-all duration-300 hover:-translate-y-0.5 hover:shadow-[0_18px_45px_rgba(0,0,0,0.35)] ${
-              isLight
-                ? "card-luxury-light"
-                : ""
+              isLight ? "card-luxury-light" : ""
             }`}
           >
-            <div className="pointer-events-none absolute inset-0 opacity-0 group-hover:opacity-100 transition-opacity duration-500">
+            <div className="pointer-events-none absolute inset-0 opacity-100 group-hover:opacity-0 transition-opacity duration-500">
+              <div className="absolute -top-24 -right-28 w-72 h-72 rounded-full bg-white/5 blur-2xl" />
+              <div className="absolute -bottom-28 -left-24 w-72 h-72 rounded-full bg-fuchsia-500/10 blur-2xl opacity-50" />
+            </div>
+            <div className="relative mb-4 flex flex-wrap items-start justify-between gap-4">
+              <div>
+                <h3 className={`text-[13px] uppercase tracking-[2px] font-semibold ${isLight ? "text-black" : "text-white/50"}`}>
+                  Repartition des statuts
+                </h3>
+                <div className="mt-2 flex flex-wrap items-center gap-4 text-[11px]">
+                  <span className="flex items-center gap-1.5">
+                    <span className="h-2 w-2 shrink-0 rounded-full bg-[#CA1B28]" />
+                    <span className={isLight ? "text-black/70" : "text-white/60"}>Acceptées</span>
+                  </span>
+                  <span className="flex items-center gap-1.5">
+                    <span className="h-2 w-2 shrink-0 rounded-full bg-[#F472B6]" />
+                    <span className={isLight ? "text-black/70" : "text-white/60"}>Refusées</span>
+                  </span>
+                </div>
+              </div>
+              <div className="flex flex-wrap items-center gap-2 text-[11px]">
+                <button
+                  type="button"
+                  className={`inline-flex items-center gap-1 rounded-lg border px-2.5 py-1.5 ${
+                    isLight ? "border-black/15 text-black/70" : "border-white/12 text-white/55"
+                  }`}
+                >
+                  6 derniers mois
+                  <ChevronDown size={12} className="opacity-70" aria-hidden />
+                </button>
+                <span className={`px-2 py-1 rounded-full border ${isLight ? "text-black/65 border-black/15" : "text-white/55 border-white/15"}`}>
+                  <Bell size={11} className="inline mr-1" />
+                  {stats?.notifications ?? 0} notifications
+                </span>
+                <span className={`px-2 py-1 rounded-full border ${isLight ? "text-black/65 border-black/15" : "text-white/55 border-white/15"}`}>
+                  <Calendar size={11} className="inline mr-1" />
+                  {profileAgeLabel}
+                </span>
+                <span className={`px-2 py-1 rounded-full border ${isLight ? "text-black/65 border-black/15" : "text-white/55 border-white/15"}`}>
+                  <Clock size={11} className="inline mr-1" />
+                  {pendingRate}% en attente
+                </span>
+                <span className={`px-2 py-1 rounded-full border ${isLight ? "text-black/65 border-black/15" : "text-white/55 border-white/15"}`}>
+                  <XCircle size={11} className="inline mr-1" />
+                  {refusedRate}% refus
+                </span>
+              </div>
+            </div>
+
+            <div className="relative overflow-hidden rounded-xl bg-transparent">
+              <svg
+                viewBox={`0 0 ${statusChart.vbW} ${statusChart.vbH}`}
+                className="block h-auto min-h-[220px] w-full"
+                preserveAspectRatio="xMidYMid meet"
+                role="img"
+                aria-label="Évolution des candidatures acceptées et refusées sur six mois"
+                onMouseLeave={() => setHoveredChartIndex(null)}
+              >
+                <defs>
+                  <linearGradient id={`${chartUid}-statusFillA`} x1="0" y1="0" x2="0" y2="1">
+                    <stop offset="0%" stopColor="#CA1B28" stopOpacity="0.42" />
+                    <stop offset="100%" stopColor="#CA1B28" stopOpacity="0" />
+                  </linearGradient>
+                  <linearGradient id={`${chartUid}-statusFillB`} x1="0" y1="0" x2="0" y2="1">
+                    <stop offset="0%" stopColor="#F472B6" stopOpacity="0.38" />
+                    <stop offset="100%" stopColor="#F472B6" stopOpacity="0" />
+                  </linearGradient>
+                </defs>
+                {statusChart.yTicks.map((tv) => {
+                  const y = statusChart.baseY - (tv / statusChart.maxY) * statusChart.ih;
+                  return (
+                    <g key={`grid-${tv}`}>
+                      <line
+                        x1={statusChart.pl}
+                        x2={statusChart.vbW - statusChart.pr}
+                        y1={y}
+                        y2={y}
+                        stroke={isLight ? "rgb(0 0 0 / 0.08)" : "rgb(255 255 255 / 0.06)"}
+                        strokeWidth="1"
+                      />
+                      <text
+                        x={statusChart.pl - 8}
+                        y={y + 4}
+                        textAnchor="end"
+                        className={isLight ? "fill-black/45" : "fill-white/38"}
+                        style={{ fontSize: 10 }}
+                      >
+                        {tv}
+                      </text>
+                    </g>
+                  );
+                })}
+                <path d={statusChart.areaB} fill={`url(#${chartUid}-statusFillB)`} />
+                <path d={statusChart.areaA} fill={`url(#${chartUid}-statusFillA)`} />
+                <path
+                  d={statusChart.pathB}
+                  fill="none"
+                  stroke="#F472B6"
+                  strokeWidth="2"
+                  strokeLinecap="round"
+                  strokeLinejoin="round"
+                />
+                <path
+                  d={statusChart.pathA}
+                  fill="none"
+                  stroke="#CA1B28"
+                  strokeWidth="2.25"
+                  strokeLinecap="round"
+                  strokeLinejoin="round"
+                />
+                {activitySeries.map((m, i) => {
+                  const xa = statusChart.ptsA[i];
+                  if (!xa) return null;
+                  return (
+                    <text
+                      key={`xlab-${m.key}`}
+                      x={xa.x}
+                      y={statusChart.vbH - 16}
+                      textAnchor="middle"
+                      fill={isLight ? "rgb(0 0 0 / 0.45)" : "rgb(255 255 255 / 0.38)"}
+                      style={{ fontSize: 10 }}
+                    >
+                      {m.label}
+                    </text>
+                  );
+                })}
+                {activitySeries.map((m, i) => {
+                  const xa = statusChart.ptsA[i];
+                  const xr = statusChart.ptsB[i];
+                  if (!xa || !xr) return null;
+                  const active = hoveredChartIndex === i;
+                  return (
+                    <g key={m.key}>
+                      <rect
+                        x={xa.x - (statusChart.iw / Math.max(activitySeries.length - 1, 1)) * 0.45}
+                        y={statusChart.pt}
+                        width={(statusChart.iw / Math.max(activitySeries.length - 1, 1)) * 0.9}
+                        height={statusChart.vbH - statusChart.pt - statusChart.pb + 8}
+                        fill="transparent"
+                        className="cursor-crosshair"
+                        onMouseEnter={() => setHoveredChartIndex(i)}
+                      />
+                      {active && (
+                        <>
+                          <line
+                            x1={xa.x}
+                            x2={xa.x}
+                            y1={statusChart.pt}
+                            y2={statusChart.baseY}
+                            stroke={isLight ? "rgb(0 0 0 / 0.12)" : "rgb(255 255 255 / 0.12)"}
+                            strokeDasharray="4 4"
+                          />
+                          <circle cx={xa.x} cy={xa.y} r="5" fill="#CA1B28" stroke="white" strokeWidth="1.5" />
+                          <circle cx={xr.x} cy={xr.y} r="4" fill="#F472B6" stroke="white" strokeWidth="1.25" />
+                        </>
+                      )}
+                    </g>
+                  );
+                })}
+              </svg>
+              {hoveredChartIndex !== null && activitySeries[hoveredChartIndex] && (
+                <div
+                  className={`pointer-events-none absolute z-10 rounded-lg px-3 py-2 text-[11px] shadow-lg ${
+                    isLight ? "bg-black text-white" : "bg-[#CA1B28] text-white"
+                  }`}
+                  style={{
+                    left: `calc(${(statusChart.ptsA[hoveredChartIndex].x / statusChart.vbW) * 100}% + 0px)`,
+                    top: 12,
+                    transform: "translateX(-50%)",
+                  }}
+                >
+                  <div className="font-semibold">{activitySeries[hoveredChartIndex].label}</div>
+                  <div className="opacity-90">
+                    Acceptées : {activitySeries[hoveredChartIndex].acceptedValue ?? 0} · Refusées :{" "}
+                    {activitySeries[hoveredChartIndex].refusedValue ?? 0}
+                  </div>
+                </div>
+              )}
+            </div>
+
+            <div className="relative mt-4 grid grid-cols-1 gap-3 rounded-xl bg-transparent p-2 sm:grid-cols-3">
+              <div className="flex items-center justify-between gap-2 sm:flex-col sm:items-start sm:justify-start">
+                <span className={`flex items-center text-[12px] ${isLight ? "text-black/65" : "text-white/45"}`}>
+                  <CheckCircle size={12} className="mr-1 shrink-0 text-green-500" />
+                  Acceptées (total)
+                </span>
+                <span className={`text-[15px] font-semibold tabular-nums ${isLight ? "text-black" : "text-white/85"}`}>
+                  {stats?.statusAccepted ?? 0}
+                </span>
+              </div>
+              <div className="flex items-center justify-between gap-2 sm:flex-col sm:items-start sm:justify-start">
+                <span className={`flex items-center text-[12px] ${isLight ? "text-black/65" : "text-white/45"}`}>
+                  <XCircle size={12} className="mr-1 shrink-0 text-rose-500" />
+                  Refusées (total)
+                </span>
+                <span className={`text-[15px] font-semibold tabular-nums ${isLight ? "text-black" : "text-white/85"}`}>
+                  {stats?.statusRefused ?? 0}
+                </span>
+              </div>
+              <div className="flex items-center justify-between gap-2 sm:flex-col sm:items-start sm:justify-start">
+                <span className={`flex items-center text-[12px] ${isLight ? "text-black/65" : "text-white/45"}`}>
+                  <Bookmark size={12} className="mr-1 shrink-0 text-cyan-500" />
+                  Offres sauvegardées
+                </span>
+                <span className={`text-[15px] font-semibold tabular-nums ${isLight ? "text-black" : "text-white/85"}`}>
+                  {stats?.savedOffers ?? 0}
+                </span>
+              </div>
+            </div>
+          </div>
+
+          <div
+            className={`${themedCardClass} p-6 transition-all duration-300 hover:-translate-y-0.5 hover:shadow-[0_18px_45px_rgba(0,0,0,0.35)] ${
+              isLight ? "card-luxury-light" : ""
+            }`}
+          >
+            <div className="pointer-events-none absolute inset-0 opacity-100 group-hover:opacity-0 transition-opacity duration-500">
               <div className="absolute -top-24 -right-28 w-72 h-72 rounded-full bg-white/5 blur-2xl" />
               <div className="absolute -bottom-28 -left-24 w-72 h-72 rounded-full bg-emerald-500/10 blur-2xl opacity-60" />
             </div>
@@ -373,23 +782,30 @@ export default function CandidatDashboard() {
               </h3>
             </div>
             <div className="flex items-center justify-center">
-              <svg width="130" height="130" viewBox="0 0 130 130">
-                <circle cx="65" cy="65" r="44" fill="none" stroke={isLight ? "rgb(0 0 0 / 0.12)" : "rgb(255 255 255 / 0.12)"} strokeWidth="12" />
+              <svg width="168" height="168" viewBox="0 0 160 160" className="max-w-full">
                 <circle
-                  cx="65"
-                  cy="65"
-                  r="44"
+                  cx="80"
+                  cy="80"
+                  r={donutRadius}
                   fill="none"
-                  stroke="rgb(34 197 94 / 0.85)"
-                  strokeWidth="12"
+                  stroke={isLight ? "rgb(0 0 0 / 0.12)" : "rgb(255 255 255 / 0.12)"}
+                  strokeWidth="14"
+                />
+                <circle
+                  cx="80"
+                  cy="80"
+                  r={donutRadius}
+                  fill="none"
+                  stroke="#CA1B28"
+                  strokeWidth="14"
                   strokeLinecap="round"
                   strokeDasharray={`${acceptedDash} ${donutCirc}`}
-                  transform="rotate(-90 65 65)"
+                  transform="rotate(-90 80 80)"
                 />
               </svg>
             </div>
             <div className="text-center mt-2">
-              <p className={`text-[28px] font-bold ${isLight ? "text-black" : "text-white"}`}>{acceptanceRate}%</p>
+              <p className="text-[28px] font-bold text-[#CA1B28]">{acceptanceRate}%</p>
               <p className={`text-[12px] ${isLight ? "text-black/60" : "text-white/42"}`}>taux d&apos;acceptation global</p>
               <p className={`text-[11px] mt-1 ${isLight ? "text-black/45" : "text-white/32"}`}>{performanceTone}</p>
             </div>
@@ -398,142 +814,234 @@ export default function CandidatDashboard() {
       )}
 
       {!statsQuery.isLoading && !statsQuery.isError && (
-        <div className={`${themedCardClass} p-6 ${isLight ? "card-luxury-light" : ""}`}>
-          <div className="flex flex-wrap items-center justify-between gap-3 mb-5">
-            <h3 className={`text-[13px] uppercase tracking-[2px] font-semibold ${isLight ? "text-black" : "text-white/50"}`}>
-              Repartition des statuts
-            </h3>
-            <div className="flex items-center gap-2 text-[11px]">
-              <span className={`px-2 py-1 rounded-full border ${isLight ? "text-black/65 border-black/15" : "text-white/55 border-white/15"}`}>
-                <Bell size={11} className="inline mr-1" />
-                {stats?.notifications ?? 0} notifications
-              </span>
-              <span className={`px-2 py-1 rounded-full border ${isLight ? "text-black/65 border-black/15" : "text-white/55 border-white/15"}`}>
-                <Calendar size={11} className="inline mr-1" />
-                {profileAgeLabel}
-              </span>
-              <span className={`px-2 py-1 rounded-full border ${isLight ? "text-black/65 border-black/15" : "text-white/55 border-white/15"}`}>
-                <Clock size={11} className="inline mr-1" />
-                {pendingRate}% en attente
-              </span>
-              <span className={`px-2 py-1 rounded-full border ${isLight ? "text-black/65 border-black/15" : "text-white/55 border-white/15"}`}>
-                <XCircle size={11} className="inline mr-1" />
-                {refusedRate}% refus
-              </span>
+        <div className="grid grid-cols-1 gap-6 lg:grid-cols-2">
+          <div
+            className={`${themedCardClass} p-6 transition-all duration-300 hover:-translate-y-0.5 hover:shadow-[0_18px_45px_rgba(0,0,0,0.35)] ${
+              isLight ? "card-luxury-light" : ""
+            }`}
+          >
+            <div className="pointer-events-none absolute inset-0 opacity-100 group-hover:opacity-0 transition-opacity duration-500">
+              <div className="absolute -top-24 -right-28 w-72 h-72 rounded-full bg-white/5 blur-2xl" />
+              <div className="absolute -bottom-28 -left-24 w-72 h-72 rounded-full bg-tap-red/10 blur-2xl opacity-40" />
             </div>
-          </div>
-          <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
-            <div className="space-y-3">
-              {statusBars.map((item) => {
-                const width = item.value > 0 ? Math.max(12, (item.value / maxStatusValue) * 100) : 0;
-                const pct = totalStatuses > 0 ? Math.round((item.value / totalStatuses) * 100) : 0;
-                return (
-                  <div key={item.key} className="flex items-center gap-3">
-                    <span className={`text-[12px] w-[110px] shrink-0 ${isLight ? "text-black" : "text-white/50"}`}>
-                      {item.label} <span className={`font-semibold ${isLight ? "text-black" : "text-white/70"}`}>{pct}%</span>
-                    </span>
-                    <div className={`flex-1 h-6 rounded-md overflow-hidden ${isLight ? "bg-black/10" : "bg-zinc-800/60"}`}>
-                      <div
-                        className={`h-full ${item.color} rounded-md transition-all duration-700`}
-                        style={{ width: `${isMounted ? width : 0}%` }}
-                      />
+            <div className="relative mb-4 flex flex-wrap items-start justify-between gap-2">
+              <div>
+                <h3 className={`text-[13px] uppercase tracking-[2px] font-semibold ${isLight ? "text-black" : "text-white/50"}`}>
+                  Dernières candidatures
+                </h3>
+                <p className={`mt-1 text-[12px] ${themedParagraphClass}`}>Les 3 dernières candidatures avec un mini graphique d&apos;intensité</p>
+              </div>
+            </div>
+
+            <div className="relative mb-4 rounded-xl bg-transparent">
+              <svg viewBox="0 0 280 88" className="h-[88px] w-full" role="img" aria-label="Intensité des statuts des 3 dernières candidatures">
+                {recentApplications.length === 0 ? (
+                  <text x="140" y="48" textAnchor="middle" fill="rgb(255 255 255 / 0.35)" style={{ fontSize: 11 }}>
+                    Aucune candidature récente
+                  </text>
+                ) : (
+                  recentApplications.map((app, i) => {
+                    const s = String(app.status ?? "").toLowerCase();
+                    const h =
+                      s.includes("accept") || s === "active"
+                        ? 100
+                        : s.includes("refus") || s.includes("reject")
+                          ? 28
+                          : 58;
+                    const barW = 28;
+                    const gap = 12;
+                    const totalW = recentApplications.length * barW + (recentApplications.length - 1) * gap;
+                    const startX = (280 - totalW) / 2;
+                    const x = startX + i * (barW + gap);
+                    const barH = (h / 100) * 56;
+                    const y = 16 + (56 - barH);
+                    const fill =
+                      s.includes("accept") || s === "active"
+                        ? "#CA1B28"
+                        : s.includes("refus") || s.includes("reject")
+                          ? "#9ca3af"
+                          : "#fbbf24";
+                    return (
+                      <g key={app.id}>
+                        <rect x={x} y={y} width={barW} height={barH} rx="6" fill={fill} opacity="0.9" />
+                        <text x={x + barW / 2} y="80" textAnchor="middle" fill="rgb(255 255 255 / 0.35)" style={{ fontSize: 9 }}>
+                          {i + 1}
+                        </text>
+                      </g>
+                    );
+                  })
+                )}
+              </svg>
+            </div>
+
+            <div className="relative space-y-3">
+              {recentApplications.length === 0 ? (
+                <p className={`text-[12px] ${themedParagraphClass}`}>Les candidatures validées apparaîtront ici.</p>
+              ) : (
+                recentApplications.map((app) => {
+                  const s = String(app.status ?? "").toLowerCase();
+                  const label =
+                    s.includes("accept") || s === "active"
+                      ? "Acceptée"
+                      : s.includes("refus") || s.includes("reject")
+                        ? "Refusée"
+                        : "En attente";
+                  const badgeClass =
+                    s.includes("accept") || s === "active"
+                      ? "border-[#CA1B28]/40 bg-[#CA1B28]/15 text-[#CA1B28]"
+                      : s.includes("refus") || s.includes("reject")
+                        ? "border-white/15 bg-white/[0.06] text-white/55"
+                        : "border-amber-500/30 bg-amber-500/10 text-amber-200/90";
+                  const dateStr = app.validatedAt
+                    ? new Date(app.validatedAt).toLocaleDateString("fr-FR", { day: "numeric", month: "short" })
+                    : "";
+                  return (
+                    <div
+                      key={app.id}
+                      className="flex items-start gap-3 rounded-xl border border-white/[0.06] bg-white/[0.02] px-3 py-2.5"
+                    >
+                      <div className="mt-0.5 flex h-9 w-9 shrink-0 items-center justify-center rounded-lg border border-white/10 bg-white/[0.04]">
+                        <Briefcase size={16} className="text-white/60" />
+                      </div>
+                      <div className="min-w-0 flex-1">
+                        <p className={`truncate text-[13px] font-medium ${isLight ? "text-black" : "text-white/90"}`}>
+                          {app.jobTitle ?? "Candidature"}
+                        </p>
+                        <p className={`truncate text-[11px] ${themedParagraphClass}`}>{app.company ?? "—"}</p>
+                        <div className="mt-1.5 flex flex-wrap items-center gap-2">
+                          <span className={`rounded-full border px-2 py-0.5 text-[10px] ${badgeClass}`}>{label}</span>
+                          {dateStr ? (
+                            <span className={`text-[10px] ${isLight ? "text-black/45" : "text-white/35"}`}>{dateStr}</span>
+                          ) : null}
+                        </div>
+                      </div>
                     </div>
-                    <span className={`text-[12px] w-16 text-right font-medium ${isLight ? "text-black" : "text-white/60"}`}>
-                      {item.value}
-                    </span>
-                  </div>
-                );
-              })}
-            </div>
-            <div
-              className={`rounded-xl p-4 ${
-                isLight
-                  ? "bg-black/[0.02] border border-black/10"
-                  : "bg-[#0A0A0A] border border-white/[0.06]"
-              }`}
-            >
-              <p className={`text-[12px] mb-3 ${themedParagraphClass}`}>Resume rapide</p>
-              <div className="space-y-2">
-                <div className="flex items-center justify-between">
-                  <span className={`text-[12px] ${isLight ? "text-black/65" : "text-white/45"}`}>
-                    <CheckCircle size={12} className="inline mr-1 text-green-500" />
-                    Acceptees
-                  </span>
-                  <span className={`text-[12px] font-semibold ${isLight ? "text-black" : "text-white/70"}`}>{stats?.statusAccepted ?? 0}</span>
-                </div>
-                <div className="flex items-center justify-between">
-                  <span className={`text-[12px] ${isLight ? "text-black/65" : "text-white/45"}`}>
-                    <XCircle size={12} className="inline mr-1 text-rose-500" />
-                    Refusees
-                  </span>
-                  <span className={`text-[12px] font-semibold ${isLight ? "text-black" : "text-white/70"}`}>{stats?.statusRefused ?? 0}</span>
-                </div>
-                <div className="flex items-center justify-between">
-                  <span className={`text-[12px] ${isLight ? "text-black/65" : "text-white/45"}`}>
-                    <Bookmark size={12} className="inline mr-1 text-cyan-500" />
-                    Offres sauvegardees
-                  </span>
-                  <span className={`text-[12px] font-semibold ${isLight ? "text-black" : "text-white/70"}`}>{stats?.savedOffers ?? 0}</span>
-                </div>
-              </div>
+                  );
+                })
+              )}
             </div>
           </div>
-        </div>
-      )}
 
-      {!statsQuery.isLoading && !statsQuery.isError && (
-        <div>
-          <div className={`${themedCardClass} p-6 ${isLight ? "card-luxury-light" : ""}`}>
-            <div className="flex items-center justify-between gap-3 mb-4">
+          <div
+            className={`${themedCardClass} p-6 transition-all duration-300 hover:-translate-y-0.5 hover:shadow-[0_18px_45px_rgba(0,0,0,0.35)] ${
+              isLight ? "card-luxury-light" : ""
+            }`}
+          >
+            <div className="pointer-events-none absolute inset-0 opacity-100 group-hover:opacity-0 transition-opacity duration-500">
+              <div className="absolute -top-24 -right-28 w-72 h-72 rounded-full bg-white/5 blur-2xl" />
+              <div className="absolute -bottom-28 -left-24 w-72 h-72 rounded-full bg-fuchsia-500/10 blur-2xl opacity-50" />
+            </div>
+            <div className="relative mb-3">
               <h3 className={`text-[13px] uppercase tracking-[2px] font-semibold ${isLight ? "text-black" : "text-white/50"}`}>
-                Pipeline de conversion
+                Volume vs refus (3 mois)
               </h3>
-              <span className={`text-[11px] px-2 py-1 rounded-full border ${isLight ? "text-black/65 border-black/15" : "text-white/55 border-white/15"}`}>
-                {responseRate}% traitees
+              <p className={`mt-1 text-[12px] ${themedParagraphClass}`}>
+                Autre vue : traitées sur 3 derniers mois (rouge) et refusées (rose), par rapport au graphique mensuel complet.
+              </p>
+              <div className="mt-2 flex flex-wrap gap-4 text-[11px]">
+                <span className="flex items-center gap-1.5">
+                  <span className="h-2 w-2 shrink-0 rounded-full bg-[#CA1B28]" />
+                  <span className={isLight ? "text-black/70" : "text-white/60"}>Traitées</span>
+                </span>
+                <span className="flex items-center gap-1.5">
+                  <span className="h-2 w-2 shrink-0 rounded-full bg-[#F472B6]" />
+                  <span className={isLight ? "text-black/70" : "text-white/60"}>Refusées</span>
+                </span>
+              </div>
+            </div>
+
+            <div className="relative overflow-hidden rounded-xl bg-transparent">
+              <svg
+                viewBox={`0 0 ${engagementChart.vbW} ${engagementChart.vbH}`}
+                className="block h-auto min-h-[200px] w-full"
+                preserveAspectRatio="xMidYMid meet"
+                role="img"
+                aria-label="Volume de candidatures traitées et refusées sur trois mois"
+              >
+                <defs>
+                  <linearGradient id={`${chartUid}-engFillA`} x1="0" y1="0" x2="0" y2="1">
+                    <stop offset="0%" stopColor="#CA1B28" stopOpacity="0.42" />
+                    <stop offset="100%" stopColor="#CA1B28" stopOpacity="0" />
+                  </linearGradient>
+                  <linearGradient id={`${chartUid}-engFillB`} x1="0" y1="0" x2="0" y2="1">
+                    <stop offset="0%" stopColor="#F472B6" stopOpacity="0.38" />
+                    <stop offset="100%" stopColor="#F472B6" stopOpacity="0" />
+                  </linearGradient>
+                </defs>
+                {engagementChart.yTicks.map((tv) => {
+                  const y = engagementChart.baseY - (tv / engagementChart.maxY) * engagementChart.ih;
+                  return (
+                    <g key={`eng-y-${tv}`}>
+                      <line
+                        x1={engagementChart.pl}
+                        x2={engagementChart.vbW - engagementChart.pr}
+                        y1={y}
+                        y2={y}
+                        stroke={isLight ? "rgb(0 0 0 / 0.08)" : "rgb(255 255 255 / 0.06)"}
+                        strokeWidth="1"
+                      />
+                      <text
+                        x={engagementChart.pl - 8}
+                        y={y + 4}
+                        textAnchor="end"
+                        fill={isLight ? "rgb(0 0 0 / 0.45)" : "rgb(255 255 255 / 0.38)"}
+                        style={{ fontSize: 10 }}
+                      >
+                        {tv}
+                      </text>
+                    </g>
+                  );
+                })}
+                <path d={engagementChart.areaB} fill={`url(#${chartUid}-engFillB)`} />
+                <path d={engagementChart.areaA} fill={`url(#${chartUid}-engFillA)`} />
+                <path
+                  d={engagementChart.pathB}
+                  fill="none"
+                  stroke="#F472B6"
+                  strokeWidth="2"
+                  strokeLinecap="round"
+                  strokeLinejoin="round"
+                />
+                <path
+                  d={engagementChart.pathA}
+                  fill="none"
+                  stroke="#CA1B28"
+                  strokeWidth="2.25"
+                  strokeLinecap="round"
+                  strokeLinejoin="round"
+                />
+                {last3MonthsSeries.map((m, i) => {
+                  const xa = engagementChart.ptsA[i];
+                  if (!xa) return null;
+                  return (
+                    <text
+                      key={`eng-xlab-${m.key}`}
+                      x={xa.x}
+                      y={engagementChart.vbH - 16}
+                      textAnchor="middle"
+                      fill={isLight ? "rgb(0 0 0 / 0.45)" : "rgb(255 255 255 / 0.38)"}
+                      style={{ fontSize: 10 }}
+                    >
+                      {m.label}
+                    </text>
+                  );
+                })}
+              </svg>
+            </div>
+
+            <div className="relative mt-3 flex flex-wrap gap-2 text-[11px]">
+              <span className={`rounded-full border px-2 py-1 ${isLight ? "border-black/10 text-black/65" : "border-white/12 text-white/50"}`}>
+                Réponses recruteur : {responseRate}%
+              </span>
+              <span className={`rounded-full border px-2 py-1 ${isLight ? "border-black/10 text-black/65" : "border-white/12 text-white/50"}`}>
+                Entretiens : {interviewStageRate}%
               </span>
             </div>
-            <p className={`text-[13px] mb-4 ${themedParagraphClass}`}>
-              Vue entonnoir de vos candidatures: deposees, traitees, converties en entretien puis en acceptation.
-            </p>
-
-            <div className="space-y-4">
-              <div>
-                <div className="flex items-center justify-between mb-1">
-                  <p className={`text-[11px] uppercase ${isLight ? "text-black/55" : "text-white/42"}`}>Reponse recruteur</p>
-                  <p className={`text-[12px] font-semibold ${isLight ? "text-black" : "text-white/70"}`}>{responseRate}%</p>
-                </div>
-                <div className={`h-2.5 rounded-full overflow-hidden ${isLight ? "bg-black/10" : "bg-white/10"}`}>
-                  <div className="h-full rounded-full bg-blue-500/70 transition-all duration-700" style={{ width: `${responseRate}%` }} />
-                </div>
-              </div>
-
-              <div>
-                <div className="flex items-center justify-between mb-1">
-                  <p className={`text-[11px] uppercase ${isLight ? "text-black/55" : "text-white/42"}`}>Passage entretien</p>
-                  <p className={`text-[12px] font-semibold ${isLight ? "text-black" : "text-white/70"}`}>{interviewStageRate}%</p>
-                </div>
-                <div className={`h-2.5 rounded-full overflow-hidden ${isLight ? "bg-black/10" : "bg-white/10"}`}>
-                  <div className="h-full rounded-full bg-amber-500/75 transition-all duration-700" style={{ width: `${interviewStageRate}%` }} />
-                </div>
-              </div>
-
-              <div>
-                <div className="flex items-center justify-between mb-1">
-                  <p className={`text-[11px] uppercase ${isLight ? "text-black/55" : "text-white/42"}`}>Conversion acceptee</p>
-                  <p className={`text-[12px] font-semibold ${isLight ? "text-black" : "text-white/70"}`}>{acceptedStageRate}%</p>
-                </div>
-                <div className={`h-2.5 rounded-full overflow-hidden ${isLight ? "bg-black/10" : "bg-white/10"}`}>
-                  <div className="h-full rounded-full bg-emerald-500/75 transition-all duration-700" style={{ width: `${acceptedStageRate}%` }} />
-                </div>
-              </div>
-            </div>
-
           </div>
-
         </div>
       )}
 
-      {/* Carte “Talent Cards” et “Candidatures récentes” supprimées */}
+      {/* Dernières candidatures + Volume vs refus (3 mois) : grille 2 colonnes */}
 
     </div>
   );
