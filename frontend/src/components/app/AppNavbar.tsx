@@ -71,13 +71,13 @@ export default function AppNavbar({ onToggleSidebar }: AppNavbarProps) {
               {user.email}
             </span>
             {avatarUrl ? (
-              <div className="w-7 h-7 rounded-full overflow-hidden bg-black/20 flex items-center justify-center ring-1 ring-tap-red/30 group-hover:ring-tap-red/80 group-hover:scale-105 transition-all duration-300">
+              <div className="relative h-7 w-7 shrink-0 rounded-full overflow-hidden bg-black/20 ring-1 ring-tap-red/30 group-hover:ring-tap-red/80 group-hover:scale-105 transition-all duration-300">
                 <Image
                   src={avatarUrl}
                   alt={user.email}
-                  width={28}
-                  height={28}
-                  className="w-7 h-7 object-cover"
+                  fill
+                  sizes="28px"
+                  className="object-cover object-center"
                 />
               </div>
             ) : (
@@ -108,13 +108,13 @@ export default function AppNavbar({ onToggleSidebar }: AppNavbarProps) {
           <div className="absolute right-0 top-[52px] w-64 bg-[#050505]/95 border border-white/[0.08] rounded-2xl shadow-lg backdrop-blur-xl overflow-hidden z-50">
             <div className="px-4 py-3 border-b border-white/[0.06] flex items-center gap-3">
               {avatarUrl ? (
-                <div className="w-8 h-8 rounded-full overflow-hidden bg-black/20 flex items-center justify-center ring-1 ring-tap-red/30">
+                <div className="relative h-8 w-8 shrink-0 rounded-full overflow-hidden bg-black/20 ring-1 ring-tap-red/30">
                   <Image
                     src={avatarUrl}
                     alt={user?.email || "Profil"}
-                    width={32}
-                    height={32}
-                    className="w-8 h-8 object-cover"
+                    fill
+                    sizes="32px"
+                    className="object-cover object-center"
                   />
                 </div>
               ) : (

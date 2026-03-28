@@ -22,10 +22,11 @@ export function useCandidatStats(enabled?: boolean) {
   });
 }
 
-export function useCandidatScore() {
+export function useCandidatScore(refetchInterval?: number | false) {
   return useQuery({
     queryKey: ['candidat', 'score'],
     queryFn: candidatService.getScore,
+    ...(refetchInterval !== undefined ? { refetchInterval } : {}),
   });
 }
 
@@ -270,6 +271,7 @@ export function useUploadCv() {
       queryClient.invalidateQueries({ queryKey: ['candidat', 'cv-files'] });
       queryClient.invalidateQueries({ queryKey: ['candidat', 'talentcard-files'] });
       queryClient.invalidateQueries({ queryKey: ['candidat', 'portfolio-pdfs'] });
+      queryClient.invalidateQueries({ queryKey: ['candidat', 'score'] });
       queryClient.invalidateQueries({ queryKey: ['candidat', 'generation-complete'] });
       const msg = isRegenerationRef.current
         ? 'CV importé — régénération de tous les fichiers en cours…'

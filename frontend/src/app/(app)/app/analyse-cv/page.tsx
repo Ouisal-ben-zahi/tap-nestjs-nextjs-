@@ -22,6 +22,7 @@ import { FileText, Upload, Award, Briefcase, Loader2, ArrowRight, RefreshCw, Che
 import Link from "next/link";
 import { useDashboardTheme } from "@/hooks/use-dashboard-theme";
 import { useUiStore } from "@/stores/ui";
+import CvUploadPhotoPromptModal from "@/components/app/candidat/CvUploadPhotoPromptModal";
 
 export default function AnalyseCvAppPage() {
   const { isCandidat } = useAuth();
@@ -49,7 +50,6 @@ export default function AnalyseCvAppPage() {
   const [dragOver, setDragOver] = useState(false);
   const [uploadBorderActive, setUploadBorderActive] = useState(false);
   const fileRef = useRef<HTMLInputElement>(null);
-  const imgRef = useRef<HTMLInputElement>(null);
 
   const [pendingCv, setPendingCv] = useState<File | null>(null);
   const [imgModalOpen, setImgModalOpen] = useState(false);
@@ -310,117 +310,24 @@ export default function AnalyseCvAppPage() {
         )}
       </div>
 
-      {/* Image prompt modal (when CV has no photo) */}
-      {imgModalOpen && (
-        <div className="fixed inset-0 z-50 flex items-center justify-center p-4">
-          <div
-            className="absolute inset-0 bg-black/60"
-            onClick={() => {
-              setImgModalOpen(false);
-              setModalChoice(null);
-              setSelectedImg(null);
-              setPendingCv(null);
-            }}
-          />
-          <div className={`relative w-full max-w-[520px] rounded-2xl border p-6 shadow-2xl ${
-            isLight ? "bg-white border-black/10" : "bg-zinc-950 border-white/10"
-          }`}>
-            <h3 className={`text-[15px] font-semibold ${isLight ? "text-black" : "text-white"}`}>
-              Photo du candidat
-            </h3>
-            <p className={`text-[13px] mt-1 font-light ${isLight ? "text-black/60" : "text-white/45"}`}>
-              Nous n&apos;avons pas trouvé de photo exploitable dans ce CV.
-            </p>
-
-            {modalMode === "replace_optional" && (
-              <div className="mt-4 space-y-2">
-                <label className={`flex items-center gap-2 text-[13px] ${isLight ? "text-black/80" : "text-white/80"}`}>
-                  <input
-                    type="checkbox"
-                    checked={modalChoice === "keep_existing"}
-                    onChange={() => setModalChoice("keep_existing")}
-                  />
-                  Utiliser mon image existante
-                </label>
-                <label className={`flex items-center gap-2 text-[13px] ${isLight ? "text-black/80" : "text-white/80"}`}>
-                  <input
-                    type="checkbox"
-                    checked={modalChoice === "upload_new"}
-                    onChange={() => setModalChoice("upload_new")}
-                  />
-                  Importer une nouvelle image
-                </label>
-              </div>
-            )}
-
-            {(modalMode === "need_image" || modalChoice === "upload_new") && (
-              <div className="mt-4 space-y-3">
-                <button
-                  type="button"
-                  className="btn-secondary btn-sm w-full justify-center"
-                  onClick={() => imgRef.current?.click()}
-                >
-                  Choisir une image (PNG/JPG)
-                </button>
-                <input
-                  ref={imgRef}
-                  type="file"
-                  accept="image/*"
-                  className="hidden"
-                  onChange={(e) => {
-                    const f = e.target.files?.[0] ?? null;
-                    setSelectedImg(f);
-                    e.target.value = "";
-                  }}
-                />
-                {selectedImg && (
-                  <div className={`text-[12px] ${isLight ? "text-black/60" : "text-white/45"}`}>
-                    Image sélectionnée: <span className={`${isLight ? "text-black" : "text-white"}`}>{selectedImg.name}</span>
-                  </div>
-                )}
-              </div>
-            )}
-
-            <div className="mt-6 flex flex-col gap-2">
-              {modalMode === "replace_optional" && modalChoice === "keep_existing" && (
-                <button
-                  type="button"
-                  className="btn-primary btn-sm w-full justify-center"
-                  onClick={() => void confirmUploadWithImageChoice("keep_existing")}
-                  disabled={uploadCv.isPending}
-                >
-                  Suivant
-                </button>
-              )}
-
-              {(modalMode === "need_image" || modalChoice === "upload_new") && (
-                <button
-                  type="button"
-                  className="btn-primary btn-sm w-full justify-center"
-                  onClick={() => void confirmUploadWithImageChoice("upload_new")}
-                  disabled={!selectedImg || uploadCv.isPending}
-                >
-                  {modalMode === "replace_optional" ? "Remplacer avec cette image" : "Continuer avec cette image"}
-                </button>
-              )}
-
-              <button
-                type="button"
-                className="btn-ghost btn-sm w-full justify-center"
-                onClick={() => {
-                  setImgModalOpen(false);
-                  setModalChoice(null);
-                  setSelectedImg(null);
-                  setPendingCv(null);
-                }}
-                disabled={uploadCv.isPending}
-              >
-                Annuler
-              </button>
-            </div>
-          </div>
-        </div>
-      )}
+      <CvUploadPhotoPromptModal
+        open={imgModalOpen}
+        onClose={() => {
+          setImgModalOpen(false);
+          setModalChoice(null);
+          setSelectedImg(null);
+          setPendingCv(null);
+        }}
+        isLight={isLight}
+        mode={modalMode}
+        choice={modalChoice ?? "upload_new"}
+        onChoiceChange={(c) => setModalChoice(c)}
+        selectedImageFile={selectedImg}
+        onSelectedImageChange={setSelectedImg}
+        isUploading={uploadCv.isPending}
+        onConfirmKeepExisting={() => void confirmUploadWithImageChoice("keep_existing")}
+        onConfirmWithNewImage={() => void confirmUploadWithImageChoice("upload_new")}
+      />
 
       {/* First-time analysis — in progress */}
       {isAnalyzing && (

@@ -1708,7 +1708,7 @@ export class DashboardService {
         name: file.name as string,
         path,
         publicUrl: signed.signedUrl,
-        updatedAt: (file.updated_at as string) ?? null,
+        updatedAt: this.storageListEntryBestTime(file),
         size,
       });
     }
@@ -1788,7 +1788,7 @@ export class DashboardService {
         name: file.name as string,
         path,
         publicUrl: signed.signedUrl,
-        updatedAt: (file.updated_at as string) ?? null,
+        updatedAt: this.storageListEntryBestTime(file),
         size,
       });
     }
@@ -1878,7 +1878,7 @@ export class DashboardService {
         name: file.name as string,
         path,
         publicUrl: signed.signedUrl,
-        updatedAt: (file.updated_at as string) ?? null,
+        updatedAt: this.storageListEntryBestTime(file),
         size,
       });
     }
@@ -1958,7 +1958,7 @@ export class DashboardService {
         name: file.name as string,
         path,
         publicUrl: signed.signedUrl,
-        updatedAt: (file.updated_at as string) ?? null,
+        updatedAt: this.storageListEntryBestTime(file),
         size,
       });
     }
@@ -2192,7 +2192,7 @@ export class DashboardService {
         name: file.name as string,
         path,
         publicUrl: signed.signedUrl,
-        updatedAt: (file.updated_at as string) ?? null,
+        updatedAt: this.storageListEntryBestTime(file),
         size,
       };
 
@@ -2225,6 +2225,32 @@ export class DashboardService {
     const parsedMs = new Date(value).getTime();
     if (!Number.isFinite(parsedMs)) return false;
     return parsedMs >= startedAtMs - 3000;
+  }
+
+  /**
+   * Horodatage exploitable pour « fichier frais » après génération.
+   * Certains backends (ex. S3-compatible) renvoient updated_at vide sur list() ; created_at reste souvent présent.
+   * `unknown` : entrée typée FileObject côté Supabase — pas de cast direct vers Record (TS2352).
+   */
+  private storageListEntryBestTime(file: unknown): string | null {
+    if (!file || typeof file !== 'object') return null;
+    const f = file as Record<string, unknown>;
+    const tryVal = (v: unknown): string | null => {
+      if (typeof v === 'string' && v.trim()) return v;
+      if (typeof v === 'number' && Number.isFinite(v)) {
+        const d = new Date(v > 1e12 ? v : v * 1000);
+        const ms = d.getTime();
+        return Number.isFinite(ms) ? d.toISOString() : null;
+      }
+      return null;
+    };
+    const meta = f.metadata as Record<string, unknown> | undefined;
+    return (
+      tryVal(f.updated_at) ??
+      tryVal(f.created_at) ??
+      tryVal(meta?.lastModified) ??
+      null
+    );
   }
 
   private hasMeaningfulScoreJson(score: CandidateScoreFromJson): boolean {
@@ -2487,7 +2513,7 @@ export class DashboardService {
         name: file.name as string,
         path,
         publicUrl: signed.signedUrl,
-        updatedAt: (file.updated_at as string) ?? null,
+        updatedAt: this.storageListEntryBestTime(file),
         size,
       };
 

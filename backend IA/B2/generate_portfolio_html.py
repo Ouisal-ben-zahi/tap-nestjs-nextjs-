@@ -650,6 +650,9 @@ def generate_portfolio_html(
             extra_ctx = build_long_portfolio_template_extra_context(
                 template_data["candidate"], candidate_id, inject_a2_scoring=True
             )
+        # One-page : même source A2 (a2_analyse.json) pour l’anneau « Score de matching » et score_details (barres)
+        elif version == "one-page" and template_data.get("candidate"):
+            _inject_scoring_into_candidate(template_data["candidate"], candidate_id)
 
         print("✅ Données transformées pour le template")
         

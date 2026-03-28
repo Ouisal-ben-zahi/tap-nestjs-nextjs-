@@ -1,7 +1,6 @@
 "use client";
 
 import Link from "next/link";
-import Image from "next/image";
 import { usePathname } from "next/navigation";
 import { useAuth } from "@/hooks/use-auth";
 import { useCandidatStats } from "@/hooks/use-candidat";
@@ -26,7 +25,8 @@ import {
   CalendarClock,
   Home,
 } from "lucide-react";
-
+import Image from "next/image";
+  
 const candidatNavItems = [
   { href: "/app", label: "Tableau de bord", icon: LayoutDashboard },
   { href: "/app/analyse-cv", label: "Analyse CV", icon: FileText },
@@ -139,7 +139,7 @@ export default function AppSidebar({
         {/* Top profil (double-clic sur la zone vide de la sidebar) */}
         <div className="hidden lg:flex relative z-10 flex-col items-center px-3 pt-5 pb-4">
           <div
-            className={`w-12 h-12 rounded-full overflow-hidden flex items-center justify-center border border-[#CA1B28]/80 ${
+            className={`relative h-12 w-12 shrink-0 rounded-full overflow-hidden border border-[#CA1B28]/80 ${
               isLight
                 ? "bg-[radial-gradient(circle_at_top,rgba(202,27,40,0.28),transparent_62%)]"
                 : "bg-[radial-gradient(circle_at_top,rgba(202,27,40,0.24),transparent_62%)]"
@@ -149,9 +149,9 @@ export default function AppSidebar({
               <Image
                 src={avatarUrl}
                 alt={user?.email || "Avatar"}
-                width={48}
-                height={48}
-                className="w-12 h-12 object-cover"
+                fill
+                sizes="48px"
+                className="object-cover object-center"
               />
             ) : (
               <div

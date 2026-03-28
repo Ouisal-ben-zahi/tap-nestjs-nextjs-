@@ -1,15 +1,35 @@
 "use client";
 
-import { useState, useCallback, useEffect } from "react";
+import { useState, useCallback, useEffect, useMemo } from "react";
 import { useAuth } from "@/hooks/use-auth";
-import { useCandidatCvFiles, useCandidatTalentcardFiles, useCandidatPortfolioPdfs, useUploadCv, useDeleteCvFile, useDeleteTalentcardFile, useDeletePortfolioPdfFile } from "@/hooks/use-candidat";
+import {
+  useCandidatCvFiles,
+  useCandidatTalentcardFiles,
+  useCandidatPortfolioPdfs,
+  useCandidatScore,
+  useCandidatStats,
+  useCheckCvHasPhoto,
+  useDeleteCandidateAvatar,
+  useUploadCv,
+  useDeleteCvFile,
+  useDeleteTalentcardFile,
+  useDeletePortfolioPdfFile,
+} from "@/hooks/use-candidat";
 import FileCard from "@/components/ui/FileCard";
 import EmptyState from "@/components/ui/EmptyState";
 import ErrorState from "@/components/ui/ErrorState";
 import { Skeleton } from "@/components/ui/Skeleton";
 import { FolderOpen, Award, Briefcase, Upload, LogOut } from "lucide-react";
 import PortfolioLongChatModal from "@/components/app/portfolio/PortfolioLongChatModal";
+import CandidatCvUploadGenerationPanel from "@/components/app/candidat/CandidatCvUploadGenerationPanel";
+import CvUploadPhotoPromptModal from "@/components/app/candidat/CvUploadPhotoPromptModal";
 import { useDashboardTheme } from "@/hooks/use-dashboard-theme";
+import { useUiStore } from "@/stores/ui";
+import {
+  isFreshGenerationTimestamp,
+  listHasFreshTimestamp,
+  portfolioOnePageSatisfiedForSession,
+} from "@/lib/candidat-upload-generation";
 
 type Tab = "cv" | "talentcard" | "portfolio" | "portfolio-long";
 
@@ -25,26 +45,37 @@ export default function MesFichiersPage() {
   const { isCandidat } = useAuth();
   const theme = useDashboardTheme();
   const isLight = theme === "light";
+  const addToast = useUiStore((s) => s.addToast);
+  const statsQuery = useCandidatStats();
+  const checkCvHasPhoto = useCheckCvHasPhoto();
+  const deleteAvatar = useDeleteCandidateAvatar();
 
   const [polling, setPolling] = useState(false);
-  const cvQuery = useCandidatCvFiles(polling ? 10000 : false);
-  const talentcardQuery = useCandidatTalentcardFiles(polling ? 10000 : false);
-  const portfolioQuery = useCandidatPortfolioPdfs(polling ? 10000 : false);
+  const pollMs = polling ? 2500 : false;
+  const cvQuery = useCandidatCvFiles(pollMs);
+  const talentcardQuery = useCandidatTalentcardFiles(pollMs);
+  const portfolioQuery = useCandidatPortfolioPdfs(pollMs);
+  const scoreQuery = useCandidatScore(pollMs);
   const uploadCv = useUploadCv();
   const deleteCv = useDeleteCvFile();
   const deleteTalentcard = useDeleteTalentcardFile();
   const deletePortfolioPdf = useDeletePortfolioPdfFile();
   const [portfolioLongModalOpen, setPortfolioLongModalOpen] = useState(false);
+  const [cvGenerationStartedAt, setCvGenerationStartedAt] = useState<number | null>(null);
+  /** Recalcul périodique du « temps écoulé » (timestamps stockage parfois absents). */
+  const [genTick, setGenTick] = useState(0);
 
   const [dragOver, setDragOver] = useState(false);
+  const [pendingCv, setPendingCv] = useState<File | null>(null);
+  const [imgModalOpen, setImgModalOpen] = useState(false);
+  const [selectedImg, setSelectedImg] = useState<File | null>(null);
+  const [modalMode, setModalMode] = useState<"need_image" | "replace_optional">("need_image");
+  const [modalChoice, setModalChoice] = useState<"keep_existing" | "upload_new" | null>(null);
 
-  // Après upload d'un nouveau CV, activer un polling temporaire
-  // pour afficher automatiquement les fichiers générés sans refresh.
-  useEffect(() => {
-    if (uploadCv.isSuccess) {
-      setPolling(true);
-    }
-  }, [uploadCv.isSuccess]);
+  const beginCvGenerationTracking = useCallback(() => {
+    setCvGenerationStartedAt(Date.now());
+    setPolling(true);
+  }, []);
 
   useEffect(() => {
     if (!polling) return;
@@ -54,20 +85,154 @@ export default function MesFichiersPage() {
     return () => window.clearTimeout(timeout);
   }, [polling]);
 
-  const handleDrop = useCallback((e: React.DragEvent) => {
-    e.preventDefault();
-    setDragOver(false);
-    const file = e.dataTransfer.files[0];
-    if (file && file.type === "application/pdf") {
-      uploadCv.mutate({ file });
-    }
-  }, [uploadCv]);
+  useEffect(() => {
+    if (cvGenerationStartedAt == null || !polling) return;
+    const id = window.setInterval(() => setGenTick((t) => t + 1), 2000);
+    return () => window.clearInterval(id);
+  }, [cvGenerationStartedAt, polling]);
 
-  const handleFileSelect = useCallback((e: React.ChangeEvent<HTMLInputElement>) => {
-    const file = e.target.files?.[0];
-    if (file) uploadCv.mutate({ file });
-    e.target.value = "";
-  }, [uploadCv]);
+  const runCvUploadWithTracking = useCallback(
+    (payload: { file: File; imgFile?: File | null }) => {
+      uploadCv.mutate(payload, {
+        onSuccess: () => beginCvGenerationTracking(),
+      });
+    },
+    [uploadCv, beginCvGenerationTracking],
+  );
+
+  const startUploadFlow = useCallback(
+    async (file: File) => {
+      let hasPhotoInCv = false;
+      try {
+        const res = await checkCvHasPhoto.mutateAsync(file);
+        hasPhotoInCv = Boolean(res?.has_photo);
+      } catch {
+        hasPhotoInCv = false;
+      }
+
+      const existingAvatarUrl = (statsQuery.data?.avatarUrl ?? "").trim();
+      const hasExistingAvatar = Boolean(existingAvatarUrl);
+
+      if (hasPhotoInCv) {
+        runCvUploadWithTracking({ file });
+        return;
+      }
+
+      setPendingCv(file);
+      setSelectedImg(null);
+      setModalMode(hasExistingAvatar ? "replace_optional" : "need_image");
+      setModalChoice(hasExistingAvatar ? "keep_existing" : "upload_new");
+      setImgModalOpen(true);
+    },
+    [checkCvHasPhoto, statsQuery.data?.avatarUrl, runCvUploadWithTracking],
+  );
+
+  const confirmUploadWithImageChoice = useCallback(
+    async (choice: "keep_existing" | "upload_new") => {
+      const cvFile = pendingCv;
+      if (!cvFile) {
+        setImgModalOpen(false);
+        return;
+      }
+
+      if (choice === "keep_existing") {
+        setImgModalOpen(false);
+        runCvUploadWithTracking({ file: cvFile });
+        setPendingCv(null);
+        return;
+      }
+
+      if (!selectedImg) {
+        addToast({ message: "Veuillez sélectionner une image", type: "error" });
+        return;
+      }
+
+      try {
+        await deleteAvatar.mutateAsync();
+      } catch {
+        // non-bloquant
+      }
+
+      setImgModalOpen(false);
+      runCvUploadWithTracking({ file: cvFile, imgFile: selectedImg });
+      setPendingCv(null);
+    },
+    [addToast, deleteAvatar, pendingCv, selectedImg, runCvUploadWithTracking],
+  );
+
+  const handleDrop = useCallback(
+    (e: React.DragEvent) => {
+      e.preventDefault();
+      setDragOver(false);
+      const file = e.dataTransfer.files[0];
+      if (file && file.type === "application/pdf") {
+        void startUploadFlow(file);
+      }
+    },
+    [startUploadFlow],
+  );
+
+  const handleFileSelect = useCallback(
+    (e: React.ChangeEvent<HTMLInputElement>) => {
+      const file = e.target.files?.[0];
+      if (file) void startUploadFlow(file);
+      e.target.value = "";
+    },
+    [startUploadFlow],
+  );
+
+  const portfolioFilesForGen = portfolioQuery.data?.portfolioPdfFiles ?? [];
+  const shortForGen = portfolioFilesForGen.filter((f) => f.type !== "long");
+  const longForGen = portfolioFilesForGen.filter((f) => f.type === "long");
+
+  const showCvGenerationPanel = useMemo(() => {
+    if (cvGenerationStartedAt == null) return false;
+    const tc = talentcardQuery.data?.talentcardFiles ?? [];
+    const cv = cvQuery.data?.cvFiles ?? [];
+    const sc = scoreQuery.data ?? null;
+    const started = cvGenerationStartedAt;
+    void genTick;
+    const elapsedMs = Date.now() - started;
+
+    const hasTap = cv.some((f) => {
+      const n = String(f.name || "")
+        .trim()
+        .toLowerCase();
+      return (
+        n.startsWith("cv_tap") &&
+        n.endsWith(".pdf") &&
+        isFreshGenerationTimestamp(f.updatedAt, started)
+      );
+    });
+    const talentOk = listHasFreshTimestamp(tc, started);
+    const cvTapAndTalentFresh = talentOk && hasTap;
+    const scoringOk =
+      isFreshGenerationTimestamp(sc?.metadataTimestamp ?? null, started) ||
+      (elapsedMs > 90_000 &&
+        cvTapAndTalentFresh &&
+        (typeof sc?.scoreGlobal === "number" ||
+          (Array.isArray(sc?.dimensions) && sc.dimensions.length > 0)));
+    const prerequisiteStepsDone = cvTapAndTalentFresh && scoringOk;
+    const portfolioOk = portfolioOnePageSatisfiedForSession({
+      portfolioShort: shortForGen,
+      portfolioLong: longForGen,
+      startedAtMs: started,
+      elapsedMs,
+      prerequisiteStepsDone,
+      cvTapAndTalentFreshForSession: cvTapAndTalentFresh,
+    });
+    const allDone = prerequisiteStepsDone && portfolioOk;
+    return polling || !allDone;
+  }, [
+    genTick,
+    cvGenerationStartedAt,
+    cvQuery.data?.cvFiles,
+    talentcardQuery.data?.talentcardFiles,
+    scoreQuery.data,
+    shortForGen,
+    longForGen,
+    polling,
+  ]);
 
   if (!isCandidat) {
     return (
@@ -178,6 +343,18 @@ export default function MesFichiersPage() {
               </>
             )}
           </div>
+
+          {showCvGenerationPanel && cvGenerationStartedAt != null ? (
+            <CandidatCvUploadGenerationPanel
+              startedAtMs={cvGenerationStartedAt}
+              isLight={isLight}
+              cvFiles={cvQuery.data?.cvFiles ?? []}
+              talentcardFiles={talentcardQuery.data?.talentcardFiles ?? []}
+              score={scoreQuery.data ?? null}
+              portfolioShort={shortForGen}
+              portfolioLong={longForGen}
+            />
+          ) : null}
 
           {/* Files list */}
           {cvQuery.isLoading ? (
@@ -313,6 +490,25 @@ export default function MesFichiersPage() {
       <PortfolioLongChatModal
         open={portfolioLongModalOpen}
         onClose={() => setPortfolioLongModalOpen(false)}
+      />
+
+      <CvUploadPhotoPromptModal
+        open={imgModalOpen}
+        onClose={() => {
+          setImgModalOpen(false);
+          setModalChoice(null);
+          setSelectedImg(null);
+          setPendingCv(null);
+        }}
+        isLight={isLight}
+        mode={modalMode}
+        choice={modalChoice ?? "upload_new"}
+        onChoiceChange={(c) => setModalChoice(c)}
+        selectedImageFile={selectedImg}
+        onSelectedImageChange={setSelectedImg}
+        isUploading={uploadCv.isPending}
+        onConfirmKeepExisting={() => void confirmUploadWithImageChoice("keep_existing")}
+        onConfirmWithNewImage={() => void confirmUploadWithImageChoice("upload_new")}
       />
     </div>
   );
