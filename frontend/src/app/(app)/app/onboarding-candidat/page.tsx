@@ -10,6 +10,7 @@ import { candidatService } from "@/services/candidat.service";
 import DropdownSelect from "@/components/app/DropdownSelect";
 import { DOMAINE_GROUPS } from "@/constants/domaines";
 import { useUiStore } from "@/stores/ui";
+import { useDashboardTheme } from "@/hooks/use-dashboard-theme";
 
 type OtherLink = { type: string; url: string };
 
@@ -167,6 +168,10 @@ const PAYS_GROUPS: DropdownGroup[] = [
 export default function OnboardingCandidatPage() {
   const { isCandidat } = useAuth();
   const router = useRouter();
+  const theme = useDashboardTheme();
+  const isLight = theme === "light";
+  const inputClass = "input-premium w-full";
+  const labelCls = `block text-[11px] mb-1.5 ${isLight ? "text-black/70" : "text-white/50"}`;
   const FLASK_AI_URL =
     process.env.NEXT_PUBLIC_FLASK_AI_URL ?? "http://31.97.196.196:5002";
 
@@ -670,78 +675,127 @@ export default function OnboardingCandidatPage() {
     }
   };
 
+  const fileInputClass = [
+    "block w-full text-[13px] file:mr-3 file:rounded-lg file:border-0 file:px-3 file:py-1.5 file:text-[12px] file:font-medium",
+    isLight
+      ? "text-black/70 file:bg-black/5 file:text-black hover:file:bg-black/10"
+      : "text-white/70 file:bg-white/10 file:text-white hover:file:bg-white/20",
+  ].join(" ");
+  const fileRowBox = isLight
+    ? "mt-2 flex items-center justify-between rounded-lg border border-black/10 bg-black/[0.03] px-3 py-2 text-[12px]"
+    : "mt-2 flex items-center justify-between rounded-lg bg-white/5 px-3 py-2 text-[12px]";
+  const fileNameText = isLight ? "text-black/80 truncate" : "text-white/80 truncate";
+  const genPanelClass = isLight
+    ? "mt-5 rounded-xl border border-black/10 bg-black/[0.03] p-4 text-left"
+    : "mt-5 rounded-xl border border-white/15 bg-black/25 p-4 text-left";
+
   return (
-    <div className="max-w-[900px] mx-auto py-8">
-      <div className="mb-8 text-center">
-        <h1 className="text-[28px] sm:text-[32px] font-bold text-white mb-2 tracking-[-0.04em]">
-          Compléter mon profil candidat
+    <div className="max-w-[800px] mx-auto space-y-8 py-6 sm:py-10 px-1">
+      <div
+        className={`relative mb-2 pb-6 ${isLight ? "border-b border-black/10" : "border-b border-white/[0.04]"}`}
+      >
+        <h1
+          className={`text-[26px] sm:text-[32px] font-bold tracking-[-0.04em] font-heading ${isLight ? "text-black" : "text-white"}`}
+        >
+          Complète ton profil candidat
         </h1>
-        <p className="text-white/60 text-[14px]">
+        <p
+          className={`text-[14px] mt-2 font-light max-w-xl ${isLight ? "text-black/60" : "text-white/45"}`}
+        >
           Je t&apos;accompagne pour créer ton profil professionnel étape par
           étape.
         </p>
       </div>
 
       {error && (
-        <div className="mb-6 rounded-xl border border-red-500/40 bg-red-500/10 px-4 py-3 text-sm text-red-200">
+        <div
+          className={`rounded-xl border px-4 py-3 text-sm ${
+            isLight
+              ? "border-red-200 bg-red-50 text-red-900"
+              : "border-red-500/40 bg-red-500/10 text-red-200"
+          }`}
+        >
           {error}
         </div>
       )}
 
-      {/* Wizard Progress */}
-      <div className="mb-8 flex items-center justify-center gap-2">
-        {wizardSteps.map((step, index) => (
-          <div key={step.id} className="flex items-center gap-2">
-            <div
-              className={[
-                "w-9 h-9 rounded-full flex items-center justify-center text-xs font-semibold",
-                currentWizardStep === step.id
-                  ? "bg-tap-red text-white"
-                  : currentWizardStep > step.id
-                    ? "bg-emerald-500 text-white"
-                    : "bg-white/10 text-white/50",
-              ].join(" ")}
-            >
-              {currentWizardStep > step.id ? "✓" : step.id}
-            </div>
-            {index < wizardSteps.length - 1 && (
+      <div
+        className={`rounded-2xl p-5 sm:p-6 space-y-6 ${isLight ? "card-luxury-light" : "bg-zinc-900/50 border border-white/[0.06]"}`}
+      >
+        {/* Wizard Progress */}
+        <div className="flex items-center justify-center gap-2 flex-wrap">
+          {wizardSteps.map((step, index) => (
+            <div key={step.id} className="flex items-center gap-2">
               <div
                 className={[
-                  "w-10 h-0.5",
-                  currentWizardStep > step.id
-                    ? "bg-emerald-500"
-                    : "bg-white/10",
+                  "w-9 h-9 rounded-full flex items-center justify-center text-xs font-semibold",
+                  currentWizardStep === step.id
+                    ? "bg-tap-red text-white"
+                    : currentWizardStep > step.id
+                      ? "bg-emerald-500 text-white"
+                      : isLight
+                        ? "bg-black/10 text-black/45"
+                        : "bg-white/10 text-white/50",
                 ].join(" ")}
-              />
-            )}
-          </div>
-        ))}
-      </div>
-
-      {/* AI Message */}
-      <div className="mb-6 rounded-2xl border border-tap-red/25 bg-tap-red/10 p-5">
-        <h3 className="text-sm font-semibold text-white mb-1">
-          {currentStepData.title}
-        </h3>
-        <p className="text-[13px] text-white/80 mb-2">
-          {currentStepData.aiMessage}
-        </p>
-        <div className="rounded-xl border border-tap-red/25 bg-black/20 p-3 text-[12px] text-white/80 space-y-1">
-          <p>{currentStepData.aiExplanation}</p>
-          <p>{currentStepData.whatAiDoes}</p>
+              >
+                {currentWizardStep > step.id ? "✓" : step.id}
+              </div>
+              {index < wizardSteps.length - 1 && (
+                <div
+                  className={[
+                    "w-10 h-0.5",
+                    currentWizardStep > step.id
+                      ? "bg-emerald-500"
+                      : isLight
+                        ? "bg-black/10"
+                        : "bg-white/10",
+                  ].join(" ")}
+                />
+              )}
+            </div>
+          ))}
         </div>
-      </div>
 
-      {/* Form */}
-      <form
-        onSubmit={currentWizardStep === 4 ? handleSubmit : (e) => e.preventDefault()}
-        className="rounded-2xl border border-white/10 bg-zinc-900/60 p-5 space-y-5"
-      >
+        {/* AI Message */}
+        <div
+          className={`rounded-2xl p-5 ${
+            isLight
+              ? "border border-tap-red/20 bg-tap-red/[0.06]"
+              : "border border-tap-red/25 bg-tap-red/10"
+          }`}
+        >
+          <h3
+            className={`text-sm font-semibold mb-1 ${isLight ? "text-black" : "text-white"}`}
+          >
+            {currentStepData.title}
+          </h3>
+          <p
+            className={`text-[13px] mb-2 ${isLight ? "text-black/75" : "text-white/80"}`}
+          >
+            {currentStepData.aiMessage}
+          </p>
+          <div
+            className={`rounded-xl border p-3 text-[12px] space-y-1 ${
+              isLight
+                ? "border-black/10 bg-black/[0.03] text-black/70"
+                : "border-tap-red/25 bg-black/20 text-white/80"
+            }`}
+          >
+            <p>{currentStepData.aiExplanation}</p>
+            <p>{currentStepData.whatAiDoes}</p>
+          </div>
+        </div>
+
+        {/* Form */}
+        <form
+          onSubmit={currentWizardStep === 4 ? handleSubmit : (e) => e.preventDefault()}
+          className="space-y-5"
+        >
         {/* Étape 1 */}
         {currentWizardStep === 1 && (
-          <div className="space-y-4">
-            <div>
-              <label className="block text-[12px] font-semibold uppercase tracking-[2px] text-white/50 mb-2">
+          <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
+            <div className="min-w-0">
+              <label className={labelCls}>
                 Nationalité *
               </label>
               <DropdownSelect
@@ -749,10 +803,11 @@ export default function OnboardingCandidatPage() {
                 onChange={setNationality}
                 placeholder="Ex: Marocaine, Française, Canadienne..."
                 groups={NATIONALITE_GROUPS}
+                isLight={isLight}
               />
             </div>
-            <div>
-              <label className="block text-[12px] font-semibold uppercase tracking-[2px] text-white/50 mb-2">
+            <div className="min-w-0">
+              <label className={labelCls}>
                 Pays de résidence actuel *
               </label>
               <DropdownSelect
@@ -760,10 +815,11 @@ export default function OnboardingCandidatPage() {
                 onChange={setLocationCountry}
                 placeholder="Ex: Maroc, France, Canada..."
                 groups={PAYS_GROUPS}
+                isLight={isLight}
               />
             </div>
-            <div>
-              <label className="block text-[12px] font-semibold uppercase tracking-[2px] text-white/50 mb-2">
+            <div className="min-w-0">
+              <label className={labelCls}>
                 Niveau de séniorité *
               </label>
               <DropdownSelect
@@ -771,10 +827,11 @@ export default function OnboardingCandidatPage() {
                 onChange={setSeniorityLevel}
                 placeholder="Sélectionner..."
                 groups={SENIORITY_GROUPS}
+                isLight={isLight}
               />
             </div>
-            <div>
-              <label className="block text-[12px] font-semibold uppercase tracking-[2px] text-white/50 mb-2">
+            <div className="min-w-0">
+              <label className={labelCls}>
                 Disponibilité *
               </label>
               <DropdownSelect
@@ -782,6 +839,7 @@ export default function OnboardingCandidatPage() {
                 onChange={setDisponibilite}
                 placeholder="Sélectionner..."
                 groups={DISPONIBILITE_GROUPS}
+                isLight={isLight}
               />
             </div>
           </div>
@@ -789,20 +847,20 @@ export default function OnboardingCandidatPage() {
 
         {/* Étape 2 */}
         {currentWizardStep === 2 && (
-          <div className="space-y-4">
-            <div>
-              <label className="block text-[12px] font-semibold uppercase tracking-[2px] text-white/50 mb-2">
+          <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
+            <div className="min-w-0">
+              <label className={labelCls}>
                 Poste cible *
               </label>
               <input
                 value={targetPosition}
                 onChange={(e) => setTargetPosition(e.target.value)}
                 placeholder="Ex: Data Scientist, Software Engineer..."
-                className="input-premium"
+                className={inputClass}
               />
             </div>
-            <div>
-              <label className="block text-[12px] font-semibold uppercase tracking-[2px] text-white/50 mb-2">
+            <div className="min-w-0">
+              <label className={labelCls}>
                 Pays cible *
               </label>
               <DropdownSelect
@@ -810,10 +868,11 @@ export default function OnboardingCandidatPage() {
                 onChange={setTargetCountry}
                 placeholder="Ex: France, Canada, USA..."
                 groups={PAYS_GROUPS}
+                isLight={isLight}
               />
             </div>
-            <div>
-              <label className="block text-[12px] font-semibold uppercase tracking-[2px] text-white/50 mb-2">
+            <div className="min-w-0">
+              <label className={labelCls}>
                 Prêt à relocaliser
               </label>
               <DropdownSelect
@@ -821,34 +880,35 @@ export default function OnboardingCandidatPage() {
                 onChange={setPretARelocater}
                 placeholder="Non spécifié"
                 groups={RELOCATION_GROUPS}
+                isLight={isLight}
               />
             </div>
-            <div>
-              <label className="block text-[12px] font-semibold uppercase tracking-[2px] text-white/50 mb-2">
+            <div className="min-w-0 sm:col-span-2">
+              <label className={labelCls}>
                 Exigences / Pré-requis *
               </label>
               <textarea
                 value={constraints}
                 onChange={(e) => setConstraints(e.target.value)}
                 rows={3}
-                className="input-premium min-h-[80px]"
+                className={`${inputClass} min-h-[88px] resize-none`}
                 placeholder="Ex: Télétravail 3 jours/semaine, localisation Casablanca, etc."
               />
             </div>
-            <div>
-              <label className="block text-[12px] font-semibold uppercase tracking-[2px] text-white/50 mb-2">
+            <div className="min-w-0 sm:col-span-2">
+              <label className={labelCls}>
                 Ce que tu recherches *
               </label>
               <textarea
                 value={searchCriteria}
                 onChange={(e) => setSearchCriteria(e.target.value)}
                 rows={3}
-                className="input-premium min-h-[80px]"
+                className={`${inputClass} min-h-[88px] resize-none`}
                 placeholder="Ex: opportunités de croissance, projets IA, environnement startup..."
               />
             </div>
-            <div>
-              <label className="block text-[12px] font-semibold uppercase tracking-[2px] text-white/50 mb-2">
+            <div className="min-w-0">
+              <label className={labelCls}>
                 Salaire minimum (MAD) *
               </label>
               <input
@@ -861,11 +921,11 @@ export default function OnboardingCandidatPage() {
                   setSalaireMinimum(digitsOnly);
                 }}
                 placeholder="Ex: 8000"
-                className="input-premium"
+                className={inputClass}
               />
             </div>
-            <div>
-              <label className="block text-[12px] font-semibold uppercase tracking-[2px] text-white/50 mb-2">
+            <div className="min-w-0 sm:col-span-2">
+              <label className={labelCls}>
                 Types de contrat recherchés *
               </label>
               <div className="flex flex-wrap gap-2 text-[12px]">
@@ -883,10 +943,12 @@ export default function OnboardingCandidatPage() {
                         );
                       }}
                       className={[
-                        "px-3 py-1.5 rounded-full border",
+                        "px-3 py-1.5 rounded-full border transition-colors",
                         active
                           ? "border-tap-red bg-tap-red/20 text-white"
-                          : "border-white/20 text-white/60 hover:border-white/40",
+                          : isLight
+                            ? "border-black/15 text-black/60 hover:border-black/30"
+                            : "border-white/20 text-white/60 hover:border-white/40",
                       ].join(" ")}
                     >
                       {type}
@@ -895,8 +957,8 @@ export default function OnboardingCandidatPage() {
                 })}
               </div>
             </div>
-            <div>
-              <label className="block text-[12px] font-semibold uppercase tracking-[2px] text-white/50 mb-2">
+            <div className="min-w-0 sm:col-span-2">
+              <label className={labelCls}>
                 Domaine d&apos;activité *
               </label>
               <DropdownSelect
@@ -904,6 +966,7 @@ export default function OnboardingCandidatPage() {
                 onChange={setDomaineActivite}
                 placeholder="Sélectionner..."
                 groups={DOMAINE_GROUPS}
+                isLight={isLight}
               />
               <select
                 value={domaineActivite}
@@ -1045,7 +1108,7 @@ export default function OnboardingCandidatPage() {
         {currentWizardStep === 3 && (
           <div className="space-y-4">
             <div>
-              <label className="block text-[12px] font-semibold uppercase tracking-[2px] text-white/50 mb-2">
+              <label className={labelCls}>
                 CV (PDF ou DOCX)
               </label>
               <input
@@ -1053,11 +1116,11 @@ export default function OnboardingCandidatPage() {
                 accept=".pdf,.doc,.docx"
                 onChange={handleFileChange}
                 required
-                className="block w-full text-[13px] text-white/70 file:mr-3 file:rounded-lg file:border-0 file:bg-white/10 file:px-3 file:py-1.5 file:text-[12px] file:font-medium file:text-white hover:file:bg-white/20"
+                className={fileInputClass}
               />
               {cvFile && (
-                <div className="mt-2 flex items-center justify-between rounded-lg bg-white/5 px-3 py-2 text-[12px]">
-                  <span className="text-white/80 truncate">{cvFile.name}</span>
+                <div className={fileRowBox}>
+                  <span className={fileNameText}>{cvFile.name}</span>
                   <button
                     type="button"
                     onClick={handleRemoveCv}
@@ -1067,20 +1130,22 @@ export default function OnboardingCandidatPage() {
                   </button>
                 </div>
               )}
-              <p className="mt-1 text-[11px] text-white/50">
+              <p
+                className={`mt-1 text-[11px] ${isLight ? "text-black/50" : "text-white/50"}`}
+              >
                 💡 Je vais extraire automatiquement tes compétences, expériences et
                 réalisations de ton CV.
               </p>
             </div>
 
             {checkingCvPhoto && cvFile && (
-              <p className="text-[12px] text-white/60">
+              <p className={`text-[12px] ${isLight ? "text-black/55" : "text-white/60"}`}>
                 Vérification de la photo dans ton CV...
               </p>
             )}
 
             {cvFile && !checkingCvPhoto && cvNeedsManualPhoto === null && (
-              <p className="text-[12px] text-white/50">
+              <p className={`text-[12px] ${isLight ? "text-black/50" : "text-white/50"}`}>
                 Impossible de vérifier si ton CV contient une photo. Tu peux
                 continuer, ou ajouter une photo si tu veux.
               </p>
@@ -1088,18 +1153,18 @@ export default function OnboardingCandidatPage() {
 
             {cvFile && cvNeedsManualPhoto === true && (
               <div>
-                <label className="block text-[12px] font-semibold uppercase tracking-[2px] text-white/50 mb-2">
+                <label className={labelCls}>
                   Photo professionnelle *
                 </label>
                 <input
                   type="file"
                   accept=".jpg,.jpeg,.png"
                   onChange={handleImageChange}
-                  className="block w-full text-[13px] text-white/70 file:mr-3 file:rounded-lg file:border-0 file:bg-white/10 file:px-3 file:py-1.5 file:text-[12px] file:font-medium file:text-white hover:file:bg-white/20"
+                  className={fileInputClass}
                 />
                 {imgFile && (
-                  <div className="mt-2 flex items-center justify-between rounded-lg bg-white/5 px-3 py-2 text-[12px]">
-                    <span className="text-white/80 truncate">{imgFile.name}</span>
+                  <div className={fileRowBox}>
+                    <span className={fileNameText}>{imgFile.name}</span>
                     <button
                       type="button"
                       onClick={handleRemoveImage}
@@ -1109,14 +1174,16 @@ export default function OnboardingCandidatPage() {
                     </button>
                   </div>
                 )}
-                <p className="mt-1 text-[11px] text-white/50">
+                <p
+                  className={`mt-1 text-[11px] ${isLight ? "text-black/50" : "text-white/50"}`}
+                >
                   Ton CV ne contient pas de photo détectable, ajoute-en une pour
                   améliorer la Talent Card.
                 </p>
               </div>
             )}
             <div>
-              <label className="block text-[12px] font-semibold uppercase tracking-[2px] text-white/50 mb-2">
+              <label className={labelCls}>
                 OU URL LinkedIn (obligatoire avec GitHub ou seul)
               </label>
               <input
@@ -1124,11 +1191,11 @@ export default function OnboardingCandidatPage() {
                 value={linkedinUrl}
                 onChange={(e) => setLinkedinUrl(e.target.value)}
                 placeholder="https://www.linkedin.com/in/..."
-                className="input-premium"
+                className={inputClass}
               />
             </div>
             <div>
-              <label className="block text-[12px] font-semibold uppercase tracking-[2px] text-white/50 mb-2">
+              <label className={labelCls}>
                 URL GitHub (obligatoire avec LinkedIn ou seul)
               </label>
               <input
@@ -1136,14 +1203,14 @@ export default function OnboardingCandidatPage() {
                 value={githubUrl}
                 onChange={(e) => setGithubUrl(e.target.value)}
                 placeholder="https://github.com/..."
-                className="input-premium"
+                className={inputClass}
               />
             </div>
-            <p className="text-[11px] text-white/45">
+            <p className={`text-[11px] ${isLight ? "text-black/45" : "text-white/45"}`}>
               Au moins une URL est obligatoire : LinkedIn ou GitHub.
             </p>
             <div>
-              <label className="block text-[12px] font-semibold uppercase tracking-[2px] text-white/50 mb-2">
+              <label className={labelCls}>
                 Autres liens (optionnel)
               </label>
               <div className="space-y-2">
@@ -1160,7 +1227,7 @@ export default function OnboardingCandidatPage() {
                         setOtherLinks(next);
                       }}
                       placeholder="Ex: Portfolio, Instagram..."
-                      className="input-premium flex-1"
+                      className={`${inputClass} flex-1`}
                     />
                     <input
                       value={link.url}
@@ -1170,7 +1237,7 @@ export default function OnboardingCandidatPage() {
                         setOtherLinks(next);
                       }}
                       placeholder="https://..."
-                      className="input-premium flex-[2]"
+                      className={`${inputClass} flex-[2]`}
                     />
                     <button
                       type="button"
@@ -1202,30 +1269,43 @@ export default function OnboardingCandidatPage() {
         {/* Étape 4 */}
         {currentWizardStep === 4 && (
           <div className="space-y-4 text-center">
-            <h3 className="text-lg font-semibold text-white mb-2">
-               Ton profil est complet !
+            <h3
+              className={`text-lg font-semibold mb-2 ${isLight ? "text-black" : "text-white"}`}
+            >
+              Ton profil est complet !
             </h3>
             {showResumeHint && !loading && (
-              <div className="mb-4 rounded-xl border border-amber-500/35 bg-amber-500/10 px-4 py-3 text-left text-[13px] text-amber-100/95">
+              <div
+                className={`mb-4 rounded-xl border px-4 py-3 text-left text-[13px] ${
+                  isLight
+                    ? "border-amber-600/30 bg-amber-500/[0.12] text-amber-950/90"
+                    : "border-amber-500/35 bg-amber-500/10 text-amber-100/95"
+                }`}
+              >
                 La génération des fichiers n’était pas terminée. Clique sur{" "}
                 <span className="font-semibold">Finaliser mon profil</span> pour
                 relancer l’envoi et suivre la progression (toasts en haut à droite).
               </div>
             )}
-            
-            <p className="text-[12px] text-white/50">
+            <p className={`text-[12px] ${isLight ? "text-black/50" : "text-white/50"}`}>
               La génération peut prendre quelques instants. Tu pourras ensuite
               utiliser ton profil pour le matching et les candidatures.
             </p>
             {loading && (
-              <div className="mt-5 rounded-xl border border-white/15 bg-black/25 p-4 text-left">
+              <div className={genPanelClass}>
                 <div className="mb-2 flex items-center justify-between text-[12px]">
-                  <span className="text-white/80">Progression de la génération</span>
-                  <span className="font-semibold text-white">
+                  <span className={isLight ? "text-black/70" : "text-white/80"}>
+                    Progression de la génération
+                  </span>
+                  <span
+                    className={`font-semibold ${isLight ? "text-black" : "text-white"}`}
+                  >
                     {generationProgress}%
                   </span>
                 </div>
-                <div className="h-2 w-full overflow-hidden rounded-full bg-white/10">
+                <div
+                  className={`h-2 w-full overflow-hidden rounded-full ${isLight ? "bg-black/10" : "bg-white/10"}`}
+                >
                   <div
                     className="h-full rounded-full bg-tap-red transition-all duration-500 ease-out"
                     style={{ width: `${generationProgress}%` }}
@@ -1244,10 +1324,16 @@ export default function OnboardingCandidatPage() {
                         <span
                           className={
                             isDone
-                              ? "text-emerald-300"
+                              ? isLight
+                                ? "text-emerald-700"
+                                : "text-emerald-300"
                               : isCurrent
-                                ? "text-white"
-                                : "text-white/45"
+                                ? isLight
+                                  ? "text-black"
+                                  : "text-white"
+                                : isLight
+                                  ? "text-black/40"
+                                  : "text-white/45"
                           }
                         >
                           {step.label}
@@ -1255,10 +1341,14 @@ export default function OnboardingCandidatPage() {
                         <span
                           className={
                             isDone
-                              ? "text-emerald-300"
+                              ? isLight
+                                ? "text-emerald-700"
+                                : "text-emerald-300"
                               : isCurrent
                                 ? "text-tap-red"
-                                : "text-white/40"
+                                : isLight
+                                  ? "text-black/35"
+                                  : "text-white/40"
                           }
                         >
                           {isDone
@@ -1277,12 +1367,14 @@ export default function OnboardingCandidatPage() {
         )}
 
         {/* Navigation */}
-        <div className="mt-6 pt-4 border-t border-white/10 flex items-center justify-between">
+        <div
+          className={`mt-6 pt-4 border-t flex items-center justify-between ${isLight ? "border-black/10" : "border-white/10"}`}
+        >
           {currentWizardStep > 1 ? (
             <button
               type="button"
               onClick={handlePrevious}
-              className="text-[12px] text-white/60 hover:text-white"
+              className={`text-[12px] ${isLight ? "text-black/50 hover:text-black" : "text-white/60 hover:text-white"}`}
             >
               ← Précédent
             </button>
@@ -1294,7 +1386,7 @@ export default function OnboardingCandidatPage() {
               type="button"
               onClick={handleNext}
               disabled={!isStepComplete(currentWizardStep)}
-              className="btn-primary text-[13px] disabled:opacity-40"
+              className="btn-primary btn-sm disabled:opacity-55 disabled:cursor-not-allowed disabled:hover:translate-y-0 disabled:hover:shadow-[0_4px_16px_rgba(202,27,40,0.35)]"
             >
               Suivant →
             </button>
@@ -1307,13 +1399,14 @@ export default function OnboardingCandidatPage() {
                 !isStepComplete(2) ||
                 !isStepComplete(3)
               }
-              className="btn-primary text-[13px] disabled:opacity-40"
+              className="btn-primary btn-sm disabled:opacity-55 disabled:cursor-not-allowed disabled:hover:translate-y-0 disabled:hover:shadow-[0_4px_16px_rgba(202,27,40,0.35)]"
             >
-              {loading ? " Génération en cours..." : " Finaliser mon profil"}
+              {loading ? "Génération en cours…" : "Finaliser mon profil"}
             </button>
           )}
         </div>
       </form>
+      </div>
     </div>
   );
 }

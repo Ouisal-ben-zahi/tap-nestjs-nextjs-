@@ -147,6 +147,7 @@ export default function AppSidebar({
           >
             {avatarUrl ? (
               <Image
+                key={`${avatarUrl}-${statsQuery.dataUpdatedAt}`}
                 src={avatarUrl}
                 alt={user?.email || "Avatar"}
                 fill

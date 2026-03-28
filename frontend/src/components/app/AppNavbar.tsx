@@ -73,6 +73,7 @@ export default function AppNavbar({ onToggleSidebar }: AppNavbarProps) {
             {avatarUrl ? (
               <div className="relative h-7 w-7 shrink-0 rounded-full overflow-hidden bg-black/20 ring-1 ring-tap-red/30 group-hover:ring-tap-red/80 group-hover:scale-105 transition-all duration-300">
                 <Image
+                  key={`${avatarUrl}-${statsQuery.dataUpdatedAt}`}
                   src={avatarUrl}
                   alt={user.email}
                   fill
@@ -110,6 +111,7 @@ export default function AppNavbar({ onToggleSidebar }: AppNavbarProps) {
               {avatarUrl ? (
                 <div className="relative h-8 w-8 shrink-0 rounded-full overflow-hidden bg-black/20 ring-1 ring-tap-red/30">
                   <Image
+                    key={`${avatarUrl}-${statsQuery.dataUpdatedAt}`}
                     src={avatarUrl}
                     alt={user?.email || "Profil"}
                     fill

@@ -6,6 +6,7 @@ import {
   useRecruteurJob,
   useCreateJob,
   useUpdateJob,
+  useRecruiterCompanyProfile,
 } from "@/hooks/use-recruteur";
 import RecruiterMesOffresSection from "@/components/app/dashboard/RecruiterMesOffresSection";
 import EmptyState from "@/components/ui/EmptyState";
@@ -17,7 +18,7 @@ import {
   Clock,
   ChevronDown,
 } from "lucide-react";
-import type { JobPayload } from "@/types/recruteur";
+import type { JobPayload, RecruiterCompanyProfile } from "@/types/recruteur";
 import { useDashboardTheme } from "@/hooks/use-dashboard-theme";
 import { DOMAINE_VALUES } from "@/constants/domaines";
 import { useUiStore } from "@/stores/ui";
@@ -143,9 +144,20 @@ const emptyForm: JobPayload = {
   phone: "",
 };
 
+/** Valeurs affichées dans le formulaire offre : table `recruteurs` (onboarding). */
+function jobFormIdentityFromRecruiterProfile(
+  profile: RecruiterCompanyProfile | null | undefined,
+): Pick<JobPayload, "entreprise" | "phone"> {
+  return {
+    entreprise: String(profile?.nomSociete ?? "").trim(),
+    phone: String(profile?.telephone ?? "").trim(),
+  };
+}
+
 function hydrateFormFromJobRow(
   job: Record<string, unknown>,
   defaults: JobPayload,
+  profileIdentity?: Pick<JobPayload, "entreprise" | "phone"> | null,
 ): {
   form: JobPayload;
   country: string;
@@ -194,6 +206,10 @@ function hydrateFormFromJobRow(
     return Number.isFinite(n) ? n : null;
   };
 
+  const prof = profileIdentity ?? { entreprise: "", phone: "" };
+  const jobEnt = String(job.entreprise ?? "").trim();
+  const jobPhone = String(job.phone ?? "").trim();
+
   const form: JobPayload = {
     ...defaults,
     title: String(job.title ?? ""),
@@ -211,8 +227,8 @@ function hydrateFormFromJobRow(
     urgent: Boolean(job.urgent),
     contrat: (job.contrat as string) ?? defaults.contrat,
     niveau_seniorite: (job.niveau_seniorite as string) ?? defaults.niveau_seniorite,
-    entreprise: (job.entreprise as string) ?? "",
-    phone: (job.phone as string) ?? "",
+    entreprise: jobEnt || prof.entreprise,
+    phone: jobPhone || prof.phone,
   };
 
   return { form, country, city, selectedCities, softSkills: soft_skills, skills, languages };
@@ -263,6 +279,7 @@ function validateCreateOffer(params: {
 
 export default function OffresPage() {
   const { isRecruteur } = useAuth();
+  const companyProfileQuery = useRecruiterCompanyProfile(true);
   const createJob = useCreateJob();
   const updateJob = useUpdateJob();
   const [editingJobId, setEditingJobId] = useState<number | null>(null);
@@ -313,7 +330,11 @@ export default function OffresPage() {
     if (Number(row.id) !== editingJobId) return;
     if (hydratedEditJobIdRef.current === editingJobId) return;
     hydratedEditJobIdRef.current = editingJobId;
-    const h = hydrateFormFromJobRow(row, emptyForm);
+    const h = hydrateFormFromJobRow(
+      row,
+      emptyForm,
+      jobFormIdentityFromRecruiterProfile(companyProfileQuery.data),
+    );
     setForm(h.form);
     setCountry(h.country);
     setCity(h.city);
@@ -321,7 +342,38 @@ export default function OffresPage() {
     setSoftSkills(h.softSkills);
     setSkills(h.skills);
     setLanguages(h.languages);
-  }, [editingJobId, editJobQuery.isSuccess, editJobQuery.data]);
+  }, [
+    editingJobId,
+    editJobQuery.isSuccess,
+    editJobQuery.data,
+    companyProfileQuery.data,
+  ]);
+
+  /** Complète entreprise / téléphone depuis le profil `recruteurs` si les champs sont encore vides (création ou édition, profil chargé en retard). */
+  useEffect(() => {
+    if (!showForm) return;
+    if (!companyProfileQuery.isSuccess) return;
+    const id = jobFormIdentityFromRecruiterProfile(companyProfileQuery.data);
+    if (!id.entreprise && !id.phone) return;
+    setForm((f) => {
+      const next = { ...f };
+      let changed = false;
+      if (!String(f.entreprise ?? "").trim() && id.entreprise) {
+        next.entreprise = id.entreprise;
+        changed = true;
+      }
+      if (!String(f.phone ?? "").trim() && id.phone) {
+        next.phone = id.phone;
+        changed = true;
+      }
+      return changed ? next : f;
+    });
+  }, [
+    showForm,
+    companyProfileQuery.isSuccess,
+    companyProfileQuery.data?.nomSociete,
+    companyProfileQuery.data?.telephone,
+  ]);
 
   useLayoutEffect(() => {
     if (!showForm || editingJobId == null) return;
@@ -329,7 +381,10 @@ export default function OffresPage() {
   }, [showForm, editingJobId]);
 
   const resetFormState = () => {
-    setForm(emptyForm);
+    setForm({
+      ...emptyForm,
+      ...jobFormIdentityFromRecruiterProfile(companyProfileQuery.data),
+    });
     setCountry("");
     setCity("");
     setSelectedCities([]);

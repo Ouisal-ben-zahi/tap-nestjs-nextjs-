@@ -273,6 +273,9 @@ export function useUploadCv() {
       queryClient.invalidateQueries({ queryKey: ['candidat', 'portfolio-pdfs'] });
       queryClient.invalidateQueries({ queryKey: ['candidat', 'score'] });
       queryClient.invalidateQueries({ queryKey: ['candidat', 'generation-complete'] });
+      // Sidebar & dashboard : avatarUrl / nom viennent des stats
+      queryClient.invalidateQueries({ queryKey: ['candidat', 'stats'] });
+      queryClient.invalidateQueries({ queryKey: ['candidat', 'profile'] });
       const msg = isRegenerationRef.current
         ? 'CV importé — régénération de tous les fichiers en cours…'
         : 'CV uploadé avec succès';
