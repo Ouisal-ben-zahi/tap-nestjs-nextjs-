@@ -180,10 +180,7 @@ export const candidatService = {
       .post('/dashboard/candidat/apply-job', payload)
       .then((r) => r.data as { success: boolean; applicationId: number; status: string }),
 
-<<<<<<< Updated upstream
   /** Endpoint dédié au matching IA avec fallback défensif côté client. */
-=======
->>>>>>> Stashed changes
   getMatchingJobs: () => fetchMatchingJobs(),
 
   uploadCv: (payload: { file: File; imgFile?: File | null }) => {

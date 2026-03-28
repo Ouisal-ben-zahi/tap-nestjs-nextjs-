@@ -343,8 +343,6 @@ export default function AnalyseCvAppPage() {
               </p>
             </div>
           </div>
-<<<<<<< Updated upstream
-=======
           {/* Proposition “luxe” (pendant l'analyse uniquement) */}
           <div className="bg-gradient-to-r from-amber-500/[0.08] via-emerald-500/[0.07] to-sky-500/[0.04] border border-white/[0.08] rounded-2xl p-6 mb-8 flex items-start gap-4 animate-pulse">
             <div className="w-10 h-10 rounded-xl bg-white/[0.06] border border-white/[0.12] flex items-center justify-center shrink-0">
@@ -360,7 +358,6 @@ export default function AnalyseCvAppPage() {
               </p>
             </div>
           </div>
->>>>>>> Stashed changes
         </>
       )}
 

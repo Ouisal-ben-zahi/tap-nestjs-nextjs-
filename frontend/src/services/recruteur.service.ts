@@ -110,35 +110,6 @@ export type RecruiterPlannedInterviewItem = {
   interviewTime: string | null;
 };
 
-export type MatchedCandidate = {
-  candidate_id: number | null;
-  name: string | null;
-  global_score: number | null;
-  skill_score: number | null;
-  experience_score: number | null;
-  language_score: number | null;
-  seniority_score: number | null;
-  missing_skills: string[] | string | null;
-  candidate?: {
-    id?: number;
-    nom?: string | null;
-    prenom?: string | null;
-    titre_profil?: string | null;
-    categorie_profil?: string | null;
-    ville?: string | null;
-    pays?: string | null;
-    niveau_seniorite?: string | null;
-    disponibilite?: string | null;
-  } | null;
-};
-
-export type MatchByOfferResponse = {
-  job_id: number;
-  job_title: string;
-  candidates: MatchedCandidate[];
-  message?: string;
-};
-
 export const recruteurService = {
   getCompanyProfile: () =>
     api
@@ -228,7 +199,6 @@ export const recruteurService = {
         only_postule: true,
       })
       .then((r) => r.data),
-<<<<<<< Updated upstream
 
   validateCandidateForJob: (jobId: number, candidateId: number) =>
     api
@@ -285,6 +255,4 @@ export const recruteurService = {
         payload,
       )
       .then((r) => r.data),
-=======
->>>>>>> Stashed changes
 };
