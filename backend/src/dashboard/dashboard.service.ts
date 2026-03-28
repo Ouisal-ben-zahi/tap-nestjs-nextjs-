@@ -2216,7 +2216,7 @@ export class DashboardService {
     return { portfolioShort, portfolioLong };
   }
 
-  /** Tolérance horloge alignée sur le front (onboarding). */
+  /** Tolérance horloge : poste client vs serveur / métadonnées Storage (hébergement, S3-compatible). */
   private isFreshGenerationTimestamp(
     value: unknown,
     startedAtMs: number,
@@ -2224,7 +2224,7 @@ export class DashboardService {
     if (typeof value !== 'string' || !value.trim()) return false;
     const parsedMs = new Date(value).getTime();
     if (!Number.isFinite(parsedMs)) return false;
-    return parsedMs >= startedAtMs - 3000;
+    return parsedMs >= startedAtMs - 120_000;
   }
 
   /**

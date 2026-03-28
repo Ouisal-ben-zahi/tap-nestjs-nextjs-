@@ -1,7 +1,13 @@
 "use client";
 
 import { useEffect, useMemo, useState } from "react";
-import { portfolioOnePageSatisfiedForSession } from "@/lib/candidat-upload-generation";
+import {
+  hasFreshCorrectedCvTapPdf,
+  isFreshGenerationTimestamp,
+  listHasFreshTimestamp,
+  portfolioOnePageSatisfiedForSession,
+  talentcardReadyForSession,
+} from "@/lib/candidat-upload-generation";
 
 type GenerationStep = { id: string; label: string };
 
@@ -22,49 +28,6 @@ const progressByStep: Record<string, number> = {
   scoring: 76,
   portfolio: 90,
 };
-
-function isFreshTimestamp(
-  iso: string | null | undefined,
-  startedAtMs: number,
-  skewMs = 3000,
-): boolean {
-  if (!iso) return false;
-  const t = new Date(iso).getTime();
-  return Number.isFinite(t) && t >= startedAtMs - skewMs;
-}
-
-function hasFreshFile(
-  files: Array<{ updatedAt?: string | null; createdAt?: string | null }>,
-  startedAtMs: number,
-): boolean {
-  return files.some(
-    (f) =>
-      isFreshTimestamp(f.updatedAt, startedAtMs) ||
-      isFreshTimestamp(f.createdAt, startedAtMs),
-  );
-}
-
-function isCorrectedCvTapPdfName(fileName: string): boolean {
-  const n = fileName.trim().toLowerCase();
-  return n.startsWith("cv_tap") && n.endsWith(".pdf");
-}
-
-function hasFreshCorrectedCvPdf(
-  files: Array<{
-    name?: string;
-    updatedAt?: string | null;
-    createdAt?: string | null;
-  }>,
-  startedAtMs: number,
-): boolean {
-  return files.some(
-    (f) =>
-      typeof f.name === "string" &&
-      isCorrectedCvTapPdfName(f.name) &&
-      (isFreshTimestamp(f.updatedAt, startedAtMs) ||
-        isFreshTimestamp(f.createdAt, startedAtMs)),
-  );
-}
 
 type ScoreShape = {
   scoreGlobal?: number | null;
@@ -117,9 +80,10 @@ export default function CandidatCvUploadGenerationPanel({
 
   const flags = useMemo(() => {
     const readyTalentCard =
-      Array.isArray(talentcardFiles) && hasFreshFile(talentcardFiles, startedAtMs);
+      Array.isArray(talentcardFiles) &&
+      talentcardReadyForSession(talentcardFiles, cvFiles, startedAtMs, elapsedMs);
     const readyCvPdf =
-      Array.isArray(cvFiles) && hasFreshCorrectedCvPdf(cvFiles, startedAtMs);
+      Array.isArray(cvFiles) && hasFreshCorrectedCvTapPdf(cvFiles, startedAtMs);
     const cvTapAndTalentFresh = readyTalentCard && readyCvPdf;
     // Ne pas marquer le scoring « OK » sur un score ancien dès 30 s : attendre preuve de pipeline (TAP + talent) + délai.
     const scoringFallbackOk =
@@ -128,11 +92,11 @@ export default function CandidatCvUploadGenerationPanel({
       (typeof score?.scoreGlobal === "number" ||
         (Array.isArray(score?.dimensions) && score.dimensions.length > 0));
     const readyScoring =
-      isFreshTimestamp(score?.metadataTimestamp ?? null, startedAtMs) ||
+      isFreshGenerationTimestamp(score?.metadataTimestamp ?? null, startedAtMs) ||
       scoringFallbackOk;
     const readyPortfolio =
-      hasFreshFile(portfolioShort, startedAtMs) ||
-      hasFreshFile(portfolioLong, startedAtMs) ||
+      listHasFreshTimestamp(portfolioShort, startedAtMs) ||
+      listHasFreshTimestamp(portfolioLong, startedAtMs) ||
       portfolioOnePageSatisfiedForSession({
         portfolioShort,
         portfolioLong,

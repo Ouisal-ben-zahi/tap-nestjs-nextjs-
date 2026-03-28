@@ -93,10 +93,10 @@ RUN pip install --no-cache-dir PyMuPDF
 # Copier le code de l'application (Flask)
 COPY ["backend IA/", "./"]
 
-# Copier le template portfolio depuis le frontend (pour génération PDF)
-# Créer la structure de répertoires d'abord
+# Copier les templates HTML/PDF depuis le frontend (Jinja2 : CV, Talent Card, portfolio).
+# Sans templates_modif, app.py / A1 / B2 retombent sur 20260312_044613 (anciennes maquettes).
 RUN mkdir -p /app/frontend/src
-# Copier le dossier portfolio html en utilisant la syntaxe avec crochets pour gérer les espaces
+COPY ["frontend/src/templates_modif", "/app/frontend/src/templates_modif"]
 COPY ["frontend/src/20260312_044613", "/app/frontend/src/20260312_044613"]
 
 # Créer les dossiers nécessaires

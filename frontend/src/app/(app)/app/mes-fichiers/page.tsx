@@ -26,9 +26,10 @@ import CvUploadPhotoPromptModal from "@/components/app/candidat/CvUploadPhotoPro
 import { useDashboardTheme } from "@/hooks/use-dashboard-theme";
 import { useUiStore } from "@/stores/ui";
 import {
+  hasFreshCorrectedCvTapPdf,
   isFreshGenerationTimestamp,
-  listHasFreshTimestamp,
   portfolioOnePageSatisfiedForSession,
+  talentcardReadyForSession,
 } from "@/lib/candidat-upload-generation";
 
 type Tab = "cv" | "talentcard" | "portfolio" | "portfolio-long";
@@ -81,7 +82,7 @@ export default function MesFichiersPage() {
     if (!polling) return;
     const timeout = window.setTimeout(() => {
       setPolling(false);
-    }, 3 * 60 * 1000);
+    }, 20 * 60 * 1000);
     return () => window.clearTimeout(timeout);
   }, [polling]);
 
@@ -194,17 +195,8 @@ export default function MesFichiersPage() {
     void genTick;
     const elapsedMs = Date.now() - started;
 
-    const hasTap = cv.some((f) => {
-      const n = String(f.name || "")
-        .trim()
-        .toLowerCase();
-      return (
-        n.startsWith("cv_tap") &&
-        n.endsWith(".pdf") &&
-        isFreshGenerationTimestamp(f.updatedAt, started)
-      );
-    });
-    const talentOk = listHasFreshTimestamp(tc, started);
+    const hasTap = hasFreshCorrectedCvTapPdf(cv, started);
+    const talentOk = talentcardReadyForSession(tc, cv, started, elapsedMs);
     const cvTapAndTalentFresh = talentOk && hasTap;
     const scoringOk =
       isFreshGenerationTimestamp(sc?.metadataTimestamp ?? null, started) ||
