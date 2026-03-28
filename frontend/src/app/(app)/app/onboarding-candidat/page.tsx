@@ -1,6 +1,6 @@
 "use client";
 
-import { useState, useRef, useEffect } from "react";
+import { useState, useEffect } from "react";
 import { useQueryClient } from "@tanstack/react-query";
 import { useRouter } from "next/navigation";
 import { useAuth } from "@/hooks/use-auth";
@@ -36,52 +36,194 @@ const progressByStep: Record<string, number> = {
   finalize: 100,
 };
 
-const wizardSteps = [
-  {
-    id: 1,
-    title: "Comprendre ton profil",
-    subtitle: "Qui tu es",
-    aiMessage:
-      " Salut ! Avant de commencer, laisse-moi t'expliquer ce que je vais faire : je vais analyser ton profil pour comprendre ton contexte et adapter les opportunités qui te correspondent vraiment.",
-    aiExplanation:
-      " Pourquoi je demande ça ? Ces informations m'aident à comprendre ton contexte et à filtrer les opportunités qui matchent vraiment avec ta situation.",
-    whatAiDoes:
-      "Une fois que tu auras rempli ces informations, j'analyserai ton profil pour créer une carte d'identité professionnelle personnalisée.",
+const STEP1_FIELD_KEYS = [
+  "locationCountry",
+  "nationality",
+  "targetCountry",
+  "seniorityLevel",
+  "disponibilite",
+  "domaineActivite",
+  "targetPosition",
+] as const;
+const STEP2_FIELD_KEYS = [
+  "salaireMinimum",
+  "typeContrat",
+  "constraints",
+  "searchCriteria",
+  "cvFile",
+  "photoPro",
+  "linkedinUrl",
+  "githubUrl",
+  "socialLinks",
+] as const;
+
+function isValidHttpUrl(value: string): boolean {
+  const t = value.trim();
+  if (!t) return false;
+  try {
+    const u = new URL(t);
+    return u.protocol === "http:" || u.protocol === "https:";
+  } catch {
+    return false;
+  }
+}
+
+/** Hôte linkedin.com ou sous-domaine (www., fr., etc.) + chemin type profil / page org. */
+function isLikelyLinkedInUrl(raw: string): boolean {
+  const t = raw.trim();
+  if (!t || !isValidHttpUrl(t)) return false;
+  try {
+    const u = new URL(t);
+    const host = u.hostname.toLowerCase();
+    if (host !== "linkedin.com" && !host.endsWith(".linkedin.com")) return false;
+    const norm =
+      (u.pathname || "/").replace(/\/+/g, "/").replace(/\/$/, "") || "/";
+    return (
+      /^\/in\/[^/]+/i.test(norm) ||
+      /^\/company\/[^/]+/i.test(norm) ||
+      /^\/school\/[^/]+/i.test(norm) ||
+      /^\/pub\/[^/]+/i.test(norm)
+    );
+  } catch {
+    return false;
+  }
+}
+
+/** Profil ou dépôt sur github.com (pas un lien générique vers la home). */
+function isLikelyGitHubUrl(raw: string): boolean {
+  const t = raw.trim();
+  if (!t || !isValidHttpUrl(t)) return false;
+  try {
+    const u = new URL(t);
+    const host = u.hostname.toLowerCase();
+    if (host !== "github.com" && host !== "www.github.com") return false;
+    const parts = u.pathname.split("/").filter(Boolean);
+    if (parts.length < 1) return false;
+    const reserved = new Set([
+      "features",
+      "enterprise",
+      "explore",
+      "marketplace",
+      "pricing",
+      "login",
+      "signup",
+      "join",
+      "topics",
+      "collections",
+      "sponsors",
+      "settings",
+      "notifications",
+      "git-guides",
+      "readme",
+      "security",
+      "about",
+    ]);
+    const seg0 = parts[0].toLowerCase();
+    if (reserved.has(seg0)) return false;
+    const user = parts[0];
+    if (user.length > 39) return false;
+    if (!/^[a-zA-Z0-9](?:[a-zA-Z0-9]|-(?=[a-zA-Z0-9])){0,38}$/.test(user))
+      return false;
+    return true;
+  } catch {
+    return false;
+  }
+}
+
+function validateOnboardingStep1(values: {
+  locationCountry: string;
+  nationality: string;
+  targetCountry: string;
+  seniorityLevel: string;
+  disponibilite: string;
+  domaineActivite: string;
+  targetPosition: string;
+}): Record<string, string> {
+  const e: Record<string, string> = {};
+  if (!String(values.locationCountry ?? "").trim()) {
+    e.locationCountry = "Le pays de résidence est obligatoire.";
+  }
+  if (!String(values.nationality ?? "").trim()) {
+    e.nationality = "La nationalité est obligatoire.";
+  }
+  if (!String(values.targetCountry ?? "").trim()) {
+    e.targetCountry = "Le pays cible est obligatoire.";
+  }
+  if (!String(values.seniorityLevel ?? "").trim()) {
+    e.seniorityLevel = "Le niveau de séniorité est obligatoire.";
+  }
+  if (!String(values.disponibilite ?? "").trim()) {
+    e.disponibilite = "La disponibilité est obligatoire.";
+  }
+  if (!String(values.domaineActivite ?? "").trim()) {
+    e.domaineActivite = "Le domaine d’activité est obligatoire.";
+  }
+  if (!String(values.targetPosition ?? "").trim()) {
+    e.targetPosition = "Le poste cible est obligatoire.";
+  }
+  return e;
+}
+
+function validateOnboardingStep2(
+  values: {
+    constraints: string;
+    searchCriteria: string;
+    salaireMinimum: string;
+    linkedinUrl: string;
+    githubUrl: string;
   },
-  {
-    id: 2,
-    title: "Ton objectif professionnel",
-    subtitle: "Ce que tu veux",
-    aiMessage:
-      "Parfait ! Je vais structurer tes aspirations pour créer un profil qui attire les bonnes opportunités.",
-    aiExplanation:
-      "Plus je comprends ce que tu veux, mieux je peux structurer ta candidature pour attirer les bonnes opportunités.",
-    whatAiDoes:
-      "Je transforme tes objectifs en un profil ciblé qui parle directement aux recruteurs.",
-  },
-  {
-    id: 3,
-    title: "Tes compétences",
-    subtitle: "Ce que tu sais faire",
-    aiMessage:
-      "Super ! Je vais analyser ton CV ou ton LinkedIn pour extraire automatiquement tes compétences, expériences et réalisations.",
-    aiExplanation:
-      "Au lieu de te faire remplir un long formulaire, je lis directement ton CV pour gagner du temps.",
-    whatAiDoes:
-      "J'utilise l'IA pour extraire automatiquement tes compétences et expériences depuis ton CV ou LinkedIn.",
-  },
-  {
-    id: 4,
-    title: "Validation & génération",
-    subtitle: "Ton profil est prêt",
-    aiMessage:
-      "Excellent ! Ton profil est complet. Je vais générer une Talent Card et structurer ton profil pour les recruteurs.",
-    aiExplanation:
-      "Tu obtiendras un profil structuré, prêt à être utilisé pour le matching et les candidatures.",
-    whatAiDoes:
-      "Je génère et sauvegarde ton profil pour qu'il puisse être utilisé par l'IA et les recruteurs.",
-  },
-];
+  typeContrat: string[],
+  cvFile: File | null,
+  imgFile: File | null,
+  cvNeedsManualPhoto: boolean | null,
+): Record<string, string> {
+  const e: Record<string, string> = {};
+  if (typeContrat.length === 0) {
+    e.typeContrat = "Sélectionne au moins un type de contrat.";
+  }
+  const sal = String(values.salaireMinimum ?? "").trim();
+  if (!sal) {
+    e.salaireMinimum = "Le salaire minimum (MAD) est obligatoire.";
+  } else if (!/^\d+$/.test(sal) || Number(sal) <= 0) {
+    e.salaireMinimum = "Indique un montant valide en chiffres (ex. 8000).";
+  }
+  if (!String(values.constraints ?? "").trim()) {
+    e.constraints = "Les exigences / pré-requis sont obligatoires.";
+  }
+  if (!String(values.searchCriteria ?? "").trim()) {
+    e.searchCriteria = "Décris ce que tu recherches.";
+  }
+  if (!cvFile) {
+    e.cvFile = "Ajoute ton CV (PDF ou DOCX).";
+  }
+  if (cvNeedsManualPhoto === true && !imgFile) {
+    e.photoPro =
+      "Une photo professionnelle est requise (aucune photo détectée dans ton CV).";
+  }
+  const li = values.linkedinUrl.trim();
+  const gh = values.githubUrl.trim();
+  if (!li && !gh) {
+    e.socialLinks = "Renseigne au moins une URL LinkedIn ou GitHub.";
+  } else {
+    if (li) {
+      if (!isValidHttpUrl(li)) {
+        e.linkedinUrl = "URL invalide (http ou https requis).";
+      } else if (!isLikelyLinkedInUrl(li)) {
+        e.linkedinUrl =
+          "Ce n’est pas une URL LinkedIn reconnue (ex. https://www.linkedin.com/in/… ou /company/…).";
+      }
+    }
+    if (gh) {
+      if (!isValidHttpUrl(gh)) {
+        e.githubUrl = "URL invalide (http ou https requis).";
+      } else if (!isLikelyGitHubUrl(gh)) {
+        e.githubUrl =
+          "Ce n’est pas une URL GitHub reconnue (ex. https://github.com/ton-profil).";
+      }
+    }
+  }
+  return e;
+}
 
 type DropdownOption = { value: string; label: string };
 type DropdownGroup = { label?: string; options: DropdownOption[] };
@@ -175,8 +317,9 @@ export default function OnboardingCandidatPage() {
   const FLASK_AI_URL =
     process.env.NEXT_PUBLIC_FLASK_AI_URL ?? "http://31.97.196.196:5002";
 
-  // Wizard state
+  // Wizard state (2 étapes formulaire + panneau finalisation après « Suivant » sur l’étape 2)
   const [currentWizardStep, setCurrentWizardStep] = useState(1);
+  const [showFinalizeSection, setShowFinalizeSection] = useState(false);
 
   // Form state
   const [cvFile, setCvFile] = useState<File | null>(null);
@@ -211,17 +354,16 @@ export default function OnboardingCandidatPage() {
     string[]
   >([]);
   const [showResumeHint, setShowResumeHint] = useState(false);
+  const [fieldErrors, setFieldErrors] = useState<Record<string, string>>({});
   const queryClient = useQueryClient();
   const addToast = useUiStore((s) => s.addToast);
-  const updateToast = useUiStore((s) => s.updateToast);
-  const removeToast = useUiStore((s) => s.removeToast);
-  const generationToastIdRef = useRef<string | null>(null);
 
   useEffect(() => {
     if (typeof window === "undefined") return;
     const q = new URLSearchParams(window.location.search);
     if (q.get("resume") === "1") {
-      setCurrentWizardStep(4);
+      setCurrentWizardStep(2);
+      setShowFinalizeSection(true);
       setShowResumeHint(true);
       window.history.replaceState({}, "", "/app/onboarding-candidat");
     }
@@ -243,28 +385,40 @@ export default function OnboardingCandidatPage() {
     }
   };
 
+  const clearFieldError = (key: string) => {
+    setFieldErrors((prev) => {
+      if (!prev[key]) return prev;
+      const next = { ...prev };
+      delete next[key];
+      return next;
+    });
+  };
+
   const isStepComplete = (stepId: number) => {
     switch (stepId) {
       case 1:
-        return nationality && locationCountry && seniorityLevel && disponibilite;
-      case 2:
-        return (
-          targetPosition &&
-          targetCountry &&
-          constraints &&
-          searchCriteria &&
-          typeContrat.length > 0 &&
-          domaineActivite
+        return Boolean(
+          locationCountry &&
+            nationality &&
+            String(targetCountry ?? "").trim() &&
+            String(seniorityLevel ?? "").trim() &&
+            String(disponibilite ?? "").trim() &&
+            String(domaineActivite ?? "").trim() &&
+            String(targetPosition ?? "").trim(),
         );
-      case 3:
-        if (cvFile) {
-          if (cvNeedsManualPhoto === true) return Boolean(imgFile);
-          // Photo OK (ou inconnue) => vérifier aussi LinkedIn ou GitHub
-          return Boolean(linkedinUrl.trim() || githubUrl.trim());
-        }
-        return false;
-      case 4:
-        return true;
+      case 2: {
+        const jobOk =
+          Boolean(String(constraints ?? "").trim()) &&
+          Boolean(String(searchCriteria ?? "").trim()) &&
+          typeContrat.length > 0 &&
+          Boolean(String(salaireMinimum ?? "").trim()) &&
+          /^\d+$/.test(String(salaireMinimum ?? "").trim()) &&
+          Number(String(salaireMinimum ?? "").trim()) > 0;
+        if (!jobOk) return false;
+        if (!cvFile) return false;
+        if (cvNeedsManualPhoto === true) return Boolean(imgFile);
+        return Boolean(linkedinUrl.trim() || githubUrl.trim());
+      }
       default:
         return false;
     }
@@ -274,6 +428,7 @@ export default function OnboardingCandidatPage() {
     const selectedFile = e.target.files?.[0];
     if (!selectedFile) return;
     setCvFile(selectedFile);
+    clearFieldError("cvFile");
     setError(null);
     setCheckingCvPhoto(true);
     setCvNeedsManualPhoto(null);
@@ -298,6 +453,7 @@ export default function OnboardingCandidatPage() {
       setCvNeedsManualPhoto(!hasPhoto);
       if (hasPhoto) {
         setImgFile(null);
+        clearFieldError("photoPro");
       }
     } catch {
       // si on ne peut pas vérifier, on ne force pas la photo
@@ -311,47 +467,20 @@ export default function OnboardingCandidatPage() {
     setCvFile(null);
     setCvNeedsManualPhoto(null);
     setCheckingCvPhoto(false);
+    clearFieldError("cvFile");
+    clearFieldError("photoPro");
   };
 
   const handleImageChange = (e: React.ChangeEvent<HTMLInputElement>) => {
     const selectedFile = e.target.files?.[0];
-    if (selectedFile) setImgFile(selectedFile);
+    if (selectedFile) {
+      setImgFile(selectedFile);
+      clearFieldError("photoPro");
+    }
   };
 
   const handleRemoveImage = () => {
     setImgFile(null);
-  };
-
-  const clearGenerationToast = () => {
-    if (generationToastIdRef.current) {
-      removeToast(generationToastIdRef.current);
-      generationToastIdRef.current = null;
-    }
-  };
-
-  const openGenerationToast = (progressLabel: string, progress: number) => {
-    clearGenerationToast();
-    generationToastIdRef.current = addToast({
-      message:
-        "L’IA génère vos fichiers (Talent Card, scoring, portfolio One Page)…",
-      type: "info",
-      duration: 600_000,
-      progress,
-      progressLabel,
-    });
-  };
-
-  const syncGenerationToast = (stepId: string | null, progress: number) => {
-    const id = generationToastIdRef.current;
-    if (!id) return;
-    const label =
-      stepId != null
-        ? generationSteps.find((s) => s.id === stepId)?.label ?? "En cours…"
-        : "Finalisation du profil";
-    updateToast(id, {
-      progress: Math.min(100, Math.max(0, progress)),
-      progressLabel: label,
-    });
   };
 
   const handleSubmit = async (e: React.FormEvent) => {
@@ -374,6 +503,21 @@ export default function OnboardingCandidatPage() {
 
       if (!hasLinkedin && !hasGithub) {
         setError("Veuillez renseigner au moins un profil : LinkedIn ou GitHub.");
+        setLoading(false);
+        return;
+      }
+
+      if (hasLinkedin && !isLikelyLinkedInUrl(linkedinUrl)) {
+        setError(
+          "L’URL LinkedIn n’est pas valide (profil /in/… ou page /company/… sur linkedin.com).",
+        );
+        setLoading(false);
+        return;
+      }
+      if (hasGithub && !isLikelyGitHubUrl(githubUrl)) {
+        setError(
+          "L’URL GitHub n’est pas valide (ex. https://github.com/ton-identifiant).",
+        );
         setLoading(false);
         return;
       }
@@ -427,7 +571,6 @@ export default function OnboardingCandidatPage() {
 
       const generationStartedAtMs = Date.now();
       setCurrentGenerationStep("upload");
-      openGenerationToast("Envoi des fichiers", progressByStep.upload);
 
       const formData = new FormData();
       formData.append("file", cvFile);
@@ -465,7 +608,6 @@ export default function OnboardingCandidatPage() {
       await api.post("/dashboard/candidat/upload-cv", formData);
       markStepDone("upload");
       markStepDone("cv");
-      syncGenerationToast("talentCard", progressByStep.talentCard);
 
       const generationOrder = [
         "talentCard",
@@ -487,12 +629,6 @@ export default function OnboardingCandidatPage() {
           return !readyPortfolio;
         });
         if (nextStep) setCurrentGenerationStep(nextStep);
-        if (nextStep) {
-          syncGenerationToast(
-            nextStep,
-            progressByStep[nextStep] ?? generationProgress,
-          );
-        }
 
         const [cvRes, talentCardRes, scoreRes, portfolioRes] = await Promise.all([
           api
@@ -586,7 +722,6 @@ export default function OnboardingCandidatPage() {
           readyScoring &&
           readyPortfolio
         ) {
-          syncGenerationToast("portfolio", progressByStep.portfolio);
           break;
         }
 
@@ -608,11 +743,9 @@ export default function OnboardingCandidatPage() {
       }
 
       setCurrentGenerationStep("finalize");
-      syncGenerationToast(null, progressByStep.finalize);
       await sleep(350);
       markStepDone("finalize");
 
-      clearGenerationToast();
       addToast({
         message:
           "Votre dossier est prêt. Vous allez être redirigé vers le tableau de bord.",
@@ -647,7 +780,6 @@ export default function OnboardingCandidatPage() {
       await sleep(400);
       router.push("/app");
     } catch (err: unknown) {
-      clearGenerationToast();
       const message =
         err instanceof Error
           ? err.message
@@ -659,18 +791,61 @@ export default function OnboardingCandidatPage() {
     }
   };
 
-  const currentStepData = wizardSteps.find(
-    (s) => s.id === currentWizardStep,
-  )!;
-
   const handleNext = () => {
-    if (currentWizardStep < 4 && isStepComplete(currentWizardStep)) {
-      setCurrentWizardStep((s) => s + 1);
+    if (currentWizardStep === 1) {
+      const err = validateOnboardingStep1({
+        locationCountry,
+        nationality,
+        targetCountry,
+        seniorityLevel,
+        disponibilite,
+        domaineActivite,
+        targetPosition,
+      });
+      setFieldErrors((prev) => {
+        const next = { ...prev };
+        for (const k of STEP1_FIELD_KEYS) delete next[k];
+        return { ...next, ...err };
+      });
+      if (Object.keys(err).length > 0) return;
+      setCurrentWizardStep(2);
+      return;
+    }
+    if (currentWizardStep === 2 && !showFinalizeSection) {
+      const err = validateOnboardingStep2(
+        {
+          constraints,
+          searchCriteria,
+          salaireMinimum,
+          linkedinUrl,
+          githubUrl,
+        },
+        typeContrat,
+        cvFile,
+        imgFile,
+        cvNeedsManualPhoto,
+      );
+      setFieldErrors((prev) => {
+        const next = { ...prev };
+        for (const k of STEP2_FIELD_KEYS) delete next[k];
+        return { ...next, ...err };
+      });
+      if (Object.keys(err).length > 0) return;
+      setShowFinalizeSection(true);
     }
   };
 
   const handlePrevious = () => {
+    if (showFinalizeSection) {
+      setShowFinalizeSection(false);
+      return;
+    }
     if (currentWizardStep > 1) {
+      setFieldErrors((prev) => {
+        const next = { ...prev };
+        for (const k of STEP2_FIELD_KEYS) delete next[k];
+        return next;
+      });
       setCurrentWizardStep((s) => s - 1);
     }
   };
@@ -689,10 +864,24 @@ export default function OnboardingCandidatPage() {
     ? "mt-5 rounded-xl border border-black/10 bg-black/[0.03] p-4 text-left"
     : "mt-5 rounded-xl border border-white/15 bg-black/25 p-4 text-left";
 
+  const errEl = (key: string) => {
+    const msg = fieldErrors[key];
+    if (!msg) return null;
+    return (
+      <p
+        role="alert"
+        className={`mt-1 text-[11px] ${
+          isLight ? "text-red-600" : "text-red-400"
+        }`}
+      >
+        {msg}
+      </p>
+    );
+  };
   return (
     <div className="max-w-[800px] mx-auto space-y-8 py-6 sm:py-10 px-1">
       <div
-        className={`relative mb-2 pb-6 ${isLight ? "border-b border-black/10" : "border-b border-white/[0.04]"}`}
+        className={`relative mb-2 pb-6 text-left ${isLight ? "border-b border-black/10" : "border-b border-white/[0.04]"}`}
       >
         <h1
           className={`text-[26px] sm:text-[32px] font-bold tracking-[-0.04em] font-heading ${isLight ? "text-black" : "text-white"}`}
@@ -700,7 +889,7 @@ export default function OnboardingCandidatPage() {
           Complète ton profil candidat
         </h1>
         <p
-          className={`text-[14px] mt-2 font-light max-w-xl ${isLight ? "text-black/60" : "text-white/45"}`}
+          className={`text-[14px] mt-2 font-light max-w-xl mx-0 ${isLight ? "text-black/60" : "text-white/45"}`}
         >
           Je t&apos;accompagne pour créer ton profil professionnel étape par
           étape.
@@ -722,191 +911,158 @@ export default function OnboardingCandidatPage() {
       <div
         className={`rounded-2xl p-5 sm:p-6 space-y-6 ${isLight ? "card-luxury-light" : "bg-zinc-900/50 border border-white/[0.06]"}`}
       >
-        {/* Wizard Progress */}
-        <div className="flex items-center justify-center gap-2 flex-wrap">
-          {wizardSteps.map((step, index) => (
-            <div key={step.id} className="flex items-center gap-2">
-              <div
-                className={[
-                  "w-9 h-9 rounded-full flex items-center justify-center text-xs font-semibold",
-                  currentWizardStep === step.id
-                    ? "bg-tap-red text-white"
-                    : currentWizardStep > step.id
-                      ? "bg-emerald-500 text-white"
-                      : isLight
-                        ? "bg-black/10 text-black/45"
-                        : "bg-white/10 text-white/50",
-                ].join(" ")}
-              >
-                {currentWizardStep > step.id ? "✓" : step.id}
-              </div>
-              {index < wizardSteps.length - 1 && (
-                <div
-                  className={[
-                    "w-10 h-0.5",
-                    currentWizardStep > step.id
-                      ? "bg-emerald-500"
-                      : isLight
-                        ? "bg-black/10"
-                        : "bg-white/10",
-                  ].join(" ")}
-                />
-              )}
-            </div>
-          ))}
-        </div>
-
-        {/* AI Message */}
-        <div
-          className={`rounded-2xl p-5 ${
-            isLight
-              ? "border border-tap-red/20 bg-tap-red/[0.06]"
-              : "border border-tap-red/25 bg-tap-red/10"
-          }`}
-        >
-          <h3
-            className={`text-sm font-semibold mb-1 ${isLight ? "text-black" : "text-white"}`}
-          >
-            {currentStepData.title}
-          </h3>
-          <p
-            className={`text-[13px] mb-2 ${isLight ? "text-black/75" : "text-white/80"}`}
-          >
-            {currentStepData.aiMessage}
-          </p>
-          <div
-            className={`rounded-xl border p-3 text-[12px] space-y-1 ${
-              isLight
-                ? "border-black/10 bg-black/[0.03] text-black/70"
-                : "border-tap-red/25 bg-black/20 text-white/80"
-            }`}
-          >
-            <p>{currentStepData.aiExplanation}</p>
-            <p>{currentStepData.whatAiDoes}</p>
-          </div>
-        </div>
-
         {/* Form */}
         <form
-          onSubmit={currentWizardStep === 4 ? handleSubmit : (e) => e.preventDefault()}
+          onSubmit={showFinalizeSection ? handleSubmit : (e) => e.preventDefault()}
           className="space-y-5"
         >
-        {/* Étape 1 */}
+        {/* Étape 1 : ~moitié des champs (contexte + profil cible) */}
         {currentWizardStep === 1 && (
-          <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
-            <div className="min-w-0">
-              <label className={labelCls}>
-                Nationalité *
-              </label>
-              <DropdownSelect
-                value={nationality}
-                onChange={setNationality}
-                placeholder="Ex: Marocaine, Française, Canadienne..."
-                groups={NATIONALITE_GROUPS}
-                isLight={isLight}
-              />
-            </div>
-            <div className="min-w-0">
-              <label className={labelCls}>
-                Pays de résidence actuel *
-              </label>
-              <DropdownSelect
-                value={locationCountry}
-                onChange={setLocationCountry}
-                placeholder="Ex: Maroc, France, Canada..."
-                groups={PAYS_GROUPS}
-                isLight={isLight}
-              />
-            </div>
-            <div className="min-w-0">
-              <label className={labelCls}>
-                Niveau de séniorité *
-              </label>
-              <DropdownSelect
-                value={seniorityLevel}
-                onChange={setSeniorityLevel}
-                placeholder="Sélectionner..."
-                groups={SENIORITY_GROUPS}
-                isLight={isLight}
-              />
-            </div>
-            <div className="min-w-0">
-              <label className={labelCls}>
-                Disponibilité *
-              </label>
-              <DropdownSelect
-                value={disponibilite}
-                onChange={setDisponibilite}
-                placeholder="Sélectionner..."
-                groups={DISPONIBILITE_GROUPS}
-                isLight={isLight}
-              />
+          <div className="space-y-3">
+            <p
+              className={`text-[12px] ${isLight ? "text-black/55" : "text-white/55"}`}
+            >
+              Lieu, mobilité, niveau et poste visé — la suite : salaire, détails
+              et documents.
+            </p>
+            <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
+              <div className="min-w-0">
+                <label className={labelCls}>
+                  Pays de résidence actuel *
+                </label>
+                <DropdownSelect
+                  value={locationCountry}
+                  onChange={(v) => {
+                    setLocationCountry(v);
+                    clearFieldError("locationCountry");
+                  }}
+                  placeholder="Ex: Maroc, France, Canada..."
+                  groups={PAYS_GROUPS}
+                  isLight={isLight}
+                />
+                {errEl("locationCountry")}
+              </div>
+              <div className="min-w-0">
+                <label className={labelCls}>
+                  Nationalité *
+                </label>
+                <DropdownSelect
+                  value={nationality}
+                  onChange={(v) => {
+                    setNationality(v);
+                    clearFieldError("nationality");
+                  }}
+                  placeholder="Ex: Marocaine, Française, Canadienne..."
+                  groups={NATIONALITE_GROUPS}
+                  isLight={isLight}
+                />
+                {errEl("nationality")}
+              </div>
+              <div className="min-w-0">
+                <label className={labelCls}>
+                  Pays où tu cherches un emploi *
+                </label>
+                <DropdownSelect
+                  value={targetCountry}
+                  onChange={(v) => {
+                    setTargetCountry(v);
+                    clearFieldError("targetCountry");
+                  }}
+                  placeholder="Ex: France, Canada, USA..."
+                  groups={PAYS_GROUPS}
+                  isLight={isLight}
+                />
+                {errEl("targetCountry")}
+              </div>
+              <div className="min-w-0">
+                <label className={labelCls}>
+                  Prêt à relocaliser
+                </label>
+                <DropdownSelect
+                  value={pretARelocater}
+                  onChange={setPretARelocater}
+                  placeholder="Non spécifié"
+                  groups={RELOCATION_GROUPS}
+                  isLight={isLight}
+                />
+              </div>
+              <div className="min-w-0">
+                <label className={labelCls}>
+                  Niveau de séniorité *
+                </label>
+                <DropdownSelect
+                  value={seniorityLevel}
+                  onChange={(v) => {
+                    setSeniorityLevel(v);
+                    clearFieldError("seniorityLevel");
+                  }}
+                  placeholder="Sélectionner..."
+                  groups={SENIORITY_GROUPS}
+                  isLight={isLight}
+                />
+                {errEl("seniorityLevel")}
+              </div>
+              <div className="min-w-0">
+                <label className={labelCls}>
+                  Disponibilité *
+                </label>
+                <DropdownSelect
+                  value={disponibilite}
+                  onChange={(v) => {
+                    setDisponibilite(v);
+                    clearFieldError("disponibilite");
+                  }}
+                  placeholder="Sélectionner..."
+                  groups={DISPONIBILITE_GROUPS}
+                  isLight={isLight}
+                />
+                {errEl("disponibilite")}
+              </div>
+              <div className="min-w-0">
+                <label className={labelCls}>
+                  Domaine d&apos;activité *
+                </label>
+                <DropdownSelect
+                  value={domaineActivite}
+                  onChange={(v) => {
+                    setDomaineActivite(v);
+                    clearFieldError("domaineActivite");
+                  }}
+                  placeholder="Sélectionner..."
+                  groups={DOMAINE_GROUPS}
+                  isLight={isLight}
+                />
+                {errEl("domaineActivite")}
+              </div>
+              <div className="min-w-0">
+                <label className={labelCls}>
+                  Poste cible *
+                </label>
+                <input
+                  value={targetPosition}
+                  onChange={(e) => {
+                    setTargetPosition(e.target.value);
+                    clearFieldError("targetPosition");
+                  }}
+                  placeholder="Ex: Data Scientist, Software Engineer..."
+                  className={inputClass}
+                />
+                {errEl("targetPosition")}
+              </div>
             </div>
           </div>
         )}
 
-        {/* Étape 2 */}
+        {/* Étape 2 : salaire, contrats, textes, CV / liens */}
         {currentWizardStep === 2 && (
+          <>
+          <p
+            className={`text-[12px] -mt-1 mb-1 ${isLight ? "text-black/55" : "text-white/55"}`}
+          >
+            Précise tes attentes, décris ton projet et ajoute ton CV ainsi que tes
+            liens.
+          </p>
           <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
-            <div className="min-w-0">
-              <label className={labelCls}>
-                Poste cible *
-              </label>
-              <input
-                value={targetPosition}
-                onChange={(e) => setTargetPosition(e.target.value)}
-                placeholder="Ex: Data Scientist, Software Engineer..."
-                className={inputClass}
-              />
-            </div>
-            <div className="min-w-0">
-              <label className={labelCls}>
-                Pays cible *
-              </label>
-              <DropdownSelect
-                value={targetCountry}
-                onChange={setTargetCountry}
-                placeholder="Ex: France, Canada, USA..."
-                groups={PAYS_GROUPS}
-                isLight={isLight}
-              />
-            </div>
-            <div className="min-w-0">
-              <label className={labelCls}>
-                Prêt à relocaliser
-              </label>
-              <DropdownSelect
-                value={pretARelocater}
-                onChange={setPretARelocater}
-                placeholder="Non spécifié"
-                groups={RELOCATION_GROUPS}
-                isLight={isLight}
-              />
-            </div>
-            <div className="min-w-0 sm:col-span-2">
-              <label className={labelCls}>
-                Exigences / Pré-requis *
-              </label>
-              <textarea
-                value={constraints}
-                onChange={(e) => setConstraints(e.target.value)}
-                rows={3}
-                className={`${inputClass} min-h-[88px] resize-none`}
-                placeholder="Ex: Télétravail 3 jours/semaine, localisation Casablanca, etc."
-              />
-            </div>
-            <div className="min-w-0 sm:col-span-2">
-              <label className={labelCls}>
-                Ce que tu recherches *
-              </label>
-              <textarea
-                value={searchCriteria}
-                onChange={(e) => setSearchCriteria(e.target.value)}
-                rows={3}
-                className={`${inputClass} min-h-[88px] resize-none`}
-                placeholder="Ex: opportunités de croissance, projets IA, environnement startup..."
-              />
-            </div>
             <div className="min-w-0">
               <label className={labelCls}>
                 Salaire minimum (MAD) *
@@ -916,15 +1072,16 @@ export default function OnboardingCandidatPage() {
                 inputMode="numeric"
                 pattern="[0-9]*"
                 onChange={(e) => {
-                  // Garde uniquement les chiffres (pas de lettres / séparateurs)
                   const digitsOnly = e.target.value.replace(/\D/g, "");
                   setSalaireMinimum(digitsOnly);
+                  clearFieldError("salaireMinimum");
                 }}
                 placeholder="Ex: 8000"
                 className={inputClass}
               />
+              {errEl("salaireMinimum")}
             </div>
-            <div className="min-w-0 sm:col-span-2">
+            <div className="min-w-0">
               <label className={labelCls}>
                 Types de contrat recherchés *
               </label>
@@ -941,6 +1098,7 @@ export default function OnboardingCandidatPage() {
                             ? prev.filter((t) => t !== type)
                             : [...prev, type],
                         );
+                        clearFieldError("typeContrat");
                       }}
                       className={[
                         "px-3 py-1.5 rounded-full border transition-colors",
@@ -956,187 +1114,142 @@ export default function OnboardingCandidatPage() {
                   );
                 })}
               </div>
+              {errEl("typeContrat")}
             </div>
             <div className="min-w-0 sm:col-span-2">
               <label className={labelCls}>
-                Domaine d&apos;activité *
+                Exigences / Pré-requis *
               </label>
-              <DropdownSelect
-                value={domaineActivite}
-                onChange={setDomaineActivite}
-                placeholder="Sélectionner..."
-                groups={DOMAINE_GROUPS}
-                isLight={isLight}
+              <textarea
+                value={constraints}
+                onChange={(e) => {
+                  setConstraints(e.target.value);
+                  clearFieldError("constraints");
+                }}
+                rows={3}
+                className={`${inputClass} min-h-[88px] resize-none`}
+                placeholder="Ex: Télétravail 3 jours/semaine, localisation Casablanca, etc."
               />
-              <select
-                value={domaineActivite}
-                onChange={(e) => setDomaineActivite(e.target.value)}
-                className="hidden"
-                aria-hidden="true"
-              >
-                <option value="">Sélectionner...</option>
-
-                <optgroup label="Informatique & Technologies (IT)">
-                  <option value="Developpement logiciel - Software engineering">
-                    Développement logiciel - Software engineering
-                  </option>
-                  <option value="Developpement web">Développement web</option>
-                  <option value="Reseaux informatiques">Réseaux informatiques</option>
-                  <option value="Cybersecurite">Cybersécurité</option>
-                  <option value="Cloud computing">Cloud computing</option>
-                  <option value="DevOps">DevOps</option>
-                  <option value="Architecture logicielle">Architecture logicielle</option>
-                </optgroup>
-
-                <optgroup label="Intelligence artificielle & Data">
-                  <option value="Data science">Data science</option>
-                  <option value="Analyse de donnees">Analyse de données</option>
-                  <option value="Intelligence artificielle & Machine learning">
-                    Intelligence artificielle & Machine learning
-                  </option>
-                  <option value="Business Intelligence (BI)">
-                    Business Intelligence (BI)
-                  </option>
-                  <option value="ERP & CRM">ERP & CRM</option>
-                </optgroup>
-
-                <optgroup label="Marketing & Communication">
-                  <option value="Marketing digital">Marketing digital</option>
-                  <option value="Community management">Community management</option>
-                  <option value="SEO - SEA">SEO - SEA</option>
-                  <option value="Content marketing">Content marketing</option>
-                  <option value="Branding & communication corporate">
-                    Branding & communication corporate
-                  </option>
-                  <option value="Relations publiques (RP)">
-                    Relations publiques (RP)
-                  </option>
-                  <option value="Email marketing">Email marketing</option>
-                  <option value="Growth marketing">Growth marketing</option>
-                </optgroup>
-
-                <optgroup label="Finance, Comptabilité & Banque">
-                  <option value="Comptabilite generale">Comptabilité générale</option>
-                  <option value="Audit & controle de gestion">
-                    Audit & contrôle de gestion
-                  </option>
-                  <option value="Finance d'entreprise">Finance d’entreprise</option>
-                  <option value="Analyse financiere">Analyse financière</option>
-                  <option value="Banque & gestion de portefeuille">
-                    Banque & gestion de portefeuille
-                  </option>
-                  <option value="Fiscalite">Fiscalité</option>
-                  <option value="Tresorerie">Trésorerie</option>
-                  <option value="Assurance">Assurance</option>
-                </optgroup>
-
-                <optgroup label="Commerce & Vente">
-                  <option value="Vente terrain">Vente terrain</option>
-                  <option value="Vente en magasin - retail">
-                    Vente en magasin - retail
-                  </option>
-                  <option value="Business development">Business development</option>
-                  <option value="Gestion grands comptes">Gestion grands comptes</option>
-                  <option value="E-commerce">E-commerce</option>
-                  <option value="Relation client">Relation client</option>
-                  <option value="Negociation commerciale">Négociation commerciale</option>
-                  <option value="Avant-vente - presales">Avant-vente - presales</option>
-                </optgroup>
-
-                <optgroup label="Transport & Automobile">
-                  <option value="Logistique transport">Logistique transport</option>
-                  <option value="Maintenance automobile">Maintenance automobile</option>
-                  <option value="Gestion flotte vehicules">
-                    Gestion flotte véhicules
-                  </option>
-                  <option value="Transport international">Transport international</option>
-                  <option value="Exploitation transport">Exploitation transport</option>
-                  <option value="Mecanique automobile">Mécanique automobile</option>
-                  <option value="Diagnostic technique">Diagnostic technique</option>
-                </optgroup>
-
-                <optgroup label="Télécommunications">
-                  <option value="Reseaux telecom">Réseaux télécom</option>
-                  <option value="Support telecom">Support télécom</option>
-                  <option value="Fibre optique">Fibre optique</option>
-                  <option value="Radio & mobile (4G/5G)">Radio & mobile (4G/5G)</option>
-                  <option value="VoIP & communications unifiees">
-                    VoIP & communications unifiées
-                  </option>
-                  <option value="Infrastructure telecom">Infrastructure télécom</option>
-                </optgroup>
-
-                <optgroup label="Immobilier">
-                  <option value="Transaction immobiliere">Transaction immobilière</option>
-                  <option value="Gestion locative">Gestion locative</option>
-                  <option value="Syndic">Syndic</option>
-                  <option value="Promotion immobiliere">Promotion immobilière</option>
-                  <option value="Expertise immobiliere">Expertise immobilière</option>
-                  <option value="Negociation immobiliere">Négociation immobilière</option>
-                </optgroup>
-
-                <optgroup label="Média, Design & Création">
-                  <option value="Design graphique">Design graphique</option>
-                  <option value="UI - UX design">UI - UX design</option>
-                  <option value="Motion design">Motion design</option>
-                  <option value="Montage video">Montage vidéo</option>
-                  <option value="Photographie">Photographie</option>
-                  <option value="Illustration">Illustration</option>
-                  <option value="Production media">Production média</option>
-                  <option value="Direction artistique">Direction artistique</option>
-                </optgroup>
-
-                <optgroup label="Logistique & Supply chain">
-                  <option value="Gestion des stocks">Gestion des stocks</option>
-                  <option value="Planification & approvisionnement">
-                    Planification & approvisionnement
-                  </option>
-                  <option value="Transport & distribution">Transport & distribution</option>
-                  <option value="Supply chain management">Supply chain management</option>
-                  <option value="Import - Export">Import - Export</option>
-                  <option value="Gestion d'entrepot">Gestion d’entrepôt</option>
-                  <option value="Procurement - achats">Procurement - achats</option>
-                </optgroup>
-
-                <optgroup label="Autres"> <option value="Autre">Autre</option> </optgroup>
-              </select>
+              {errEl("constraints")}
+            </div>
+            <div className="min-w-0 sm:col-span-2">
+              <label className={labelCls}>
+                Ce que tu recherches *
+              </label>
+              <textarea
+                value={searchCriteria}
+                onChange={(e) => {
+                  setSearchCriteria(e.target.value);
+                  clearFieldError("searchCriteria");
+                }}
+                rows={3}
+                className={`${inputClass} min-h-[88px] resize-none`}
+                placeholder="Ex: opportunités de croissance, projets IA, environnement startup..."
+              />
+              {errEl("searchCriteria")}
             </div>
           </div>
-        )}
 
-        {/* Étape 3 */}
-        {currentWizardStep === 3 && (
-          <div className="space-y-4">
-            <div>
-              <label className={labelCls}>
-                CV (PDF ou DOCX)
-              </label>
-              <input
-                type="file"
-                accept=".pdf,.doc,.docx"
-                onChange={handleFileChange}
-                required
-                className={fileInputClass}
-              />
-              {cvFile && (
-                <div className={fileRowBox}>
-                  <span className={fileNameText}>{cvFile.name}</span>
-                  <button
-                    type="button"
-                    onClick={handleRemoveCv}
-                    className="text-red-300 hover:text-red-200"
+          <div
+            className={`space-y-4 pt-5 mt-1 ${isLight ? "border-t border-black/10" : "border-t border-white/10"}`}
+          >
+            {cvFile &&
+            !checkingCvPhoto &&
+            cvNeedsManualPhoto === true ? (
+              <div className="grid grid-cols-1 sm:grid-cols-2 gap-3 w-full">
+                <div className="min-w-0">
+                  <label className={labelCls}>
+                    CV (PDF ou DOCX)
+                  </label>
+                  <input
+                    type="file"
+                    accept=".pdf,.doc,.docx"
+                    onChange={handleFileChange}
+                    className={fileInputClass}
+                  />
+                  {errEl("cvFile")}
+                  {cvFile && (
+                    <div className={fileRowBox}>
+                      <span className={fileNameText}>{cvFile.name}</span>
+                      <button
+                        type="button"
+                        onClick={handleRemoveCv}
+                        className="text-red-300 hover:text-red-200"
+                      >
+                        Supprimer
+                      </button>
+                    </div>
+                  )}
+                  <p
+                    className={`mt-1 text-[11px] ${isLight ? "text-black/50" : "text-white/50"}`}
                   >
-                    Supprimer
-                  </button>
+                    💡 Extraction auto des compétences et expériences depuis ton
+                    CV.
+                  </p>
                 </div>
-              )}
-              <p
-                className={`mt-1 text-[11px] ${isLight ? "text-black/50" : "text-white/50"}`}
-              >
-                💡 Je vais extraire automatiquement tes compétences, expériences et
-                réalisations de ton CV.
-              </p>
-            </div>
+                <div className="min-w-0">
+                  <label className={labelCls}>
+                    Photo professionnelle *
+                  </label>
+                  <input
+                    type="file"
+                    accept=".jpg,.jpeg,.png"
+                    onChange={handleImageChange}
+                    className={fileInputClass}
+                  />
+                  {errEl("photoPro")}
+                  {imgFile && (
+                    <div className={fileRowBox}>
+                      <span className={fileNameText}>{imgFile.name}</span>
+                      <button
+                        type="button"
+                        onClick={handleRemoveImage}
+                        className="text-red-300 hover:text-red-200"
+                      >
+                        Supprimer
+                      </button>
+                    </div>
+                  )}
+                  <p
+                    className={`mt-1 text-[11px] ${isLight ? "text-black/50" : "text-white/50"}`}
+                  >
+                    Aucune photo détectée dans le CV — ajoute-en une pour la Talent
+                    Card.
+                  </p>
+                </div>
+              </div>
+            ) : (
+              <div className="w-full">
+                <label className={labelCls}>
+                  CV (PDF ou DOCX)
+                </label>
+                <input
+                  type="file"
+                  accept=".pdf,.doc,.docx"
+                  onChange={handleFileChange}
+                  className={fileInputClass}
+                />
+                {errEl("cvFile")}
+                {cvFile && (
+                  <div className={fileRowBox}>
+                    <span className={fileNameText}>{cvFile.name}</span>
+                    <button
+                      type="button"
+                      onClick={handleRemoveCv}
+                      className="text-red-300 hover:text-red-200"
+                    >
+                      Supprimer
+                    </button>
+                  </div>
+                )}
+                <p
+                  className={`mt-1 text-[11px] ${isLight ? "text-black/50" : "text-white/50"}`}
+                >
+                  💡 Je vais extraire automatiquement tes compétences, expériences et
+                  réalisations de ton CV.
+                </p>
+              </div>
+            )}
 
             {checkingCvPhoto && cvFile && (
               <p className={`text-[12px] ${isLight ? "text-black/55" : "text-white/60"}`}>
@@ -1150,62 +1263,43 @@ export default function OnboardingCandidatPage() {
                 continuer, ou ajouter une photo si tu veux.
               </p>
             )}
-
-            {cvFile && cvNeedsManualPhoto === true && (
-              <div>
+            <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
+              <div className="min-w-0">
                 <label className={labelCls}>
-                  Photo professionnelle *
+                  OU URL LinkedIn (obligatoire avec GitHub ou seul)
                 </label>
                 <input
-                  type="file"
-                  accept=".jpg,.jpeg,.png"
-                  onChange={handleImageChange}
-                  className={fileInputClass}
+                  type="url"
+                  value={linkedinUrl}
+                  onChange={(e) => {
+                    setLinkedinUrl(e.target.value);
+                    clearFieldError("linkedinUrl");
+                    clearFieldError("socialLinks");
+                  }}
+                  placeholder="https://www.linkedin.com/in/..."
+                  className={inputClass}
                 />
-                {imgFile && (
-                  <div className={fileRowBox}>
-                    <span className={fileNameText}>{imgFile.name}</span>
-                    <button
-                      type="button"
-                      onClick={handleRemoveImage}
-                      className="text-red-300 hover:text-red-200"
-                    >
-                      Supprimer
-                    </button>
-                  </div>
-                )}
-                <p
-                  className={`mt-1 text-[11px] ${isLight ? "text-black/50" : "text-white/50"}`}
-                >
-                  Ton CV ne contient pas de photo détectable, ajoute-en une pour
-                  améliorer la Talent Card.
-                </p>
+                {errEl("linkedinUrl")}
               </div>
-            )}
-            <div>
-              <label className={labelCls}>
-                OU URL LinkedIn (obligatoire avec GitHub ou seul)
-              </label>
-              <input
-                type="url"
-                value={linkedinUrl}
-                onChange={(e) => setLinkedinUrl(e.target.value)}
-                placeholder="https://www.linkedin.com/in/..."
-                className={inputClass}
-              />
+              <div className="min-w-0">
+                <label className={labelCls}>
+                  URL GitHub (obligatoire avec LinkedIn ou seul)
+                </label>
+                <input
+                  type="url"
+                  value={githubUrl}
+                  onChange={(e) => {
+                    setGithubUrl(e.target.value);
+                    clearFieldError("githubUrl");
+                    clearFieldError("socialLinks");
+                  }}
+                  placeholder="https://github.com/..."
+                  className={inputClass}
+                />
+                {errEl("githubUrl")}
+              </div>
             </div>
-            <div>
-              <label className={labelCls}>
-                URL GitHub (obligatoire avec LinkedIn ou seul)
-              </label>
-              <input
-                type="url"
-                value={githubUrl}
-                onChange={(e) => setGithubUrl(e.target.value)}
-                placeholder="https://github.com/..."
-                className={inputClass}
-              />
-            </div>
+            {errEl("socialLinks")}
             <p className={`text-[11px] ${isLight ? "text-black/45" : "text-white/45"}`}>
               Au moins une URL est obligatoire : LinkedIn ou GitHub.
             </p>
@@ -1215,10 +1309,7 @@ export default function OnboardingCandidatPage() {
               </label>
               <div className="space-y-2">
                 {otherLinks.map((link, index) => (
-                  <div
-                    key={index}
-                    className="flex flex-col sm:flex-row gap-2 items-stretch"
-                  >
+                  <div key={index} className="w-full space-y-2">
                     <input
                       value={link.type}
                       onChange={(e) => {
@@ -1227,7 +1318,7 @@ export default function OnboardingCandidatPage() {
                         setOtherLinks(next);
                       }}
                       placeholder="Ex: Portfolio, Instagram..."
-                      className={`${inputClass} flex-1`}
+                      className={`${inputClass} w-full`}
                     />
                     <input
                       value={link.url}
@@ -1237,7 +1328,7 @@ export default function OnboardingCandidatPage() {
                         setOtherLinks(next);
                       }}
                       placeholder="https://..."
-                      className={`${inputClass} flex-[2]`}
+                      className={`${inputClass} w-full`}
                     />
                     <button
                       type="button"
@@ -1264,11 +1355,13 @@ export default function OnboardingCandidatPage() {
               </div>
             </div>
           </div>
+          </>
         )}
 
-        {/* Étape 4 */}
-        {currentWizardStep === 4 && (
-          <div className="space-y-4 text-center">
+        {showFinalizeSection && (
+          <div
+            className={`space-y-4 text-left pt-5 mt-2 ${isLight ? "border-t border-black/10" : "border-t border-white/10"}`}
+          >
             <h3
               className={`text-lg font-semibold mb-2 ${isLight ? "text-black" : "text-white"}`}
             >
@@ -1291,78 +1384,78 @@ export default function OnboardingCandidatPage() {
               La génération peut prendre quelques instants. Tu pourras ensuite
               utiliser ton profil pour le matching et les candidatures.
             </p>
-            {loading && (
-              <div className={genPanelClass}>
-                <div className="mb-2 flex items-center justify-between text-[12px]">
-                  <span className={isLight ? "text-black/70" : "text-white/80"}>
-                    Progression de la génération
-                  </span>
-                  <span
-                    className={`font-semibold ${isLight ? "text-black" : "text-white"}`}
-                  >
-                    {generationProgress}%
-                  </span>
-                </div>
-                <div
-                  className={`h-2 w-full overflow-hidden rounded-full ${isLight ? "bg-black/10" : "bg-white/10"}`}
+            <div className={`${genPanelClass} text-left`}>
+              <div className="mb-2 flex items-center justify-between text-[12px]">
+                <span className={isLight ? "text-black/70" : "text-white/80"}>
+                  Progression de la génération
+                </span>
+                <span
+                  className={`font-semibold ${isLight ? "text-black" : "text-white"}`}
                 >
-                  <div
-                    className="h-full rounded-full bg-tap-red transition-all duration-500 ease-out"
-                    style={{ width: `${generationProgress}%` }}
-                  />
-                </div>
-                <div className="mt-3 space-y-2">
-                  {generationSteps.map((step) => {
-                    const isDone = completedGenerationSteps.includes(step.id);
-                    const isCurrent =
-                      currentGenerationStep === step.id && !isDone;
-                    return (
-                      <div
-                        key={step.id}
-                        className="flex items-center justify-between text-[12px]"
-                      >
-                        <span
-                          className={
-                            isDone
-                              ? isLight
-                                ? "text-emerald-700"
-                                : "text-emerald-300"
-                              : isCurrent
-                                ? isLight
-                                  ? "text-black"
-                                  : "text-white"
-                                : isLight
-                                  ? "text-black/40"
-                                  : "text-white/45"
-                          }
-                        >
-                          {step.label}
-                        </span>
-                        <span
-                          className={
-                            isDone
-                              ? isLight
-                                ? "text-emerald-700"
-                                : "text-emerald-300"
-                              : isCurrent
-                                ? "text-tap-red"
-                                : isLight
-                                  ? "text-black/35"
-                                  : "text-white/40"
-                          }
-                        >
-                          {isDone
-                            ? "Terminé"
-                            : isCurrent
-                              ? "En cours…"
-                              : "En attente"}
-                        </span>
-                      </div>
-                    );
-                  })}
-                </div>
+                  {loading ? generationProgress : 0}%
+                </span>
               </div>
-            )}
+              <div
+                className={`h-2 w-full overflow-hidden rounded-full ${isLight ? "bg-black/10" : "bg-white/10"}`}
+              >
+                <div
+                  className="h-full rounded-full bg-tap-red transition-all duration-500 ease-out"
+                  style={{
+                    width: `${loading ? generationProgress : 0}%`,
+                  }}
+                />
+              </div>
+              <div className="mt-3 space-y-2">
+                {generationSteps.map((step) => {
+                  const isDone = completedGenerationSteps.includes(step.id);
+                  const isCurrent =
+                    loading && currentGenerationStep === step.id && !isDone;
+                  return (
+                    <div
+                      key={step.id}
+                      className="flex items-center justify-between text-[12px]"
+                    >
+                      <span
+                        className={
+                          isDone
+                            ? isLight
+                              ? "text-emerald-700"
+                              : "text-emerald-300"
+                            : isCurrent
+                              ? isLight
+                                ? "text-black"
+                                : "text-white"
+                              : isLight
+                                ? "text-black/40"
+                                : "text-white/45"
+                        }
+                      >
+                        {step.label}
+                      </span>
+                      <span
+                        className={
+                          isDone
+                            ? isLight
+                              ? "text-emerald-700"
+                              : "text-emerald-300"
+                            : isCurrent
+                              ? "text-tap-red"
+                              : isLight
+                                ? "text-black/35"
+                                : "text-white/40"
+                        }
+                      >
+                        {isDone
+                          ? "Terminé"
+                          : isCurrent
+                            ? "En cours…"
+                            : "En attente"}
+                      </span>
+                    </div>
+                  );
+                })}
+              </div>
+            </div>
           </div>
         )}
 
@@ -1370,7 +1463,7 @@ export default function OnboardingCandidatPage() {
         <div
           className={`mt-6 pt-4 border-t flex items-center justify-between ${isLight ? "border-black/10" : "border-white/10"}`}
         >
-          {currentWizardStep > 1 ? (
+          {currentWizardStep > 1 || showFinalizeSection ? (
             <button
               type="button"
               onClick={handlePrevious}
@@ -1381,12 +1474,11 @@ export default function OnboardingCandidatPage() {
           ) : (
             <span />
           )}
-          {currentWizardStep < 4 ? (
+          {!showFinalizeSection ? (
             <button
               type="button"
               onClick={handleNext}
-              disabled={!isStepComplete(currentWizardStep)}
-              className="btn-primary btn-sm disabled:opacity-55 disabled:cursor-not-allowed disabled:hover:translate-y-0 disabled:hover:shadow-[0_4px_16px_rgba(202,27,40,0.35)]"
+              className="btn-primary btn-sm"
             >
               Suivant →
             </button>
@@ -1396,8 +1488,7 @@ export default function OnboardingCandidatPage() {
               disabled={
                 loading ||
                 !isStepComplete(1) ||
-                !isStepComplete(2) ||
-                !isStepComplete(3)
+                !isStepComplete(2)
               }
               className="btn-primary btn-sm disabled:opacity-55 disabled:cursor-not-allowed disabled:hover:translate-y-0 disabled:hover:shadow-[0_4px_16px_rgba(202,27,40,0.35)]"
             >

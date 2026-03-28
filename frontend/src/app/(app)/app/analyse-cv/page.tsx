@@ -1,6 +1,6 @@
 "use client";
 
-import { useState, useCallback, useRef, useEffect } from "react";
+import { useState, useCallback, useRef, useEffect, useMemo } from "react";
 import { useAuth } from "@/hooks/use-auth";
 import {
   useCandidatStats,
@@ -23,6 +23,7 @@ import Link from "next/link";
 import { useDashboardTheme } from "@/hooks/use-dashboard-theme";
 import { useUiStore } from "@/stores/ui";
 import CvUploadPhotoPromptModal from "@/components/app/candidat/CvUploadPhotoPromptModal";
+import { isPdfUploadFile, isListItemPdf } from "@/lib/cv-pdf";
 
 export default function AnalyseCvAppPage() {
   const { isCandidat } = useAuth();
@@ -96,19 +97,32 @@ export default function AnalyseCvAppPage() {
     setDragOver(false);
     triggerUploadBorderAnimation();
     const file = e.dataTransfer.files[0];
-    if (file && file.type === "application/pdf") {
+    if (file && isPdfUploadFile(file)) {
       void startUploadFlow(file);
+    } else if (file) {
+      addToast({
+        message: "Seuls les fichiers PDF sont acceptés pour le CV.",
+        type: "error",
+      });
     }
-  }, [startUploadFlow, triggerUploadBorderAnimation]);
+  }, [startUploadFlow, triggerUploadBorderAnimation, addToast]);
 
   const handleFileSelect = useCallback((e: React.ChangeEvent<HTMLInputElement>) => {
     const file = e.target.files?.[0];
     if (file) {
+      if (!isPdfUploadFile(file)) {
+        addToast({
+          message: "Seuls les fichiers PDF sont acceptés pour le CV.",
+          type: "error",
+        });
+        e.target.value = "";
+        return;
+      }
       triggerUploadBorderAnimation();
       void startUploadFlow(file);
     }
     e.target.value = "";
-  }, [startUploadFlow, triggerUploadBorderAnimation]);
+  }, [startUploadFlow, triggerUploadBorderAnimation, addToast]);
 
   const confirmUploadWithImageChoice = useCallback(async (choice: "keep_existing" | "upload_new") => {
     const cvFile = pendingCv;
@@ -151,13 +165,23 @@ export default function AnalyseCvAppPage() {
     }
   }, [uploadCv.isPending, uploadCv.isSuccess]);
 
-  const hasCvs = (cvQuery.data?.cvFiles?.length ?? 0) > 0;
-  const hasTalentCards = (talentcardQuery.data?.talentcardFiles?.length ?? 0) > 0;
+  const cvPdfFilesOnly = useMemo(
+    () => (cvQuery.data?.cvFiles ?? []).filter(isListItemPdf),
+    [cvQuery.data?.cvFiles],
+  );
+  const hasCvs = cvPdfFilesOnly.length > 0;
+  const talentFiles = talentcardQuery.data?.talentcardFiles ?? [];
+  const talentPdfFilesOnly = useMemo(
+    () => (talentcardQuery.data?.talentcardFiles ?? []).filter(isListItemPdf),
+    [talentcardQuery.data?.talentcardFiles],
+  );
+  /** Pour la logique métier / polling : toute talent card renvoyée par l’API */
+  const hasTalentCards = talentFiles.length > 0;
+  /** Affichage & lien scoring : PDF uniquement (pas les exports PNG) */
+  const hasTalentPdfCards = talentPdfFilesOnly.length > 0;
   const portfolioFiles = portfolioQuery.data?.portfolioPdfFiles ?? [];
   const hasPortfolioShort = portfolioFiles.some((f) => f.type === "short");
   const hasPortfolios = hasPortfolioShort;
-
-  const talentFiles = talentcardQuery.data?.talentcardFiles ?? [];
   const talentCount = talentFiles.length;
   const talentMaxUpdatedAtMs = Math.max(
     0,
@@ -304,7 +328,13 @@ export default function AnalyseCvAppPage() {
               <Upload size={14} />
               Choisir un fichier
             </button>
-            <input ref={fileRef} type="file" accept=".pdf" onChange={handleFileSelect} className="hidden" />
+            <input
+              ref={fileRef}
+              type="file"
+              accept=".pdf,application/pdf"
+              onChange={handleFileSelect}
+              className="hidden"
+            />
             <p className={`text-xs mt-2 ${isLight ? "text-black/50" : "text-white/25"}`}>PDF uniquement</p>
           </>
         )}
@@ -428,15 +458,15 @@ export default function AnalyseCvAppPage() {
           <div className="grid gap-3">{Array.from({ length: 2 }).map((_, i) => <Skeleton key={i} className="h-20 w-full" />)}</div>
         ) : cvQuery.isError ? (
           <ErrorState onRetry={() => cvQuery.refetch()} />
-        ) : !cvQuery.data?.cvFiles?.length ? (
+        ) : !cvPdfFilesOnly.length ? (
           <EmptyState
             icon={<FileText className="w-10 h-10" />}
             title="Aucun CV"
-            description="Uploadez votre premier CV ci-dessus pour lancer l'analyse IA."
+            description="Uploadez votre premier CV (PDF) ci-dessus pour lancer l'analyse IA."
           />
         ) : (
           <div className="grid gap-3">
-            {cvQuery.data.cvFiles.map((file, i) => (
+            {cvPdfFilesOnly.map((file, i) => (
               <FileCard key={i} {...file} variant="sidebar-active" onDelete={(p) => deleteCv.mutate(p)} />
             ))}
           </div>
@@ -453,7 +483,7 @@ export default function AnalyseCvAppPage() {
                 <span className="text-[10px] uppercase tracking-[2.5px] text-blue-500/80 font-semibold leading-none">Talent Cards</span>
               </sup>
               <p className={`mt-2 text-[12px] ${isLight ? "text-black/55" : "text-white/45"}`}>
-                Cartes générées par IA à partir de votre CV.
+                Cartes générées par IA à partir de votre CV — affichage des fichiers PDF uniquement.
               </p>
             </div>
 
@@ -461,15 +491,15 @@ export default function AnalyseCvAppPage() {
               <div className="grid gap-3">{Array.from({ length: 2 }).map((_, i) => <Skeleton key={i} className="h-20 w-full" />)}</div>
             ) : talentcardQuery.isError ? (
               <ErrorState onRetry={() => talentcardQuery.refetch()} />
-            ) : !talentcardQuery.data?.talentcardFiles?.length ? (
+            ) : !talentPdfFilesOnly.length ? (
               <EmptyState
                 icon={<Award className="w-10 h-10" />}
                 title=""
-                description="Vos Talent Cards seront générées automatiquement après l'analyse de votre CV."
+                description="Vos Talent Cards PDF seront listées ici après l'analyse. Les exports PNG ne sont pas affichés."
               />
             ) : (
               <div className="grid gap-3">
-                {talentcardQuery.data.talentcardFiles.map((file, i) => (
+                {talentPdfFilesOnly.map((file, i) => (
                   <FileCard key={i} {...file} variant="sidebar-active" onDelete={(path) => deleteTalentcard.mutate(path)} />
                 ))}
               </div>
@@ -510,7 +540,7 @@ export default function AnalyseCvAppPage() {
       ) : null}
 
       {/* Link to scoring */}
-      {hasTalentCards && (
+      {hasTalentPdfCards && (
         <div className={`mt-8 pt-6 ${isLight ? "border-t border-black/10" : "border-t border-white/[0.04]"}`}>
           <Link href="/app/scoring" className="inline-flex items-center gap-2 text-tap-red hover:text-tap-red-hover text-[13px] font-medium transition-colors group">
             Voir votre score d&apos;employabilité

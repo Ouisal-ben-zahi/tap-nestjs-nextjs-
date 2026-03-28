@@ -31,6 +31,7 @@ import {
   portfolioOnePageSatisfiedForSession,
   talentcardReadyForSession,
 } from "@/lib/candidat-upload-generation";
+import { isPdfUploadFile, isListItemPdf } from "@/lib/cv-pdf";
 
 type Tab = "cv" | "talentcard" | "portfolio" | "portfolio-long";
 
@@ -166,20 +167,45 @@ export default function MesFichiersPage() {
       e.preventDefault();
       setDragOver(false);
       const file = e.dataTransfer.files[0];
-      if (file && file.type === "application/pdf") {
+      if (file && isPdfUploadFile(file)) {
         void startUploadFlow(file);
+      } else if (file) {
+        addToast({
+          message: "Seuls les fichiers PDF sont acceptés pour le CV.",
+          type: "error",
+        });
       }
     },
-    [startUploadFlow],
+    [startUploadFlow, addToast],
   );
 
   const handleFileSelect = useCallback(
     (e: React.ChangeEvent<HTMLInputElement>) => {
       const file = e.target.files?.[0];
-      if (file) void startUploadFlow(file);
+      if (file) {
+        if (!isPdfUploadFile(file)) {
+          addToast({
+            message: "Seuls les fichiers PDF sont acceptés pour le CV.",
+            type: "error",
+          });
+          e.target.value = "";
+          return;
+        }
+        void startUploadFlow(file);
+      }
       e.target.value = "";
     },
-    [startUploadFlow],
+    [startUploadFlow, addToast],
+  );
+
+  const cvPdfFilesOnly = useMemo(
+    () => (cvQuery.data?.cvFiles ?? []).filter(isListItemPdf),
+    [cvQuery.data?.cvFiles],
+  );
+
+  const talentPdfFilesOnly = useMemo(
+    () => (talentcardQuery.data?.talentcardFiles ?? []).filter(isListItemPdf),
+    [talentcardQuery.data?.talentcardFiles],
   );
 
   const portfolioFilesForGen = portfolioQuery.data?.portfolioPdfFiles ?? [];
@@ -189,7 +215,7 @@ export default function MesFichiersPage() {
   const showCvGenerationPanel = useMemo(() => {
     if (cvGenerationStartedAt == null) return false;
     const tc = talentcardQuery.data?.talentcardFiles ?? [];
-    const cv = cvQuery.data?.cvFiles ?? [];
+    const cv = cvPdfFilesOnly;
     const sc = scoreQuery.data ?? null;
     const started = cvGenerationStartedAt;
     void genTick;
@@ -218,7 +244,7 @@ export default function MesFichiersPage() {
   }, [
     genTick,
     cvGenerationStartedAt,
-    cvQuery.data?.cvFiles,
+    cvPdfFilesOnly,
     talentcardQuery.data?.talentcardFiles,
     scoreQuery.data,
     shortForGen,
@@ -329,7 +355,12 @@ export default function MesFichiersPage() {
                 <label className="btn-primary btn-sm gap-2 cursor-pointer">
                   <Upload size={14} />
                   Choisir un fichier
-                  <input type="file" accept=".pdf" onChange={handleFileSelect} className="hidden" />
+                  <input
+                    type="file"
+                    accept=".pdf,application/pdf"
+                    onChange={handleFileSelect}
+                    className="hidden"
+                  />
                 </label>
                 <p className={`text-xs mt-2 ${isLight ? "text-black/50" : "text-white/25"}`}>PDF uniquement</p>
               </>
@@ -353,11 +384,11 @@ export default function MesFichiersPage() {
             <div className="grid grid-cols-1 gap-3">{Array.from({ length: 4 }).map((_, i) => <Skeleton key={i} className="h-20 w-full" />)}</div>
           ) : cvQuery.isError ? (
             <ErrorState onRetry={() => cvQuery.refetch()} />
-          ) : !cvQuery.data?.cvFiles?.length ? (
-            <EmptyState title="Aucun CV" description="Uploadez votre premier CV pour commencer l'analyse IA." />
+          ) : !cvPdfFilesOnly.length ? (
+            <EmptyState title="Aucun CV" description="Uploadez votre premier CV (PDF) pour commencer l'analyse IA." />
           ) : (
             <div className="grid grid-cols-1 gap-3">
-              {cvQuery.data.cvFiles.slice(0, 4).map((file, i) => (
+              {cvPdfFilesOnly.slice(0, 4).map((file, i) => (
                 <FileCard key={i} {...file} variant="sidebar-active" onDelete={(path) => deleteCv.mutate(path)} />
               ))}
             </div>
@@ -372,22 +403,23 @@ export default function MesFichiersPage() {
           <div className="mb-4">
             <h2 className={`text-[15px] font-semibold ${isLight ? "text-black" : "text-white"}`}>Talent Cards</h2>
             <p className={`text-[12px] mt-1 ${isLight ? "text-black/60" : "text-white/40"}`}>
-              Vos Talent Cards seront générées automatiquement après l&apos;analyse de votre CV.
+              Fichiers PDF uniquement (les exports PNG ne sont pas listés). Génération après
+              l&apos;analyse de votre CV.
             </p>
           </div>
           {talentcardQuery.isLoading ? (
             <div className="grid grid-cols-1 gap-3">{Array.from({ length: 4 }).map((_, i) => <Skeleton key={i} className="h-20 w-full" />)}</div>
           ) : talentcardQuery.isError ? (
             <ErrorState onRetry={() => talentcardQuery.refetch()} />
-          ) : !talentcardQuery.data?.talentcardFiles?.length ? (
+          ) : !talentPdfFilesOnly.length ? (
             <EmptyState
               icon={<Award className="w-12 h-12" />}
-              title="Aucune Talent Card"
-              description="Vos Talent Cards seront générées automatiquement après l'analyse de votre CV."
+              title="Aucune Talent Card (PDF)"
+              description="Seuls les exports PDF sont affichés ici. Les Talent Cards PDF sont générées après l'analyse de votre CV."
             />
           ) : (
             <div className="grid grid-cols-1 gap-3">
-              {talentcardQuery.data.talentcardFiles.map((file, i) => (
+              {talentPdfFilesOnly.map((file, i) => (
                 <FileCard
                   key={i}
                   {...file}

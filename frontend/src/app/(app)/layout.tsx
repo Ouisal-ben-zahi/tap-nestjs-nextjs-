@@ -90,7 +90,7 @@ export default function AppLayout({ children }: { children: React.ReactNode }) {
 
         {recruiterTalentOpen ? (
           <div
-            className="fixed right-0 top-1/2 z-[60] flex h-[80dvh] max-h-[80vh] w-full max-w-full -translate-y-1/2 flex-col overflow-hidden border-0 bg-black shadow-none pointer-events-auto lg:max-w-[40vw] lg:w-[40vw]"
+            className="fixed right-0 top-1/2 z-[60] flex h-[80dvh] max-h-[80vh] w-full max-w-full -translate-y-1/2 flex-col overflow-visible border-0 bg-transparent shadow-none pointer-events-none lg:max-w-[40vw] lg:w-[40vw]"
             role="dialog"
             aria-modal="false"
             aria-label="Talent Card du candidat"
@@ -99,7 +99,7 @@ export default function AppLayout({ children }: { children: React.ReactNode }) {
             <button
               type="button"
               onClick={closeRecruiterTalentPanel}
-              className="absolute top-3 right-3 z-20 w-9 h-9 rounded-lg border border-white/[0.10] bg-black/60 text-white/90 hover:bg-black/70 flex items-center justify-center"
+              className="absolute top-3 right-3 z-20 w-9 h-9 rounded-lg border border-white/[0.14] bg-black/55 backdrop-blur-sm text-white/95 hover:bg-black/70 flex items-center justify-center pointer-events-auto"
               aria-label="Fermer"
               title="Fermer (Échap)"
             >
