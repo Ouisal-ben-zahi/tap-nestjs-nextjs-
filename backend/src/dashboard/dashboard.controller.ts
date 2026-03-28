@@ -19,7 +19,6 @@ import {
 } from '@nestjs/common';
 import { AuthGuard } from '@nestjs/passport';
 import { FileFieldsInterceptor, FileInterceptor } from '@nestjs/platform-express';
-<<<<<<< Updated upstream
 import {
   Observable,
   from,
@@ -43,9 +42,6 @@ import {
   type ToggleSavedJobPayload,
   type RecruiterProfileUpsertPayload,
 } from './dashboard.service';
-=======
-import { DashboardService, type ApplyJobPayload, type RecruiterJobPayload, type RecruiterMatchByOfferPayload } from './dashboard.service';
->>>>>>> Stashed changes
 
 @Controller('dashboard')
 export class DashboardController {
@@ -502,7 +498,6 @@ export class DashboardController {
     return this.dashboardService.getRecruiterMatchedCandidatesByOffer(userId, body);
   }
 
-<<<<<<< Updated upstream
   @Post('recruteur/candidatures/validate')
   @UseGuards(AuthGuard('jwt'))
   async validateRecruiterCandidateByJwt(
@@ -567,8 +562,6 @@ export class DashboardController {
     return this.dashboardService.saveInterviewQuestionsPdf(userId, body);
   }
 
-=======
->>>>>>> Stashed changes
   // === Legacy routes with userId in URL ===
 
   @Get('candidat/user/:userId')
