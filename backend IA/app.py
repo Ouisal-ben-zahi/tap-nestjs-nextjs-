@@ -87,16 +87,56 @@ CV_HTML_TEMPLATE_PATHS = [
 ]
 
 
+def _existing_frontend_src_subdirs(subfolder: str) -> list:
+    """
+    Chemins réels vers frontend/src/<subfolder> (assets Talent Card, portfolio, etc.).
+    En monorepo : sous la racine projet. Sous Docker (WORKDIR /app) : aussi sous /app/frontend/...
+    car dirname(__file__) remonte au parent de /app et cassait /talent/static & /portfolio/static.
+    """
+    out: list = []
+    seen: set = set()
+    for base in (_PROJECT_ROOT, _BACKEND_DIR):
+        p = os.path.abspath(os.path.join(base, "frontend", "src", subfolder))
+        if p in seen:
+            continue
+        seen.add(p)
+        if os.path.isdir(p):
+            out.append(p)
+    return out
+
+
 def _portfolio_long_template_html_path(project_root=None):
     """Portfolio long Jinja : priorité long_dynamique.html, puis ancien portfolio_long_template.html."""
-    root = project_root or _PROJECT_ROOT
+    roots: list = []
+    if project_root is not None:
+        roots.append(os.path.abspath(project_root))
+    for b in (_PROJECT_ROOT, _BACKEND_DIR):
+        ab = os.path.abspath(b)
+        if ab not in roots:
+            roots.append(ab)
     names = ("long_dynamique.html", "portfolio_long_template.html")
-    for sub in ("templates_modif", "20260312_044613"):
-        for name in names:
-            p = os.path.join(root, "frontend", "src", sub, name)
-            if os.path.isfile(p):
-                return p
-    return os.path.join(root, "frontend", "src", "20260312_044613", "portfolio_long_template.html")
+    for root in roots:
+        for sub in ("templates_modif", "20260312_044613"):
+            for name in names:
+                p = os.path.join(root, "frontend", "src", sub, name)
+                if os.path.isfile(p):
+                    return p
+    return os.path.join(
+        os.path.abspath(_BACKEND_DIR),
+        "frontend",
+        "src",
+        "20260312_044613",
+        "portfolio_long_template.html",
+    )
+
+
+def _portfolio_legacy_index_css_path():
+    """index.css de l'ancien dossier « portfolio html » si présent (hors templates_modif)."""
+    for d in _existing_frontend_src_subdirs("portfolio html"):
+        p = os.path.join(d, "index.css")
+        if os.path.isfile(p):
+            return p
+    return None
 
 
 # Timestamp de dernière génération du PDF portfolio par (db_candidate_id, version) — pour que la prévisualisation affiche le nouveau PDF après régénération
@@ -4555,9 +4595,10 @@ def generate_portfolio(candidate_uuid):
                     # 4. Charger le template HTML
                     # Essayer plusieurs chemins possibles (dans l'ordre de priorité)
                     possible_template_paths = [
-                        "/app/frontend/src/portfolio html/portfolio_template.html",  # Copié dans le conteneur (priorité)
-                        "/frontend/src/portfolio html/portfolio_template.html",  # Volume monté Docker
-                        os.path.join(os.path.dirname(os.path.dirname(os.path.abspath(__file__))), "frontend", "src", "portfolio html", "portfolio_template.html"),  # Depuis racine projet
+                        "/app/frontend/src/portfolio html/portfolio_template.html",
+                        "/frontend/src/portfolio html/portfolio_template.html",
+                        os.path.join(_BACKEND_DIR, "frontend", "src", "portfolio html", "portfolio_template.html"),
+                        os.path.join(_PROJECT_ROOT, "frontend", "src", "portfolio html", "portfolio_template.html"),
                     ]
                     
                     template_path = None
@@ -4967,9 +5008,8 @@ def view_portfolio_html(candidate_uuid):
             except Exception as inj_err:
                 print(f"⚠️ Contexte portfolio long (vue): {inj_err}")
         
-        project_root = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
-        template_path = _portfolio_long_template_html_path(project_root)
-        css_path = os.path.join(project_root, "frontend", "src", "portfolio html", "index.css")
+        template_path = _portfolio_long_template_html_path()
+        css_path = _portfolio_legacy_index_css_path()
         
         if not os.path.exists(template_path):
             return f"<h1>Erreur</h1><p>Template HTML introuvable: {template_path}</p>", 500
@@ -5406,9 +5446,8 @@ def generate_portfolio_html_endpoint(candidate_uuid):
         
         print(f"🔄 Génération et sauvegarde portfolio HTML (version: {version}) pour candidate_uuid={candidate_uuid}, db_candidate_id={db_candidate_id}")
         
-        # Pour la version "long", même résolution de chemin que la vue (templates_modif si présent)
-        project_root = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
-        long_template_path = _portfolio_long_template_html_path(project_root) if version == "long" else None
+        # Pour la version "long", même résolution de chemin que la vue (templates_modif sous Docker /app)
+        long_template_path = _portfolio_long_template_html_path() if version == "long" else None
         
         # Obtenir l'URL de base Flask pour les proxies (RECRUIT_BASE_URL pour domaine ex: https://demo.tap-hr.com/api)
         flask_base_url = (os.getenv("RECRUIT_BASE_URL") or request.host_url or "http://localhost:5002").rstrip('/')
@@ -5953,11 +5992,9 @@ def serve_portfolio_static(filename):
     Priorité : frontend/src/templates_modif (one_page_dynamique, assets TAP), puis 20260312_044613.
     """
     try:
-        project_root = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
-        dirs = [
-            os.path.join(project_root, "frontend", "src", "templates_modif"),
-            os.path.join(project_root, "frontend", "src", "20260312_044613"),
-        ]
+        dirs: list = []
+        for name in ("templates_modif", "20260312_044613"):
+            dirs.extend(_existing_frontend_src_subdirs(name))
         static_path = None
         for static_dir in dirs:
             candidate = os.path.join(static_dir, filename)
@@ -5999,11 +6036,9 @@ def serve_talent_static(filename):
     Requis pour que les icônes et images s'affichent quand l'app est derrière un proxy (ex: https://demo.tap-hr.com).
     """
     try:
-        project_root = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
-        static_dirs = [
-            os.path.join(project_root, "frontend", "src", "talent card html"),
-            os.path.join(project_root, "frontend", "src", "templates_modif"),
-        ]
+        static_dirs: list = []
+        for name in ("talent card html", "templates_modif"):
+            static_dirs.extend(_existing_frontend_src_subdirs(name))
 
         static_path = None
         for static_dir in static_dirs:
