@@ -32,6 +32,7 @@ import {
   ChevronLeft,
   ChevronRight,
   ChevronDown,
+  Loader2,
 } from "lucide-react";
 import { formatRelative, statusBg } from "@/lib/utils";
 import { useDashboardTheme } from "@/hooks/use-dashboard-theme";
@@ -69,6 +70,13 @@ function getInitials(name: string | null | undefined) {
   const first = parts[0]?.[0] ?? "";
   const second = parts.length > 1 ? parts[parts.length - 1]?.[0] ?? "" : "";
   return `${first}${second}`.toUpperCase() || "C";
+}
+
+/** Cône du badge score (même logique que `/app/matching`, carte détail). */
+function matchScoreConicColor(pct: number): string {
+  if (pct <= 50) return "#ef4444";
+  if (pct <= 75) return "#f59e0b";
+  return "#10b981";
 }
 
 function normalizeRecruiterCandidateStatus(
@@ -325,9 +333,9 @@ export default function CandidatsPage() {
               </div>
 
               {matchedCandidatesQuery.isLoading ? (
-                <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4">
-                  {Array.from({ length: 8 }).map((_, i) => (
-                    <Skeleton key={i} className="h-40 w-full rounded-xl" />
+                <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4">
+                  {Array.from({ length: 6 }).map((_, i) => (
+                    <Skeleton key={i} className="h-48 w-full rounded-2xl" />
                   ))}
                 </div>
               ) : matchedCandidatesQuery.isError ? (
@@ -342,20 +350,13 @@ export default function CandidatsPage() {
                   }
                 />
               ) : (
-                <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4">
+                <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4">
                   {matchedCandidatesQuery.data.candidates.map((item) => {
                     const rawScore = Number(item.global_score ?? 0);
                     const normalizedScore =
                       rawScore <= 1 ? rawScore * 100 : rawScore;
                     const scorePct = Math.max(0, Math.min(100, Math.round(normalizedScore)));
-                    const scoreBadgeClass =
-                      scorePct >= 85
-                        ? "bg-emerald-500/10 text-emerald-400 border-emerald-500/25"
-                        : scorePct >= 70
-                          ? "bg-amber-500/10 text-amber-400 border-amber-500/25"
-                          : scorePct >= 50
-                            ? "bg-orange-500/10 text-orange-400 border-orange-500/25"
-                            : "bg-rose-500/10 text-rose-400 border-rose-500/25";
+                    const scoreRingColor = matchScoreConicColor(scorePct);
                     const candidateName =
                       item.name ||
                       [item.candidate?.prenom, item.candidate?.nom]
@@ -364,133 +365,223 @@ export default function CandidatsPage() {
                         .trim() ||
                       "Candidat sans nom";
                     const candidateId = Number(item.candidate_id ?? 0);
+                    const canOpenTalent =
+                      typeof candidateId === "number" &&
+                      Number.isFinite(candidateId) &&
+                      candidateId > 0;
                     const isValidatingThisCandidate =
                       validateCandidateMutation.isPending &&
                       validateCandidateMutation.variables?.candidateId === candidateId;
                     const existingInterviewPdfUrl = interviewPdfUrlsByCandidate[candidateId] || null;
                     const alreadyValidated = Boolean(validatedCandidates[candidateId]);
+                    const validateBusy =
+                      isValidatingThisCandidate || regeneratingCandidateId === candidateId;
+                    const validateTitle =
+                      regeneratingCandidateId === candidateId
+                        ? "Régénération des questions en cours…"
+                        : isValidatingThisCandidate
+                          ? "Validation en cours…"
+                          : alreadyValidated || existingInterviewPdfUrl
+                            ? "Régénérer d'autres questions d'entretien"
+                            : "Valider et générer les questions d'entretien";
 
                     return (
                       <div
                         key={`${item.candidate_id ?? candidateName}-${scorePct}`}
-                        className="flex flex-col gap-4 bg-zinc-900/50 border border-white/[0.06] rounded-xl px-5 py-4 hover:border-white/[0.1] transition h-full min-h-0 min-w-0"
+                        className={`${RECRUTEUR_DASHBOARD_CARD_BASE} p-4 sm:p-5 h-full min-h-0 min-w-0 flex flex-col ${
+                          isLight
+                            ? "card-luxury-light hover:shadow-[0_12px_30px_rgba(0,0,0,0.18)]"
+                            : "hover:brightness-105 shadow-[0_18px_40px_rgba(0,0,0,0.25)]"
+                        }`}
                       >
-                        <div className="min-w-0 flex-1">
-                          <p className="text-[15px] font-semibold text-white line-clamp-2">{candidateName}</p>
-                          <p className="text-[12px] text-white/45 mt-1 line-clamp-2">
+                        <div
+                          className="pointer-events-none absolute -top-2 -right-2 z-20 size-[3.75rem] rounded-full p-[2px] shadow-[0_8px_28px_rgba(0,0,0,0.45)] ring-2 ring-white/10 sm:-top-2.5 sm:-right-2.5 sm:size-16 lg:size-[4.25rem]"
+                          style={{
+                            background: `conic-gradient(${scoreRingColor} ${scorePct}%, rgba(255,255,255,0.14) ${scorePct}% 100%)`,
+                          }}
+                        >
+                          <div
+                            className={`pointer-events-auto flex size-full items-center justify-center rounded-full ${
+                              isLight ? "bg-white shadow-inner" : "bg-zinc-900/90"
+                            }`}
+                            role="img"
+                            aria-label={`Correspondance ${scorePct} pour cent`}
+                          >
+                            <span
+                              className={`text-[12px] font-bold tabular-nums sm:text-[13px] lg:text-[14px] ${
+                                isLight ? "text-zinc-900" : "text-white"
+                              }`}
+                            >
+                              {scorePct}%
+                            </span>
+                          </div>
+                        </div>
+
+                        <div className="pointer-events-none absolute inset-0 opacity-100 group-hover:opacity-0 transition-opacity duration-500 rounded-2xl overflow-hidden">
+                          <div className="absolute -top-20 -right-10 w-48 h-48 rounded-full bg-white/10 blur-2xl" />
+                          <div className="absolute -bottom-24 -left-20 w-56 h-56 rounded-full bg-tap-red/10 blur-2xl opacity-40" />
+                        </div>
+
+                        <div className="relative z-[2] flex flex-col gap-3 flex-1 min-h-0 min-w-0 pr-14 sm:pr-16 lg:pr-[4.75rem]">
+                          <div className="flex items-start gap-3 min-w-0">
+                            <button
+                              type="button"
+                              disabled={!canOpenTalent}
+                              onClick={() => {
+                                if (!canOpenTalent) return;
+                                openTalentPanel({
+                                  candidateId: candidateId,
+                                  candidateName: candidateName.trim() || "Candidat",
+                                });
+                              }}
+                              className="min-w-0 flex-1 flex items-center gap-3 text-left rounded-lg cursor-pointer disabled:cursor-not-allowed disabled:opacity-50 focus:outline-none focus-visible:ring-2 focus-visible:ring-tap-red/50"
+                              aria-label={
+                                candidateName
+                                  ? `Voir le portfolio de ${candidateName}`
+                                  : "Voir le portfolio du candidat"
+                              }
+                              title={
+                                candidateName
+                                  ? `Voir le portfolio de ${candidateName}`
+                                  : "Voir le portfolio du candidat"
+                              }
+                            >
+                              <div className="w-12 h-12 rounded-full overflow-hidden border border-white/[0.10] bg-white/[0.04] flex items-center justify-center shrink-0">
+                                <span
+                                  className={`text-[13px] font-semibold ${
+                                    isLight ? "text-black/60" : "text-white/70"
+                                  }`}
+                                >
+                                  {getInitials(candidateName)}
+                                </span>
+                              </div>
+                              <p
+                                className={`text-[14px] font-semibold leading-snug line-clamp-2 ${
+                                  isLight ? "text-black" : "text-white"
+                                }`}
+                              >
+                                {candidateName}
+                              </p>
+                            </button>
+                          </div>
+
+                          <p
+                            className={`text-[12px] leading-snug line-clamp-2 border-t pt-3 ${
+                              isLight ? "text-black/65 border-black/10" : "text-white/55 border-white/[0.08]"
+                            }`}
+                          >
                             {item.candidate?.titre_profil || "Profil non renseigné"}
                           </p>
-                        </div>
 
-                        <div className="flex flex-wrap items-center gap-2">
-                          <span
-                            className={`inline-flex items-center rounded-full border px-2.5 py-1 text-[12px] font-semibold ${scoreBadgeClass}`}
-                          >
-                            {scorePct}% match
-                          </span>
-                        </div>
+                          <div className="mt-auto flex justify-end items-center gap-2 pt-2">
+                            <button
+                              type="button"
+                              title={validateTitle}
+                              aria-label={validateTitle}
+                              onClick={async () => {
+                                if (!selectedJobId || !candidateId) return;
+                                const isRegenerate =
+                                  alreadyValidated || Boolean(existingInterviewPdfUrl);
 
-                        <div className="flex flex-wrap items-center gap-2 mt-auto pt-1">
-                          <button
-                            type="button"
-                            onClick={async () => {
-                              if (!selectedJobId || !candidateId) return;
-                              const isRegenerate =
-                                alreadyValidated || Boolean(existingInterviewPdfUrl);
-
-                              if (!isRegenerate) {
-                                validateCandidateMutation.mutate(
-                                  { jobId: selectedJobId, candidateId },
-                                  {
-                                    onSuccess: (data) =>
-                                      openModalFromValidateResponse(data, candidateName, candidateId),
-                                  },
-                                );
-                                return;
-                              }
-
-                              setRegeneratingCandidateId(candidateId);
-                              try {
-                                let last: ValidateCandidateResponse | null = null;
-                                for (let attempt = 0; attempt < REGENERATE_MAX_ATTEMPTS; attempt++) {
-                                  if (attempt > 0) {
-                                    await new Promise((r) => setTimeout(r, REGENERATE_DELAY_MS));
-                                  }
-                                  last = await recruteurService.validateCandidateForJob(
-                                    selectedJobId,
-                                    candidateId,
+                                if (!isRegenerate) {
+                                  validateCandidateMutation.mutate(
+                                    { jobId: selectedJobId, candidateId },
+                                    {
+                                      onSuccess: (data) =>
+                                        openModalFromValidateResponse(data, candidateName, candidateId),
+                                    },
                                   );
-                                  const qs = normalizeInterviewQuestions(last);
-                                  if (qs.length > 0) {
-                                    await queryClient.invalidateQueries({
-                                      queryKey: ["recruteur", "matched-candidates", selectedJobId],
-                                    });
-                                    await queryClient.invalidateQueries({
-                                      queryKey: ["recruteur", "overview"],
-                                    });
-                                    openModalFromValidateResponse(last, candidateName, candidateId);
-                                    addToast({
-                                      message: `${qs.length} question(s) d’entretien générée(s).`,
-                                      type: "success",
-                                    });
-                                    return;
-                                  }
+                                  return;
                                 }
-                                await queryClient.invalidateQueries({
-                                  queryKey: ["recruteur", "matched-candidates", selectedJobId],
-                                });
-                                await queryClient.invalidateQueries({
-                                  queryKey: ["recruteur", "overview"],
-                                });
-                                if (last) {
-                                  openModalFromValidateResponse(last, candidateName, candidateId, {
-                                    emptyNoticeOverride:
-                                      "Après plusieurs tentatives automatiques, aucune question n’a été reçue. Utilisez « Générer le PDF (questions IA) » dans la modale ou réessayez plus tard.",
+
+                                setRegeneratingCandidateId(candidateId);
+                                try {
+                                  let last: ValidateCandidateResponse | null = null;
+                                  for (let attempt = 0; attempt < REGENERATE_MAX_ATTEMPTS; attempt++) {
+                                    if (attempt > 0) {
+                                      await new Promise((r) => setTimeout(r, REGENERATE_DELAY_MS));
+                                    }
+                                    last = await recruteurService.validateCandidateForJob(
+                                      selectedJobId,
+                                      candidateId,
+                                    );
+                                    const qs = normalizeInterviewQuestions(last);
+                                    if (qs.length > 0) {
+                                      await queryClient.invalidateQueries({
+                                        queryKey: ["recruteur", "matched-candidates", selectedJobId],
+                                      });
+                                      await queryClient.invalidateQueries({
+                                        queryKey: ["recruteur", "overview"],
+                                      });
+                                      openModalFromValidateResponse(last, candidateName, candidateId);
+                                      addToast({
+                                        message: `${qs.length} question(s) d’entretien générée(s).`,
+                                        type: "success",
+                                      });
+                                      return;
+                                    }
+                                  }
+                                  await queryClient.invalidateQueries({
+                                    queryKey: ["recruteur", "matched-candidates", selectedJobId],
                                   });
+                                  await queryClient.invalidateQueries({
+                                    queryKey: ["recruteur", "overview"],
+                                  });
+                                  if (last) {
+                                    openModalFromValidateResponse(last, candidateName, candidateId, {
+                                      emptyNoticeOverride:
+                                        "Après plusieurs tentatives automatiques, aucune question n’a été reçue. Utilisez « Générer le PDF (questions IA) » dans la modale ou réessayez plus tard.",
+                                    });
+                                    addToast({
+                                      message:
+                                        "Aucune question reçue après plusieurs tentatives. Voir la modale.",
+                                      type: "error",
+                                    });
+                                  }
+                                } catch {
                                   addToast({
-                                    message:
-                                      "Aucune question reçue après plusieurs tentatives. Voir la modale.",
+                                    message: "Impossible de régénérer les questions pour le moment.",
                                     type: "error",
                                   });
+                                } finally {
+                                  setRegeneratingCandidateId(null);
                                 }
-                              } catch {
-                                addToast({
-                                  message: "Impossible de régénérer les questions pour le moment.",
-                                  type: "error",
-                                });
-                              } finally {
-                                setRegeneratingCandidateId(null);
+                              }}
+                              disabled={
+                                !selectedJobId ||
+                                !candidateId ||
+                                isValidatingThisCandidate ||
+                                regeneratingCandidateId === candidateId
                               }
-                            }}
-                            disabled={
-                              !selectedJobId ||
-                              !candidateId ||
-                              isValidatingThisCandidate ||
-                              regeneratingCandidateId === candidateId
-                            }
-                            className="inline-flex items-center gap-1.5 px-2.5 py-1 text-[11px] rounded-md border border-emerald-500/40 text-emerald-300 hover:bg-emerald-500/10 disabled:opacity-50 disabled:cursor-not-allowed"
-                          >
-                            <CheckCircle2 size={13} />
-                            {regeneratingCandidateId === candidateId
-                              ? "Régénération en cours..."
-                              : isValidatingThisCandidate
-                                ? "Validation..."
-                                : alreadyValidated || existingInterviewPdfUrl
-                                  ? "Régénérer d'autres questions"
-                                  : "Valider"}
-                          </button>
-                          {existingInterviewPdfUrl ? (
-                            <a
-                              href={existingInterviewPdfUrl}
-                              target="_blank"
-                              rel="noopener noreferrer"
-                              className="p-1.5 rounded-full border border-white/[0.14] hover:bg-zinc-800 text-zinc-400 hover:text-white transition"
-                              title="Télécharger les questions d'entretien"
-                              aria-label="Télécharger les questions d'entretien"
+                              className={`inline-flex size-10 shrink-0 items-center justify-center rounded-full border transition disabled:cursor-not-allowed disabled:opacity-45 ${
+                                isLight
+                                  ? "border-emerald-500/40 bg-emerald-500/10 text-emerald-600 hover:bg-emerald-500/15"
+                                  : "border-emerald-500/35 bg-emerald-500/10 text-emerald-400 hover:bg-emerald-500/20"
+                              }`}
                             >
-                              <Download size={14} />
-                            </a>
-                          ) : null}
+                              {validateBusy ? (
+                                <Loader2 size={16} strokeWidth={1.75} className="animate-spin" />
+                              ) : (
+                                <CheckCircle2 size={16} strokeWidth={1.75} />
+                              )}
+                            </button>
+                            {existingInterviewPdfUrl ? (
+                              <a
+                                href={existingInterviewPdfUrl}
+                                target="_blank"
+                                rel="noopener noreferrer"
+                                className={`inline-flex size-10 shrink-0 items-center justify-center rounded-full border transition ${
+                                  isLight
+                                    ? "border-black/10 bg-black/[0.03] text-black/70 hover:bg-black/[0.08]"
+                                    : "border-white/[0.14] bg-white/[0.04] text-zinc-200 hover:bg-white/[0.08]"
+                                }`}
+                                title="Télécharger les questions d'entretien"
+                                aria-label="Télécharger les questions d'entretien"
+                              >
+                                <Download size={16} strokeWidth={1.75} />
+                              </a>
+                            ) : null}
+                          </div>
                         </div>
                       </div>
                     );
