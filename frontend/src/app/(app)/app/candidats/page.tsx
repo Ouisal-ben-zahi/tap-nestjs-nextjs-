@@ -36,6 +36,7 @@ import {
 } from "lucide-react";
 import { formatRelative, statusBg } from "@/lib/utils";
 import { useDashboardTheme } from "@/hooks/use-dashboard-theme";
+import { RecruiterCandidateDownloadsMenu } from "@/components/app/RecruiterCandidateDownloadsMenu";
 
 /** Même base que les cartes KPI du dashboard recruteur (`RecruteurDashboard` + halos). */
 const RECRUTEUR_DASHBOARD_CARD_BASE =
@@ -423,7 +424,7 @@ export default function CandidatsPage() {
                         </div>
 
                         <div className="relative z-[2] flex flex-col gap-3 flex-1 min-h-0 min-w-0 pr-14 sm:pr-16 lg:pr-[4.75rem]">
-                          <div className="flex items-start gap-3 min-w-0">
+                          <div className="flex items-start gap-2 min-w-0">
                             <button
                               type="button"
                               disabled={!canOpenTalent}
@@ -463,7 +464,13 @@ export default function CandidatsPage() {
                                 {candidateName}
                               </p>
                             </button>
-                        </div>
+                            <RecruiterCandidateDownloadsMenu
+                              candidateId={candidateId}
+                              enabled={canOpenTalent}
+                              isLight={isLight}
+                              menuZIndexClass="z-[60]"
+                            />
+                          </div>
 
                           <p
                             className={`text-[12px] leading-snug line-clamp-2 border-t pt-3 ${
@@ -852,7 +859,7 @@ export default function CandidatsPage() {
                     </div>
 
                     <div className="relative z-[2] flex flex-col gap-3 flex-1 min-h-0 min-w-0">
-                      <div className="flex items-start justify-between gap-3">
+                      <div className="flex items-start justify-between gap-2 min-w-0">
                     <button
                       type="button"
                       disabled={!canOpenTalent}
@@ -896,14 +903,22 @@ export default function CandidatsPage() {
                             {app.candidateName}
                           </p>
                     </button>
+                        <div className="flex items-start gap-0.5 shrink-0 max-w-[45%]">
                         <p
-                          className={`text-[11px] shrink-0 text-right leading-tight pt-0.5 max-w-[38%] ${
+                          className={`text-[11px] text-right leading-tight pt-0.5 min-w-0 ${
                             isLight ? "text-black/45" : "text-white/40"
                           }`}
                           title={durationLabel}
                         >
                           {durationLabel}
                         </p>
+                          <RecruiterCandidateDownloadsMenu
+                            candidateId={typeof cid === "number" && cid > 0 ? cid : 0}
+                            enabled={canOpenTalent}
+                            isLight={isLight}
+                            menuZIndexClass="z-[110]"
+                          />
+                        </div>
                       </div>
 
                       <p
