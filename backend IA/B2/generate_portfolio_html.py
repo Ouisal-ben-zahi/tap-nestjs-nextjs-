@@ -95,6 +95,103 @@ def _inject_scoring_into_candidate(candidate: Dict, candidate_id: int) -> None:
     print("✅ Scores A2 injectés (score global + 5 dimensions technique/comportemental)")
 
 
+def build_long_portfolio_template_extra_context(
+    candidate: Dict[str, Any],
+    candidate_id: int,
+    *,
+    inject_a2_scoring: bool = True,
+) -> Dict[str, Any]:
+    """
+    Contexte Jinja pour long_dynamique.html (compétences, projets, expériences, formations, score).
+    Utilisé par generate_portfolio_html et par la vue Flask /portfolio/.../view.
+    """
+    if not candidate:
+        return {}
+    if inject_a2_scoring:
+        _inject_scoring_into_candidate(candidate, candidate_id)
+
+    cand = candidate
+    extra_ctx: Dict[str, Any] = {}
+
+    skill_categories = cand.get("skill_categories") or []
+    technical_skills = cand.get("technical_skills") or cand.get("skills") or []
+    skill_categories_sorted: List[Dict[str, Any]] = []
+    if isinstance(skill_categories, list) and isinstance(technical_skills, list):
+        for cat in skill_categories:
+            if isinstance(cat, dict):
+                cat_name = cat.get("fr") or cat.get("en") or ""
+            else:
+                cat_name = str(cat)
+            if not cat_name:
+                continue
+            items = []
+            for s in technical_skills:
+                s_name = s
+                if isinstance(s, dict):
+                    s_name = s.get("name") or s.get("skill") or s.get("label")
+                if not s_name:
+                    continue
+                items.append({"name": str(s_name)})
+            skill_categories_sorted.append({
+                "category": cat_name,
+                "avg_level": 3,
+                "status": "Actif",
+                "list": items,
+            })
+    extra_ctx["skill_categories_sorted"] = skill_categories_sorted
+
+    soft_skills_list = cand.get("soft_skills") or []
+    soft_skills_data: List[Dict[str, Any]] = []
+    for s in soft_skills_list:
+        if isinstance(s, dict):
+            name = s.get("name") or s.get("label") or ""
+        else:
+            name = str(s)
+        if not name:
+            continue
+        soft_skills_data.append({"name": name, "score": 3})
+    extra_ctx["soft_skills_data"] = soft_skills_data
+
+    extra_ctx["projects_data"] = cand.get("projects") or []
+
+    _exps = cand.get("experiences") or []
+    extra_ctx["experience_timeline"] = _exps[:3] if isinstance(_exps, list) else _exps
+
+    lg = cand.get("learning_growth") or {}
+    extra_ctx["learning_trainings"] = lg.get("certifications", []) or lg.get("self_learning", []) or []
+    extra_ctx["learning_certs"] = lg.get("certifications", [])
+
+    readiness = cand.get("readiness_score") or {}
+    extra_ctx["readiness_score"] = readiness.get("global_score")
+
+    score_details = cand.get("score_details") or {}
+    dims: List[Tuple[str, str, float]] = []
+    if score_details:
+        labels = {
+            "hard_skills": "Compétences techniques",
+            "soft_skills": "Comportemental",
+            "autonomy": "Autonomie / Cohérence",
+            "learning_ability": "Différenciation / Apprentissage",
+            "professional_behavior": "Stabilité / Comportement pro",
+        }
+        for key, label in labels.items():
+            val = score_details.get(key) or score_details.get(key + "_depth")
+            if val is None:
+                continue
+            try:
+                pct = float(val)
+            except Exception:
+                continue
+            dims.append((label, "", pct))
+    extra_ctx["score_dims"] = dims
+
+    about = (cand.get("about_text") or "").strip()
+    if about:
+        extra_ctx["about_paragraphs"] = [p.strip() for p in about.split("\n\n") if p.strip()]
+
+    return extra_ctx
+
+
 def get_template_path(template_name: str) -> Optional[str]:
     """
     Trouve le chemin du template HTML.
@@ -105,16 +202,16 @@ def get_template_path(template_name: str) -> Optional[str]:
     Returns:
         Chemin absolu du template ou None si introuvable
     """
-    # Chemins possibles (dans l'ordre de priorité)
+    _proj_root = os.path.dirname(os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
+    # Chemins possibles (dans l'ordre de priorité) — templates_modif en premier (one-page dynamique, etc.)
     possible_paths = [
-        # Depuis le backend (si le frontend est monté)
-        os.path.join(os.path.dirname(os.path.dirname(os.path.dirname(os.path.abspath(__file__)))), 
-                     "frontend", "src", "20260312_044613", template_name),
-        # Depuis le conteneur Docker
+        os.path.join(_proj_root, "frontend", "src", "templates_modif", template_name),
+        f"/app/frontend/src/templates_modif/{template_name}",
+        f"/frontend/src/templates_modif/{template_name}",
+        os.path.join(os.path.dirname(__file__), "..", "..", "frontend", "src", "templates_modif", template_name),
+        os.path.join(_proj_root, "frontend", "src", "20260312_044613", template_name),
         f"/app/frontend/src/20260312_044613/{template_name}",
-        # Depuis le volume monté
         f"/frontend/src/20260312_044613/{template_name}",
-        # Depuis le répertoire courant
         os.path.join(os.path.dirname(__file__), "..", "..", "frontend", "src", "20260312_044613", template_name),
     ]
     
@@ -547,102 +644,20 @@ def generate_portfolio_html(
                 template_data["candidate"]["contract_type"] = candidate_contract_type
                 template_data["candidate"]["type_contrat"] = [s.strip() for s in candidate_contract_type.split(",") if s.strip()]
         
-        # 2.5 Portfolio long : score global et justification (5 dimensions) issus de l'agent A2
-        # + préparation des structures attendues par le template long (pages multiples)
-        extra_ctx = {}
+        # 2.5 Portfolio long : score A2 + structures pour long_dynamique.html
+        extra_ctx: Dict[str, Any] = {}
         if version == "long" and template_data.get("candidate"):
-            _inject_scoring_into_candidate(template_data["candidate"], candidate_id)
-            cand = template_data["candidate"]
-
-            # Page 2 – compétences techniques groupées par catégorie
-            skill_categories = cand.get("skill_categories") or []
-            technical_skills = cand.get("technical_skills") or cand.get("skills") or []
-            skill_categories_sorted = []
-            if isinstance(skill_categories, list) and isinstance(technical_skills, list):
-                for cat in skill_categories:
-                    if isinstance(cat, dict):
-                        cat_name = cat.get("fr") or cat.get("en") or ""
-                    else:
-                        cat_name = str(cat)
-                    if not cat_name:
-                        continue
-                    items = []
-                    for s in technical_skills:
-                        s_name = s
-                        if isinstance(s, dict):
-                            s_name = s.get("name") or s.get("skill") or s.get("label")
-                        if not s_name:
-                            continue
-                        items.append({"name": str(s_name)})
-                    skill_categories_sorted.append({
-                        "category": cat_name,
-                        "avg_level": 3,
-                        "status": "Actif",
-                        "list": items,
-                    })
-            extra_ctx["skill_categories_sorted"] = skill_categories_sorted
-
-            # Page 3 – soft skills (simple liste avec score 3/5 par défaut)
-            soft_skills_list = cand.get("soft_skills") or []
-            soft_skills_data = []
-            for s in soft_skills_list:
-                if isinstance(s, dict):
-                    name = s.get("name") or s.get("label") or ""
-                else:
-                    name = str(s)
-                if not name:
-                    continue
-                soft_skills_data.append({
-                    "name": name,
-                    "score": 3,
-                })
-            extra_ctx["soft_skills_data"] = soft_skills_data
-
-            # Page 4 – projets (prendre directement candidate.projects)
-            extra_ctx["projects_data"] = cand.get("projects") or []
-
-            # Page 5 – expériences (timeline)
-            extra_ctx["experience_timeline"] = cand.get("experiences") or []
-
-            # Page 6 – learning & growth
-            lg = cand.get("learning_growth") or {}
-            extra_ctx["learning_trainings"] = lg.get("certifications", []) or lg.get("self_learning", []) or []
-            extra_ctx["learning_certs"] = lg.get("certifications", [])
-
-            # Page 7 – readiness score + détails dimensions
-            readiness = cand.get("readiness_score") or {}
-            readiness_score = readiness.get("global_score")
-            extra_ctx["readiness_score"] = readiness_score
-
-            score_details = cand.get("score_details") or {}
-            dims = []
-            if score_details:
-                # mapping dimension clé -> label FR
-                labels = {
-                    "hard_skills": "Compétences techniques",
-                    "soft_skills": "Comportemental",
-                    "autonomy": "Autonomie / Cohérence",
-                    "learning_ability": "Différenciation / Apprentissage",
-                    "professional_behavior": "Stabilité / Comportement pro",
-                }
-                for key, label in labels.items():
-                    val = score_details.get(key) or score_details.get(key + "_depth")
-                    if val is None:
-                        continue
-                    try:
-                        pct = float(val)
-                    except Exception:
-                        continue
-                    dims.append((label, "", pct))
-            extra_ctx["score_dims"] = dims
+            extra_ctx = build_long_portfolio_template_extra_context(
+                template_data["candidate"], candidate_id, inject_a2_scoring=True
+            )
 
         print("✅ Données transformées pour le template")
         
         # 3. Sélectionner le template selon la version
         if version == "one-page":
-            template_name = "template_one_page2.html"
+            template_name = "one_page_dynamique.html"
         elif version == "long":
-            template_name = "portfolio_long_template.html"
+            template_name = "long_dynamique.html"
         else:
             return False, None, f"Version inconnue: {version}. Utilisez 'one-page' ou 'long'"
         

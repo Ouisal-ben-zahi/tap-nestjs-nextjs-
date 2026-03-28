@@ -231,7 +231,7 @@ prompt_portfolio_one_page = """Tu génères un portfolio ONE-PAGE (vue condensé
       "key_points_sentences": ["phrase 1 sur les compétences en général", "phrase 2", "phrase 3"]
     },
     "readiness_score": {"global_score": 80, "explanation": "", "display_flag": false},
-    "hard_skills": [{"name": ""}, {"name": ""}],
+    "hard_skills": [{"name": ""}, {"name": ""}, {"name": ""}, {"name": ""}],
     "skill_categories": ["", "", "", "", "", ""],
     "soft_skills": [],
     "projects": [{"title": "", "context": "", "description": ""}],
@@ -252,7 +252,7 @@ prompt_portfolio_one_page = """Tu génères un portfolio ONE-PAGE (vue condensé
 RÈGLES ONE-PAGE :
 - LANGUE : Tu as reçu une instruction de langue de sortie (FR ou EN). Si la langue est l'anglais, TOUS les champs texte doivent être en anglais : executive_summary, key_points_sentences, skill_categories, etudes/certifications (name, organization), experiences (role, company, description), projects (title, context, description). Aucun libellé en français ne doit rester lorsque la sortie est en anglais.
 - hero : extraire nom, job_title (3 mots max, obligatoire), email, phone, years_experience depuis le CV. executive_summary = 2-4 phrases. key_points_sentences : exactement 3 phrases qui décrivent les compétences et atouts du candidat en général (ex: maîtrise des fondamentaux, travail en équipe, approche structurée), pas une liste de compétences techniques. languages : liste des langues avec level (ex: Courant, B2, Natif).
-- hard_skills : Liste des compétences techniques extraites du CV (pour référence interne).
+- hard_skills : EXACTEMENT 4 compétences techniques concrètes extraites du CV (ex. Python, SQL, React), chaque objet {"name": "..."} ; optionnellement "score" ou "level" (0-100) pour la barre du template one-page.
 - skill_categories : EXACTEMENT 6 catégories (domaines) de compétences pertinentes par rapport au poste. Chaque catégorie est un nom de domaine général. Tu DOIS retourner exactement 6 catégories, pas plus, pas moins. IMPORTANT : rédige les libellés dans la langue de sortie demandée (en français si langue FR, en anglais si langue EN). Exemples en français : "Analyse de données", "Machine Learning", "Frontend", "Backend", "Base de données", "Cloud". Exemples en anglais : "Data Analysis", "Machine Learning", "Frontend", "Backend", "Databases", "Cloud Computing".
 - projects : MAXIMUM 4 projets. title (3 mots max) + context (ou description) en une ligne chacun pour le front.
 - experiences : MAXIMUM 3 expériences. Pour chaque expérience : role = titre du POSTE uniquement (ex: Développeur Python, Data Analyst, Consultant), 3 à 5 mots max — PAS le titre du projet ni la mission ; company (entreprise), date_start, date_end ; description = sujet ou mission (maximum 10 mots). Ne jamais mettre dans role une phrase longue type titre de projet.
@@ -2077,7 +2077,8 @@ def _convert_html_to_pdf_impl(
         candidate_id: ID du candidat en base de données
         candidate_uuid: UUID du candidat
         base_url: URL de base pour résoudre les ressources (images, CSS, etc.)
-        pdf_page_format: "one-page" = une seule page 1920x1080 (contenu complet), sinon format long
+        pdf_page_format: "one-page" = une seule page 2300×1100 px ; autre valeur = portfolio long,
+            une page PDF par slide 16:9 (1280×720 px @ 96dpi, aligné long_dynamique.html)
         lang: "fr" ou "en" pour suffixer le nom du fichier (ex: portfolio_uuid_one-page_fr.pdf)
     
     Returns:
@@ -2096,11 +2097,23 @@ def _convert_html_to_pdf_impl(
         
         print(f"🔄 Conversion HTML en PDF pour candidate_id={candidate_id}")
         
-        # PDF one-page : injection des images de fond en base64 + règles d'impression (mise en page, couleurs, contact) depuis le backend.
+        # PDF one-page : aligné sur one_page_dynamique.html (toile de référence 2300×1100 px @96dpi).
+        # Ancien template (template_one_page2 / .portfolio-viewport) : garder substitution Modif-2 / Background-3 si présents.
         if pdf_page_format == "one-page":
             _exact = "-webkit-print-color-adjust: exact !important; print-color-adjust: exact !important;"
-            _print_rules_after_star_en = (
-                " .page { padding: 240px 170px 240px !important; max-width: none !important; max-height: none !important; width: 67.733cm !important; height: 38.1cm !important; }"
+            # Mise en page fixe pour export PDF = même ratio que le canvas du template dynamique
+            _print_one_page_tap = (
+                " html, body { min-height: 0 !important; height: auto !important; margin: 0 !important; "
+                " overflow: visible !important; background: #060202 !important; " + _exact + " }"
+                " .page-shell { min-height: 0 !important; padding: 0 !important; display: block !important; "
+                " width: 2300px !important; max-width: none !important; margin: 0 auto !important; box-sizing: border-box !important; }"
+                " .page-canvas { width: 2300px !important; max-width: none !important; height: 1100px !important; "
+                " aspect-ratio: auto !important; flex-shrink: 0 !important; box-sizing: border-box !important; }"
+            )
+            # Compat : ancienne one-page (si le HTML contient encore ces classes)
+            _print_legacy = (
+                " .page { padding: 240px 170px 240px !important; max-width: none !important; max-height: none !important; "
+                " width: 67.733cm !important; height: 38.1cm !important; }"
                 " .section-header { background: #C1121F !important; color: #fff !important; " + _exact + " }"
                 " .content-box, .content-box.name-box { background: #fff !important; " + _exact + " }"
                 " .block-profile-content { background: #fff !important; " + _exact + " }"
@@ -2118,32 +2131,9 @@ def _convert_html_to_pdf_impl(
                 " .contact-icons a { background: #C1121F !important; color: #fff !important; width: 70px !important; height: 70px !important; " + _exact + " }"
                 " .contact-icons { height: 20px !important; }"
                 " .portfolio-viewport .block-name-skills { margin-left: 30px !important; }"
-                " .portfolio-viewport .section-header {font-size: 38px !important; padding: 11px 20px !important;}"
+                " .portfolio-viewport .section-header { font-size: 38px !important; padding: 11px 20px !important; }"
             )
-
-            _print_rules_after_star_fr = (
-                " .page { padding: 240px 170px 240px !important; max-width: none !important; max-height: none !important; width: 67.733cm !important; height: 38.1cm !important; }"
-                " .section-header { background: #C1121F !important; color: #fff !important; " + _exact + " }"
-                " .content-box, .content-box.name-box { background: #fff !important; " + _exact + " }"
-                " .block-profile-content { background: #fff !important; " + _exact + " }"
-                " .profile-card-corner-long, .profile-card-corner-medium, .profile-card-corner-short { background: #C1121F !important; " + _exact + " }"
-                " .profile-image-wrap { background: #C1121F !important; " + _exact + " }"
-                " .block-profile-content-text { background: #C1121F !important; color: #fff !important; " + _exact + " }"
-                " .content-box-footer, .footer-block .content-box { background: #fff !important; align-items: center !important; " + _exact + " }"
-                " .footer-block.contact-box .content-box-footer.contact-box { flex: 1 !important; }"
-                " .contact-box { width: 635px !important; max-width: 635px !important; }"
-                " .col-section .content-box { border-left: 6px solid #C1121F !important; " + _exact + " }"
-                " .content-box-about { color: #fff !important; }"
-                " .btn-download { color: #C1121F !important; " + _exact + " }"
-                " .portfolio-viewport .block-profile-content { gap: 10px !important; background: none !important; height: 345px !important; width: 290px !important; }"
-                " .contact-icons { margin-top: -5px !important; display: flex !important; align-items: center !important; position: fixed !important; right: 57.8rem !important; }"
-                " .contact-icons a { background: #C1121F !important; color: #fff !important; width: 70px !important; height: 70px !important; " + _exact + " }"
-                " .contact-icons { height: 20px !important; }"
-                " .portfolio-viewport .block-name-skills { margin-left: 30px !important; }"
-                " .portfolio-viewport .section-header {font-size: 38px !important; padding: 11px 20px !important; }"
-            )
-
-            print_rules = _print_rules_after_star_en if (lang and lang.strip().lower() == "en") else _print_rules_after_star_fr
+            print_rules = _print_one_page_tap + _print_legacy
 
             _here = os.path.dirname(os.path.abspath(__file__))
             _backend = os.path.dirname(_here)
@@ -2164,7 +2154,7 @@ def _convert_html_to_pdf_impl(
                     portfolio_html_dir = base
                     break
             body_bg_css = ""
-            if portfolio_html_dir:
+            if portfolio_html_dir and ("Modif-2" in html_content or "Background-3" in html_content):
                 try:
                     with open(os.path.join(portfolio_html_dir, "Modif-2.jpeg"), "rb") as img1:
                         b64_modif = base64.b64encode(img1.read()).decode("ascii")
@@ -2185,19 +2175,33 @@ def _convert_html_to_pdf_impl(
                     body_bg_css = (
                         " body { background: #0d0d0d !important; background-image: url('" + data_bg3 + "'), url('" + data_modif + "') !important; background-size: cover !important; background-position: center !important; background-repeat: no-repeat !important; " + _exact + " }"
                     )
-                    print("✅ Images de fond intégrées en base64 pour le PDF")
+                    print("✅ Images de fond (legacy) intégrées en base64 pour le PDF")
                 except Exception as e:
                     print(f"⚠️ Impossible d'intégrer les images de fond (PDF): {e}")
                     import traceback
                     traceback.print_exc()
-            else:
-                print(f"⚠️ Dossier portfolio html introuvable (Modif-2.jpeg / Background-3.png). Le PDF utilisera le @media print injecté sans fond image.")
             pdf_print_style = (
-                " /* PDF one-page: règles d'impression injectées par le backend */"
+                " /* PDF one-page TAP (2300×1100) + règles legacy si présentes */"
                 " @media print { * { " + _exact + " } " + body_bg_css + " " + print_rules + " }"
             )
             html_content = html_content.replace("</style>", pdf_print_style + "\n    </style>", 1)
-        
+        else:
+            # Portfolio long : mêmes dimensions que les slides (1280×720 CSS px) pour l’export PDF multi-pages.
+            # * { print-color-adjust } : dégradés / ::before / ::after pas « écrasés » par défaut impression.
+            # html/body height:auto : évite une toile trop haute qui, avec page-break-after, crée des pages blanches.
+            _exact = "-webkit-print-color-adjust: exact !important; print-color-adjust: exact !important;"
+            pdf_long_print_style = (
+                " /* PDF portfolio long : une page PDF = une slide 16:9 */"
+                " @media print { "
+                " * { " + _exact + " }"
+                " html, body { margin: 0 !important; padding: 0 !important; height: auto !important; min-height: 0 !important; "
+                " background: #000 !important; " + _exact + " }"
+                " body { display: block !important; gap: 0 !important; align-items: stretch !important; }"
+                " }"
+            )
+            if "</style>" in html_content:
+                html_content = html_content.replace("</style>", pdf_long_print_style + "\n    </style>", 1)
+
         # Créer un fichier temporaire pour le HTML
         with tempfile.NamedTemporaryFile(mode='w', suffix='.html', delete=False, encoding='utf-8') as f:
             f.write(html_content)
@@ -2255,12 +2259,14 @@ def _convert_html_to_pdf_impl(
                 local_url = f"http://localhost:{port}/{html_filename}"
                 print(f"🔄 Chargement de {local_url}")
                 
-                # Viewport grand format pour le one-page (format historique 67,733 cm × 38,1 cm)
-                cm_w, cm_h = 67.733, 38.1
-                inch_w = cm_w / 2.54
-                inch_h = cm_h / 2.54
-                viewport_width = int(round(inch_w * 96))
-                viewport_height = int(round(inch_h * 96))
+                # One-page TAP : 2300×1100 px. Long : largeur = largeur slide pour un rendu 1:1 avec le CSS
+                if pdf_page_format == "one-page":
+                    viewport_width, viewport_height = 2300, 1100
+                else:
+                    # Slides long_dynamique / portfolio_long : 1280×720 px
+                    SLIDE_W, SLIDE_H = 1280, 720
+                    viewport_width = SLIDE_W
+                    viewport_height = min(SLIDE_H * 14, 12000)
                 page.set_viewport_size({"width": viewport_width, "height": viewport_height})
                 
                 page.goto(local_url, wait_until='networkidle', timeout=30000)
@@ -2285,13 +2291,14 @@ def _convert_html_to_pdf_impl(
                     pdf_path = pdf_file.name
                 
                 # Générer le PDF
-                # - one-page : très grand format fixe (une seule page horizontale)
-                # - long : format A4 multi-pages pour que chaque bloc .page soit sur une page distincte
+                # - one-page : une page 2300×1100 px
+                # - long : une page PDF par .page, format 16:9 = 1280×720 px @ 96dpi (pas A4)
                 if pdf_page_format == "one-page":
                     pdf_margins = {'top': '0px', 'right': '0px', 'bottom': '0px', 'left': '0px'}
-                    pdf_width_in = f"{46.733 / 2.54:.3f}in"
-                    pdf_height_in = f"{38.1 / 2.54:.3f}in"
-                    print(f"🔄 Génération du PDF (one-page 67,733 cm × 38,1 cm)...")
+                    # 2300×1100 px @ 96 CSS px per inch (aligné one_page_dynamique.html)
+                    pdf_width_in = f"{2300 / 96:.6f}in"
+                    pdf_height_in = f"{1100 / 96:.6f}in"
+                    print(f"🔄 Génération du PDF (one-page TAP 2300×1100 px → {pdf_width_in} × {pdf_height_in})...")
                     page.pdf(
                         path=pdf_path,
                         print_background=True,
@@ -2300,11 +2307,18 @@ def _convert_html_to_pdf_impl(
                         margin=pdf_margins,
                     )
                 else:
-                    print("🔄 Génération du PDF long en format A4 multi-pages...")
+                    slide_w_px, slide_h_px = 1280, 720
+                    pdf_width_in = f"{slide_w_px / 96:.6f}in"
+                    pdf_height_in = f"{slide_h_px / 96:.6f}in"
+                    print(
+                        f"🔄 Génération du PDF long — une page par slide 16:9 "
+                        f"({slide_w_px}×{slide_h_px} px → @page {pdf_width_in} × {pdf_height_in}, preferCSSPageSize)..."
+                    )
+                    # prefer_css_page_size : utilise @page du template (long_dynamique) = moins de pages blanches / découpe plus stable
                     page.pdf(
                         path=pdf_path,
                         print_background=True,
-                        format="A4",
+                        prefer_css_page_size=True,
                         margin={'top': '0px', 'right': '0px', 'bottom': '0px', 'left': '0px'},
                     )
                 

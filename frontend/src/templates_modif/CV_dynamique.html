@@ -1,0 +1,671 @@
+<!DOCTYPE html>
+<html lang="{{ lang|default('fr') }}">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+{% set c = candidate %}
+{% set fn = (c.prenom or '')|trim %}
+{% set ln = (c.nom or '')|trim %}
+{% set display_name = (c.nom_complet|default(fn ~ ' ' ~ ln))|trim or 'Candidat' %}
+{% set plang = (lang|default('fr'))|lower %}
+{% set assets_base = assets_base_url|default('') %}
+{% set profile_raw = (c.profile_image_url or '')|trim %}
+{% if profile_raw.startswith('http://') or profile_raw.startswith('https://') or profile_raw.startswith('data:') %}
+  {% set profile_image = profile_raw %}
+{% elif profile_raw %}
+  {% set profile_image = (assets_base ~ profile_raw)|replace(' ', '%20') %}
+{% else %}
+  {% set profile_image = '' %}
+{% endif %}
+{% set fn_init = (fn[:1] if fn else '')|upper %}
+{% set ln_init = (ln[:1] if ln else '')|upper %}
+{% set avatar_initials = (fn_init ~ ln_init) if (fn_init or ln_init) else (display_name[:2]|upper) %}
+  <title>CV — {{ display_name }}</title>
+  <link href="https://fonts.googleapis.com/css2?family=Syne:wght@400;600;700;800&family=DM+Sans:opsz,wght@9..40,300;9..40,400;9..40,500;9..40,600&display=swap" rel="stylesheet">
+  <style>
+    /* ─── PRINT SETUP ─── */
+    @page {
+      size: 21cm 29.7cm;
+      margin: 0;
+    }
+
+    /* ─── DESIGN TOKENS ─── */
+    :root {
+      --red:          #c0181f;
+      --red-light:    #e8282f;
+      --red-soft:     rgba(192, 24, 31, 0.08);
+      --red-border:   rgba(192, 24, 31, 0.20);
+
+      --ink-900:      #111111;
+      --ink-800:      #1a1a1a;
+      --ink-700:      #2e2e2e;
+      --ink-600:      #4a4a4a;
+      --ink-500:      #5a5a5a;
+      --ink-400:      #7a7a7a;
+      --ink-300:      #c0c0c0;
+      --ink-200:      #d4d4d4;
+      --ink-100:      #eeeeee;
+      --ink-50:       #f7f7f7;
+
+      --radius-sm:    4px;
+      --radius-md:    7px;
+      --radius-pill:  999px;
+
+      --space-1:  4px;
+      --space-2:  8px;
+      --space-3:  12px;
+      --space-4:  16px;
+      --space-5:  20px;
+      --space-6:  24px;
+    }
+
+    /* ─── BASE ─── */
+    *, *::before, *::after { margin: 0; padding: 0; box-sizing: border-box; }
+
+    body {
+      font-family: 'DM Sans', system-ui, sans-serif;
+      font-size: 8.4pt;
+      line-height: 1.55;
+      color: var(--ink-700);
+      background: #fff;
+      width: 21cm;
+      min-height: 29.7cm;
+      max-width: 21cm;
+      margin: 0 auto;
+      padding: 12mm 14mm 10mm;
+    }
+
+    @media print {
+      body {
+        width: 21cm;
+        min-height: 29.7cm;
+        padding: 12mm 14mm 10mm;
+        -webkit-print-color-adjust: exact;
+        print-color-adjust: exact;
+      }
+    }
+
+    .cv-header {
+      display: grid;
+      grid-template-columns: auto 1fr;
+      gap: var(--space-5);
+      align-items: center;
+      padding-bottom: var(--space-4);
+      border-bottom: 1.5px solid var(--ink-100);
+      margin-bottom: var(--space-4);
+    }
+
+    .cv-photo {
+      width: 88px;
+      height: 88px;
+      border-radius: 14px;
+      overflow: hidden;
+      flex-shrink: 0;
+      border: 1.5px solid var(--ink-200);
+      background: var(--ink-50);
+      display: flex;
+      align-items: center;
+      justify-content: center;
+    }
+    .cv-photo img {
+      width: 100%; height: 100%;
+      object-fit: cover;
+      object-position: center top;
+    }
+    .cv-photo-initials {
+      font-family: 'Syne', sans-serif;
+      font-size: 22pt;
+      font-weight: 700;
+      color: var(--ink-400);
+    }
+
+    .cv-header-right {
+      display: flex;
+      flex-direction: column;
+      gap: var(--space-1);
+      justify-content: center;
+    }
+
+    .cv-name {
+      font-family: "DM Sans", system-ui, sans-serif;
+      font-size: 20pt;
+      font-weight: 800;
+      letter-spacing: -0.03em;
+      color: var(--ink-900);
+      line-height: 1.05;
+    }
+
+    .cv-title-badge {
+      display: inline-flex;
+      align-items: center;
+      gap: var(--space-2);
+      padding: 3px 12px;
+      border-radius: var(--radius-pill);
+      border: 1px solid var(--red-border);
+      width: fit-content;
+      margin-top: 2px;
+    }
+    .cv-title-badge::before {
+      content: '';
+      display: block;
+      width: 5px; height: 5px;
+      border-radius: 50%;
+      background: var(--red);
+      flex-shrink: 0;
+    }
+    .cv-title-badge span {
+      font-size: 8pt;
+      font-weight: 600;
+      color: var(--red);
+      text-transform: uppercase;
+      letter-spacing: 0.06em;
+    }
+
+    .cv-contact-row {
+      display: flex;
+      gap: var(--space-4);
+      flex-wrap: wrap;
+      margin-top: var(--space-2);
+      align-items: center;
+    }
+    .cv-contact-item {
+      display: flex;
+      align-items: center;
+      gap: 5px;
+      font-size: 7.8pt;
+      color: var(--ink-500);
+    }
+    .cv-contact-icon {
+      width: 16px; height: 16px;
+      border-radius: var(--radius-sm);
+      border: 1px solid var(--red-border);
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      flex-shrink: 0;
+    }
+    .cv-contact-icon svg {
+      width: 9px; height: 9px;
+      stroke: var(--red); fill: none; stroke-width: 2;
+    }
+
+    .cv-section {
+      margin-bottom: var(--space-4);
+    }
+
+    .cv-section-header {
+      display: flex;
+      align-items: center;
+      gap: var(--space-2);
+      margin-bottom: var(--space-3);
+      padding-bottom: 5px;
+      border-bottom: 1px solid var(--ink-100);
+    }
+
+    .cv-section-bar {
+      width: 3px;
+      height: 13px;
+      border-radius: 999px;
+      background: var(--red);
+      flex-shrink: 0;
+    }
+
+    .cv-section-title {
+      font-family: 'Syne', sans-serif;
+      font-size: 8.2pt;
+      font-weight: 700;
+      text-transform: uppercase;
+      letter-spacing: 0.14em;
+      color: var(--ink-900);
+    }
+
+    .cv-profil {
+      font-size: 8.2pt;
+      color: var(--ink-500);
+      font-weight: 400;
+      line-height: 1.65;
+      text-align: justify;
+      padding: 0 2px;
+    }
+
+    .cv-two-cols {
+      display: grid;
+      grid-template-columns: 1fr 1fr;
+      gap: var(--space-3) var(--space-6);
+    }
+    .cv-exp-grid {
+      display: grid;
+      grid-template-columns: 1fr 1fr;
+      gap: var(--space-3) var(--space-6);
+    }
+    .cv-section-divider {
+      display: grid;
+      grid-template-columns: 1fr 1fr;
+      gap: var(--space-3) var(--space-6);
+    }
+
+    .cv-exp-item {
+      margin-bottom: var(--space-3);
+    }
+
+    .cv-exp-title-bar {
+      display: inline-flex;
+      align-items: center;
+      gap: 6px;
+      padding: 3px 10px 3px 8px;
+      border-radius: var(--radius-md);
+      border: 1px solid var(--red-border);
+      margin-bottom: var(--space-1);
+    }
+    .cv-exp-title-bar::before {
+      content: '';
+      display: block;
+      width: 4px; height: 4px;
+      border-radius: 50%;
+      background: var(--red);
+      flex-shrink: 0;
+    }
+    .cv-exp-title-bar span {
+      font-weight: 600;
+      font-size: 8pt;
+      color: var(--red);
+      letter-spacing: 0.01em;
+    }
+
+    .cv-exp-meta {
+      font-size: 7.8pt;
+      color: var(--ink-400);
+      font-weight: 400;
+      margin-bottom: 2px;
+      padding-left: 2px;
+    }
+
+    .cv-exp-list {
+      list-style: none;
+      padding-left: 0;
+      font-size: 7.8pt;
+      font-weight: 400;
+      margin-top: var(--space-1);
+    }
+    .cv-exp-list li {
+      position: relative;
+      padding-left: 11px;
+      margin-bottom: 2px;
+      color: var(--ink-500);
+      line-height: 1.55;
+    }
+    .cv-exp-list li::before {
+      content: '';
+      position: absolute;
+      left: 0; top: 6px;
+      width: 4px; height: 4px;
+      border-radius: 50%;
+      background: var(--red-border);
+      border: 1px solid var(--red);
+    }
+
+    .cv-project-name {
+      font-family: 'Syne', sans-serif;
+      font-weight: 700;
+      font-size: 8pt;
+      color: var(--ink-800);
+      margin-bottom: var(--space-1);
+      letter-spacing: -0.01em;
+    }
+    .cv-project-meta {
+      font-size: 7.8pt;
+      font-weight: 400;
+      color: var(--ink-500);
+      margin-bottom: 2px;
+      line-height: 1.5;
+    }
+    .cv-project-meta strong {
+      font-weight: 500;
+      color: var(--ink-700);
+    }
+
+    .cv-skills-tags {
+      display: flex;
+      flex-wrap: wrap;
+      gap: 4px 0;
+      align-items: center;
+      padding: 2px 0;
+    }
+    .cv-skill-tag {
+      font-size: 7.8pt;
+      font-weight: 400;
+      color: var(--ink-600);
+      letter-spacing: 0.01em;
+      white-space: nowrap;
+    }
+    .cv-skill-tag + .cv-skill-tag::before {
+      content: '·';
+      margin-right: 6px;
+      color: var(--ink-300);
+      font-weight: 300;
+    }
+
+    .cv-edu-item {
+      margin-bottom: var(--space-3);
+      padding-left: var(--space-2);
+      border-left: 2px solid var(--ink-100);
+    }
+    .cv-edu-diploma {
+      font-weight: 600;
+      font-size: 8pt;
+      color: var(--ink-700);
+      margin-bottom: 1px;
+    }
+    .cv-edu-meta {
+      font-size: 7.8pt;
+      color: var(--ink-400);
+      font-weight: 400;
+    }
+    .cv-edu-year {
+      font-size: 7.5pt;
+      color: var(--red);
+      font-weight: 500;
+      margin-top: 1px;
+    }
+
+    .cv-langues {
+      display: flex;
+      flex-wrap: wrap;
+      gap: 4px 20px;
+    }
+    .cv-langue-item {
+      display: inline-flex;
+      align-items: center;
+      gap: 4px;
+      font-size: 7.8pt;
+      color: var(--ink-500);
+    }
+    .cv-langue-item span {
+      font-weight: 600;
+      color: var(--ink-700);
+    }
+
+    .cv-soft-list {
+      list-style: none;
+      padding: 0;
+      display: flex;
+      flex-wrap: wrap;
+      gap: 5px;
+    }
+
+
+    .cv-soft-list li {
+      padding: 3px 11px;
+      border-radius: var(--radius-pill);
+      font-size: 7.8pt;
+      font-weight: 500;
+      border: 1px solid var(--red-border);
+      color: var(--red);
+      letter-spacing: 0.01em;
+    }
+
+    .cv-footer {
+      margin-top: auto;
+      padding-top: var(--space-2);
+      border-top: 1px solid var(--ink-100);
+      display: flex;
+      align-items: center;
+      gap: 5px;
+      font-size: 7pt;
+      color: var(--ink-400);
+    }
+    .cv-footer .tap {
+      color: var(--red);
+      font-weight: 700;
+      font-family: 'Syne', sans-serif;
+      letter-spacing: 0.05em;
+    }
+  </style>
+</head>
+<body>
+
+{% set exps = experiences|default([]) %}
+{% set projs_list = projets|default(realisations|default([])) %}
+{% set nb_exps = exps|length %}
+{% if nb_exps <= 2 %}
+  {% set max_projects = 4 %}
+{% else %}
+  {% set max_projects = 2 %}
+{% endif %}
+{% set raw_skills = skills|default(c.skills|default([])) %}
+{% set lang_list = langues|default([]) %}
+{% set linkedin_href = (c.linkedin_url or c.Linkedin or '')|trim %}
+
+  <header class="cv-header">
+    <div class="cv-photo">
+      {% if profile_image %}
+      <img src="{{ profile_image }}" alt=""
+        onerror="this.style.display='none'; this.nextElementSibling.style.display='flex';" />
+      {% endif %}
+      <div class="cv-photo-initials" style="display:{% if profile_image %}none{% else %}flex{% endif %};align-items:center;justify-content:center;width:100%;height:100%;">{{ avatar_initials }}</div>
+    </div>
+
+    <div class="cv-header-right">
+      <div class="cv-name">{{ display_name }}</div>
+
+      <div class="cv-title-badge">
+        <span>{{ c.titre_profil|default(c['Titre de profil'])|default('—') }}</span>
+      </div>
+
+      <div class="cv-contact-row">
+        {% if c.ville or c.pays %}
+        <div class="cv-contact-item">
+          <div class="cv-contact-icon">
+            <svg viewBox="0 0 24 24"><path d="M12 2C8.13 2 5 5.13 5 9c0 5.25 7 13 7 13s7-7.75 7-13c0-3.87-3.13-7-7-7z"/><circle cx="12" cy="9" r="2.5"/></svg>
+          </div>
+          {{ c.ville|default('') }}{% if c.ville and c.pays %}, {% endif %}{{ c.pays|default('') }}
+        </div>
+        {% endif %}
+        {% if c.phone %}
+        <div class="cv-contact-item">
+          <div class="cv-contact-icon">
+            <svg viewBox="0 0 24 24"><path d="M22 16.92v3a2 2 0 01-2.18 2 19.79 19.79 0 01-8.63-3.07 19.5 19.5 0 01-6-6A19.79 19.79 0 014.12 2.18 2 2 0 016.11 2h3a2 2 0 012 1.72c.127.96.361 1.903.7 2.81a2 2 0 01-.45 2.11L8.09 9.91a16 16 0 006 6l1.27-1.27a2 2 0 012.11-.45c.907.339 1.85.573 2.81.7A2 2 0 0122 16.92z"/></svg>
+          </div>
+          {{ c.phone }}
+        </div>
+        {% endif %}
+        {% if c.email %}
+        <div class="cv-contact-item">
+          <div class="cv-contact-icon">
+            <svg viewBox="0 0 24 24"><rect x="2" y="4" width="20" height="16" rx="2"/><path d="M22 7l-10 7L2 7"/></svg>
+          </div>
+          {{ c.email }}
+        </div>
+        {% endif %}
+        {% if linkedin_href %}
+        <div class="cv-contact-item">
+          <div class="cv-contact-icon">
+            <svg viewBox="0 0 24 24"><rect x="1" y="1" width="22" height="22" rx="4" stroke="currentColor" fill="none"/><path d="M8 10v7M8 7v.01M12 17v-4.2c0-1 .8-1.8 1.8-1.8s1.8.8 1.8 1.8V17" fill="none" stroke="currentColor" stroke-width="1.5"/></svg>
+          </div>
+          {% if linkedin_href.startswith('http://') or linkedin_href.startswith('https://') %}
+          <a href="{{ linkedin_href }}" style="color:inherit;text-decoration:none;">LinkedIn</a>
+          {% else %}
+          {{ linkedin_href }}
+          {% endif %}
+        </div>
+        {% endif %}
+      </div>
+    </div>
+  </header>
+
+  <section class="cv-section">
+    <div class="cv-section-header">
+      <div class="cv-section-bar"></div>
+      <div class="cv-section-title">{% if plang == 'en' %}Profile{% else %}Profil{% endif %}</div>
+    </div>
+    <div class="cv-profil">
+      {{ c.profil|default(c.resume_bref)|default(c.executive_summary)|default(
+        'Professionnel motivé et organisé, avec une expérience dans le domaine visé. Habitué à travailler en équipe et à respecter les délais et les standards professionnels.'
+        if plang != 'en' else
+        'Motivated professional with relevant experience. Comfortable working in teams and meeting deadlines and professional standards.'
+      ) }}
+    </div>
+  </section>
+
+  {% if exps and exps|length > 0 %}
+  <section class="cv-section">
+    <div class="cv-section-header">
+      <div class="cv-section-bar"></div>
+      <div class="cv-section-title">{% if plang == 'en' %}Professional experience{% else %}Expérience professionnelle{% endif %}</div>
+    </div>
+    <div class="cv-exp-grid">
+      {% for exp in exps %}
+      <div class="cv-exp-item">
+        <div class="cv-exp-title-bar">
+          <span>{{ exp.role|default(exp.Role)|default('—') }}</span>
+        </div>
+        <div class="cv-exp-meta">{{ exp.entreprise|default(exp.company)|default('') }}</div>
+        <div class="cv-exp-meta">{{ exp.periode|default(exp.period)|default('') }}</div>
+        <ul class="cv-exp-list">
+          {% for point in (exp.points|default([])) %}
+          <li>{{ point }}</li>
+          {% endfor %}
+          {% if not exp.points and exp.description %}
+          {% for line in (exp.description|string).split('\n') %}
+          {% if line.strip() %}<li>{{ line.strip() }}</li>{% endif %}
+          {% endfor %}
+          {% endif %}
+          {% if not exp.points and not exp.description %}
+          <li>{% if plang == 'en' %}Key responsibilities and achievements{% else %}Missions et réalisations{% endif %}</li>
+          {% endif %}
+        </ul>
+      </div>
+      {% endfor %}
+    </div>
+  </section>
+  {% endif %}
+
+  {% if projs_list and projs_list|length > 0 %}
+  <section class="cv-section">
+    <div class="cv-section-header">
+      <div class="cv-section-bar"></div>
+      <div class="cv-section-title">{% if plang == 'en' %}Selected projects{% else %}Projets sélectionnés{% endif %}</div>
+    </div>
+    <div class="cv-two-cols">
+      {% for proj in projs_list[:max_projects] %}
+      <div class="cv-exp-item">
+        <div class="cv-project-name">{{ proj.nom|default(proj.name)|default('—') }}</div>
+        {% if proj.contexte or proj.context %}
+        <div class="cv-project-meta">{{ proj.contexte|default(proj.context, true) }}</div>
+        {% endif %}
+        {% if proj.stack %}
+        <div class="cv-project-meta"><strong>{% if plang == 'en' %}Stack:{% else %}Stack :{% endif %}</strong> {{ proj.stack }}</div>
+        {% endif %}
+        <div class="cv-project-meta"><strong>{% if plang == 'en' %}Outcome:{% else %}Résultat :{% endif %}</strong> {{ proj.resultat|default(proj.detail, true)|default(proj.description, true)|default('') }}</div>
+      </div>
+      {% endfor %}
+    </div>
+  </section>
+  {% endif %}
+
+  <div class="cv-section-divider">
+
+    <section class="cv-section">
+      <div class="cv-section-header">
+        <div class="cv-section-bar"></div>
+        <div class="cv-section-title">{% if plang == 'en' %}Skills{% else %}Compétences{% endif %}</div>
+      </div>
+      <div class="cv-skills-tags">
+        {% for skill in raw_skills %}
+        <span class="cv-skill-tag">{% if skill is mapping %}{{ skill.name or skill.skill or skill.label or '—' }}{% else %}{{ skill }}{% endif %}</span>
+        {% endfor %}
+        {% if not raw_skills %}
+        <span class="cv-skill-tag">—</span>
+        {% endif %}
+      </div>
+    </section>
+
+    <section class="cv-section">
+      <div class="cv-section-header">
+        <div class="cv-section-bar"></div>
+        <div class="cv-section-title">{% if plang == 'en' %}Education{% else %}Formation{% endif %}</div>
+      </div>
+      <div style="padding-left:2px; display:flex; flex-direction:column; gap:10px;">
+        {% set form_list = formations|default([]) %}
+        {% if form_list and form_list|length > 0 %}
+          {% for edu in form_list|reverse %}
+        <div class="cv-edu-item">
+          <div class="cv-edu-diploma">{{ edu.diplome|default(edu.degree)|default(edu.diploma)|default('—') }}</div>
+          <div class="cv-edu-meta">{{ edu.etablissement|default(edu.school)|default(edu.ecole)|default('') }}</div>
+          <div class="cv-edu-year">{{ edu.annee|default(edu.year)|default(edu.period)|default('') }}</div>
+        </div>
+          {% endfor %}
+        {% else %}
+        <div class="cv-edu-item">
+          <div class="cv-edu-diploma">—</div>
+          <div class="cv-edu-meta">{% if plang == 'en' %}Not specified{% else %}Non renseigné{% endif %}</div>
+        </div>
+        {% endif %}
+      </div>
+    </section>
+
+  </div>
+
+  <div class="cv-section-divider">
+
+    <section class="cv-section">
+      <div class="cv-section-header">
+        <div class="cv-section-bar"></div>
+        <div class="cv-section-title">{% if plang == 'en' %}Languages{% else %}Langues{% endif %}</div>
+      </div>
+      <div class="cv-langues">
+        {% for l in lang_list %}
+        <div class="cv-langue-item">
+          {% if l is mapping %}
+          <span>{{ l.nom|default(l.langue)|default(l.name)|default('') }}</span>
+          {% if l.niveau or l.level %} — {{ l.niveau|default(l.level) }}{% endif %}
+          {% else %}
+          {{ l }}
+          {% endif %}
+        </div>
+        {% endfor %}
+        {% if not lang_list and c.langues_parlees %}
+          {% for l in c.langues_parlees %}
+        <div class="cv-langue-item">{{ l }}</div>
+          {% endfor %}
+        {% endif %}
+        {% if not lang_list and not (c.langues_parlees or []) %}
+        <div class="cv-langue-item"><span>{% if plang == 'en' %}French{% else %}Français{% endif %}</span> — {% if plang == 'en' %}Fluent{% else %}Courant{% endif %}</div>
+        {% endif %}
+      </div>
+    </section>
+
+    <section class="cv-section">
+      <div class="cv-section-header">
+        <div class="cv-section-bar"></div>
+        <div class="cv-section-title">{% if plang == 'en' %}Soft skills{% else %}Soft Skills{% endif %}</div>
+      </div>
+      <ul class="cv-soft-list">
+        {% set ss = soft_skills|default([]) %}
+        {% if ss %}
+          {% for s in ss %}
+        <li>{% if s is mapping %}{{ s.name or s.skill or s }}{% else %}{{ s }}{% endif %}</li>
+          {% endfor %}
+        {% elif c.soft_skills %}
+          {% for item in c.soft_skills %}
+        <li>{% if item is mapping %}{{ item.name or item }}{% else %}{{ item }}{% endif %}</li>
+          {% endfor %}
+        {% else %}
+        <li>{% if plang == 'en' %}Teamwork{% else %}Travail en équipe{% endif %}</li>
+        <li>{% if plang == 'en' %}Autonomy{% else %}Autonomie{% endif %}</li>
+        <li>{% if plang == 'en' %}Organization{% else %}Organisation{% endif %}</li>
+        {% endif %}
+      </ul>
+    </section>
+
+  </div>
+
+  <div class="cv-footer">
+    <span>{% if plang == 'en' %}Generated by{% else %}Généré par{% endif %}</span>
+    <span class="tap">TAP</span>
+    <span>—</span>
+    <span>Talent Acceleration Platform</span>
+  </div>
+
+</body>
+</html>

@@ -75,12 +75,29 @@ _BACKEND_DIR = os.path.dirname(os.path.abspath(__file__))
 _PROJECT_ROOT = os.path.dirname(_BACKEND_DIR)
 
 DEFAULT_CORRECTED_HTML_TEMPLATE = os.path.join(_PROJECT_ROOT, "frontend", "src", "20260312_044613", "CV_template_A4.html")
-# Chemins de fallback (Docker / volume)
+CV_DYNAMIQUE_HTML_TEMPLATE = os.path.join(_PROJECT_ROOT, "frontend", "src", "templates_modif", "CV_dynamique.html")
+# Priorité : maquette TAP (templates_modif), puis ancien A4 (Docker / volume)
 CV_HTML_TEMPLATE_PATHS = [
+    "/app/frontend/src/templates_modif/CV_dynamique.html",
+    CV_DYNAMIQUE_HTML_TEMPLATE,
+    "/frontend/src/templates_modif/CV_dynamique.html",
     "/app/frontend/src/20260312_044613/CV_template_A4.html",
     "/frontend/src/20260312_044613/CV_template_A4.html",
     DEFAULT_CORRECTED_HTML_TEMPLATE,
 ]
+
+
+def _portfolio_long_template_html_path(project_root=None):
+    """Portfolio long Jinja : priorité long_dynamique.html, puis ancien portfolio_long_template.html."""
+    root = project_root or _PROJECT_ROOT
+    names = ("long_dynamique.html", "portfolio_long_template.html")
+    for sub in ("templates_modif", "20260312_044613"):
+        for name in names:
+            p = os.path.join(root, "frontend", "src", sub, name)
+            if os.path.isfile(p):
+                return p
+    return os.path.join(root, "frontend", "src", "20260312_044613", "portfolio_long_template.html")
+
 
 # Timestamp de dernière génération du PDF portfolio par (db_candidate_id, version) — pour que la prévisualisation affiche le nouveau PDF après régénération
 import time as _time
@@ -1616,7 +1633,7 @@ def process_candidate():
         if form_info.get("salaire_minimum") is not None and (form_info.get("salaire_minimum") or "").strip():
             extra_tc["salaire_minimum"] = (form_info.get("salaire_minimum") or "").strip()[:50]
         # Générer la Talent Card en FRANÇAIS
-        ok_html_fr, _html_content_fr, _url_html_fr, url_pdf_fr, _err_fr = generate_and_save_talent_card_html(
+        ok_html_fr, _html_content_fr, _url_html_fr, url_pdf_fr, _png_fr, _err_fr = generate_and_save_talent_card_html(
             candidate_id=db_candidate_id,
             candidate_uuid=id_agent,
             candidate_image_url=minio_urls.get("image_url"),
@@ -1646,7 +1663,7 @@ def process_candidate():
             print(f"✅ Talent Card PDF FR uploadé vers MinIO: {url_pdf_fr}")
 
         # Générer aussi la Talent Card en ANGLAIS
-        ok_html_en, _html_content_en, _url_html_en, url_pdf_en, _err_en = generate_and_save_talent_card_html(
+        ok_html_en, _html_content_en, _url_html_en, url_pdf_en, _png_en, _err_en = generate_and_save_talent_card_html(
             candidate_id=db_candidate_id,
             candidate_uuid=id_agent,
             candidate_image_url=minio_urls.get("image_url"),
@@ -1969,8 +1986,10 @@ def recruit_landing(db_candidate_id):
         assets_base_url = base.rstrip("/") + "/recruit/static/"
 
         talentcard_pdf_bytes, _ = _get_talent_card_pdf_bytes(db_id)
+        talentcard_png_bytes, _ = _get_talent_card_png_bytes(db_id)
         has_talentcard = bool(talentcard_pdf_bytes)
         talentcard_url = f"{base}/talentcard/{db_id}/download"
+        talentcard_image_url = f"{base}/talentcard/{db_id}/download-image"
         # URL de base de prévisualisation du CV (la langue sera choisie côté front)
         cv_preview_url = f"{base}/correctedcv/{candidate_uuid}/preview?db_candidate_id={db_id}"
         portfolio_long_url = f"{base}/portfolio/{candidate_uuid}/pdf?db_candidate_id={db_id}&version=long"
@@ -1980,6 +1999,10 @@ def recruit_landing(db_candidate_id):
         links_html = []
         if has_talentcard:
             links_html.append(f'<a href="{talentcard_url}" class="btn">TÉLÉCHARGER LA TALENT CARD (PDF)</a>')
+        if talentcard_png_bytes:
+            links_html.append(
+                f'<a href="{talentcard_image_url}" class="btn" id="talentcard-png-link">TÉLÉCHARGER LA TALENT CARD (IMAGE PNG)</a>'
+            )
         # Le lien CV a un id pour pouvoir afficher un choix de langue côté front
         links_html.append(f'<a href="{cv_preview_url}" class="btn" id="cv-link">VOIR / TÉLÉCHARGER LE CV</a>')
         links_html.append(f'<a href="{portfolio_long_url}" class="btn" id="portfolio-long-link">VOIR LE PORTFOLIO</a>')
@@ -2227,6 +2250,9 @@ def recruit_download_all(db_candidate_id):
             pdf_bytes, tc_name = _get_talent_card_pdf_bytes(db_id)
             if pdf_bytes:
                 zf.writestr("talent_card.pdf", pdf_bytes)
+            png_bytes, _tc_png = _get_talent_card_png_bytes(db_id)
+            if png_bytes:
+                zf.writestr("talent_card.png", png_bytes)
             cv_bytes, cv_name = _get_corrected_cv_pdf_bytes(db_id, candidate_uuid)
             if cv_bytes:
                 zf.writestr("cv.pdf", cv_bytes)
@@ -2256,10 +2282,11 @@ def recruit_download_all(db_candidate_id):
 
 @app.route("/talentcard/<candidate_id>/docx", methods=["GET"])
 def generate_docx(candidate_id):
-    """Talent Card n'est plus générée en DOCX ; utiliser /talentcard/<db_candidate_id>/download pour le PDF."""
+    """Talent Card n'est plus générée en DOCX ; PDF : /talentcard/<id>/download — PNG : /talentcard/<id>/download-image."""
     return jsonify({
         "error": "Talent Card disponible uniquement en PDF",
         "download_pdf": f"/talentcard/{candidate_id}/download",
+        "download_image_png": f"/talentcard/{candidate_id}/download-image",
     }), 410
 
 
@@ -2345,11 +2372,11 @@ def get_talent_card(db_candidate_id):
 @app.route("/talentcard/<db_candidate_id>/generate-html", methods=["POST"])
 def generate_talent_card_html_route(db_candidate_id):
     """
-    Génère la Talent Card en HTML (template talent_card_template.html), la sauvegarde dans MinIO,
-    la convertit en PDF et uploade le PDF dans MinIO.
+    Génère la Talent Card en HTML (Talent_card_dynamic.html dans frontend/src/templates_modif/),
+    la sauvegarde dans le stockage, convertit en PDF + PNG (capture .tc-card) et upload.
     Body (JSON, optionnel): { "lang": "fr" | "en" }
     Returns:
-        JSON { success, talentcard_html_url, talentcard_html_pdf_url, error? }
+        JSON { success, talentcard_html_*_url, talentcard_html_*_pdf_url, talentcard_html_*_png_url, error? }
     """
     try:
         db_candidate_id_int = int(db_candidate_id)
@@ -2377,7 +2404,7 @@ def generate_talent_card_html_route(db_candidate_id):
         if not flask_base_url.startswith("http"):
             flask_base_url = f"http://{flask_base_url}"
         # Générer Talent Card FR
-        success_fr, html_content_fr, minio_html_url_fr, minio_pdf_url_fr, error_fr = generate_and_save_talent_card_html(
+        success_fr, html_content_fr, minio_html_url_fr, minio_pdf_url_fr, minio_png_url_fr, error_fr = generate_and_save_talent_card_html(
             candidate_id=db_candidate_id_int,
             candidate_uuid=candidate["id_agent"] or "",
             candidate_image_url=candidate.get("image_minio_url"),
@@ -2397,7 +2424,7 @@ def generate_talent_card_html_route(db_candidate_id):
             return jsonify({"success": False, "error": error_fr or "Génération échouée (FR)"}), 500
 
         # Générer Talent Card EN
-        success_en, html_content_en, minio_html_url_en, minio_pdf_url_en, error_en = generate_and_save_talent_card_html(
+        success_en, html_content_en, minio_html_url_en, minio_pdf_url_en, minio_png_url_en, error_en = generate_and_save_talent_card_html(
             candidate_id=db_candidate_id_int,
             candidate_uuid=candidate["id_agent"] or "",
             candidate_image_url=candidate.get("image_minio_url"),
@@ -2422,8 +2449,10 @@ def generate_talent_card_html_route(db_candidate_id):
             "success": True,
             "talentcard_html_url_fr": minio_html_url_fr,
             "talentcard_html_pdf_url_fr": minio_pdf_url_fr,
+            "talentcard_html_png_url_fr": minio_png_url_fr,
             "talentcard_html_url_en": minio_html_url_en,
             "talentcard_html_pdf_url_en": minio_pdf_url_en,
+            "talentcard_html_png_url_en": minio_png_url_en,
         }), 200
     except Exception as e:
         print(f"❌ Erreur génération Talent Card HTML/PDF: {e}")
@@ -2517,7 +2546,7 @@ def update_talent_card(db_candidate_id):
         update_lang = (data.get("lang") or "fr").strip().lower()
         if update_lang not in ("fr", "en"):
             update_lang = "fr"
-        ok_html, _, _url_html, url_pdf, _err = generate_and_save_talent_card_html(
+        ok_html, _, _url_html, url_pdf, _url_png, _err = generate_and_save_talent_card_html(
             candidate_id=db_candidate_id_int,
             candidate_uuid=candidate.get("id_agent") or "",
             candidate_image_url=candidate.get("image_minio_url"),
@@ -2581,6 +2610,8 @@ def validate_talent_card(db_candidate_id):
             "message": "Talent Card validée",
             "download_url": f"/talentcard/{db_candidate_id}/download",
             "preview_url": f"/talentcard/{db_candidate_id}/preview",
+            "download_image_url": f"/talentcard/{db_candidate_id}/download-image",
+            "preview_image_url": f"/talentcard/{db_candidate_id}/preview-image",
             "candidate_uuid": candidate_uuid,
             "agent2_triggered": False,
         }), 200
@@ -2654,6 +2685,66 @@ def _get_talent_card_pdf_bytes(db_candidate_id: int, lang: str | None = None):
     return None, None
 
 
+def _get_talent_card_png_bytes(db_candidate_id: int, lang: str | None = None):
+    """
+    Récupère l’image PNG de la Talent Card (export Playwright sur .tc-card) depuis Supabase Storage.
+    """
+    if supabase_db is None:
+        return None, None
+
+    try:
+        resp = (
+            supabase_db.table("candidates")
+            .select("candidate_uuid, id_agent")
+            .eq("id", db_candidate_id)
+            .limit(1)
+            .execute()
+        )
+        row = resp.data[0] if resp.data else None
+    except Exception as e:
+        print(f"⚠️ Erreur Supabase Talent Card PNG candidat {db_candidate_id}: {e}")
+        row = None
+
+    if not row:
+        return None, None
+
+    candidate_uuid = row.get("candidate_uuid")
+    id_agent = row.get("id_agent")
+    prefix = get_candidate_minio_prefix(db_candidate_id)
+    candidates_names: list[str] = []
+    if candidate_uuid:
+        if (lang or "").lower() == "en":
+            candidates_names.extend(
+                [
+                    f"{prefix}talentcard_html_TAP_en.png",
+                    f"{prefix}talentcard_html_TAP.png",
+                ]
+            )
+        else:
+            candidates_names.extend(
+                [
+                    f"{prefix}talentcard_html_TAP.png",
+                    f"{prefix}talentcard_html_TAP_en.png",
+                ]
+            )
+    if id_agent:
+        candidates_names.append(f"{prefix}talentcard_html_TAP.png")
+
+    try:
+        storage = get_supabase_storage()
+        for name in candidates_names:
+            try:
+                success, png_bytes, _ = storage.download_file(name)
+                if success and png_bytes:
+                    return png_bytes, "talentcard_TAP.png"
+            except Exception:
+                continue
+    except Exception as e:
+        print(f"⚠️ Supabase Storage talentcard PNG: {e}")
+
+    return None, None
+
+
 @app.route("/talentcard/<db_candidate_id>/download", methods=["GET"])
 def download_talent_card(db_candidate_id):
     """
@@ -2709,6 +2800,56 @@ def preview_talent_card_pdf(db_candidate_id):
         )
     except Exception as e:
         print(f"❌ Erreur prévisualisation Talent Card PDF: {e}")
+        return jsonify({"error": str(e)}), 500
+
+
+@app.route("/talentcard/<db_candidate_id>/download-image", methods=["GET"])
+def download_talent_card_image(db_candidate_id):
+    """Télécharge la Talent Card en PNG (rendu HTML de la carte)."""
+    try:
+        try:
+            db_id = int(db_candidate_id)
+        except (TypeError, ValueError):
+            return jsonify({"error": "ID candidat invalide"}), 400
+
+        lang = (request.args.get("lang") or "").lower() or None
+        png_bytes, file_name = _get_talent_card_png_bytes(db_id, lang=lang)
+        if not png_bytes:
+            return jsonify({"error": "Image Talent Card PNG introuvable"}), 404
+
+        return send_file(
+            BytesIO(png_bytes),
+            as_attachment=True,
+            download_name=file_name or "talentcard.png",
+            mimetype="image/png",
+        )
+    except Exception as e:
+        print(f"❌ Erreur téléchargement Talent Card PNG: {e}")
+        return jsonify({"error": str(e)}), 500
+
+
+@app.route("/talentcard/<db_candidate_id>/preview-image", methods=["GET"])
+def preview_talent_card_image(db_candidate_id):
+    """Affiche la PNG de la Talent Card dans le navigateur (inline, pas en pièce jointe)."""
+    try:
+        try:
+            db_id = int(db_candidate_id)
+        except (TypeError, ValueError):
+            return jsonify({"error": "ID candidat invalide"}), 400
+
+        lang = (request.args.get("lang") or "").lower() or None
+        png_bytes, file_name = _get_talent_card_png_bytes(db_id, lang=lang)
+        if not png_bytes:
+            return jsonify({"error": "Image Talent Card PNG introuvable"}), 404
+
+        return send_file(
+            BytesIO(png_bytes),
+            as_attachment=False,
+            download_name=file_name or "talentcard.png",
+            mimetype="image/png",
+        )
+    except Exception as e:
+        print(f"❌ Erreur prévisualisation Talent Card PNG: {e}")
         return jsonify({"error": str(e)}), 500
 
 
@@ -4800,6 +4941,7 @@ def view_portfolio_html(candidate_uuid):
                 template_data["candidate"]["projects"]
             )
         
+        long_template_extra = {}
         # 3.2 LinkedIn / GitHub / Behance : priorité à la base de données
         if template_data.get("candidate"):
             for db_key, template_key in [("linkedin", "linkedin_url"), ("github", "github_url"), ("behance", "behance_url")]:
@@ -4816,15 +4958,17 @@ def view_portfolio_html(candidate_uuid):
             if contract_types:
                 template_data["candidate"]["contract_type"] = ", ".join(contract_types)
                 template_data["candidate"]["type_contrat"] = contract_types
-            # Scores A2 : score global + justification (5 dimensions technique/comportemental), pas les soft skills déclarés
+            # Contexte portfolio long (long_dynamique.html) : A2 + slides 2–7
             try:
-                from B2.generate_portfolio_html import _inject_scoring_into_candidate
-                _inject_scoring_into_candidate(template_data["candidate"], db_candidate_id)
+                from B2.generate_portfolio_html import build_long_portfolio_template_extra_context
+                long_template_extra = build_long_portfolio_template_extra_context(
+                    template_data["candidate"], db_candidate_id, inject_a2_scoring=True
+                )
             except Exception as inj_err:
-                print(f"⚠️ Injection scores A2 (vue portfolio long): {inj_err}")
+                print(f"⚠️ Contexte portfolio long (vue): {inj_err}")
         
         project_root = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
-        template_path = os.path.join(project_root, "frontend", "src", "20260312_044613", "portfolio_long_template.html")
+        template_path = _portfolio_long_template_html_path(project_root)
         css_path = os.path.join(project_root, "frontend", "src", "portfolio html", "index.css")
         
         if not os.path.exists(template_path):
@@ -4844,14 +4988,17 @@ def view_portfolio_html(candidate_uuid):
         print(f"🔄 Rendu du template avec Jinja2...")
         try:
             jinja_template = Template(template_content)
-            html_content = jinja_template.render(
-                candidate=template_data.get('candidate', {}),
-                portfolio=template_data.get('portfolio', {}),
-                db_candidate_id=db_candidate_id,
-                candidate_uuid=candidate_uuid,
-                assets_base_url=assets_base_url,
-                portfolio_lang=request.args.get("lang", "fr")
-            )
+            _lang = request.args.get("lang", "fr")
+            _render_ctx = {
+                "candidate": template_data.get('candidate', {}),
+                "portfolio": template_data.get('portfolio', {}),
+                "db_candidate_id": db_candidate_id,
+                "candidate_uuid": candidate_uuid,
+                "assets_base_url": assets_base_url,
+                "portfolio_lang": _lang,
+            }
+            _render_ctx.update(long_template_extra)
+            html_content = jinja_template.render(**_render_ctx)
             print(f"✅ Template rendu avec succès avec Jinja2")
         except Exception as e:
             print(f"❌ Erreur lors du rendu Jinja2: {e}")
@@ -5259,9 +5406,9 @@ def generate_portfolio_html_endpoint(candidate_uuid):
         
         print(f"🔄 Génération et sauvegarde portfolio HTML (version: {version}) pour candidate_uuid={candidate_uuid}, db_candidate_id={db_candidate_id}")
         
-        # Pour la version "long", utiliser le même template que la vue (évite d'enregistrer l'ancien template dans MinIO)
+        # Pour la version "long", même résolution de chemin que la vue (templates_modif si présent)
         project_root = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
-        long_template_path = os.path.join(project_root, "frontend", "src", "20260312_044613", "portfolio_long_template.html") if version == "long" else None
+        long_template_path = _portfolio_long_template_html_path(project_root) if version == "long" else None
         
         # Obtenir l'URL de base Flask pour les proxies (RECRUIT_BASE_URL pour domaine ex: https://demo.tap-hr.com/api)
         flask_base_url = (os.getenv("RECRUIT_BASE_URL") or request.host_url or "http://localhost:5002").rstrip('/')
@@ -5269,50 +5416,9 @@ def generate_portfolio_html_endpoint(candidate_uuid):
             flask_base_url = f"http://{flask_base_url}"
         
         from B2.generate_portfolio_html import generate_portfolio_html, save_portfolio_html
-        
-        # Générer le HTML (avec langue pour contenu + libellés)
-        success, html_content, error = generate_portfolio_html(
-            candidate_id=db_candidate_id,
-            version=version,
-            candidate_image_url=candidate_image_url,
-            candidate_email=candidate_email,
-            candidate_phone=candidate_phone,
-            candidate_job_title=candidate_job_title,
-            candidate_years_experience=candidate_years_experience,
-            candidate_availability=candidate_availability,
-            candidate_contract_type=candidate_contract_type,
-            flask_base_url=flask_base_url,
-            candidate_uuid=candidate_uuid,
-            candidate_linkedin_url=candidate_linkedin_url,
-            candidate_github_url=candidate_github_url,
-            candidate_behance_url=candidate_behance_url,
-            long_template_path=long_template_path,
-            lang=lang
-        )
-        
-        if not success:
-            return jsonify({
-                "success": False,
-                "error": error or "Erreur lors de la génération du portfolio HTML"
-            }), 500
-        
-        # Sauvegarder le HTML dans le stockage si demandé (one-page et long)
-        minio_url = None
-        html_minio_url = None
-        if save_to_minio:
-            save_success, html_minio_url, save_error = save_portfolio_html(
-                html_content,
-                db_candidate_id,
-                candidate_uuid,
-                version,
-                lang=lang
-            )
-            minio_url = html_minio_url
-            if save_success:
-                print(f"✅ Portfolio HTML ({version}, {lang}) sauvegardé dans le stockage: {html_minio_url}")
-            else:
-                print(f"⚠️  Erreur sauvegarde HTML dans le stockage ({version}): {save_error}")
-        
+        from B2.agent_portfolio import convert_html_to_pdf
+        import threading
+
         # Helper pour sauvegarder l'URL du PDF portfolio (long ou one-page) dans fichiers_versions
         def _save_portfolio_pdf_url(pdf_url_to_save: str, version_to_save: str):
             if not pdf_url_to_save:
@@ -5367,11 +5473,134 @@ def generate_portfolio_html_endpoint(candidate_uuid):
             except Exception as e:
                 print(f"⚠️  Erreur sauvegarde {version_to_save} portfolio PDF URL dans Supabase: {e}")
 
-        # Lancer la génération du PDF en arrière-plan (pour que GET /pdf trouve le fichier après quelques secondes)
-        try:
-            import threading
-            from B2.agent_portfolio import convert_html_to_pdf
+        # Autre langue (FR/EN) : démarrer tout de suite en parallèle pour ne pas attendre la fin de l’agent IA sur la langue demandée.
+        _other_lang = "en" if lang == "fr" else "fr"
 
+        def _generate_other_lang_background():
+            import time as _time2
+            try:
+                print(
+                    f"🔄 [PDF] Génération parallèle ({_other_lang}, version={version}) — "
+                    f"en cours en même temps que la langue principale ({lang})..."
+                )
+                success_other, html_other, error_other = generate_portfolio_html(
+                    candidate_id=db_candidate_id,
+                    version=version,
+                    candidate_image_url=candidate_image_url,
+                    candidate_email=candidate_email,
+                    candidate_phone=candidate_phone,
+                    candidate_job_title=candidate_job_title,
+                    candidate_years_experience=candidate_years_experience,
+                    candidate_availability=candidate_availability,
+                    candidate_contract_type=candidate_contract_type,
+                    flask_base_url=flask_base_url,
+                    candidate_uuid=candidate_uuid,
+                    candidate_linkedin_url=candidate_linkedin_url,
+                    candidate_github_url=candidate_github_url,
+                    candidate_behance_url=candidate_behance_url,
+                    long_template_path=long_template_path if version == "long" else None,
+                    lang=_other_lang,
+                )
+                if not success_other:
+                    print(f"❌ [PDF] Génération HTML {_other_lang} échouée: {error_other}")
+                    return
+                if save_to_minio:
+                    save_success, minio_url_other, _ = save_portfolio_html(
+                        html_other, db_candidate_id, candidate_uuid, version, lang=_other_lang
+                    )
+                    if save_success:
+                        print(f"✅ [PDF] HTML {_other_lang} sauvegardé dans MinIO: {minio_url_other}")
+                pdf_page_format = "one-page" if version == "one-page" else None
+                pdf_success, pdf_url_other, pdf_error = convert_html_to_pdf(
+                    html_other,
+                    db_candidate_id,
+                    candidate_uuid,
+                    base_url=flask_base_url,
+                    pdf_page_format=pdf_page_format,
+                    lang=_other_lang,
+                )
+                if pdf_success:
+                    with _portfolio_pdf_lock:
+                        _portfolio_pdf_generated_at[(db_candidate_id, version, _other_lang)] = _time2.time()
+                    print(f"✅ [PDF] PDF {_other_lang} généré et uploadé: {pdf_url_other}")
+                    _save_portfolio_pdf_url(pdf_url_other, version)
+                else:
+                    print(f"❌ [PDF] Erreur PDF {_other_lang}: {pdf_error}")
+            except Exception as e2:
+                print(f"❌ [PDF] Exception génération autre langue ({_other_lang}): {e2}")
+                import traceback
+                traceback.print_exc()
+            finally:
+                with _portfolio_pdf_lock:
+                    _portfolio_pdf_jobs_in_progress.discard((db_candidate_id, version, _other_lang))
+
+        if auto_generate_other_lang:
+            try:
+                with _portfolio_pdf_lock:
+                    _other_job_key = (db_candidate_id, version, _other_lang)
+                    _other_already_running = _other_job_key in _portfolio_pdf_jobs_in_progress
+                    if not _other_already_running:
+                        _portfolio_pdf_jobs_in_progress.add(_other_job_key)
+                if _other_already_running:
+                    print(
+                        f"ℹ️ [PDF] Thread autre langue déjà en cours ({_other_lang}, version={version}), non relancé"
+                    )
+                else:
+                    threading.Thread(target=_generate_other_lang_background, daemon=True).start()
+                    print(
+                        f"🔄 [PDF] Thread {_other_lang} lancé en parallèle (avant génération HTML {lang})"
+                    )
+            except Exception as e2:
+                print(f"⚠️ [PDF] Démarrage thread autre langue échoué: {e2}")
+        else:
+            print(f"ℹ️ [PDF] Auto-génération autre langue désactivée (lang explicite={lang_explicit})")
+
+        # Générer le HTML pour la langue demandée (réponse API)
+        success, html_content, error = generate_portfolio_html(
+            candidate_id=db_candidate_id,
+            version=version,
+            candidate_image_url=candidate_image_url,
+            candidate_email=candidate_email,
+            candidate_phone=candidate_phone,
+            candidate_job_title=candidate_job_title,
+            candidate_years_experience=candidate_years_experience,
+            candidate_availability=candidate_availability,
+            candidate_contract_type=candidate_contract_type,
+            flask_base_url=flask_base_url,
+            candidate_uuid=candidate_uuid,
+            candidate_linkedin_url=candidate_linkedin_url,
+            candidate_github_url=candidate_github_url,
+            candidate_behance_url=candidate_behance_url,
+            long_template_path=long_template_path,
+            lang=lang,
+        )
+
+        if not success:
+            return jsonify(
+                {
+                    "success": False,
+                    "error": error or "Erreur lors de la génération du portfolio HTML",
+                }
+            ), 500
+
+        minio_url = None
+        html_minio_url = None
+        if save_to_minio:
+            save_success, html_minio_url, save_error = save_portfolio_html(
+                html_content,
+                db_candidate_id,
+                candidate_uuid,
+                version,
+                lang=lang,
+            )
+            minio_url = html_minio_url
+            if save_success:
+                print(f"✅ Portfolio HTML ({version}, {lang}) sauvegardé dans le stockage: {html_minio_url}")
+            else:
+                print(f"⚠️  Erreur sauvegarde HTML dans le stockage ({version}): {save_error}")
+
+        # PDF langue demandée (après HTML prêt)
+        try:
             def _generate_pdf_background():
                 try:
                     print(f"🔄 [PDF] Génération PDF en arrière-plan (version={version}, lang={lang})...")
@@ -5414,80 +5643,6 @@ def generate_portfolio_html_endpoint(candidate_uuid):
         except Exception as e:
             print(f"⚠️ [PDF] Démarrage thread PDF échoué: {e}")
 
-        # Générer et enregistrer l'autre langue (FR/EN) en arrière-plan pour one-page et long
-        _other_lang = "en" if lang == "fr" else "fr"
-        def _generate_other_lang_background():
-            import time as _time2
-            try:
-                print(f"🔄 [PDF] Génération de l'autre langue ({_other_lang}, version={version}) en arrière-plan...")
-                success_other, html_other, error_other = generate_portfolio_html(
-                    candidate_id=db_candidate_id,
-                    version=version,
-                    candidate_image_url=candidate_image_url,
-                    candidate_email=candidate_email,
-                    candidate_phone=candidate_phone,
-                    candidate_job_title=candidate_job_title,
-                    candidate_years_experience=candidate_years_experience,
-                    candidate_availability=candidate_availability,
-                    candidate_contract_type=candidate_contract_type,
-                    flask_base_url=flask_base_url,
-                    candidate_uuid=candidate_uuid,
-                    candidate_linkedin_url=candidate_linkedin_url,
-                    candidate_github_url=candidate_github_url,
-                    candidate_behance_url=candidate_behance_url,
-                    long_template_path=long_template_path if version == "long" else None,
-                    lang=_other_lang
-                )
-                if not success_other:
-                    print(f"❌ [PDF] Génération HTML {_other_lang} échouée: {error_other}")
-                    return
-                if save_to_minio:
-                    save_success, minio_url_other, _ = save_portfolio_html(
-                        html_other, db_candidate_id, candidate_uuid, version, lang=_other_lang
-                    )
-                    if save_success:
-                        print(f"✅ [PDF] HTML {_other_lang} sauvegardé dans MinIO: {minio_url_other}")
-                pdf_page_format = "one-page" if version == "one-page" else None
-                pdf_success, pdf_url_other, pdf_error = convert_html_to_pdf(
-                    html_other,
-                    db_candidate_id,
-                    candidate_uuid,
-                    base_url=flask_base_url,
-                    pdf_page_format=pdf_page_format,
-                    lang=_other_lang
-                )
-                if pdf_success:
-                    with _portfolio_pdf_lock:
-                        _portfolio_pdf_generated_at[(db_candidate_id, version, _other_lang)] = _time2.time()
-                    print(f"✅ [PDF] PDF {_other_lang} généré et uploadé: {pdf_url_other}")
-                    # Sauvegarder l'URL du PDF (on ne garde qu'une URL, peu importe la langue)
-                    _save_portfolio_pdf_url(pdf_url_other, version)
-                else:
-                    print(f"❌ [PDF] Erreur PDF {_other_lang}: {pdf_error}")
-            except Exception as e2:
-                print(f"❌ [PDF] Exception génération autre langue ({_other_lang}): {e2}")
-                import traceback
-                traceback.print_exc()
-            finally:
-                with _portfolio_pdf_lock:
-                    _portfolio_pdf_jobs_in_progress.discard((db_candidate_id, version, _other_lang))
-        if auto_generate_other_lang:
-            try:
-                with _portfolio_pdf_lock:
-                    _other_job_key = (db_candidate_id, version, _other_lang)
-                    _other_already_running = _other_job_key in _portfolio_pdf_jobs_in_progress
-                    if not _other_already_running:
-                        _portfolio_pdf_jobs_in_progress.add(_other_job_key)
-                if _other_already_running:
-                    print(f"ℹ️ [PDF] Thread autre langue déjà en cours ({_other_lang}, version={version}), non relancé")
-                else:
-                    threading.Thread(target=_generate_other_lang_background, daemon=True).start()
-                    print(f"🔄 [PDF] Thread autre langue ({_other_lang}, version={version}) lancé")
-            except Exception as e2:
-                print(f"⚠️ [PDF] Démarrage thread autre langue échoué: {e2}")
-        else:
-            print(f"ℹ️ [PDF] Auto-génération autre langue désactivée (lang explicite={lang_explicit})")
-        
         return jsonify({
             "success": True,
             "version": version,
@@ -5794,19 +5949,26 @@ def serve_recruit_static(filename):
 @app.route("/portfolio/static/<path:filename>", methods=["GET"])
 def serve_portfolio_static(filename):
     """
-    Sert les fichiers statiques du portfolio (CSS, images, etc.)
+    Sert les fichiers statiques du portfolio (CSS, images, etc.).
+    Priorité : frontend/src/templates_modif (one_page_dynamique, assets TAP), puis 20260312_044613.
     """
     try:
-        # Obtenir le répertoire racine du projet
         project_root = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
-        static_path = os.path.join(project_root, "frontend", "src", "20260312_044613", filename)
-        
-        # Sécurité : vérifier que le fichier est dans le bon répertoire
-        static_dir = os.path.join(project_root, "frontend", "src", "20260312_044613")
-        if not os.path.abspath(static_path).startswith(os.path.abspath(static_dir)):
-            return "Accès non autorisé", 403
-        
-        if not os.path.exists(static_path):
+        dirs = [
+            os.path.join(project_root, "frontend", "src", "templates_modif"),
+            os.path.join(project_root, "frontend", "src", "20260312_044613"),
+        ]
+        static_path = None
+        for static_dir in dirs:
+            candidate = os.path.join(static_dir, filename)
+            abs_c = os.path.abspath(candidate)
+            abs_d = os.path.abspath(static_dir)
+            if not abs_c.startswith(abs_d):
+                continue
+            if os.path.isfile(abs_c):
+                static_path = abs_c
+                break
+        if not static_path:
             return f"Fichier introuvable: {filename}", 404
         
         # Déterminer le type MIME

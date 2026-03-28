@@ -1600,10 +1600,11 @@ export class DashboardService {
     return { cvFiles };
   }
 
-  /** Talent Cards: tous les PDF dont le nom contient "talentcard". */
-  private isTalentcardTapPdfFileName(fileName: string): boolean {
+  /** Talent Cards: PDF ou PNG exportés (nom contient "talentcard"). */
+  private isTalentcardTapExportFileName(fileName: string): boolean {
     const n = fileName.trim().toLowerCase();
-    return n.includes('talentcard') && n.endsWith('.pdf');
+    if (!n.includes('talentcard')) return false;
+    return n.endsWith('.pdf') || n.endsWith('.png');
   }
 
   async getCandidateTalentcardFiles(
@@ -1655,7 +1656,7 @@ export class DashboardService {
 
     const files = (listed ?? []).filter((f: any) => {
       if (typeof f.name !== 'string') return false;
-      return this.isTalentcardTapPdfFileName(f.name);
+      return this.isTalentcardTapExportFileName(f.name);
     });
 
     const talentcardFiles: CandidateCvFileItem[] = [];
@@ -1735,7 +1736,7 @@ export class DashboardService {
 
     const files = (listed ?? []).filter((f: any) => {
       if (typeof f.name !== 'string') return false;
-      return this.isTalentcardTapPdfFileName(f.name);
+      return this.isTalentcardTapExportFileName(f.name);
     });
 
     const talentcardFiles: CandidateCvFileItem[] = [];
@@ -5031,7 +5032,7 @@ export class DashboardService {
     }
 
     const fileName = filePath.slice(expectedPrefix.length).toLowerCase();
-    const isTalentcard = this.isTalentcardTapPdfFileName(fileName);
+    const isTalentcard = this.isTalentcardTapExportFileName(fileName);
     if (!isTalentcard) {
       throw new BadRequestException('Type de fichier invalide pour Talent Card');
     }

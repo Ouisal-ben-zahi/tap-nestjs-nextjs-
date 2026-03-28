@@ -9,13 +9,17 @@ import random
 import re
 import tempfile
 import threading
-from typing import Dict, Optional, Tuple, Any
+from typing import Any, Dict, List, Optional, Tuple
 from jinja2 import Template
 
 from supabase_db import supabase_db
 from supabase_storage import get_supabase_storage
 from candidate_minio_path import get_candidate_minio_prefix
 import json
+
+# Talent Card : template officiel (frontend/src/templates_modif/). Ne pas réutiliser
+# talent_card_template.html / talent_card_template2.html pour la génération HTML/PDF.
+TALENT_CARD_TEMPLATE_FILE = "Talent_card_dynamic.html"
 
 
 def _load_talentcard_from_db(candidate_id: int) -> Optional[Dict[str, Any]]:
@@ -90,6 +94,8 @@ def _load_talentcard_from_db(candidate_id: int) -> Optional[Dict[str, Any]]:
             "langues_parlees": [],
             "type_contrat": type_contrat_list,
             "analyse": candidate.get("analyse") or "",
+            "categorie_profil": (candidate.get("categorie_profil") or "").strip() or "",
+            "soft_skills": candidate.get("soft_skills"),
         }
 
         # 2) Compléter avec le JSON Talent Card généré par A1 stocké dans Supabase Storage
@@ -146,6 +152,143 @@ def _load_talentcard_from_db(candidate_id: int) -> Optional[Dict[str, Any]]:
     except Exception as e:
         print(f"❌ Erreur chargement talentcard depuis Supabase: {e}")
         return None
+
+
+def _parse_skills_raw(raw: Any) -> list:
+    """skills en base / JSON A1 : souvent liste de chaînes, parfois JSON string ou dicts."""
+    if raw is None:
+        return []
+    if isinstance(raw, str):
+        s = raw.strip()
+        if not s:
+            return []
+        if s.startswith("["):
+            try:
+                parsed = json.loads(s)
+                return parsed if isinstance(parsed, list) else [parsed]
+            except Exception:
+                return [p.strip() for p in s.split(",") if p.strip()]
+        return [p.strip() for p in s.split(",") if p and p.strip()]
+    if isinstance(raw, list):
+        return raw
+    return []
+
+
+def _skill_label(item: Any) -> str:
+    if isinstance(item, dict):
+        return str(
+            item.get("name")
+            or item.get("skill")
+            or item.get("label")
+            or item.get("nom")
+            or ""
+        ).strip()
+    return str(item).strip() if item else ""
+
+
+def _skill_score_from_item(item: Any) -> Optional[float]:
+    if not isinstance(item, dict):
+        return None
+    for k in ("score", "percentage", "value", "niveau", "level"):
+        v = item.get(k)
+        if v is None:
+            continue
+        try:
+            x = float(str(v).replace("%", "").replace(",", ".").strip())
+            return max(0.0, min(100.0, x))
+        except (TypeError, ValueError):
+            continue
+    return None
+
+
+def _fetch_skills_score_map(db_candidate_id: int) -> dict[str, float]:
+    """name normalisé -> score (0–100) depuis skills_score (A2)."""
+    if supabase_db is None:
+        return {}
+    try:
+        resp = (
+            supabase_db.table("skills_score")
+            .select("name, score")
+            .eq("candidate_id", db_candidate_id)
+            .order("score", desc=True)
+            .execute()
+        )
+        rows = resp.data or []
+    except Exception as e:
+        print(f"⚠️ skills_score Talent Card non chargé: {e}")
+        return {}
+    out: dict[str, float] = {}
+    for r in rows:
+        nm = (r.get("name") or "").strip()
+        if not nm:
+            continue
+        key = re.sub(r"\s+", " ", nm.lower())
+        try:
+            sc = float(r.get("score") or 0)
+        except (TypeError, ValueError):
+            sc = 0.0
+        out[key] = max(0.0, min(100.0, sc))
+    return out
+
+
+def enrich_hard_skills_with_percentages(db_candidate_id: int, raw_skills: Any) -> List[Dict[str, Any]]:
+    """
+    A1 renvoie souvent skills = ["Analyse", "ML", ...] sans pourcentage → barres à 0 % dans le template.
+    On aligne sur skills_score (A2) par nom, sinon pourcentages de repli déterministes.
+    """
+    items = _parse_skills_raw(raw_skills)
+    if not items:
+        return []
+
+    a2_map = _fetch_skills_score_map(db_candidate_id)
+    fallback_ring = [76, 71, 66, 61, 56, 51, 58, 63]
+
+    def _norm_key(s: str) -> str:
+        return re.sub(r"\s+", " ", (s or "").lower().strip())
+
+    result: list[dict[str, Any]] = []
+    for i, item in enumerate(items[:8]):
+        name = _skill_label(item)
+        if not name:
+            continue
+        explicit = _skill_score_from_item(item)
+        if explicit is not None:
+            result.append({"name": name, "score": explicit})
+            continue
+
+        nk = _norm_key(name)
+        pct: Optional[float] = None
+        if nk in a2_map:
+            pct = a2_map[nk]
+        else:
+            for k2, sc in a2_map.items():
+                if nk in k2 or k2 in nk:
+                    pct = sc
+                    break
+        if pct is None:
+            pct = float(fallback_ring[i % len(fallback_ring)])
+        result.append({"name": name, "score": pct})
+
+    return result
+
+
+def _normalize_soft_skills_for_template(raw: Any) -> list:
+    """Normalise soft_skills (JSON, liste, CSV) pour Talent_card_dynamic.html."""
+    if raw is None:
+        return []
+    if isinstance(raw, str):
+        s = raw.strip()
+        if not s:
+            return []
+        if s.startswith("["):
+            try:
+                return _normalize_soft_skills_for_template(json.loads(s))
+            except Exception:
+                pass
+        return [p.strip() for p in s.split(",") if p.strip()]
+    if isinstance(raw, list):
+        return raw
+    return []
 
 
 def transform_talent_card_data_for_template(
@@ -222,6 +365,9 @@ def transform_talent_card_data_for_template(
         "pays_cible": (c.get("pays_cible") or c.get("target_country") or c.get("pays cible") or "").strip() or "",
         "salaire_minimum": (c.get("salaire_minimum") or "").strip() or "",
         "langues_parlees": normalized_languages,
+        "categorie_profil": (c.get("categorie_profil") or "").strip() or "",
+        "soft_skills": _normalize_soft_skills_for_template(c.get("soft_skills")),
+        "logo_url": (c.get("logo_url") or "").strip() or "",
     }
     return {"candidate": candidate}
 
@@ -262,32 +408,20 @@ def get_template_path(template_name: str) -> Optional[str]:
     Trouve le chemin du template HTML.
     
     Args:
-        template_name: Nom du template (ex: "portfolio_1page_template.html")
+        template_name: Nom du fichier (ex: Talent_card_dynamic.html)
     
     Returns:
         Chemin absolu du template ou None si introuvable
     """
-    # Chemins possibles (dans l'ordre de priorité)
+    _proj_root = os.path.dirname(os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
+    # Priorité à templates_modif (Talent Card actuelle), puis anciens dossiers (fallback).
     possible_paths = [
-        # Dossier "talent card html" (structure actuelle du repo)
-        os.path.join(
-            os.path.dirname(
-                os.path.dirname(os.path.dirname(os.path.abspath(__file__))),
-            ),
-            "frontend",
-            "src",
-            "20260312_044613",
-            template_name,
-        ),
-        os.path.join(
-            os.path.dirname(
-                os.path.dirname(os.path.dirname(os.path.abspath(__file__))),
-            ),
-            "frontend",
-            "src",
-            "talent card html",
-            template_name,
-        ),
+        os.path.join(_proj_root, "frontend", "src", "templates_modif", template_name),
+        f"/app/frontend/src/templates_modif/{template_name}",
+        f"/frontend/src/templates_modif/{template_name}",
+        os.path.join(os.path.dirname(__file__), "..", "..", "frontend", "src", "templates_modif", template_name),
+        os.path.join(_proj_root, "frontend", "src", "20260312_044613", template_name),
+        os.path.join(_proj_root, "frontend", "src", "talent card html", template_name),
         os.path.join(
             os.path.dirname(os.path.dirname(os.path.abspath(__file__))),
             "..",
@@ -309,16 +443,6 @@ def get_template_path(template_name: str) -> Optional[str]:
         os.path.join(os.getcwd(), "frontend", "src", "20260312_044613", template_name),
         "/app/frontend/src/talent card html/" + template_name,
         "/frontend/src/talent card html/" + template_name,
-        os.path.join(os.getcwd(), "frontend", "src", "20260312_044613", template_name),
-        # Depuis le backend (si le frontend est monté)
-        os.path.join(os.path.dirname(os.path.dirname(os.path.dirname(os.path.abspath(__file__)))), 
-                     "frontend", "src", "templates_modif", template_name),
-        # Depuis le conteneur Docker
-        f"/app/frontend/src/templates_modif/{template_name}",
-        # Depuis le volume monté
-        f"/frontend/src/templates_modif/{template_name}",
-        # Depuis le répertoire courant
-        os.path.join(os.path.dirname(__file__), "..", "..", "frontend", "src", "templates_modif", template_name),
     ]
     
     for path in possible_paths:
@@ -381,7 +505,7 @@ def generate_talent_card_html(
         # Photo candidat : convertir URL MinIO en proxy pour affichage dans le HTML
         profile_image_url = _minio_url_to_proxy(candidate_image_url, flask_base_url) if candidate_image_url else ""
 
-        # 2. Transformer les données pour le template (champs attendus par talent_card_template.html)
+        # 2. Transformer les données pour le template (Talent_card_dynamic.html)
         template_data = transform_talent_card_data_for_template(
             talent_card_data,
             candidate_image_url=profile_image_url,
@@ -390,6 +514,13 @@ def generate_talent_card_html(
             candidate_email=candidate_email,
             candidate_phone=candidate_phone,
         )
+
+        # 2.0 Hard skills : A1 = noms sans % → enrichir (skills_score A2 ou pourcentages de repli)
+        if template_data.get("candidate"):
+            template_data["candidate"]["skills"] = enrich_hard_skills_with_percentages(
+                candidate_id,
+                template_data["candidate"].get("skills"),
+            )
 
         # 2.1 Lien de téléchargement du CV (pour le template) et QR code pointant vers la page recruteur (valide dès le début)
         cv_download_url = ""
@@ -422,7 +553,25 @@ def generate_talent_card_html(
                 template_data["candidate"]["github_url"] = candidate_github_url.strip()
             if candidate_behance_url:
                 template_data["candidate"]["behance_url"] = candidate_behance_url.strip()
-        # 2.3 Données supplémentaires (ex: pays_cible depuis le formulaire à la création)
+
+        # 2.3 Score global (A2) pour le pied de carte — avant extra_candidate_data pour permettre override
+        if template_data.get("candidate") and supabase_db is not None:
+            try:
+                sc = (
+                    supabase_db.table("score")
+                    .select("score_global")
+                    .eq("candidate_id", candidate_id)
+                    .order("created_at", desc=True)
+                    .limit(1)
+                    .execute()
+                )
+                rows_sc = sc.data or []
+                if rows_sc and rows_sc[0].get("score_global") is not None:
+                    template_data["candidate"]["score"] = float(rows_sc[0]["score_global"])
+            except Exception as e_sc:
+                print(f"⚠️ Score global Talent Card non chargé (non bloquant): {e_sc}")
+
+        # 2.4 Données supplémentaires (ex: pays_cible depuis le formulaire à la création)
         if extra_candidate_data and template_data.get("candidate"):
             for key, value in extra_candidate_data.items():
                 if value is not None and (value if isinstance(value, str) else str(value)).strip():
@@ -430,8 +579,8 @@ def generate_talent_card_html(
         
         print("✅ Données transformées pour le template")
         
-        # 3. Sélectionner le template selon la version
-        template_name = "talent_card_template2.html"
+        # 3. Template carte — TALENT_CARD_TEMPLATE_FILE uniquement
+        template_name = TALENT_CARD_TEMPLATE_FILE
         
         # 4. Charger le template
         template_path = get_template_path(template_name)
@@ -551,14 +700,16 @@ def convert_talent_card_html_to_pdf(
     candidate_id: int,
     candidate_uuid: str,
     lang: str = "fr",
-) -> Tuple[bool, Optional[str], Optional[str]]:
+    export_png: bool = True,
+) -> Tuple[bool, Optional[str], Optional[str], Optional[str]]:
     """
     Convertit le HTML de la Talent Card en PDF (Playwright), puis uploade dans Supabase Storage.
+    En option, capture `.tc-card` en PNG dans la même session (HTML → image).
 
-    Dimensions de la carte : 16,8 cm × 12,3349 cm (template talent_card_template2.html).
+    PDF : dimensions = boîte exacte de `.tc-card` (pas de bande noire autour).
 
     Returns:
-        Tuple (success, pdf_minio_url, error_message)
+        Tuple (success, pdf_minio_url, png_minio_url_or_none, error_message)
     """
     try:
         from playwright.sync_api import sync_playwright
@@ -591,17 +742,12 @@ def convert_talent_card_html_to_pdf(
             except Exception as e:
                 print(f"⚠️ Images de fond Talent Card non intégrées: {e}")
 
-        # Règles @media print pour garder le rendu identique au HTML (template2: 16.8cm x 12.3349cm).
+        # @media print — dimensions page injectées après mesure (.tc-card) via add_style_tag
         _exact = "-webkit-print-color-adjust: exact !important; print-color-adjust: exact !important;"
         pdf_print_style = (
-            " @page { size: 16.8cm 12.3349cm; margin: 0; } "
             " @media print { "
             " * { " + _exact + " } "
-            " html, body { width: 16.8cm !important; height: 12.3349cm !important; margin: 0 !important; padding: 0 !important; background: #000 !important; overflow: hidden !important; } "
-            " body { display: block !important; } "
-            " .tc { width: 100% !important; height: 100% !important; max-width: none !important; margin: 0 !important; border-radius: 0 !important; } "
-            " .tc-inner { height: 100% !important; } "
-            " .fut { box-shadow: none !important; } "
+            " .tc-bar-fill { transition: none !important; } "
             " } "
         )
 
@@ -639,35 +785,136 @@ def convert_talent_card_html_to_pdf(
         server_thread.start()
 
         pdf_path = None
+        png_path = None
         try:
             with sync_playwright() as p:
                 browser = p.chromium.launch(headless=True)
                 page = browser.new_page()
+                # Même largeur logique que la carte (~10 cm) pour un layout stable
+                _card_w_px = max(320, int(round((10.0 / 2.54) * 96)))
+                page.set_viewport_size({"width": _card_w_px, "height": 2000})
 
-                # Dimensions Talent Card : 16,8 cm × 12,3349 cm (template2)
-                # cm_w, cm_h = 16.8, 14.3349
-                # inch_w = cm_w / 2.54
-                # inch_h = cm_h / 2.54
-                # viewport_w = int(round(inch_w * 96))
-                # viewport_h = int(round(inch_h * 96))
-                # page.set_viewport_size({"width": viewport_w, "height": viewport_h})
+                page.emulate_media(media="print")
 
                 local_url = f"http://localhost:{port}/{html_filename}"
                 page.goto(local_url, wait_until="networkidle", timeout=30000)
                 page.wait_for_load_state("networkidle", timeout=10000)
-                page.wait_for_timeout(2000)
+                page.wait_for_timeout(800)
+                # Barres : ne pas dépendre du setTimeout(200) seul
+                page.evaluate(
+                    """() => {
+                      document.querySelectorAll('.tc-bar-fill').forEach(function (el) {
+                        var v = el.getAttribute('data-pct');
+                        if (v != null) el.style.width = v + '%';
+                      });
+                    }"""
+                )
+                page.wait_for_timeout(400)
+
+                dims = page.evaluate(
+                    """() => {
+                      var card = document.querySelector('.tc-card');
+                      if (!card) return null;
+                      var r = card.getBoundingClientRect();
+                      return {
+                        w: Math.ceil(r.width + 2),
+                        h: Math.ceil(r.height + 1)
+                      };
+                    }"""
+                )
+                _w_fallback = max(320, int(round((10.0 / 2.54) * 96)))
+                if isinstance(dims, dict) and dims.get("w") and dims.get("h"):
+                    w_px = max(int(dims["w"]), 280)
+                    h_px = max(int(dims["h"]), 400)
+                else:
+                    w_px = _w_fallback
+                    h_px = page.evaluate(
+                        """() => {
+                          var card = document.querySelector('.tc-card');
+                          if (card) {
+                            return Math.ceil(card.getBoundingClientRect().height + 1);
+                          }
+                          return 600;
+                        }"""
+                    )
+                    h_px = max(int(h_px or 0), 480)
+
+                # Très petite marge pour éviter rognage sous-pixel (le PDF = presque uniquement la carte)
+                w_cm = (float(w_px) / 96.0) * 2.54 + 0.04
+                h_cm = (float(h_px) / 96.0) * 2.54 + 0.02
+
+                page.add_style_tag(
+                    content=f"""
+@media print {{
+  html, body {{
+    width: {w_cm:.3f}cm !important;
+    height: {h_cm:.3f}cm !important;
+    min-width: {w_cm:.3f}cm !important;
+    min-height: {h_cm:.3f}cm !important;
+    max-width: {w_cm:.3f}cm !important;
+    max-height: {h_cm:.3f}cm !important;
+    margin: 0 !important;
+    padding: 0 !important;
+    background: #000 !important;
+    overflow: hidden !important;
+    display: block !important;
+    box-sizing: border-box !important;
+  }}
+  .tc-card {{
+    width: 100% !important;
+    max-width: none !important;
+    margin: 0 !important;
+    box-shadow: none !important;
+    border-radius: 0 !important;
+    overflow: hidden !important;
+    -webkit-print-color-adjust: exact !important;
+    print-color-adjust: exact !important;
+    page-break-inside: avoid !important;
+  }}
+  .tc-card::before,
+  .tc-card::after {{
+    border-radius: 0 !important;
+  }}
+}}
+"""
+                )
+                page.wait_for_timeout(120)
 
                 with tempfile.NamedTemporaryFile(suffix=".pdf", delete=False) as pf:
                     pdf_path = pf.name
+                if export_png:
+                    with tempfile.NamedTemporaryFile(suffix=".png", delete=False) as pnf:
+                        png_path = pnf.name
 
                 page.pdf(
                     path=pdf_path,
                     print_background=True,
-                    width="16.8cm",
-                    height="12.3349cm",
-                    prefer_css_page_size=True,
+                    width=f"{w_cm:.3f}cm",
+                    height=f"{h_cm:.3f}cm",
+                    prefer_css_page_size=False,
                     margin={"top": "0", "right": "0", "bottom": "0", "left": "0"},
                 )
+                if export_png and png_path:
+                    try:
+                        loc = page.locator(".tc-card").first
+                        if loc.count() > 0:
+                            loc.screenshot(path=png_path, type="png")
+                            print("✅ Capture PNG Talent Card (.tc-card) effectuée")
+                        else:
+                            print("⚠️ Élément .tc-card introuvable — PNG Talent Card ignoré")
+                            try:
+                                os.unlink(png_path)
+                            except OSError:
+                                pass
+                            png_path = None
+                    except Exception as png_ex:
+                        print(f"⚠️ Capture PNG Talent Card échouée: {png_ex}")
+                        if png_path and os.path.isfile(png_path):
+                            try:
+                                os.unlink(png_path)
+                            except OSError:
+                                pass
+                        png_path = None
                 browser.close()
 
             httpd.shutdown()
@@ -694,15 +941,40 @@ def convert_talent_card_html_to_pdf(
                 object_name,
                 content_type="application/pdf",
             )
-            for path in (temp_html_path, pdf_path):
+            png_url_out: Optional[str] = None
+            if success and export_png and png_path and os.path.isfile(png_path):
                 try:
-                    os.unlink(path)
-                except Exception:
-                    pass
+                    with open(png_path, "rb") as png_f:
+                        png_bytes = png_f.read()
+                    if png_bytes:
+                        png_object = (
+                            f"{prefix}talentcard_html_TAP_en.png"
+                            if _lang == "en"
+                            else f"{prefix}talentcard_html_TAP.png"
+                        )
+                        ok_png, url_png, err_png = storage.upload_file(
+                            png_bytes,
+                            png_object,
+                            content_type="image/png",
+                        )
+                        if ok_png:
+                            png_url_out = url_png
+                            print(f"✅ PNG Talent Card uploadé vers Supabase Storage: {png_object}")
+                        else:
+                            print(f"⚠️ Upload PNG Talent Card: {err_png}")
+                except Exception as up_png:
+                    print(f"⚠️ Upload PNG Talent Card: {up_png}")
+
+            for path in (temp_html_path, pdf_path, png_path):
+                if path:
+                    try:
+                        os.unlink(path)
+                    except Exception:
+                        pass
             if success:
                 print(f"✅ PDF Talent Card uploadé vers Supabase Storage: {object_name}")
-                return True, url, None
-            return False, None, err or "Erreur upload PDF vers Supabase Storage"
+                return True, url, png_url_out, None
+            return False, None, None, err or "Erreur upload PDF vers Supabase Storage"
 
         except Exception as e:
             try:
@@ -710,7 +982,7 @@ def convert_talent_card_html_to_pdf(
                 server_thread.join(timeout=1)
             except Exception:
                 pass
-            for path in (temp_html_path, pdf_path or ""):
+            for path in (temp_html_path, pdf_path or "", png_path or ""):
                 if path and os.path.isfile(path):
                     try:
                         os.unlink(path)
@@ -723,7 +995,7 @@ def convert_talent_card_html_to_pdf(
         print(f"❌ {error_msg}")
         import traceback
         traceback.print_exc()
-        return False, None, error_msg
+        return False, None, None, error_msg
 
 
 def generate_and_save_talent_card_html(
@@ -740,29 +1012,19 @@ def generate_and_save_talent_card_html(
     flask_base_url: Optional[str] = None,
     save_to_minio: bool = True,
     generate_pdf: bool = True,
+    generate_png: bool = True,
     lang: str = "fr",
     extra_candidate_data: Optional[Dict[str, Any]] = None,
-) -> Tuple[bool, Optional[str], Optional[str], Optional[str], Optional[str]]:
+) -> Tuple[bool, Optional[str], Optional[str], Optional[str], Optional[str], Optional[str]]:
     """
-    Génère la Talent Card HTML, la sauvegarde dans Supabase Storage, puis la convertit en PDF et uploade le PDF.
+    Génère la Talent Card HTML, la sauvegarde dans Supabase Storage, puis la convertit en PDF (+ PNG optionnel).
 
     Args:
-        candidate_id: ID du candidat en base de données
-        candidate_uuid: UUID du candidat (id_agent)
-        candidate_image_url: URL de l'image du candidat (optionnel)
-        candidate_email: Email du candidat (optionnel)
-        candidate_phone: Téléphone du candidat (optionnel)
-        candidate_job_title: Titre du poste (optionnel)
-        candidate_years_experience: Années d'expérience (optionnel)
-        candidate_linkedin_url: LinkedIn (optionnel)
-        candidate_github_url: GitHub (optionnel)
-        candidate_behance_url: Behance (optionnel, affiché si pas de GitHub)
-        flask_base_url: URL de base du serveur Flask (optionnel)
-        save_to_minio: (compat) Si True, sauvegarde le HTML dans Supabase Storage
-        generate_pdf: Si True, convertit le HTML en PDF et uploade le PDF dans Supabase Storage
+        generate_pdf: Si True, PDF (+ PNG si generate_png) via Playwright
+        generate_png: Si True (défaut), capture `.tc-card` en PNG lors de l’export PDF
 
     Returns:
-        Tuple (success, html_content, html_url, pdf_url, error_message)
+        Tuple (success, html_content, html_url, pdf_url, png_url, error_message)
     """
     lang = (lang or "fr").lower() if lang else "fr"
     if lang not in ("fr", "en"):
@@ -783,7 +1045,7 @@ def generate_and_save_talent_card_html(
         extra_candidate_data=extra_candidate_data,
     )
     if not success:
-        return False, None, None, None, error
+        return False, None, None, None, None, error
 
     minio_html_url = None
     if save_to_minio:
@@ -798,14 +1060,16 @@ def generate_and_save_talent_card_html(
             print(f"⚠️  Erreur sauvegarde HTML Talent Card dans Supabase Storage: {save_err}")
 
     minio_pdf_url = None
+    minio_png_url = None
     if generate_pdf and html_content:
-        pdf_ok, minio_pdf_url, pdf_err = convert_talent_card_html_to_pdf(
+        pdf_ok, minio_pdf_url, minio_png_url, pdf_err = convert_talent_card_html_to_pdf(
             html_content,
             candidate_id,
             candidate_uuid,
             lang=lang,
+            export_png=generate_png,
         )
         if not pdf_ok:
             print(f"⚠️  Erreur conversion Talent Card HTML → PDF: {pdf_err}")
 
-    return True, html_content, minio_html_url, minio_pdf_url, None
+    return True, html_content, minio_html_url, minio_pdf_url, minio_png_url, None

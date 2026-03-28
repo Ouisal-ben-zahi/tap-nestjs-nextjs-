@@ -583,6 +583,8 @@ def transform_corrected_json_to_cv_context(corrected, lang: str = "fr"):
         "pays": (corrected.get("Pays") or "").strip(),
         "email": (corrected.get("Email") or "").strip(),
         "phone": (corrected.get("Tele") or "").strip(),
+        "linkedin_url": (corrected.get("Linkedin") or "").strip(),
+        "Linkedin": (corrected.get("Linkedin") or "").strip(),
         "profil": (corrected.get("resume") or "").strip(),
         "resume_bref": (corrected.get("resume") or "").strip(),
         "profile_image_url": "",
@@ -673,6 +675,11 @@ def generate_corrected_cv(
         c["ville"] = (orig.get("ville") or "").strip()
     if not (c.get("pays") or "").strip():
         c["pays"] = (orig.get("pays") or "").strip()
+    if not (c.get("linkedin_url") or "").strip() and not (c.get("Linkedin") or "").strip():
+        li = (orig.get("linkedin_url") or orig.get("linkedin") or "").strip()
+        if li:
+            c["linkedin_url"] = li
+            c["Linkedin"] = li
 
     # Photo de profil : transformer les chemins Supabase Storage en vraie URL
     if not (c.get("profile_image_url") or "").strip():

@@ -69,6 +69,25 @@ def _talentcard_pdf_exists(storage, prefix: str, candidate_uuid: str, id_agent: 
       return True
   return False
 
+
+def _talentcard_png_exists(storage, prefix: str, candidate_uuid: str, id_agent: str | None) -> bool:
+  """Vérifie si une image PNG de Talent Card (export HTML) existe dans le stockage."""
+  names = []
+  if candidate_uuid:
+    names.extend(
+      [
+        f"{prefix}talentcard_html_TAP.png",
+        f"{prefix}talentcard_html_TAP_en.png",
+      ]
+    )
+  if id_agent:
+    names.append(f"{prefix}talentcard_html_TAP.png")
+  for object_name in names:
+    ok, _, _ = storage.download_file(object_name)
+    if ok:
+      return True
+  return False
+
 JWT_SECRET = os.getenv("JWT_SECRET", os.getenv("SECRET_KEY", "changeme"))
 JWT_ALGORITHM = "HS256"
 JWT_EXPIRES_DAYS = int(os.getenv("JWT_EXPIRES_DAYS", "7"))
@@ -740,6 +759,17 @@ def my_generated_files():
           except Exception as e:
               print(f"⚠️ [Auth] Vérification Talent Card Supabase Storage: {e}")
 
+      has_talentcard_png = False
+      try:
+          storage = get_supabase_storage()
+          if storage and storage.client:
+              prefix = get_candidate_minio_prefix(db_candidate_id)
+              has_talentcard_png = _talentcard_png_exists(
+                  storage, prefix, candidate_uuid, id_agent
+              )
+      except Exception as e:
+          print(f"⚠️ [Auth] Vérification Talent Card PNG: {e}")
+
       resp_cv = (
           supabase_db.table("fichiers_versions")
           .select("corrected_pdf_minio_url")
@@ -800,6 +830,23 @@ def my_generated_files():
               "label": "Talent Card (PDF)",
               "previewUrl": url(f"/talentcard/{db_candidate_id}/preview"),
               "downloadUrl": url(f"/talentcard/{db_candidate_id}/download"),
+              "available": False,
+          })
+
+      if has_talentcard_png:
+          files.append({
+              "type": "talent_card_png",
+              "label": "Talent Card (image PNG)",
+              "previewUrl": url(f"/talentcard/{db_candidate_id}/preview-image"),
+              "downloadUrl": url(f"/talentcard/{db_candidate_id}/download-image"),
+              "available": True,
+          })
+      else:
+          files.append({
+              "type": "talent_card_png",
+              "label": "Talent Card (image PNG)",
+              "previewUrl": url(f"/talentcard/{db_candidate_id}/preview-image"),
+              "downloadUrl": url(f"/talentcard/{db_candidate_id}/download-image"),
               "available": False,
           })
 

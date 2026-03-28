@@ -1,0 +1,1265 @@
+<!DOCTYPE html>
+<html lang="{{ portfolio_lang|default('fr') }}">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>Portfolio - {{ candidate.first_name|default('') }} {{ candidate.last_name|default('') }}</title>
+  <link rel="preconnect" href="https://fonts.googleapis.com" />
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
+  <link href="https://fonts.googleapis.com/css2?family=DM+Sans:ital,opsz,wght@0,9..40,300;0,9..40,400;0,9..40,500;0,9..40,600;0,9..40,700;0,9..40,800&display=swap" rel="stylesheet" />
+  <style>
+    {% set is_en = (portfolio_lang|default('fr')) == 'en' %}
+
+    /* ══════════════════════════════════════
+       DESIGN TOKENS — same as talent card
+    ══════════════════════════════════════ */
+    :root {
+      --red:         #c81b24;
+      --red-dim:     #9a141b;
+      --red-glow:    rgba(200,27,36,0.40);
+      --red-soft:    rgba(200,27,36,0.10);
+      --red-border:  rgba(200,27,36,0.24);
+
+      --white:       #ffffff;
+      --t1:          rgba(255,255,255,0.92);
+      --t2:          rgba(255,255,255,0.70);
+      --t3:          rgba(255,255,255,0.48);
+      --t4:          rgba(255,255,255,0.30);
+      --t5:          rgba(255,255,255,0.16);
+
+      --surface:     rgba(255,255,255,0.038);
+      --surface2:    rgba(255,255,255,0.065);
+      --border:      rgba(255,255,255,0.08);
+      --border2:     rgba(255,255,255,0.14);
+
+      --bg:          #060202;
+      --slide-w:     1280px;
+      --slide-h:     720px;
+    }
+
+    /* ══════════════════════════════════════
+       BASE RESET
+    ══════════════════════════════════════ */
+    *, *::before, *::after { margin:0; padding:0; box-sizing:border-box; }
+
+    body {
+      font-family: 'DM Sans', system-ui, sans-serif;
+      background: #000;
+      color: var(--t1);
+      -webkit-print-color-adjust: exact;
+      print-color-adjust: exact;
+    }
+
+    @media screen {
+      /* Slides toujours 1280×720 (16:9) — pas de reflow qui casse le format PDF / impression */
+      body {
+        padding: 32px 24px;
+        display: flex;
+        flex-direction: column;
+        align-items: center;
+        gap: 24px;
+        overflow-x: auto;
+        -webkit-overflow-scrolling: touch;
+      }
+    }
+
+    /* ══════════════════════════════════════
+       SLIDE SHELL — 16:9 1280×720
+    ══════════════════════════════════════ */
+    .page {
+      position: relative;
+      width: var(--slide-w);
+      height: var(--slide-h);
+      min-width: var(--slide-w);
+      min-height: var(--slide-h);
+      max-width: var(--slide-w);
+      max-height: var(--slide-h);
+      overflow: hidden;
+      flex-shrink: 0;
+      background:
+        radial-gradient(ellipse 65% 55% at 0% 50%,  rgba(155,14,20,0.30) 0%, transparent 58%),
+        radial-gradient(ellipse 45% 40% at 100% 50%, rgba(110,8,14,0.18) 0%, transparent 55%),
+        radial-gradient(ellipse 55% 30% at 50% -5%,  rgba(135,12,18,0.16) 0%, transparent 52%),
+        linear-gradient(160deg, #110303 0%, #070101 50%, #040101 100%);
+    }
+
+    /* diagonal texture */
+    .page::before {
+      content: '';
+      position: absolute; inset: 0;
+      background: repeating-linear-gradient(
+        135deg,
+        rgba(255,255,255,0.010) 0px, rgba(255,255,255,0.010) 1px,
+        transparent 1px, transparent 16px
+      );
+      pointer-events: none; z-index: 0;
+    }
+
+    /* top red accent line */
+    .page::after {
+      content: '';
+      position: absolute; top:0; left:0; right:0; height:3px;
+      background: linear-gradient(90deg, var(--red) 0%, var(--red) 35%, rgba(200,27,36,0.2) 70%, transparent 100%);
+      z-index: 3;
+    }
+
+    .page-inner {
+      position: relative;
+      z-index: 2;
+      width: 100%;
+      height: 100%;
+      min-height: 0;
+      padding: 44px 56px 56px;
+      display: flex;
+      flex-direction: column;
+      overflow: hidden;
+    }
+
+    /* Impression / PDF : format feuille (hors @media pour compat Chromium + preferCSSPageSize) */
+    @page {
+      size: 13.333333in 7.5in;
+      margin: 0;
+    }
+
+    /* print: each slide = one page (Chromium PDF — évite pages vides + fonds grisés) */
+    @media print {
+      html {
+        height: auto !important;
+        min-height: 0 !important;
+        background: #000 !important;
+        -webkit-print-color-adjust: exact;
+        print-color-adjust: exact;
+      }
+      body {
+        padding: 0 !important;
+        margin: 0 !important;
+        background: #000 !important;
+        gap: 0 !important;
+        align-items: stretch !important;
+        overflow: visible !important;
+        height: auto !important;
+        min-height: 0 !important;
+        display: block !important;
+        -webkit-print-color-adjust: exact;
+        print-color-adjust: exact;
+      }
+      /* Une page PDF = une slide 16:9 — hauteur forcée pour ne pas fragmenter / ne pas laisser une feuille « vide » */
+      .page {
+        width: var(--slide-w) !important;
+        height: var(--slide-h) !important;
+        min-width: var(--slide-w) !important;
+        min-height: var(--slide-h) !important;
+        max-width: var(--slide-w) !important;
+        max-height: var(--slide-h) !important;
+        overflow: hidden !important;
+        box-sizing: border-box !important;
+        page-break-after: always;
+        page-break-inside: avoid;
+        break-after: page;
+        break-inside: avoid;
+        -webkit-print-color-adjust: exact;
+        print-color-adjust: exact;
+      }
+      .page:last-child {
+        page-break-after: auto;
+        break-after: auto;
+      }
+      .page::before,
+      .page::after {
+        -webkit-print-color-adjust: exact;
+        print-color-adjust: exact;
+      }
+    }
+
+    /* ══════════════════════════════════════
+       SLIDE HEADER BAND
+    ══════════════════════════════════════ */
+    .slide-header {
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      margin-bottom: 28px;
+      flex-shrink: 0;
+    }
+
+    /* Banner label */
+    .sec-banner {
+      display: inline-flex;
+      align-items: center;
+      gap: 10px;
+      padding: 6px 18px;
+      border-radius: 999px;
+      background: var(--red-soft);
+      border: 1px solid var(--red-border);
+      font-family: 'DM Sans', system-ui, sans-serif;
+      font-size: 10px;
+      font-weight: 700;
+      text-transform: uppercase;
+      letter-spacing: 0.18em;
+      color: rgba(200,100,110,0.90);
+    }
+    .sec-banner::before {
+      content: '';
+      display: block; flex-shrink: 0;
+      width: 5px; height: 5px;
+      border-radius: 50%;
+      background: var(--red);
+      box-shadow: 0 0 8px var(--red-glow);
+    }
+
+    /* Slide number */
+    .slide-num {
+      font-family: 'DM Sans', system-ui, sans-serif;
+      font-size: 11px;
+      font-weight: 700;
+      color: var(--t4);
+      letter-spacing: 0.08em;
+    }
+
+    /* ══════════════════════════════════════
+       TAP LOGO (top-left corner on every slide)
+    ══════════════════════════════════════ */
+    .tap-watermark {
+      position: absolute;
+      top: 14px; left: 22px;
+      display: flex; align-items: center; gap: 7px;
+      z-index: 4;
+    }
+    .tap-watermark-icon {
+      width: 24px; height: 24px;
+      background: var(--red-soft);
+      border: 1px solid var(--red-border);
+      display: flex; align-items: center; justify-content: center;
+    }
+    .tap-watermark-icon svg { width:12px; height:12px; }
+    .tap-watermark-icon img {
+      width: 22px; height: 22px; object-fit: contain; display: block;
+    }
+    .tap-watermark-text {
+      font-family: 'DM Sans', system-ui, sans-serif;
+      font-size: 9px; font-weight: 800;
+      letter-spacing: 0.18em;
+      color: var(--t4);
+      text-transform: uppercase;
+    }
+
+    /* ══════════════════════════════════════
+       SECTION TITLE (inline)
+    ══════════════════════════════════════ */
+    .sec-title {
+      display: flex;
+      align-items: center;
+      gap: 10px;
+      font-size: 10px;
+      font-weight: 600;
+      text-transform: uppercase;
+      letter-spacing: 0.20em;
+      color: var(--t4);
+      margin-bottom: 14px;
+    }
+    .sec-title::before {
+      content: '';
+      display: block; flex-shrink: 0;
+      width: 3px; height: 14px;
+      border-radius: 999px;
+      background: var(--red);
+      box-shadow: 0 0 8px var(--red-glow);
+    }
+
+    /* ══════════════════════════════════════
+       FOOTER
+    ══════════════════════════════════════ */
+    .page-footer {
+      position: absolute;
+      bottom: 18px; left: 56px; right: 56px;
+      display: flex; align-items: center; gap: 6px;
+      font-size: 10px; color: var(--t5);
+      border-top: 1px solid var(--border);
+      padding-top: 10px;
+    }
+    .page-footer .tap {
+      font-family: 'DM Sans', system-ui, sans-serif;
+      font-weight: 800;
+      font-size: 10px;
+      color: rgba(200,27,36,0.45);
+      letter-spacing: 0.06em;
+    }
+
+    /* ══════════════════════════════════════
+       CARDS & SURFACES
+    ══════════════════════════════════════ */
+    .card {
+      background: var(--surface);
+      border: 1px solid var(--border);
+      border-radius: 14px;
+    }
+    .card:hover { background: var(--surface2); }
+
+    /* ══════════════════════════════════════
+       PAGE 1 — HERO
+    ══════════════════════════════════════ */
+    .hero-layout {
+      flex: 1;
+      display: grid;
+      grid-template-columns: 200px 1fr 250px;
+      gap: 36px;
+      align-items: start;
+      min-height: 0;
+    }
+
+    /* Left col */
+    .hero-left { display: flex; flex-direction: column; align-items: flex-start; gap: 16px; }
+
+    .hero-photo {
+      width: 130px; height: 130px;
+      border-radius: 18px;
+      border: 1.5px solid rgba(255,255,255,0.16);
+      background: var(--surface2);
+      overflow: hidden;
+      display: flex; align-items: center; justify-content: center;
+      box-shadow: 0 0 0 5px rgba(255,255,255,0.03), 0 20px 50px rgba(0,0,0,0.55);
+      position: relative;
+    }
+    .hero-photo::after {
+      content:''; position:absolute; inset:0; border-radius:inherit;
+      box-shadow: 0 0 32px rgba(180,20,30,0.25) inset;
+      pointer-events:none;
+    }
+    .hero-photo img { width:100%; height:100%; object-fit:cover; object-position:center top; }
+    .hero-photo .fallback {
+      font-family: 'DM Sans', system-ui, sans-serif; font-size:36px; font-weight:700;
+      color:rgba(200,27,36,0.5);
+    }
+
+    .hero-badge {
+      display: inline-flex;
+      align-items: center;
+      gap: 7px;
+      padding: 5px 14px;
+      border-radius: 999px;
+      background: var(--red-soft);
+      border: 1px solid var(--red-border);
+    }
+    .hero-badge-dot {
+      width: 6px; height: 6px;
+      border-radius: 50%; background: var(--red);
+      box-shadow: 0 0 8px var(--red-glow);
+    }
+    .hero-badge span {
+      font-size: 9px; font-weight: 700;
+      text-transform: uppercase; letter-spacing: 0.16em;
+      color: rgba(200,80,90,0.90);
+    }
+
+    /* Center col */
+    .hero-center { padding-top: 4px; }
+    .hero-name {
+      font-family: 'DM Sans', system-ui, sans-serif;
+      font-size: 40px; font-weight: 800;
+      letter-spacing: -0.035em; line-height: 1.05;
+      color: var(--white);
+      margin-bottom: 8px;
+    }
+    .hero-jobtitle {
+      font-size: 15px; color: var(--t3); font-weight: 400;
+      margin-bottom: 18px;
+    }
+
+    .hero-meta-row {
+      display: flex; flex-wrap: wrap;
+      gap: 6px 20px; margin-bottom: 18px;
+    }
+    .hero-meta-item {
+      display: flex; align-items: center; gap: 6px;
+      font-size: 12px; color: var(--t3);
+    }
+    .hero-meta-item svg { opacity: 0.45; flex-shrink:0; }
+
+    /* About text */
+    .about-text {
+      font-size: 13px; color: var(--t3); font-weight: 300;
+      line-height: 1.75;
+    }
+    .about-text p { margin-bottom: 8px; }
+    .about-text p:last-child { margin-bottom: 0; }
+
+    /* Right col — info cards */
+    .hero-right { display: flex; flex-direction: column; gap: 10px; }
+
+    .info-card {
+      padding: 16px 18px;
+      border-radius: 14px;
+      background: var(--surface);
+      border: 1px solid var(--border);
+    }
+    .info-card h4 {
+      font-size: 9px; font-weight: 600;
+      text-transform: uppercase; letter-spacing: 0.16em;
+      color: var(--t4); margin-bottom: 8px;
+    }
+    .info-card p { font-size: 12px; color: var(--t2); line-height: 1.5; }
+    .info-card ul { list-style: none; padding: 0; }
+    .info-card ul li {
+      font-size: 11px; color: var(--t3);
+      padding-left: 12px; position: relative;
+      margin-bottom: 4px; line-height: 1.5;
+    }
+    .info-card ul li::before {
+      content: ''; position:absolute; left:0; top:6px;
+      width: 4px; height: 4px; border-radius:50%;
+      background: rgba(200,27,36,0.45);
+    }
+
+    /* Contact row */
+    .contact-row {
+      display: flex; gap: 8px; flex-wrap: wrap;
+      margin-top: 16px; padding-top: 14px;
+      border-top: 1px solid var(--border);
+    }
+    .contact-btn {
+      display: flex; align-items: center; gap: 6px;
+      padding: 7px 14px;
+      border-radius: 10px;
+      background: var(--surface);
+      border: 1px solid var(--border);
+      font-size: 11px; color: var(--t3);
+      text-decoration: none; font-family: inherit;
+      transition: border-color 0.2s, color 0.2s;
+    }
+    .contact-btn:hover { border-color: var(--red-border); color: var(--t1); }
+    .contact-btn svg { width:13px; height:13px; opacity:0.5; }
+    .contact-cta {
+      padding: 7px 18px;
+      border-radius: 10px;
+      background: var(--red);
+      border: none;
+      color: #fff; font-size: 11px; font-weight: 600;
+      text-decoration: none; font-family: inherit;
+      margin-left: auto;
+      box-shadow: 0 4px 18px rgba(200,27,36,0.4);
+    }
+
+    /* ══════════════════════════════════════
+       PAGE 2 — TECHNICAL SKILLS
+    ══════════════════════════════════════ */
+    .skill-grid {
+      flex: 1;
+      display: grid;
+      grid-template-columns: repeat(3, 1fr);
+      gap: 12px;
+      align-content: start;
+      overflow: hidden;
+      min-height: 0;
+    }
+
+    .skill-card {
+      padding: 18px 20px;
+      border-radius: 14px;
+      background: var(--surface);
+      border: 1px solid var(--border);
+    }
+    .skill-card-head {
+      display: flex; align-items: center; gap: 10px;
+      margin-bottom: 12px;
+    }
+    .skill-card-num {
+      width: 28px; height: 28px; border-radius: 8px;
+      background: var(--red-soft); border: 1px solid var(--red-border);
+      display: flex; align-items: center; justify-content: center;
+      font-family: 'DM Sans', system-ui, sans-serif;
+      font-size: 10px; font-weight: 800; color: rgba(200,80,90,0.85);
+      flex-shrink: 0;
+    }
+    .skill-card-name {
+      font-family: 'DM Sans', system-ui, sans-serif;
+      font-size: 11px; font-weight: 700;
+      color: var(--t2); text-transform: uppercase; letter-spacing: 0.06em;
+    }
+    .skill-dots {
+      display: flex; gap: 4px; margin-bottom: 8px;
+    }
+    .skill-dots span {
+      flex: 1; height: 4px; border-radius: 999px;
+      background: rgba(255,255,255,0.07);
+      max-width: 28px;
+    }
+    .skill-dots span.filled {
+      background: linear-gradient(90deg, var(--red-dim), var(--red));
+      box-shadow: 0 0 6px rgba(200,27,36,0.4);
+    }
+    .skill-status {
+      font-size: 10px; color: var(--t4); margin-bottom: 10px;
+    }
+    .skill-tags {
+      display: flex; flex-wrap: wrap; gap: 5px;
+    }
+    .skill-tag {
+      padding: 3px 9px;
+      border-radius: 6px;
+      background: rgba(255,255,255,0.04);
+      border: 1px solid rgba(255,255,255,0.07);
+      font-size: 10.5px; color: var(--t3);
+    }
+
+    /* ══════════════════════════════════════
+       PAGE 3 — SOFT SKILLS
+    ══════════════════════════════════════ */
+    .soft-grid {
+      flex: 1;
+      display: grid;
+      grid-template-columns: repeat(3, 1fr);
+      gap: 12px;
+      align-content: start;
+      overflow: hidden;
+      min-height: 0;
+    }
+    .soft-card {
+      padding: 18px 20px;
+      border-radius: 14px;
+      background: var(--surface);
+      border: 1px solid var(--border);
+    }
+    .soft-name {
+      font-family: 'DM Sans', system-ui, sans-serif;
+      font-size: 11px; font-weight: 700;
+      text-transform: uppercase; letter-spacing: 0.06em;
+      color: var(--t2); margin-bottom: 10px;
+    }
+    .soft-meta {
+      font-size: 11px; color: var(--t4); margin-bottom: 4px; line-height: 1.5;
+    }
+    .soft-meta b { color: var(--t3); font-weight: 600; }
+    .soft-example {
+      font-size: 11.5px; color: var(--t3); font-weight: 300;
+      line-height: 1.65; margin-top: 10px;
+      padding-top: 10px; border-top: 1px solid var(--border);
+    }
+
+    /* ══════════════════════════════════════
+       PAGE 4 — PROJECTS
+    ══════════════════════════════════════ */
+    .proj-grid {
+      flex: 1;
+      display: grid;
+      grid-template-columns: repeat(2, 1fr);
+      gap: 12px;
+      align-content: start;
+      overflow: hidden;
+      min-height: 0;
+    }
+    .proj-grid--quad { gap: 10px; }
+    .proj-grid--quad .proj-card { padding: 14px 16px; }
+    .proj-grid--quad .proj-title { margin-bottom: 10px; padding-bottom: 8px; font-size: 11px; }
+    .proj-grid--quad .proj-detail { font-size: 10.5px; margin-bottom: 4px; line-height: 1.45; }
+    .proj-grid--quad .proj-links { margin-top: 10px; padding-top: 8px; }
+    .proj-grid--quad .proj-link { margin-top: 0; padding: 6px 12px; font-size: 10px; }
+    /* 2 projets / slide : une rangée, cartes plus hautes qu’en grille 2×2 */
+    .proj-grid--pair {
+      grid-template-columns: repeat(2, 1fr);
+      grid-template-rows: minmax(0, 1fr);
+      align-content: stretch;
+      gap: 14px;
+    }
+    .proj-grid--pair .proj-card {
+      min-height: 0;
+      display: flex;
+      flex-direction: column;
+      padding: 16px 18px;
+      overflow: hidden;
+    }
+    .proj-grid--pair .proj-title {
+      flex-shrink: 0;
+      font-size: 11px;
+      margin-bottom: 8px;
+      padding-bottom: 8px;
+    }
+    .proj-grid--pair .proj-detail {
+      font-size: 10.5px;
+      line-height: 1.42;
+      margin-bottom: 4px;
+    }
+    .proj-grid--pair .proj-links {
+      margin-top: auto;
+      flex-shrink: 0;
+      padding-top: 8px;
+    }
+    .proj-grid--pair .proj-link {
+      margin-top: 8px;
+      padding: 7px 14px;
+      font-size: 10px;
+    }
+    .proj-grid--pair .proj-links .proj-link { margin-top: 0; }
+    .proj-card {
+      padding: 20px 22px;
+      border-radius: 14px;
+      background: var(--surface);
+      border: 1px solid var(--border);
+    }
+    .proj-title {
+      font-family: 'DM Sans', system-ui, sans-serif;
+      font-size: 12px; font-weight: 700;
+      color: var(--t2); text-transform: uppercase;
+      letter-spacing: 0.06em;
+      margin-bottom: 14px; padding-bottom: 10px;
+      border-bottom: 1px solid var(--border);
+    }
+    .proj-detail {
+      font-size: 12px; color: var(--t3);
+      margin-bottom: 6px; line-height: 1.6;
+    }
+    .proj-detail b { color: var(--t2); font-weight: 600; }
+    .proj-links {
+      display: flex; flex-wrap: wrap; gap: 6px;
+      margin-top: 14px; padding-top: 10px;
+      border-top: 1px solid var(--border);
+    }
+    .proj-link {
+      display: inline-flex;
+      align-items: center;
+      justify-content: center;
+      margin-top: 14px;
+      padding: 8px 16px;
+      border-radius: 999px;
+      background: var(--red-soft);
+      border: 1px solid var(--red-border);
+      color: rgba(255,190,190,0.95);
+      font-size: 11px; font-weight: 600;
+      text-decoration: none;
+      cursor: pointer;
+      transition: background 0.2s, border-color 0.2s, transform 0.15s;
+    }
+    .proj-link:hover {
+      background: rgba(200,27,36,0.22);
+      border-color: rgba(200,27,36,0.45);
+      transform: translateY(-1px);
+    }
+    .proj-links .proj-link { margin-top: 0; }
+
+    /* ══════════════════════════════════════
+       PAGE 5 — EXPERIENCE TIMELINE
+    ══════════════════════════════════════ */
+    .exp-list {
+      flex: 1;
+      display: flex; flex-direction: column;
+      gap: 10px; overflow: hidden; min-height: 0;
+    }
+    .exp-card {
+      padding: 18px 22px;
+      border-radius: 14px;
+      background: var(--surface);
+      border: 1px solid var(--border);
+      display: flex; gap: 16px;
+    }
+    .exp-num {
+      width: 34px; height: 34px;
+      border-radius: 10px;
+      background: var(--red-soft); border: 1px solid var(--red-border);
+      display: flex; align-items: center; justify-content: center;
+      font-family: 'DM Sans', system-ui, sans-serif;
+      font-size: 12px; font-weight: 800;
+      color: rgba(200,80,90,0.80); flex-shrink: 0;
+    }
+    .exp-body { flex: 1; min-width: 0; }
+    .exp-role {
+      font-family: 'DM Sans', system-ui, sans-serif;
+      font-size: 14px; font-weight: 700;
+      color: var(--t1); margin-bottom: 3px;
+      letter-spacing: -0.01em;
+    }
+    .exp-company { font-size: 11.5px; color: var(--t3); margin-bottom: 2px; }
+    .exp-period { font-size: 10.5px; color: var(--t4); }
+    .exp-tasks {
+      list-style: none; padding: 0; margin-top: 8px;
+    }
+    .exp-tasks li {
+      font-size: 11.5px; color: var(--t3); font-weight: 300;
+      padding-left: 14px; position: relative;
+      margin-bottom: 3px; line-height: 1.55;
+    }
+    .exp-tasks li::before {
+      content: ''; position: absolute; left:0; top:6px;
+      width: 5px; height: 5px; border-radius: 50%;
+      background: rgba(200,27,36,0.35);
+    }
+    .exp-list--max3 { gap: 8px; }
+    .exp-list--max3 .exp-card { padding: 14px 18px; }
+    .exp-list--max3 .exp-role { font-size: 13px; }
+    .exp-list--max3 .exp-tasks li { font-size: 11px; margin-bottom: 2px; }
+
+    /* ══════════════════════════════════════
+       PAGE 6 — LEARNING & GROWTH
+    ══════════════════════════════════════ */
+    .learn-grid {
+      flex: 1;
+      display: grid; grid-template-columns: 1fr 1fr;
+      gap: 20px; min-height: 0;
+    }
+    .learn-block {
+      padding: 22px 24px;
+      border-radius: 14px;
+      background: var(--surface);
+      border: 1px solid var(--border);
+    }
+    .learn-label {
+      font-family: 'DM Sans', system-ui, sans-serif;
+      font-size: 10px; font-weight: 700;
+      text-transform: uppercase; letter-spacing: 0.14em;
+      color: var(--t3); margin-bottom: 16px;
+    }
+    .learn-item {
+      font-size: 12.5px; color: var(--t3);
+      margin-bottom: 10px; padding-left: 14px;
+      position: relative; line-height: 1.6;
+    }
+    .learn-item::before {
+      content: ''; position: absolute; left:0; top:7px;
+      width: 4px; height: 4px; border-radius: 50%;
+      background: rgba(200,27,36,0.45);
+    }
+
+    .lang-section { margin-top: 20px; }
+    .lang-pills-row {
+      display: flex; gap: 12px; flex-wrap: wrap;
+    }
+    .lang-pill {
+      padding: 8px 18px; border-radius: 10px;
+      background: var(--surface); border: 1px solid var(--border);
+      font-size: 12px; color: var(--t2);
+    }
+    .lang-pill b { color: var(--t1); }
+
+    /* ══════════════════════════════════════
+       PAGE 7 — SCORE
+    ══════════════════════════════════════ */
+    .score-layout {
+      flex: 1;
+      display: grid;
+      grid-template-columns: 300px 1fr;
+      gap: 40px;
+      align-items: start;
+      min-height: 0;
+    }
+
+    .score-hero {
+      display: flex; flex-direction: column;
+      align-items: center; gap: 20px;
+      padding: 28px 24px;
+      border-radius: 20px;
+      background: var(--surface);
+      border: 1px solid var(--border);
+      text-align: center;
+    }
+    .score-ring {
+      width: 130px; height: 130px;
+      position: relative; flex-shrink: 0;
+    }
+    .score-ring svg {
+      width: 100%; height: 100%;
+      transform: rotate(-90deg);
+    }
+    .score-ring .bg {
+      fill: none;
+      stroke: rgba(255,255,255,0.07);
+      stroke-width: 7;
+    }
+    .score-ring .fg {
+      fill: none;
+      stroke: var(--red);
+      stroke-width: 7;
+      stroke-linecap: round;
+      filter: drop-shadow(0 0 6px rgba(200,27,36,0.6));
+    }
+    .score-val {
+      position: absolute; inset: 0;
+      display: flex; flex-direction: column;
+      align-items: center; justify-content: center;
+    }
+    .score-val .n {
+      font-family: 'DM Sans', system-ui, sans-serif;
+      font-size: 38px; font-weight: 800;
+      color: var(--white); letter-spacing: -0.03em; line-height: 1;
+    }
+    .score-val .l {
+      font-size: 10px; color: var(--t4);
+      letter-spacing: 0.08em; margin-top: 2px;
+    }
+    .score-txt h3 {
+      font-family: 'DM Sans', system-ui, sans-serif;
+      font-size: 15px; font-weight: 700;
+      color: var(--t1); margin-bottom: 6px;
+    }
+    .score-txt p {
+      font-size: 12px; color: var(--t3); font-weight: 300; line-height: 1.65;
+    }
+
+    .dim-grid {
+      display: grid;
+      grid-template-columns: repeat(2, 1fr);
+      gap: 10px;
+    }
+    .dim-card {
+      padding: 14px 16px;
+      border-radius: 12px;
+      background: var(--surface);
+      border: 1px solid var(--border);
+    }
+    .dim-label { font-size: 11px; color: var(--t3); margin-bottom: 8px; }
+    .dim-bar {
+      height: 5px; background: rgba(255,255,255,0.07);
+      border-radius: 999px; overflow: hidden; margin-bottom: 6px;
+    }
+    .dim-fill {
+      height: 100%;
+      background: linear-gradient(90deg, var(--red-dim), var(--red));
+      border-radius: 999px;
+      box-shadow: 0 0 8px rgba(200,27,36,0.4);
+    }
+    .dim-pct {
+      font-family: 'DM Sans', system-ui, sans-serif;
+      font-size: 16px; font-weight: 800;
+      color: rgba(220,80,90,0.85);
+    }
+    .dim-desc { font-size: 10px; color: var(--t4); margin-top: 4px; line-height: 1.4; }
+  </style>
+</head>
+<body>
+{% set is_en = (portfolio_lang|default('fr')) == 'en' %}
+{% set linkedin = candidate.linkedin_url|default('') %}
+{% set github = candidate.github_url|default('') %}
+{% set behance = candidate.behance_url|default('') %}
+{% set logo_fallback = (assets_base_url|default('') ~ '1 (1).jpg')|replace(' ', '%20') %}
+{% macro tap_watermark() %}
+  <div class="tap-watermark">
+    <div class="tap-watermark-icon">
+      <img src="{{ logo_fallback }}" alt="TAP" width="35" height="35" />
+    </div>
+    <span class="tap-watermark-text">Talent Acceleration Platform</span>
+  </div>
+{% endmacro %}
+
+{% macro project_card(p) %}
+      {% set stack_str = (p.get('technologies') or p.get('stack', []))|join(', ') if (p.get('technologies') or p.get('stack')) is iterable and (p.get('technologies') or p.get('stack')) is not string else (p.get('technologies') or p.get('stack', '')) %}
+      {% set soft_str = (p.get('soft_skills_used', []))|join(', ') if p.get('soft_skills_used') is iterable else '' %}
+      <div class="proj-card">
+        <div class="proj-title">{{ (p.get('title') or ('PROJECT' if is_en else 'PROJET'))|upper }}</div>
+        {% if p.get('context') %}<div class="proj-detail"><b>{{ 'Context:' if is_en else 'Contexte :' }}</b> {{ p.get('context') }}</div>{% endif %}
+        {% if p.get('problem') %}<div class="proj-detail"><b>{{ 'Problem:' if is_en else 'Problème :' }}</b> {{ p.get('problem') }}</div>{% endif %}
+        {% if p.get('solution') %}<div class="proj-detail"><b>{{ 'Solution:' if is_en else 'Solution :' }}</b> {{ p.get('solution') }}</div>{% endif %}
+        {% if stack_str %}<div class="proj-detail"><b>{{ 'Technologies:' if is_en else 'Technologies :' }}</b> {{ stack_str }}</div>{% endif %}
+        {% if p.get('exact_role') %}<div class="proj-detail"><b>{{ 'Role:' if is_en else 'Rôle :' }}</b> {{ p.get('exact_role') }}</div>{% endif %}
+        {% if p.get('results') %}<div class="proj-detail"><b>{{ 'Result:' if is_en else 'Résultat :' }}</b> {{ p.get('results') }}</div>{% endif %}
+        {% if p.get('learnings') %}<div class="proj-detail"><b>{{ 'Learnings:' if is_en else 'Apprentissages :' }}</b> {{ p.get('learnings') }}</div>{% endif %}
+        {% if soft_str %}<div class="proj-detail"><b>{{ 'Soft skills:' if is_en else 'Soft skills :' }}</b> {{ soft_str }}</div>{% endif %}
+        {% if p.get('autonomy_level') %}<div class="proj-detail"><b>{{ 'Autonomy:' if is_en else 'Autonomie :' }}</b> {% if (p.get('autonomy_level') or 3)|int >= 4 %}{{ 'High' if is_en else 'Élevé' }}{% elif (p.get('autonomy_level') or 3)|int >= 3 %}{{ 'Medium' if is_en else 'Moyen' }}{% else %}{{ 'Low' if is_en else 'Faible' }}{% endif %}</div>{% endif %}
+        {% if p.get('links') %}
+        <div class="proj-links">
+          {% for link_url in p.get('links', []) %}
+          {% set lurl = link_url.get('url', '#') if link_url is mapping else (link_url if link_url else '#') %}
+          {% set llabel = (link_url.get('label') if link_url is mapping else none) or ('View project' if is_en else 'Voir le projet') %}
+          <a href="{{ lurl }}" class="proj-link" target="_blank" rel="noopener noreferrer">{{ llabel }}</a>
+          {% endfor %}
+        </div>
+        {% else %}
+        <a href="{{ p.get('url') or '#' }}" class="proj-link" target="_blank" rel="noopener noreferrer">{{ 'View project' if is_en else 'Voir le projet' }}</a>
+        {% endif %}
+      </div>
+{% endmacro %}
+
+<!-- ══════════════════════════════════════
+     PAGE 1 — HERO + ABOUT + CONTACT
+══════════════════════════════════════ -->
+<div class="page">
+  {{ tap_watermark() }}
+
+  <div class="page-inner">
+    <!-- Header -->
+    <div class="slide-header">
+      <div class="sec-banner">{{ 'Professional Portfolio' if is_en else 'Portfolio Professionnel' }}</div>
+      <div class="slide-num">01 / 07</div>
+    </div>
+
+    <!-- Hero 3-col layout -->
+    <div class="hero-layout">
+
+      <!-- LEFT — photo + badge -->
+      <div class="hero-left">
+        <div class="hero-photo">
+          {% if candidate.profile_image_url %}
+          <img src="{{ candidate.profile_image_url }}" alt="{{ candidate.first_name }} {{ candidate.last_name }}"
+            onerror="this.style.display='none'; var s=this.nextElementSibling; if(s) s.style.display='flex';">
+          <div class="fallback" style="display:none">{{ (candidate.first_name or 'T')[0] }}{{ (candidate.last_name or 'P')[0] }}</div>
+          {% else %}
+          <div class="fallback">{{ (candidate.first_name or 'T')[0] }}{{ (candidate.last_name or 'P')[0] }}</div>
+          {% endif %}
+        </div>
+
+        <div class="hero-badge">
+          <div class="hero-badge-dot"></div>
+          <span>Portfolio</span>
+        </div>
+      </div>
+
+      <!-- CENTER — name + about -->
+      <div class="hero-center">
+        <h1 class="hero-name">{{ (candidate.last_name or '')|upper }}<br>{{ (candidate.first_name or '')|upper }}</h1>
+        <div class="hero-jobtitle">{{ candidate.job_title or ('Job title / role' if is_en else 'Titre professionnel / poste') }}</div>
+
+        <div class="hero-meta-row">
+          {% if candidate.availability or candidate.disponibilite %}
+          <div class="hero-meta-item">
+            <svg width="13" height="13" viewBox="0 0 16 16" fill="none"><circle cx="8" cy="8" r="6" stroke="currentColor" stroke-width="1.3"/><path d="M8 4v4l2.5 2.5" stroke="currentColor" stroke-width="1.3" stroke-linecap="round"/></svg>
+            {{ candidate.availability or candidate.disponibilite }}
+          </div>
+          {% endif %}
+          {% if candidate.contract_type or candidate.type_contrat %}
+          <div class="hero-meta-item">
+            <svg width="13" height="13" viewBox="0 0 16 16" fill="none"><rect x="2" y="4" width="12" height="9" rx="1.5" stroke="currentColor" stroke-width="1.3"/><path d="M5 4V3a1 1 0 011-1h4a1 1 0 011 1v1" stroke="currentColor" stroke-width="1.3"/></svg>
+            {{ candidate.contract_type or (candidate.type_contrat|join(', ') if candidate.type_contrat else '') }}
+          </div>
+          {% endif %}
+          {% set hero_city = (candidate.location or candidate.city or candidate.ville or '')|trim %}
+          {% set hero_country = (candidate.pays or candidate.country or '')|trim %}
+          {% if hero_city or hero_country %}
+          <div class="hero-meta-item">
+            <svg width="13" height="13" viewBox="0 0 16 16" fill="none"><path d="M8 1C5.24 1 3 3.24 3 6c0 3.94 5 9 5 9s5-5.06 5-9c0-2.76-2.24-5-5-5z" stroke="currentColor" stroke-width="1.3"/><circle cx="8" cy="6" r="1.5" stroke="currentColor" stroke-width="1.3"/></svg>
+            {{ hero_city }}{% if hero_city and hero_country %} — {% endif %}{{ hero_country }}
+          </div>
+          {% endif %}
+        </div>
+
+        <div class="sec-title">{{ 'About me' if is_en else 'À propos' }}</div>
+        <div class="about-text">
+          {% if about_paragraphs is defined and about_paragraphs %}
+          {% for paragraph in about_paragraphs %}
+          <p>{{ paragraph.strip() }}</p>
+          {% endfor %}
+          {% else %}
+          <p>{{ 'Results-oriented professional with proven experience.' if is_en else 'Professionnel orienté résultats, avec une expérience confirmée.' }}</p>
+          {% endif %}
+        </div>
+
+        <!-- Contact -->
+        <div class="contact-row">
+          {% if candidate.phone %}
+          <a href="tel:{{ candidate.phone }}" class="contact-btn">
+            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M22 16.92v3a2 2 0 01-2.18 2 19.79 19.79 0 01-8.63-3.07 19.5 19.5 0 01-6-6A19.79 19.79 0 014.12 2.18 2 2 0 016.11 2h3a2 2 0 012 1.72c.127.96.361 1.903.7 2.81a2 2 0 01-.45 2.11L8.09 9.91a16 16 0 006 6l1.27-1.27a2 2 0 012.11-.45c.907.339 1.85.573 2.81.7A2 2 0 0122 16.92z"/></svg>
+            {{ candidate.phone }}
+          </a>
+          {% endif %}
+          {% if candidate.email %}
+          <a href="mailto:{{ candidate.email }}" class="contact-btn">
+            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><rect x="2" y="4" width="20" height="16" rx="2"/><path d="M22 7l-10 7L2 7"/></svg>
+            {{ candidate.email }}
+          </a>
+          {% endif %}
+          {% if linkedin %}
+          <a href="{{ linkedin }}" target="_blank" rel="noopener" class="contact-btn">
+            <svg viewBox="0 0 24 24" fill="currentColor" width="14" height="14"><path d="M20.447 20.452h-3.554v-5.569c0-1.328-.027-3.037-1.852-3.037-1.853 0-2.136 1.445-2.136 2.939v5.667H9.351V9h3.414v1.561h.046c.477-.9 1.637-1.85 3.37-1.85 3.601 0 4.267 2.37 4.267 5.455v6.286zM5.337 7.433a2.062 2.062 0 01-2.063-2.065 2.064 2.064 0 112.063 2.065zm1.782 13.019H3.555V9h3.564v11.452zM22.225 0H1.771C.792 0 0 .774 0 1.729v20.542C0 23.227.792 24 1.771 24h20.451C23.2 24 24 23.227 24 22.271V1.729C24 .774 23.2 0 22.222 0h.003z"/></svg>
+            LinkedIn
+          </a>
+          {% endif %}
+          {% if github or behance %}
+          <a href="{{ github or behance }}" target="_blank" rel="noopener" class="contact-btn">
+            <svg viewBox="0 0 24 24" fill="currentColor" width="14" height="14"><path d="M12 0C5.374 0 0 5.373 0 12c0 5.302 3.438 9.8 8.207 11.387.599.111.793-.261.793-.577v-2.234c-3.338.726-4.033-1.416-4.033-1.416-.546-1.387-1.333-1.756-1.333-1.756-1.089-.745.083-.729.083-.729 1.205.084 1.839 1.237 1.839 1.237 1.07 1.834 2.807 1.304 3.492.997.107-.775.418-1.305.762-1.604-2.665-.305-5.467-1.334-5.467-5.931 0-1.311.469-2.381 1.236-3.221-.124-.303-.535-1.524.117-3.176 0 0 1.008-.322 3.301 1.23A11.509 11.509 0 0112 5.803c1.02.005 2.047.138 3.006.404 2.291-1.552 3.297-1.23 3.297-1.23.653 1.653.242 2.874.118 3.176.77.84 1.235 1.911 1.235 3.221 0 4.609-2.807 5.624-5.479 5.921.43.372.823 1.102.823 2.222v3.293c0 .319.192.694.801.576C20.566 21.797 24 17.3 24 12c0-6.627-5.373-12-12-12z"/></svg>
+            {{ 'GitHub' if github else 'Behance' }}
+          </a>
+          {% endif %}
+          <a href="mailto:{{ candidate.email|default('#') }}" class="contact-cta">{{ 'Contact me' if is_en else 'Contactez-moi' }}</a>
+        </div>
+      </div>
+
+      <!-- RIGHT — info cards -->
+      <div class="hero-right">
+        <div class="info-card">
+          <h4>{{ 'Target job' if is_en else 'Poste cible' }}</h4>
+          <p>{{ candidate.job_title or ('Job title' if is_en else 'Titre du poste') }}</p>
+          <p style="font-size:11px;color:var(--t4);margin-top:5px">{{ 'Type:' if is_en else 'Type :' }} {{ candidate.contract_type or (candidate.type_contrat|join(', ') if candidate.type_contrat else ('CDI / CDD' if not is_en else 'Permanent / Contract')) }}</p>
+          <p style="font-size:11px;color:var(--t4)">{{ 'Availability:' if is_en else 'Disponibilité :' }} {{ candidate.availability or candidate.disponibilite or ('Immediate' if is_en else 'Immédiate') }}</p>
+        </div>
+        <div class="info-card">
+          <h4>{{ 'Key points' if is_en else 'Points clés' }}</h4>
+          <ul>
+            {% if key_phrases is defined and key_phrases %}
+            {% for phrase in key_phrases %}
+            <li>{{ phrase }}</li>
+            {% endfor %}
+            {% else %}
+            <li>{{ 'Solid professional fundamentals' if is_en else 'Solide maîtrise des fondamentaux' }}</li>
+            <li>{{ 'Team and autonomous work' if is_en else 'Travail en équipe et en autonomie' }}</li>
+            <li>{{ 'Structured approach' if is_en else 'Approche structurée' }}</li>
+            {% endif %}
+          </ul>
+        </div>
+      </div>
+
+    </div><!-- end hero-layout -->
+
+    <div class="page-footer">
+      <span>{{ 'Generated by' if is_en else 'Généré par' }}</span>
+      <span class="tap">TAP</span>
+      <span>—</span>
+      <span>Talent Acceleration Platform</span>
+    </div>
+  </div>
+</div>
+
+
+<!-- ══════════════════════════════════════
+     PAGE 2 — TECHNICAL SKILLS
+══════════════════════════════════════ -->
+{% if skill_categories_sorted is defined and skill_categories_sorted %}
+<div class="page">
+  {{ tap_watermark() }}
+  <div class="page-inner">
+    <div class="slide-header">
+      <div class="sec-banner">{{ 'Skills Map — Technical Skills' if is_en else 'Carte des Compétences — Techniques' }}</div>
+      <div class="slide-num">02 / 07</div>
+    </div>
+    <div class="skill-grid">
+      {% for group in skill_categories_sorted[:6] %}
+      {% set category_name = group.category if group is mapping else 'Skill' %}
+      {% set lvl = (group.avg_level|default(3))|int %}
+      {% set statut_label = group.get('status', ('Active' if is_en else 'Actif')) if group is mapping else '' %}
+      <div class="skill-card">
+        <div class="skill-card-head">
+          <div class="skill-card-num">#{{ loop.index }}</div>
+          <div class="skill-card-name">{{ category_name|upper }}</div>
+        </div>
+        <div class="skill-dots">{% for i in range(1, 6) %}<span class="{{ 'filled' if lvl >= i else '' }}"></span>{% endfor %}</div>
+        {% if statut_label %}<div class="skill-status">{{ 'Status:' if is_en else 'Statut :' }} {{ statut_label }}</div>{% endif %}
+        <div class="skill-tags">
+          {% for sk in group.list|default([]) %}
+          {% set s = sk if sk is mapping else {'name': sk} %}
+          <span class="skill-tag">{{ (s.get('name') or s)|string }}</span>
+          {% endfor %}
+          {% if not group.list %}<span class="skill-tag">—</span>{% endif %}
+        </div>
+      </div>
+      {% endfor %}
+    </div>
+    <div class="page-footer"><span>{{ 'Generated by' if is_en else 'Généré par' }}</span><span class="tap">TAP</span><span>—</span><span>Talent Acceleration Platform</span></div>
+  </div>
+</div>
+{% endif %}
+
+
+<!-- ══════════════════════════════════════
+     PAGE 3 — SOFT SKILLS
+══════════════════════════════════════ -->
+{% if soft_skills_data is defined and soft_skills_data %}
+<div class="page">
+  {{ tap_watermark() }}
+  <div class="page-inner">
+    <div class="slide-header">
+      <div class="sec-banner">{{ 'Behavioral Skills Map' if is_en else 'Carte des Compétences Comportementales' }}</div>
+      <div class="slide-num">03 / 07</div>
+    </div>
+    <div class="soft-grid">
+      {% for s in soft_skills_data[:6] %}
+      {% set score = (s.get('score', s.get('level', 3))|default(3))|int %}
+      <div class="soft-card">
+        <div class="soft-name">{{ (s.get('name') or ('BEHAVIORAL SKILL' if is_en else 'COMPÉTENCE COMPORTEMENTALE'))|upper }}</div>
+        <div class="skill-dots" style="margin-bottom:10px">{% for i in range(1, 6) %}<span class="{{ 'filled' if score >= i else '' }}"></span>{% endfor %}</div>
+        <div class="soft-meta"><b>{{ 'Score:' if is_en else 'Score :' }}</b> {{ score }}/5</div>
+        {% if s.get('proof_type') or s.get('proof') %}
+        <div class="soft-meta"><b>{{ 'Proof:' if is_en else 'Preuve :' }}</b> {{ s.get('proof_type', s.get('proof', '—')) }}</div>
+        {% endif %}
+        {% if s.get('concrete_example') %}
+        <div class="soft-example"><b>{{ 'Example:' if is_en else 'Exemple :' }}</b> {{ s.get('concrete_example', '—') }}</div>
+        {% endif %}
+      </div>
+      {% endfor %}
+    </div>
+    <div class="page-footer"><span>{{ 'Generated by' if is_en else 'Généré par' }}</span><span class="tap">TAP</span><span>—</span><span>Talent Acceleration Platform</span></div>
+  </div>
+</div>
+{% endif %}
+
+
+<!-- ══════════════════════════════════════
+     PAGE 4 — PROJECTS (max 4 projets, 2 par slide)
+══════════════════════════════════════ -->
+{% if projects_data is defined and projects_data %}
+{% set projects_slice = projects_data[:4] %}
+{% for chunk in projects_slice|batch(2) %}
+<div class="page">
+  {{ tap_watermark() }}
+  <div class="page-inner">
+    <div class="slide-header">
+      <div class="sec-banner">{{ 'Proof of Work — Projects' if is_en else 'Preuve de Travail — Projets' }}</div>
+      <div class="slide-num">04 / 07{% if loop.length > 1 %}<span style="opacity:.85;font-weight:600"> · {{ loop.index }}/{{ loop.length }}</span>{% endif %}</div>
+    </div>
+    <div class="proj-grid proj-grid--pair">
+      {% for p in chunk %}
+      {{ project_card(p) }}
+      {% endfor %}
+    </div>
+    <div class="page-footer"><span>{{ 'Generated by' if is_en else 'Généré par' }}</span><span class="tap">TAP</span><span>—</span><span>Talent Acceleration Platform</span></div>
+  </div>
+</div>
+{% endfor %}
+{% endif %}
+
+
+<!-- ══════════════════════════════════════
+     PAGE 5 — EXPERIENCE TIMELINE
+══════════════════════════════════════ -->
+{% if experience_timeline is defined and experience_timeline %}
+<div class="page">
+  {{ tap_watermark() }}
+  <div class="page-inner">
+    <div class="slide-header">
+      <div class="sec-banner">{{ 'Experience Timeline' if is_en else 'Chronologie des Expériences' }}</div>
+      <div class="slide-num">05 / 07</div>
+    </div>
+    <div class="exp-list exp-list--max3">
+      {% for e in experience_timeline[:3] %}
+      {% set exp_location = e.get('location', e.get('lieu', '')) %}
+      <div class="exp-card">
+        <div class="exp-num">{{ loop.index }}</div>
+        <div class="exp-body">
+          <div class="exp-role">{{ (e.get('poste') or e.get('job_title') or e.get('position') or e.get('role') or ('ROLE / TITLE' if is_en else 'POSTE / INTITULÉ'))|upper }}</div>
+          <div class="exp-company">{{ e.get('company') or e.get('organization', '') }}{% if exp_location %} — {{ exp_location }}{% endif %}</div>
+          <div class="exp-period">{{ 'Period:' if is_en else 'Période :' }} {{ e.get('period') or e.get('periode') or (e.get('date_start', '') ~ ' - ' ~ (e.get('date_end') or ('Present' if is_en else 'Présent'))) }}</div>
+          {% if e.get('key_achievements') %}
+          <ul class="exp-tasks">
+            {% for item in e.get('key_achievements', []) %}
+            <li>{{ item if item is string else (item.get('text', item) if item is mapping else item) }}</li>
+            {% endfor %}
+          </ul>
+          {% elif e.get('description') or e.get('impact') %}
+          <ul class="exp-tasks"><li>{{ e.get('description', e.get('impact', '—')) }}</li></ul>
+          {% endif %}
+        </div>
+      </div>
+      {% endfor %}
+    </div>
+    <div class="page-footer"><span>{{ 'Generated by' if is_en else 'Généré par' }}</span><span class="tap">TAP</span><span>—</span><span>Talent Acceleration Platform</span></div>
+  </div>
+</div>
+{% endif %}
+
+
+<!-- ══════════════════════════════════════
+     PAGE 6 — LEARNING & GROWTH
+══════════════════════════════════════ -->
+{% set _has_train = learning_trainings is defined and learning_trainings %}
+{% set _has_cert = learning_certs is defined and learning_certs %}
+{% set _langs = candidate.languages|default([], true) %}
+{% set _has_lang = _langs and (_langs|length > 0) %}
+{% if _has_train or _has_cert or _has_lang %}
+<div class="page">
+  {{ tap_watermark() }}
+  <div class="page-inner">
+    <div class="slide-header">
+      <div class="sec-banner">{{ 'Learning &amp; Growth' if is_en else 'Apprentissage &amp; Croissance' }}</div>
+      <div class="slide-num">06 / 07</div>
+    </div>
+    {% if _has_train or _has_cert %}
+    <div class="learn-grid">
+      {% if _has_train %}
+      <div class="learn-block">
+        <div class="learn-label">{{ 'Training' if is_en else 'Formations' }}</div>
+        {% for item in learning_trainings %}
+        <div class="learn-item">{{ (item.get('name') or item.get('title') or ('Training' if is_en else 'Formation')) }} — {{ item.get('organism', item.get('organization', ('Organization' if is_en else 'Organisme'))) }} {{ item.get('year', '') }}</div>
+        {% endfor %}
+      </div>
+      {% endif %}
+      {% if _has_cert %}
+      <div class="learn-block">
+        <div class="learn-label">Certifications</div>
+        {% for item in learning_certs %}
+        <div class="learn-item">{{ (item.get('name') or item.get('title') or 'Certification') }} — {{ item.get('organism', item.get('organization', ('Organization' if is_en else 'Organisme'))) }} {{ item.get('year', '') }}</div>
+        {% endfor %}
+      </div>
+      {% endif %}
+    </div>
+    {% endif %}
+    {% if _has_lang %}
+    <div class="lang-section">
+      <div class="sec-title">{{ 'Languages' if is_en else 'Langues' }}</div>
+      <div class="lang-pills-row">
+        {% for lang_item in _langs %}
+        <div class="lang-pill">
+          {% if lang_item is mapping %}
+          <b>{{ lang_item.name or lang_item.language or lang_item.lang or '—' }}</b>{% if lang_item.level %} — {{ lang_item.level }}{% endif %}
+          {% else %}
+          {{ lang_item }}
+          {% endif %}
+        </div>
+        {% endfor %}
+      </div>
+    </div>
+    {% endif %}
+    <div class="page-footer"><span>{{ 'Generated by' if is_en else 'Généré par' }}</span><span class="tap">TAP</span><span>—</span><span>Talent Acceleration Platform</span></div>
+  </div>
+</div>
+{% endif %}
+
+
+<!-- ══════════════════════════════════════
+     PAGE 7 — READINESS SCORE
+══════════════════════════════════════ -->
+{% if readiness_score is defined and readiness_score is not none and readiness_score != '' %}
+<div class="page">
+  {{ tap_watermark() }}
+  <div class="page-inner">
+    <div class="slide-header">
+      <div class="sec-banner">{{ 'Readiness Score' if is_en else 'Score de Préparation' }}</div>
+      <div class="slide-num">07 / 07</div>
+    </div>
+
+    {% set rs = (readiness_score|float|int) %}
+    {% set circ = 251 %}
+    {% set offset = circ - (circ * rs / 100) %}
+
+    <div class="score-layout">
+      <!-- Ring -->
+      <div class="score-hero">
+        <div class="score-ring">
+          <svg viewBox="0 0 90 90">
+            <circle class="bg" cx="45" cy="45" r="40"/>
+            <circle class="fg" cx="45" cy="45" r="40" stroke-dasharray="{{ circ }}" stroke-dashoffset="{{ offset }}"/>
+          </svg>
+          <div class="score-val">
+            <span class="n">{{ rs }}</span>
+            <span class="l">/ 100</span>
+          </div>
+        </div>
+        <div class="score-txt">
+          <h3>{{ 'Global Score' if is_en else 'Score Global' }}</h3>
+          <p>{{ 'Overall score reflecting professional readiness for a corporate environment.' if is_en else 'Score global qui reflète le niveau de préparation professionnelle pour un environnement entreprise.' }}</p>
+        </div>
+      </div>
+
+      <!-- Dimensions -->
+      <div>
+        {% if score_dims is defined and score_dims %}
+        <div class="sec-title">{{ 'Score details' if is_en else 'Détails du score' }}</div>
+        <div class="dim-grid">
+          {% for label, desc, pct in score_dims %}
+          <div class="dim-card">
+            <div class="dim-label">{{ label }}</div>
+            <div class="dim-bar">
+              <div class="dim-fill" style="width:{{ ((pct|float|int)|string ~ '%') if (pct is defined and pct is not none and pct != '') else '0%' }}"></div>
+            </div>
+            <div class="dim-pct">{{ ((pct|float|int)|string ~ ' %') if (pct is defined and pct is not none and pct != '') else 'XX %' }}</div>
+            {% if desc %}<div class="dim-desc">{{ desc }}</div>{% endif %}
+          </div>
+          {% endfor %}
+        </div>
+        {% endif %}
+
+        <div style="margin-top:16px;padding:14px 18px;background:var(--surface);border:1px solid var(--border);border-radius:12px">
+          <p style="font-size:12px;color:var(--t3);font-weight:300;line-height:1.6">{{ 'Each dimension contributes to the final score. The score reflects an objective assessment based on information provided by the candidate.' if is_en else 'Chaque dimension contribue au score final. Le score reflète une évaluation objective basée sur les informations fournies par le candidat.' }}</p>
+        </div>
+      </div>
+    </div>
+
+    <div class="page-footer"><span>{{ 'Generated by' if is_en else 'Généré par' }}</span><span class="tap">TAP</span><span>—</span><span>Talent Acceleration Platform</span></div>
+  </div>
+</div>
+{% endif %}
+
+</body>
+</html>

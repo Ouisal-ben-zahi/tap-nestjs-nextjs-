@@ -3,11 +3,11 @@
 <head>
   <meta charset="UTF-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1.0" />
-  {% set first_name = (candidate.prenom or '') %}
-  {% set last_name = (candidate.nom or '') %}
-  {% set full_name = ((first_name ~ ' ' ~ last_name).strip()) %}
-  {% set display_name = full_name if full_name else 'NOM PRÉNOM' %}
-  <title>Talent Card — {{ display_name }}</title>
+  
+  
+  
+  
+  <title>Talent Card — Test Manuel</title>
   <link rel="preconnect" href="https://fonts.googleapis.com" />
   <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
   <link href="https://fonts.googleapis.com/css2?family=Syne:wght@400;600;700;800&family=DM+Sans:opsz,wght@9..40,300;9..40,400;9..40,500;9..40,600&display=swap" rel="stylesheet" />
@@ -27,7 +27,7 @@
     .tc-card {
       position: relative;
       width: min(340px, 100%);
-      border-radius: 0;
+      border-radius: 28px;
       border: 1.5px solid rgba(255,255,255,0.13);
       overflow: hidden;
       background:
@@ -44,7 +44,6 @@
       content: '';
       position: absolute;
       inset: 0;
-      border-radius: 0;
       background: repeating-linear-gradient(
         135deg,
         rgba(255,255,255,0.018) 0px,
@@ -60,7 +59,6 @@
       content: '';
       position: absolute;
       inset: 0;
-      border-radius: 0;
       background: radial-gradient(ellipse 90% 90% at 50% 50%, transparent 40%, rgba(0,0,0,0.55) 100%);
       pointer-events: none;
       z-index: 0;
@@ -69,7 +67,7 @@
     .tc-inner {
       position: relative;
       z-index: 1;
-      padding: 18px 20px 12px;
+      padding: 18px 20px 20px;
       display: flex;
       flex-direction: column;
       gap: 16px;
@@ -84,6 +82,7 @@
     .tc-logo {
       width: 34px;
       height: 34px;
+      border-radius: 10px;
       background: rgba(255,255,255,0.07);
       border: 1px solid rgba(255,255,255,0.12);
       display: flex;
@@ -166,24 +165,17 @@
       content: '';
       position: absolute;
       inset: 0;
-      z-index: 1;
       border-radius: 50%;
       box-shadow: 0 0 28px rgba(180,20,30,0.3) inset;
       pointer-events: none;
     }
     .tc-avatar img {
-      position: absolute;
-      inset: 0;
       width: 100%;
       height: 100%;
       object-fit: cover;
-      object-position: center 20%;
-      display: block;
-      z-index: 0;
+      object-position: center top;
     }
     .tc-avatar-initials {
-      position: relative;
-      z-index: 2;
       font-family: 'Syne', sans-serif;
       font-size: 22px;
       font-weight: 700;
@@ -238,25 +230,22 @@
       display: flex;
       align-items: baseline;
       justify-content: space-between;
-      gap: 8px;
     }
     .tc-bar-name {
       font-size: 11px;
       font-weight: 500;
       color: rgba(255,255,255,0.72);
       letter-spacing: 0.01em;
-      flex: 1;
-      min-width: 0;
       overflow: hidden;
       text-overflow: ellipsis;
       white-space: nowrap;
+      max-width: 72%;
     }
     .tc-bar-pct {
       font-size: 10.5px;
       font-weight: 600;
       color: rgba(255,255,255,0.55);
       font-variant-numeric: tabular-nums;
-      flex-shrink: 0;
     }
     .tc-bar-track {
       height: 5px;
@@ -305,7 +294,7 @@
       display: flex;
       align-items: center;
       justify-content: space-between;
-      padding-top: 0;
+      padding-top: 4px;
     }
     .tc-badge {
       display: flex;
@@ -336,133 +325,103 @@
     }
 
     @media print {
-      body {
-        background: #000 !important;
-        padding: 0 !important;
-        min-height: 0 !important;
-        display: block !important;
-        align-items: unset !important;
-        justify-content: unset !important;
-      }
-      .tc-card {
-        box-shadow: none !important;
-        margin: 0 !important;
-        width: 100% !important;
-        max-width: none !important;
-        border-radius: 0 !important;
-        overflow: hidden !important;
-        page-break-inside: avoid;
-      }
-      .tc-card::before,
-      .tc-card::after {
-        border-radius: 0 !important;
-      }
-      .tc-bar-fill {
-        transition: none !important;
-      }
+      body { background: #fff; padding: 0; }
+      .tc-card { box-shadow: none; margin: 1cm auto; }
     }
   </style>
 </head>
 <body>
-    {% set profile_title = (candidate.titre_profil or candidate.get('Titre de profil') or 'Titre de profil') %}
-    {% set profile_suffix = (candidate.get('categorie_profil') or '')|trim %}
-    {% set title_line = profile_title ~ (' · ' ~ profile_suffix if profile_suffix else '') %}
+    
+    
+    
 
-    {% set profile_raw = (candidate.profile_image_url or 'candidate_bg_EEEEEE.png') %}
-    {% if profile_raw.startswith('http://') or profile_raw.startswith('https://') or profile_raw.startswith('data:') %}
-        {% set profile_image = profile_raw %}
-    {% else %}
-        {% set profile_image = (assets_base_url ~ profile_raw)|replace(' ', '%20') %}
-    {% endif %}
+    
+    
+        
+    
 
-    {% set qr_raw = (candidate.qr_code_url or 'qr-code.svg') %}
-    {% if qr_raw.startswith('http://') or qr_raw.startswith('https://') or qr_raw.startswith('data:') %}
-        {% set qr_image = qr_raw %}
-    {% else %}
-        {% set qr_image = (assets_base_url ~ qr_raw)|replace(' ', '%20') %}
-    {% endif %}
+    
+    
+        
+    
 
-    {% set logo_fallback = (assets_base_url ~ '1 (1).jpg')|replace(' ', '%20') %}
-    {% set logo_raw = (candidate.get('logo_url') or logo_fallback) %}
-    {% if logo_raw.startswith('http://') or logo_raw.startswith('https://') or logo_raw.startswith('data:') %}
-        {% set logo_image = logo_raw %}
-    {% elif logo_raw.startswith('/') %}
-        {% set logo_image = logo_raw|replace(' ', '%20') %}
-    {% else %}
-        {% set logo_image = (assets_base_url ~ logo_raw)|replace(' ', '%20') %}
-    {% endif %}
+    
+    
+    
+        
+    
 
-    {% set fn_init = (first_name[:1] if first_name else '')|upper %}
-    {% set ln_init = (last_name[:1] if last_name else '')|upper %}
-    {% set avatar_initials = (fn_init ~ ln_init) if (fn_init or ln_init) else 'NP' %}
+    
+    
+    
 
-    {% set all_skills = candidate.skills if candidate.skills is iterable and candidate.skills is not string else [] %}
-    {% set fallback_skills = [
-        {'name': 'Hard skills fit', 'score': 75},
-        {'name': 'BI', 'score': 60},
-        {'name': 'Dev', 'score': 40},
-        {'name': 'Data', 'score': 66}
-    ] %}
-    {% set prepared_skills = [] %}
-    {% for s in all_skills %}
-        {% if s is mapping %}
-            {% set n = s.name or s.skill or s.label or 'Skill' %}
-            {% set p = (s.score if s.score is defined else (s.percentage if s.percentage is defined else (s.value if s.value is defined else 0))) %}
-            {% set _ = prepared_skills.append({'name': n, 'score': p}) %}
-        {% else %}
-            {% set _ = prepared_skills.append({'name': s, 'score': 0}) %}
-        {% endif %}
-    {% endfor %}
-    {% set final_skills = prepared_skills if prepared_skills else fallback_skills %}
-    {% if final_skills|length < 4 %}
-        {% for fs in fallback_skills %}
-            {% if final_skills|length < 4 %}
-                {% set _ = final_skills.append(fs) %}
-            {% endif %}
-        {% endfor %}
-    {% endif %}
-    {% set final_skills = final_skills[:4] %}
+    
+    
+    
+    
+        
+            
+            
+            
+        
+    
+        
+            
+            
+            
+        
+    
+        
+            
+            
+            
+        
+    
+        
+            
+            
+            
+        
+    
+    
+    
+    
 
-    {% set raw_soft = candidate.get('soft_skills') %}
-    {% set soft_prepared = [] %}
-    {% if raw_soft is string and raw_soft|trim %}
-        {% for part in raw_soft.split(',') %}
-            {% set label = part|trim %}
-            {% if label %}
-                {% set _ = soft_prepared.append(label) %}
-            {% endif %}
-        {% endfor %}
-    {% elif raw_soft is iterable and raw_soft is not string and raw_soft is not mapping %}
-        {% for item in raw_soft %}
-            {% if item is mapping %}
-                {% set nm = item.name or item.skill or item.label or item.nom or '' %}
-                {% if nm %}
-                    {% set _ = soft_prepared.append({'name': nm, 'accent': item.accent or item.highlight or item.mis_en_avant}) %}
-                {% endif %}
-            {% elif item %}
-                {% set _ = soft_prepared.append(item|string) %}
-            {% endif %}
-        {% endfor %}
-    {% endif %}
-    {% if soft_prepared|length == 0 %}
-        {% set _ = soft_prepared.append('Communication') %}
-        {% set _ = soft_prepared.append('Leadership') %}
-        {% set _ = soft_prepared.append('Teamwork') %}
-        {% set _ = soft_prepared.append('Problem Solving') %}
-        {% set _ = soft_prepared.append('Adaptabilité') %}
-        {% set _ = soft_prepared.append('Esprit critique') %}
-    {% endif %}
+    
+    
+    
+        
+            
+                
+            
+        
+            
+                
+            
+        
+            
+                
+            
+        
+            
+                
+            
+        
+            
+                
+            
+        
+    
+    
 
-    {% set score_raw = candidate.get('score') or candidate.get('talent_score') or candidate.get('match_score') or 78 %}
-    {% set score_num = (score_raw|string)|replace('%','')|trim|float(78)|round(0)|int %}
-    {% set score_val = [[score_num, 0]|max, 100]|min %}
+    
+    
+    
 
-    {% set disp_raw = (candidate.get('disponibilite') or '')|trim %}
-    {% if disp_raw %}
-        {% set status_label = disp_raw|upper %}
-    {% else %}
-        {% set status_label = 'DISPONIBLE' %}
-    {% endif %}
+    
+    
+        
+    
 
   <div class="tc-card">
     <div class="tc-inner">
@@ -470,9 +429,9 @@
       <div class="tc-top">
         <div class="tc-logo">
           <img
-            src="{{ logo_image }}"
+            src="1%20(1).jpg"
             alt=""
-            data-fallback-src="{{ logo_fallback }}"
+            data-fallback-src="1%20(1).jpg"
             onerror="if(!this.dataset.fallbackApplied){this.dataset.fallbackApplied='1'; this.src=this.dataset.fallbackSrc; return;} this.style.display='none'; this.nextElementSibling.style.display='block';"
           />
           <span class="tc-logo-fallback" style="display:none;">t</span>
@@ -480,7 +439,7 @@
 
         <div class="tc-qr">
           <img
-            src="{{ qr_image }}"
+            src="qr-code.svg"
             alt="QR Code"
             onerror="this.style.display='none'; this.nextElementSibling.style.display='grid';"
           />
@@ -491,14 +450,14 @@
       <div class="tc-profile">
         <div class="tc-avatar">
           <img
-            src="{{ profile_image }}"
+            src="Hajar.jpg"
             alt="Photo"
             onerror="this.style.display='none'; this.nextElementSibling.style.display='flex';"
           />
-          <div class="tc-avatar-initials" style="display:none;">{{ avatar_initials }}</div>
+          <div class="tc-avatar-initials" style="display:none;">TM</div>
         </div>
-        <div class="tc-name">{{ display_name }}</div>
-        <div class="tc-title">{{ title_line }}</div>
+        <div class="tc-name">Test Manuel</div>
+        <div class="tc-title">Titre de profil · Data & BI</div>
       </div>
 
       <div class="tc-divider"></div>
@@ -506,29 +465,59 @@
       <div>
         <div class="tc-section-label">Hard Skills</div>
         <div class="tc-bars-grid">
-          {% for skill in final_skills %}
-            {% set pct_raw = (skill.score|string)|replace('%', '')|trim %}
-            {% set pct_i = pct_raw|float(0)|round(0)|int %}
-            {% set pct = [[pct_i, 0]|max, 100]|min %}
-            {% set _nm = (skill.name or '')|trim %}
-            {% set _toks = _nm.split() %}
-            {% if _toks|length > 1 %}
-              {% set skill_label = _toks[0] ~ '...' %}
-            {% elif _nm %}
-              {% set skill_label = _nm %}
-            {% else %}
-              {% set skill_label = '—' %}
-            {% endif %}
+          
+            
+            
+            
           <div class="tc-bar-row">
             <div class="tc-bar-meta">
-              <span class="tc-bar-name" title="{{ _nm }}">{{ skill_label }}</span>
-              <span class="tc-bar-pct">{{ pct }}%</span>
+              <span class="tc-bar-name">Hard skills fit</span>
+              <span class="tc-bar-pct">75%</span>
             </div>
             <div class="tc-bar-track">
-              <div class="tc-bar-fill" data-pct="{{ pct }}"></div>
+              <div class="tc-bar-fill" data-pct="75"></div>
             </div>
           </div>
-          {% endfor %}
+          
+            
+            
+            
+          <div class="tc-bar-row">
+            <div class="tc-bar-meta">
+              <span class="tc-bar-name">BI</span>
+              <span class="tc-bar-pct">60%</span>
+            </div>
+            <div class="tc-bar-track">
+              <div class="tc-bar-fill" data-pct="60"></div>
+            </div>
+          </div>
+          
+            
+            
+            
+          <div class="tc-bar-row">
+            <div class="tc-bar-meta">
+              <span class="tc-bar-name">Dev</span>
+              <span class="tc-bar-pct">40%</span>
+            </div>
+            <div class="tc-bar-track">
+              <div class="tc-bar-fill" data-pct="40"></div>
+            </div>
+          </div>
+          
+            
+            
+            
+          <div class="tc-bar-row">
+            <div class="tc-bar-meta">
+              <span class="tc-bar-name">Data</span>
+              <span class="tc-bar-pct">66%</span>
+            </div>
+            <div class="tc-bar-track">
+              <div class="tc-bar-fill" data-pct="66"></div>
+            </div>
+          </div>
+          
         </div>
       </div>
 
@@ -537,23 +526,41 @@
       <div>
         <div class="tc-section-label">Soft Skills</div>
         <div class="tc-pills">
-          {% for item in soft_prepared %}
-            {% if item is mapping %}
-              <span class="tc-pill{% if item.accent %} accent{% endif %}">{{ item.name }}</span>
-            {% else %}
-              {% set idx = loop.index0 %}
-              <span class="tc-pill{% if idx < 2 %} accent{% endif %}">{{ item }}</span>
-            {% endif %}
-          {% endfor %}
+          
+            
+              
+              <span class="tc-pill accent">Communication</span>
+            
+          
+            
+              
+              <span class="tc-pill accent">Leadership</span>
+            
+          
+            
+              
+              <span class="tc-pill">Teamwork</span>
+            
+          
+            
+              
+              <span class="tc-pill">Problem Solving</span>
+            
+          
+            
+              
+              <span class="tc-pill">Adaptabilité</span>
+            
+          
         </div>
       </div>
 
       <div class="tc-footer">
         <div class="tc-badge">
           <div class="tc-badge-dot"></div>
-          {{ status_label }}
+          DISPONIBLE
         </div>
-        <div class="tc-score">SCORE {{ score_val }} / 100</div>
+        <div class="tc-score">SCORE 78 / 100</div>
       </div>
 
     </div>

@@ -1,0 +1,873 @@
+<!DOCTYPE html>
+<html lang="fr">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>Portfolio — Yassine El Amri</title>
+  <link rel="preconnect" href="https://fonts.googleapis.com" />
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
+  <link href="https://fonts.googleapis.com/css2?family=DM+Sans:ital,opsz,wght@0,9..40,300;0,9..40,400;0,9..40,500;0,9..40,600;0,9..40,700;0,9..40,800&display=swap" rel="stylesheet" />
+  <style>
+    :root {
+      --red:         #c81b24;
+      --red-dim:     #9a141b;
+      --red-glow:    rgba(200,27,36,0.40);
+      --red-soft:    rgba(200,27,36,0.10);
+      --red-border:  rgba(200,27,36,0.24);
+      --white:       #ffffff;
+      --t1:          rgba(255,255,255,0.92);
+      --t2:          rgba(255,255,255,0.70);
+      --t3:          rgba(255,255,255,0.48);
+      --t4:          rgba(255,255,255,0.30);
+      --t5:          rgba(255,255,255,0.16);
+      --surface:     rgba(255,255,255,0.038);
+      --surface2:    rgba(255,255,255,0.065);
+      --border:      rgba(255,255,255,0.08);
+      --border2:     rgba(255,255,255,0.14);
+      --bg:          #060202;
+      --slide-w:     1280px;
+      --slide-h:     720px;
+    }
+
+    *, *::before, *::after { margin:0; padding:0; box-sizing:border-box; }
+
+    body {
+      font-family: 'DM Sans', system-ui, sans-serif;
+      background: #000;
+      color: var(--t1);
+      -webkit-print-color-adjust: exact;
+      print-color-adjust: exact;
+    }
+
+    @media screen {
+      body { padding: 32px 24px; display:flex; flex-direction:column; align-items:center; gap:24px; }
+    }
+
+    /* ── SLIDE SHELL ── */
+    .page {
+      position: relative;
+      width: var(--slide-w);
+      height: var(--slide-h);
+      overflow: hidden;
+      background:
+        radial-gradient(ellipse 65% 55% at 0% 50%,  rgba(155,14,20,0.30) 0%, transparent 58%),
+        radial-gradient(ellipse 45% 40% at 100% 50%, rgba(110,8,14,0.18) 0%, transparent 55%),
+        radial-gradient(ellipse 55% 30% at 50% -5%,  rgba(135,12,18,0.16) 0%, transparent 52%),
+        linear-gradient(160deg, #110303 0%, #070101 50%, #040101 100%);
+      flex-shrink: 0;
+    }
+    .page::before {
+      content: ''; position: absolute; inset: 0;
+      background: repeating-linear-gradient(135deg, rgba(255,255,255,0.010) 0px, rgba(255,255,255,0.010) 1px, transparent 1px, transparent 16px);
+      pointer-events: none; z-index: 0;
+    }
+    .page::after {
+      content: ''; position: absolute; top:0; left:0; right:0; height:3px;
+      background: linear-gradient(90deg, var(--red) 0%, var(--red) 35%, rgba(200,27,36,0.2) 70%, transparent 100%);
+      z-index: 3;
+    }
+    .page-inner {
+      position: relative; z-index: 2;
+      width: 100%; height: 100%;
+      padding: 44px 56px 56px;
+      display: flex; flex-direction: column;
+    }
+
+    @media print {
+      body { padding:0; background:#000; gap:0; align-items:stretch; }
+      .page { width:100vw; height:100vh; page-break-after:always; page-break-inside:avoid; }
+      .page:last-child { page-break-after:auto; }
+    }
+
+    /* ── SLIDE HEADER ── */
+    .slide-header {
+      display: flex; align-items: center; justify-content: space-between;
+      margin-bottom: 28px; flex-shrink: 0;
+    }
+    .sec-banner {
+      display: inline-flex; align-items: center; gap: 10px;
+      padding: 6px 18px; border-radius: 999px;
+      background: var(--red-soft); border: 1px solid var(--red-border);
+      font-family: 'DM Sans', system-ui, sans-serif; font-size: 10px; font-weight: 700;
+      text-transform: uppercase; letter-spacing: 0.18em;
+      color: rgba(200,100,110,0.90);
+    }
+    .sec-banner::before {
+      content: ''; display: block; flex-shrink: 0;
+      width: 5px; height: 5px; border-radius: 50%;
+      background: var(--red); box-shadow: 0 0 8px var(--red-glow);
+    }
+    .slide-num {
+      font-family: 'DM Sans', system-ui, sans-serif; font-size: 11px; font-weight: 700;
+      color: var(--t4); letter-spacing: 0.08em;
+    }
+
+    /* ── TAP WATERMARK ── */
+    .tap-watermark {
+      position: absolute; top: 14px; left: 22px;
+      display: flex; align-items: center; gap: 7px; z-index: 4;
+    }
+    .tap-watermark-icon {
+      width: 24px; height: 24px;
+      background: var(--red-soft); border: 1px solid var(--red-border);
+      display: flex; align-items: center; justify-content: center;
+    }
+    .tap-watermark-icon svg { width:12px; height:12px; }
+    .tap-watermark-icon img {
+      width: 22px; height: 22px; object-fit: contain; display: block;
+    }
+    .tap-watermark-text {
+      font-family: 'DM Sans', system-ui, sans-serif; font-size: 9px; font-weight: 800;
+      letter-spacing: 0.18em; color: var(--t4); text-transform: uppercase;
+    }
+
+    /* ── SECTION TITLE ── */
+    .sec-title {
+      display: flex; align-items: center; gap: 10px;
+      font-size: 10px; font-weight: 600; text-transform: uppercase;
+      letter-spacing: 0.20em; color: var(--t4); margin-bottom: 14px;
+    }
+    .sec-title::before {
+      content: ''; display: block; flex-shrink: 0;
+      width: 3px; height: 14px; border-radius: 999px;
+      background: var(--red); box-shadow: 0 0 8px var(--red-glow);
+    }
+
+    /* ── FOOTER ── */
+    .page-footer {
+      position: absolute; bottom: 18px; left: 56px; right: 56px;
+      display: flex; align-items: center; gap: 6px;
+      font-size: 10px; color: var(--t5);
+      border-top: 1px solid var(--border); padding-top: 10px;
+    }
+    .page-footer .tap {
+      font-family: 'DM Sans', system-ui, sans-serif; font-weight: 800; font-size: 10px;
+      color: rgba(200,27,36,0.45); letter-spacing: 0.06em;
+    }
+
+    /* ════════════════ PAGE 1 ════════════════ */
+    .hero-layout {
+      flex: 1; display: grid; grid-template-columns: 200px 1fr 250px;
+      gap: 36px; align-items: start; min-height: 0;
+    }
+    .hero-left { display: flex; flex-direction: column; align-items: flex-start; gap: 16px; }
+    .hero-photo {
+      width: 130px; height: 130px; border-radius: 18px;
+      border: 1.5px solid rgba(255,255,255,0.16); background: var(--surface2);
+      overflow: hidden; display: flex; align-items: center; justify-content: center;
+      box-shadow: 0 0 0 5px rgba(255,255,255,0.03), 0 20px 50px rgba(0,0,0,0.55);
+      position: relative;
+    }
+    .hero-photo::after {
+      content:''; position:absolute; inset:0; border-radius:inherit;
+      box-shadow: 0 0 32px rgba(180,20,30,0.25) inset; pointer-events:none;
+    }
+    .hero-photo img { width:100%; height:100%; object-fit:cover; object-position:center top; }
+    .hero-photo .fallback {
+      font-family: 'DM Sans', system-ui, sans-serif; font-size:36px; font-weight:700; color:rgba(200,27,36,0.5);
+    }
+    .hero-badge {
+      display: inline-flex; align-items: center; gap: 7px;
+      padding: 5px 14px; border-radius: 999px;
+      background: var(--red-soft); border: 1px solid var(--red-border);
+    }
+    .hero-badge-dot { width:6px; height:6px; border-radius:50%; background:var(--red); box-shadow:0 0 8px var(--red-glow); }
+    .hero-badge span { font-size:9px; font-weight:700; text-transform:uppercase; letter-spacing:0.16em; color:rgba(200,80,90,0.90); }
+    .hero-center { padding-top: 4px; }
+    .hero-name {
+      font-family: 'DM Sans', system-ui, sans-serif; font-size: 40px; font-weight: 800;
+      letter-spacing: -0.035em; line-height: 1.05; color: var(--white); margin-bottom: 8px;
+    }
+    .hero-jobtitle { font-size:15px; color:var(--t3); font-weight:400; margin-bottom:18px; }
+    .hero-meta-row { display:flex; flex-wrap:wrap; gap:6px 20px; margin-bottom:18px; }
+    .hero-meta-item { display:flex; align-items:center; gap:6px; font-size:12px; color:var(--t3); }
+    .hero-meta-item svg { opacity:0.45; flex-shrink:0; }
+    .about-text { font-size:13px; color:var(--t3); font-weight:300; line-height:1.75; }
+    .about-text p { margin-bottom:8px; }
+    .about-text p:last-child { margin-bottom:0; }
+    .hero-right { display:flex; flex-direction:column; gap:10px; }
+    .info-card {
+      padding:16px 18px; border-radius:14px;
+      background:var(--surface); border:1px solid var(--border);
+    }
+    .info-card h4 {
+      font-size:9px; font-weight:600; text-transform:uppercase;
+      letter-spacing:0.16em; color:var(--t4); margin-bottom:8px;
+    }
+    .info-card p { font-size:12px; color:var(--t2); line-height:1.5; }
+    .info-card ul { list-style:none; padding:0; }
+    .info-card ul li {
+      font-size:11px; color:var(--t3); padding-left:12px;
+      position:relative; margin-bottom:4px; line-height:1.5;
+    }
+    .info-card ul li::before {
+      content:''; position:absolute; left:0; top:6px;
+      width:4px; height:4px; border-radius:50%; background:rgba(200,27,36,0.45);
+    }
+    .contact-row {
+      display:flex; gap:8px; flex-wrap:wrap;
+      margin-top:16px; padding-top:14px; border-top:1px solid var(--border);
+    }
+    .contact-btn {
+      display:flex; align-items:center; gap:6px; padding:7px 14px;
+      border-radius:10px; background:var(--surface); border:1px solid var(--border);
+      font-size:11px; color:var(--t3); text-decoration:none; font-family:inherit;
+    }
+    .contact-btn svg { width:13px; height:13px; opacity:0.5; }
+    .contact-cta {
+      padding:7px 18px; border-radius:10px; background:var(--red); border:none;
+      color:#fff; font-size:11px; font-weight:600; text-decoration:none;
+      font-family:inherit; margin-left:auto; box-shadow:0 4px 18px rgba(200,27,36,0.4);
+    }
+
+    /* ════════════════ PAGE 2 ════════════════ */
+    .skill-grid {
+      flex:1; display:grid; grid-template-columns:repeat(3,1fr);
+      gap:12px; align-content:start; overflow:hidden; min-height:0;
+    }
+    .skill-card { padding:18px 20px; border-radius:14px; background:var(--surface); border:1px solid var(--border); }
+    .skill-card-head { display:flex; align-items:center; gap:10px; margin-bottom:12px; }
+    .skill-card-num {
+      width:28px; height:28px; border-radius:8px;
+      background:var(--red-soft); border:1px solid var(--red-border);
+      display:flex; align-items:center; justify-content:center;
+      font-family: 'DM Sans', system-ui, sans-serif; font-size:10px; font-weight:800;
+      color:rgba(200,80,90,0.85); flex-shrink:0;
+    }
+    .skill-card-name { font-family: 'DM Sans', system-ui, sans-serif; font-size:11px; font-weight:700; color:var(--t2); text-transform:uppercase; letter-spacing:0.06em; }
+    .skill-dots { display:flex; gap:4px; margin-bottom:8px; }
+    .skill-dots span { flex:1; height:4px; border-radius:999px; background:rgba(255,255,255,0.07); max-width:28px; }
+    .skill-dots span.filled { background:linear-gradient(90deg,var(--red-dim),var(--red)); box-shadow:0 0 6px rgba(200,27,36,0.4); }
+    .skill-status { font-size:10px; color:var(--t4); margin-bottom:10px; }
+    .skill-tags { display:flex; flex-wrap:wrap; gap:5px; }
+    .skill-tag { padding:3px 9px; border-radius:6px; background:rgba(255,255,255,0.04); border:1px solid rgba(255,255,255,0.07); font-size:10.5px; color:var(--t3); }
+
+    /* ════════════════ PAGE 3 ════════════════ */
+    .soft-grid {
+      flex:1; display:grid; grid-template-columns:repeat(3,1fr);
+      gap:12px; align-content:start; overflow:hidden; min-height:0;
+    }
+    .soft-card { padding:18px 20px; border-radius:14px; background:var(--surface); border:1px solid var(--border); }
+    .soft-name { font-family: 'DM Sans', system-ui, sans-serif; font-size:11px; font-weight:700; text-transform:uppercase; letter-spacing:0.06em; color:var(--t2); margin-bottom:10px; }
+    .soft-meta { font-size:11px; color:var(--t4); margin-bottom:4px; line-height:1.5; }
+    .soft-meta b { color:var(--t3); font-weight:600; }
+    .soft-example { font-size:11.5px; color:var(--t3); font-weight:300; line-height:1.65; margin-top:10px; padding-top:10px; border-top:1px solid var(--border); }
+
+    /* ════════════════ PAGE 4 ════════════════ */
+    .proj-grid {
+      flex:1; display:grid; grid-template-columns:repeat(2,1fr);
+      gap:12px; align-content:start; overflow:hidden; min-height:0;
+    }
+    .proj-card { padding:20px 22px; border-radius:14px; background:var(--surface); border:1px solid var(--border); }
+    .proj-title { font-family: 'DM Sans', system-ui, sans-serif; font-size:12px; font-weight:700; color:var(--t2); text-transform:uppercase; letter-spacing:0.06em; margin-bottom:14px; padding-bottom:10px; border-bottom:1px solid var(--border); }
+    .proj-detail { font-size:12px; color:var(--t3); margin-bottom:6px; line-height:1.6; }
+    .proj-detail b { color:var(--t2); font-weight:600; }
+    .proj-link {
+      display:inline-flex; align-items:center; justify-content:center;
+      margin-top:14px; padding:8px 16px; border-radius:999px;
+      background:var(--red-soft); border:1px solid var(--red-border);
+      color:rgba(255,190,190,0.95); font-size:11px; font-weight:600;
+      text-decoration:none; cursor:pointer; transition:background .2s,border-color .2s,transform .15s;
+    }
+    .proj-link:hover { background:rgba(200,27,36,0.22); border-color:rgba(200,27,36,0.45); transform:translateY(-1px); }
+    /* Grille 2×2 : jusqu’à 4 projets par slide */
+    .proj-grid--quad { gap: 10px; }
+    .proj-grid--quad .proj-card { padding: 14px 16px; }
+    .proj-grid--quad .proj-title { margin-bottom: 10px; padding-bottom: 8px; font-size: 11px; }
+    .proj-grid--quad .proj-detail { font-size: 10.5px; margin-bottom: 4px; line-height: 1.45; }
+    .proj-grid--quad .proj-link { margin-top: 10px; padding: 6px 12px; font-size: 10px; }
+
+    /* ════════════════ PAGE 5 ════════════════ */
+    .exp-list { flex:1; display:flex; flex-direction:column; gap:10px; overflow:hidden; min-height:0; }
+    .exp-card { padding:18px 22px; border-radius:14px; background:var(--surface); border:1px solid var(--border); display:flex; gap:16px; }
+    .exp-num {
+      width:34px; height:34px; border-radius:10px; flex-shrink:0;
+      background:var(--red-soft); border:1px solid var(--red-border);
+      display:flex; align-items:center; justify-content:center;
+      font-family: 'DM Sans', system-ui, sans-serif; font-size:12px; font-weight:800; color:rgba(200,80,90,0.80);
+    }
+    .exp-body { flex:1; min-width:0; }
+    .exp-role { font-family: 'DM Sans', system-ui, sans-serif; font-size:14px; font-weight:700; color:var(--t1); margin-bottom:3px; letter-spacing:-0.01em; }
+    .exp-company { font-size:11.5px; color:var(--t3); margin-bottom:2px; }
+    .exp-period { font-size:10.5px; color:var(--t4); }
+    .exp-tasks { list-style:none; padding:0; margin-top:8px; }
+    .exp-tasks li { font-size:11.5px; color:var(--t3); font-weight:300; padding-left:14px; position:relative; margin-bottom:3px; line-height:1.55; }
+    .exp-tasks li::before { content:''; position:absolute; left:0; top:6px; width:5px; height:5px; border-radius:50%; background:rgba(200,27,36,0.35); }
+    .exp-list--max3 { gap: 8px; }
+    .exp-list--max3 .exp-card { padding: 14px 18px; }
+    .exp-list--max3 .exp-role { font-size: 13px; }
+    .exp-list--max3 .exp-tasks li { font-size: 11px; margin-bottom: 2px; }
+
+    /* ════════════════ PAGE 6 ════════════════ */
+    .learn-grid { flex:1; display:grid; grid-template-columns:1fr 1fr; gap:20px; min-height:0; }
+    .learn-block { padding:22px 24px; border-radius:14px; background:var(--surface); border:1px solid var(--border); }
+    .learn-label { font-family: 'DM Sans', system-ui, sans-serif; font-size:10px; font-weight:700; text-transform:uppercase; letter-spacing:0.14em; color:var(--t3); margin-bottom:16px; }
+    .learn-item { font-size:12.5px; color:var(--t3); margin-bottom:10px; padding-left:14px; position:relative; line-height:1.6; }
+    .learn-item::before { content:''; position:absolute; left:0; top:7px; width:4px; height:4px; border-radius:50%; background:rgba(200,27,36,0.45); }
+
+    /* ════════════════ PAGE 7 ════════════════ */
+    .score-layout { flex:1; display:grid; grid-template-columns:300px 1fr; gap:40px; align-items:start; min-height:0; }
+    .score-hero { display:flex; flex-direction:column; align-items:center; gap:20px; padding:28px 24px; border-radius:20px; background:var(--surface); border:1px solid var(--border); text-align:center; }
+    .score-ring { width:130px; height:130px; position:relative; flex-shrink:0; }
+    .score-ring svg { width:100%; height:100%; transform:rotate(-90deg); }
+    .score-ring .bg { fill:none; stroke:rgba(255,255,255,0.07); stroke-width:7; }
+    .score-ring .fg { fill:none; stroke:var(--red); stroke-width:7; stroke-linecap:round; filter:drop-shadow(0 0 6px rgba(200,27,36,0.6)); }
+    .score-val { position:absolute; inset:0; display:flex; flex-direction:column; align-items:center; justify-content:center; }
+    .score-val .n { font-family: 'DM Sans', system-ui, sans-serif; font-size:38px; font-weight:800; color:var(--white); letter-spacing:-0.03em; line-height:1; }
+    .score-val .l { font-size:10px; color:var(--t4); letter-spacing:0.08em; margin-top:2px; }
+    .score-txt h3 { font-family: 'DM Sans', system-ui, sans-serif; font-size:15px; font-weight:700; color:var(--t1); margin-bottom:6px; }
+    .score-txt p { font-size:12px; color:var(--t3); font-weight:300; line-height:1.65; }
+    .dim-grid { display:grid; grid-template-columns:repeat(2,1fr); gap:10px; }
+    .dim-card { padding:14px 16px; border-radius:12px; background:var(--surface); border:1px solid var(--border); }
+    .dim-label { font-size:11px; color:var(--t3); margin-bottom:8px; }
+    .dim-bar { height:5px; background:rgba(255,255,255,0.07); border-radius:999px; overflow:hidden; margin-bottom:6px; }
+    .dim-fill { height:100%; background:linear-gradient(90deg,var(--red-dim),var(--red)); border-radius:999px; box-shadow:0 0 8px rgba(200,27,36,0.4); }
+    .dim-pct { font-family: 'DM Sans', system-ui, sans-serif; font-size:16px; font-weight:800; color:rgba(220,80,90,0.85); }
+    .dim-desc { font-size:10px; color:var(--t4); margin-top:4px; line-height:1.4; }
+
+  </style>
+</head>
+<body>
+
+<!-- ══════════════════════════════════════════════════════
+     SLIDE 1 — HERO + ABOUT + CONTACT
+══════════════════════════════════════════════════════ -->
+<div class="page">
+  <div class="tap-watermark">
+    <div class="tap-watermark-icon">
+      <img src="1 (1).jpg" alt="TAP Logo" width="35" height="35" />
+    </div>
+    <span class="tap-watermark-text">Talent Acceleration Platform</span>
+  </div>
+
+  <div class="page-inner">
+    <div class="slide-header">
+      <div class="sec-banner">Portfolio Professionnel</div>
+      <div class="slide-num">01 / 07</div>
+    </div>
+
+    <div class="hero-layout">
+
+      <!-- LEFT -->
+      <div class="hero-left">
+        <div class="hero-photo">
+          <img src="https://ujswvbuluelkbkqngrzk.supabase.co/storage/v1/object/sign/tap_files/candidates/Data%20science/112/image.png?token=eyJraWQiOiJzdG9yYWdlLXVybC1zaWduaW5nLWtleV8zOWM3NGI3ZS00OTRlLTRiZTEtOTZjNy05NmYyMzQ1NzdkZGQiLCJhbGciOiJIUzI1NiJ9.eyJ1cmwiOiJ0YXBfZmlsZXMvY2FuZGlkYXRlcy9EYXRhIHNjaWVuY2UvMTEyL2ltYWdlLnBuZyIsImlhdCI6MTc3NDcwNzUxNSwiZXhwIjoxNzkwMjU5NTE1fQ.4GEvr60kmcXqMlySie-9x6kH1OwxWDSG9s_K8zs9aqs"
+            alt="Yassine El Amri"
+            onerror="this.style.display='none'; this.nextElementSibling.style.display='flex';" />
+          <div class="fallback" style="display:none">YA</div>
+        </div>
+        <div class="hero-badge">
+          <div class="hero-badge-dot"></div>
+          <span>Portfolio</span>
+        </div>
+      </div>
+
+      <!-- CENTER -->
+      <div class="hero-center">
+        <h1 class="hero-name">EL AMRI<br>YASSINE</h1>
+        <div class="hero-jobtitle">Chargé de Communication &amp; Marketing</div>
+
+        <div class="hero-meta-row">
+          <div class="hero-meta-item">
+            <svg width="13" height="13" viewBox="0 0 16 16" fill="none"><circle cx="8" cy="8" r="6" stroke="currentColor" stroke-width="1.3"/><path d="M8 4v4l2.5 2.5" stroke="currentColor" stroke-width="1.3" stroke-linecap="round"/></svg>
+            Disponible immédiatement
+          </div>
+          <div class="hero-meta-item">
+            <svg width="13" height="13" viewBox="0 0 16 16" fill="none"><rect x="2" y="4" width="12" height="9" rx="1.5" stroke="currentColor" stroke-width="1.3"/><path d="M5 4V3a1 1 0 011-1h4a1 1 0 011 1v1" stroke="currentColor" stroke-width="1.3"/></svg>
+            CDI, CDD
+          </div>
+          <div class="hero-meta-item">
+            <svg width="13" height="13" viewBox="0 0 16 16" fill="none"><path d="M8 1C5.24 1 3 3.24 3 6c0 3.94 5 9 5 9s5-5.06 5-9c0-2.76-2.24-5-5-5z" stroke="currentColor" stroke-width="1.3"/><circle cx="8" cy="6" r="1.5" stroke="currentColor" stroke-width="1.3"/></svg>
+            AnyCity
+          </div>
+        </div>
+
+        <div class="sec-title">À propos</div>
+        <div class="about-text">
+          <p>Chargé de Communication &amp; Marketing déterminé, spécialisé dans le lancement de marques et la gestion de campagnes digitales. Autonome et rigoureux, il apporte une valeur moteur grâce à son approche proactive.</p>
+          <p>Fort d'une expérience en community management, création de contenu et coordination événementielle, il sait allier créativité et analyse de performance pour atteindre les objectifs fixés.</p>
+        </div>
+
+        <div class="contact-row">
+          <a href="tel:123-456-7890" class="contact-btn">
+            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M22 16.92v3a2 2 0 01-2.18 2 19.79 19.79 0 01-8.63-3.07 19.5 19.5 0 01-6-6A19.79 19.79 0 014.12 2.18 2 2 0 016.11 2h3a2 2 0 012 1.72c.127.96.361 1.903.7 2.81a2 2 0 01-.45 2.11L8.09 9.91a16 16 0 006 6l1.27-1.27a2 2 0 012.11-.45c.907.339 1.85.573 2.81.7A2 2 0 0122 16.92z"/></svg>
+            123-456-7890
+          </a>
+          <a href="mailto:hello@reallygreatsite.com" class="contact-btn">
+            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><rect x="2" y="4" width="20" height="16" rx="2"/><path d="M22 7l-10 7L2 7"/></svg>
+            hello@reallygreatsite.com
+          </a>
+          <a href="#" class="contact-btn">
+            <svg viewBox="0 0 24 24" fill="currentColor" width="13" height="13"><path d="M20.447 20.452h-3.554v-5.569c0-1.328-.027-3.037-1.852-3.037-1.853 0-2.136 1.445-2.136 2.939v5.667H9.351V9h3.414v1.561h.046c.477-.9 1.637-1.85 3.37-1.85 3.601 0 4.267 2.37 4.267 5.455v6.286zM5.337 7.433a2.062 2.062 0 01-2.063-2.065 2.064 2.064 0 112.063 2.065zm1.782 13.019H3.555V9h3.564v11.452zM22.225 0H1.771C.792 0 0 .774 0 1.729v20.542C0 23.227.792 24 1.771 24h20.451C23.2 24 24 23.227 24 22.271V1.729C24 .774 23.2 0 22.222 0h.003z"/></svg>
+            LinkedIn
+          </a>
+          <a href="#" class="contact-btn">
+            <svg viewBox="0 0 24 24" fill="currentColor" width="13" height="13"><path d="M12 0C5.374 0 0 5.373 0 12c0 5.302 3.438 9.8 8.207 11.387.599.111.793-.261.793-.577v-2.234c-3.338.726-4.033-1.416-4.033-1.416-.546-1.387-1.333-1.756-1.333-1.756-1.089-.745.083-.729.083-.729 1.205.084 1.839 1.237 1.839 1.237 1.07 1.834 2.807 1.304 3.492.997.107-.775.418-1.305.762-1.604-2.665-.305-5.467-1.334-5.467-5.931 0-1.311.469-2.381 1.236-3.221-.124-.303-.535-1.524.117-3.176 0 0 1.008-.322 3.301 1.23A11.509 11.509 0 0112 5.803c1.02.005 2.047.138 3.006.404 2.291-1.552 3.297-1.23 3.297-1.23.653 1.653.242 2.874.118 3.176.77.84 1.235 1.911 1.235 3.221 0 4.609-2.807 5.624-5.479 5.921.43.372.823 1.102.823 2.222v3.293c0 .319.192.694.801.576C20.566 21.797 24 17.3 24 12c0-6.627-5.373-12-12-12z"/></svg>
+            GitHub
+          </a>
+          <a href="mailto:hello@reallygreatsite.com" class="contact-cta">Contactez-moi</a>
+        </div>
+      </div>
+
+      <!-- RIGHT -->
+      <div class="hero-right">
+        <div class="info-card">
+          <h4>Poste cible</h4>
+          <p>Chargé de Communication &amp; Marketing</p>
+          <p style="font-size:11px;color:var(--t4);margin-top:5px">Type : CDI, CDD</p>
+          <p style="font-size:11px;color:var(--t4)">Disponibilité : Immédiate</p>
+        </div>
+        <div class="info-card">
+          <h4>Points clés</h4>
+          <ul>
+            <li>Lancement de marques digitales</li>
+            <li>Gestion de campagnes réseaux sociaux</li>
+            <li>Approche orientée résultats &amp; data</li>
+            <li>Autonomie et rigueur professionnelle</li>
+          </ul>
+        </div>
+      </div>
+
+    </div>
+
+    <div class="page-footer">
+      <span>Généré par</span><span class="tap">TAP</span><span>—</span><span>Talent Acceleration Platform</span>
+    </div>
+  </div>
+</div>
+
+
+<!-- ══════════════════════════════════════════════════════
+     SLIDE 2 — TECHNICAL SKILLS
+══════════════════════════════════════════════════════ -->
+<div class="page">
+  <div class="tap-watermark">
+    <div class="tap-watermark-icon">
+      <img src="1 (1).jpg" alt="TAP Logo" width="35" height="35" />
+    </div>
+    <span class="tap-watermark-text">Talent Acceleration Platform</span>
+  </div>
+  <div class="page-inner">
+    <div class="slide-header">
+      <div class="sec-banner">Carte des Compétences — Techniques</div>
+      <div class="slide-num">02 / 07</div>
+    </div>
+    <div class="skill-grid">
+
+      <div class="skill-card">
+        <div class="skill-card-head"><div class="skill-card-num">#1</div><div class="skill-card-name">Communication Digitale</div></div>
+        <div class="skill-dots"><span class="filled"></span><span class="filled"></span><span class="filled"></span><span class="filled"></span><span></span></div>
+        <div class="skill-status">Statut : Actif</div>
+        <div class="skill-tags">
+          <span class="skill-tag">Réseaux sociaux</span><span class="skill-tag">Community Mgmt</span><span class="skill-tag">Contenu digital</span><span class="skill-tag">Stratégie éditoriale</span>
+        </div>
+      </div>
+
+      <div class="skill-card">
+        <div class="skill-card-head"><div class="skill-card-num">#2</div><div class="skill-card-name">Marketing Stratégique</div></div>
+        <div class="skill-dots"><span class="filled"></span><span class="filled"></span><span class="filled"></span><span class="filled"></span><span></span></div>
+        <div class="skill-status">Statut : Actif</div>
+        <div class="skill-tags">
+          <span class="skill-tag">Brand strategy</span><span class="skill-tag">Lancement marque</span><span class="skill-tag">Analyse perf.</span><span class="skill-tag">Planification</span>
+        </div>
+      </div>
+
+      <div class="skill-card">
+        <div class="skill-card-head"><div class="skill-card-num">#3</div><div class="skill-card-name">Gestion de Projet</div></div>
+        <div class="skill-dots"><span class="filled"></span><span class="filled"></span><span class="filled"></span><span></span><span></span></div>
+        <div class="skill-status">Statut : Actif</div>
+        <div class="skill-tags">
+          <span class="skill-tag">Coordination</span><span class="skill-tag">Événementiel</span><span class="skill-tag">Suivi KPI</span><span class="skill-tag">Reporting</span>
+        </div>
+      </div>
+
+      <div class="skill-card">
+        <div class="skill-card-head"><div class="skill-card-num">#4</div><div class="skill-card-name">Création Graphique</div></div>
+        <div class="skill-dots"><span class="filled"></span><span class="filled"></span><span class="filled"></span><span></span><span></span></div>
+        <div class="skill-status">Statut : Actif</div>
+        <div class="skill-tags">
+          <span class="skill-tag">Suite Adobe</span><span class="skill-tag">Supports print</span><span class="skill-tag">Identité visuelle</span>
+        </div>
+      </div>
+
+      <div class="skill-card">
+        <div class="skill-card-head"><div class="skill-card-num">#5</div><div class="skill-card-name">Relations Publiques</div></div>
+        <div class="skill-dots"><span class="filled"></span><span class="filled"></span><span class="filled"></span><span></span><span></span></div>
+        <div class="skill-status">Statut : Actif</div>
+        <div class="skill-tags">
+          <span class="skill-tag">RP</span><span class="skill-tag">Communication interne</span><span class="skill-tag">Partenariats</span>
+        </div>
+      </div>
+
+      <div class="skill-card">
+        <div class="skill-card-head"><div class="skill-card-num">#6</div><div class="skill-card-name">Support Marketing</div></div>
+        <div class="skill-dots"><span class="filled"></span><span class="filled"></span><span class="filled"></span><span class="filled"></span><span></span></div>
+        <div class="skill-status">Statut : Actif</div>
+        <div class="skill-tags">
+          <span class="skill-tag">Recrutement</span><span class="skill-tag">Visites lycées</span><span class="skill-tag">Campagnes</span>
+        </div>
+      </div>
+
+    </div>
+    <div class="page-footer"><span>Généré par</span><span class="tap">TAP</span><span>—</span><span>Talent Acceleration Platform</span></div>
+  </div>
+</div>
+
+
+<!-- ══════════════════════════════════════════════════════
+     SLIDE 3 — SOFT SKILLS
+══════════════════════════════════════════════════════ -->
+<div class="page">
+  <div class="tap-watermark">
+    <div class="tap-watermark-icon">
+      <img src="1 (1).jpg" alt="TAP Logo" width="35" height="35" />
+    </div>
+    <span class="tap-watermark-text">Talent Acceleration Platform</span>
+  </div>
+  <div class="page-inner">
+    <div class="slide-header">
+      <div class="sec-banner">Carte des Compétences Comportementales</div>
+      <div class="slide-num">03 / 07</div>
+    </div>
+    <div class="soft-grid">
+
+      <div class="soft-card">
+        <div class="soft-name">Travail en équipe</div>
+        <div class="skill-dots" style="margin-bottom:10px"><span class="filled"></span><span class="filled"></span><span class="filled"></span><span class="filled"></span><span class="filled"></span></div>
+        <div class="soft-meta"><b>Score :</b> 5/5</div>
+        <div class="soft-meta"><b>Preuve :</b> Collaboration terrain</div>
+        <div class="soft-example"><b>Exemple :</b> Coordination de visites lycées avec plusieurs équipes en simultané, assurant une communication fluide entre recruteurs et étudiants.</div>
+      </div>
+
+      <div class="soft-card">
+        <div class="soft-name">Autonomie</div>
+        <div class="skill-dots" style="margin-bottom:10px"><span class="filled"></span><span class="filled"></span><span class="filled"></span><span class="filled"></span><span></span></div>
+        <div class="soft-meta"><b>Score :</b> 4/5</div>
+        <div class="soft-meta"><b>Preuve :</b> Gestion de projet solo</div>
+        <div class="soft-example"><b>Exemple :</b> Lancement complet d'une nouvelle marque digitale de A à Z, de la stratégie à l'exécution, sans supervision directe.</div>
+      </div>
+
+      <div class="soft-card">
+        <div class="soft-name">Organisation</div>
+        <div class="skill-dots" style="margin-bottom:10px"><span class="filled"></span><span class="filled"></span><span class="filled"></span><span class="filled"></span><span></span></div>
+        <div class="soft-meta"><b>Score :</b> 4/5</div>
+        <div class="soft-meta"><b>Preuve :</b> Gestion multi-projets</div>
+        <div class="soft-example"><b>Exemple :</b> Planification éditoriale sur 3 canaux simultanément, avec calendrier de publication, briefs créatifs et suivi de performance.</div>
+      </div>
+
+      <div class="soft-card">
+        <div class="soft-name">Créativité</div>
+        <div class="skill-dots" style="margin-bottom:10px"><span class="filled"></span><span class="filled"></span><span class="filled"></span><span class="filled"></span><span></span></div>
+        <div class="soft-meta"><b>Score :</b> 4/5</div>
+        <div class="soft-meta"><b>Preuve :</b> Création de supports</div>
+        <div class="soft-example"><b>Exemple :</b> Conception d'affiches et supports print pour une campagne événementielle, de l'idéation à la production finale.</div>
+      </div>
+
+      <div class="soft-card">
+        <div class="soft-name">Rigueur</div>
+        <div class="skill-dots" style="margin-bottom:10px"><span class="filled"></span><span class="filled"></span><span class="filled"></span><span class="filled"></span><span></span></div>
+        <div class="soft-meta"><b>Score :</b> 4/5</div>
+        <div class="soft-meta"><b>Preuve :</b> Livrables dans les délais</div>
+        <div class="soft-example"><b>Exemple :</b> Analyse régulière des performances des comptes sociaux avec rapport hebdomadaire et ajustements stratégiques.</div>
+      </div>
+
+      <div class="soft-card">
+        <div class="soft-name">Adaptabilité</div>
+        <div class="skill-dots" style="margin-bottom:10px"><span class="filled"></span><span class="filled"></span><span class="filled"></span><span></span><span></span></div>
+        <div class="soft-meta"><b>Score :</b> 3/5</div>
+        <div class="soft-meta"><b>Preuve :</b> Environnements variés</div>
+        <div class="soft-example"><b>Exemple :</b> Passage rapide d'un contexte startup à un environnement institutionnel, avec adaptation des codes de communication.</div>
+      </div>
+
+    </div>
+    <div class="page-footer"><span>Généré par</span><span class="tap">TAP</span><span>—</span><span>Talent Acceleration Platform</span></div>
+  </div>
+</div>
+
+
+<!-- ══════════════════════════════════════════════════════
+     SLIDE 4 — PROJECTS
+══════════════════════════════════════════════════════ -->
+<div class="page">
+  <div class="tap-watermark">
+    <div class="tap-watermark-icon">
+      <img src="1 (1).jpg" alt="TAP Logo" width="35" height="35" />
+    </div>
+    <span class="tap-watermark-text">Talent Acceleration Platform</span>
+  </div>
+  <div class="page-inner">
+    <div class="slide-header">
+      <div class="sec-banner">Preuve de Travail — Projets</div>
+      <div class="slide-num">04 / 07</div>
+    </div>
+    <!-- Max 4 projets (grille 2×2) -->
+    <div class="proj-grid proj-grid--quad">
+
+      <div class="proj-card">
+        <div class="proj-title">Lancement de Marque Digitale</div>
+        <div class="proj-detail"><b>Contexte :</b> Entreprise cherchant à établir sa présence sur les réseaux sociaux dès sa création.</div>
+        <div class="proj-detail"><b>Problème :</b> Absence totale de notoriété digitale et de stratégie de contenu définie.</div>
+        <div class="proj-detail"><b>Solution :</b> Définition d'une charte éditoriale, création de templates visuels et mise en place d'un calendrier de publication mensuel.</div>
+        <div class="proj-detail"><b>Technologies :</b> Instagram, LinkedIn, Planification éditoriale, Suite Adobe</div>
+        <div class="proj-detail"><b>Rôle :</b> Chef de projet communication — conception &amp; exécution</div>
+        <div class="proj-detail"><b>Résultat :</b> +2 000 abonnés en 3 mois, taux d'engagement supérieur à la moyenne sectorielle.</div>
+        <div class="proj-detail"><b>Soft skills :</b> Autonomie, créativité, organisation</div>
+        <a href="#" class="proj-link" target="_blank" rel="noopener noreferrer">Voir le projet</a>
+      </div>
+
+      <div class="proj-card">
+        <div class="proj-title">Campagne Événementielle</div>
+        <div class="proj-detail"><b>Contexte :</b> Organisation d'un événement promotionnel pour valoriser une offre de formation.</div>
+        <div class="proj-detail"><b>Problème :</b> Faible visibilité de l'événement et manque de supports de communication adaptés.</div>
+        <div class="proj-detail"><b>Solution :</b> Conception d'une identité visuelle événementielle et production de supports print &amp; digitaux cohérents.</div>
+        <div class="proj-detail"><b>Technologies :</b> Adobe Illustrator, Adobe InDesign, Canva Pro</div>
+        <div class="proj-detail"><b>Rôle :</b> Designer &amp; coordinateur communication événementielle</div>
+        <div class="proj-detail"><b>Résultat :</b> Supports livrés dans les délais, retours positifs des équipes et des participants.</div>
+        <div class="proj-detail"><b>Soft skills :</b> Rigueur, travail en équipe, créativité</div>
+        <a href="#" class="proj-link" target="_blank" rel="noopener noreferrer">Voir le projet</a>
+      </div>
+
+      <div class="proj-card">
+        <div class="proj-title">Refonte Landing &amp; Parcours Conversion</div>
+        <div class="proj-detail"><b>Contexte :</b> Site vitrine avec fort taux de rebond et peu d'inscriptions démo.</div>
+        <div class="proj-detail"><b>Problème :</b> Message peu clair, CTA faibles, temps de chargement élevé sur mobile.</div>
+        <div class="proj-detail"><b>Solution :</b> Nouvelle structure de page, A/B tests, tracking analytics et optimisation mobile-first.</div>
+        <div class="proj-detail"><b>Technologies :</b> Figma, Google Analytics, CMS, HTML/CSS</div>
+        <div class="proj-detail"><b>Rôle :</b> Pilotage UX — wireframes, recette, suivi des KPIs</div>
+        <div class="proj-detail"><b>Résultat :</b> Baisse du rebond, hausse des demandes de contact qualifiées.</div>
+        <div class="proj-detail"><b>Soft skills :</b> Analyse, priorisation, communication client</div>
+        <a href="#" class="proj-link" target="_blank" rel="noopener noreferrer">Voir le projet</a>
+      </div>
+
+      <div class="proj-card">
+        <div class="proj-title">Reporting Performance &amp; Veille</div>
+        <div class="proj-detail"><b>Contexte :</b> Besoin de tableaux de bord mensuels pour la direction et les équipes terrain.</div>
+        <div class="proj-detail"><b>Problème :</b> Données éclatées (réseaux, CRM, fichiers) et rapports manuels chronophages.</div>
+        <div class="proj-detail"><b>Solution :</b> Modèle de reporting unifié, automatisation partielle et veille concurrentielle ciblée.</div>
+        <div class="proj-detail"><b>Technologies :</b> Excel / Sheets, outils BI, flux RSS, présentation</div>
+        <div class="proj-detail"><b>Rôle :</b> Conception indicateurs — synthèse et restitution</div>
+        <div class="proj-detail"><b>Résultat :</b> Décisions plus rapides, alignement des équipes sur les mêmes chiffres.</div>
+        <div class="proj-detail"><b>Soft skills :</b> Rigueur, synthèse, esprit critique</div>
+        <a href="#" class="proj-link" target="_blank" rel="noopener noreferrer">Voir le projet</a>
+      </div>
+
+    </div>
+    <div class="page-footer"><span>Généré par</span><span class="tap">TAP</span><span>—</span><span>Talent Acceleration Platform</span></div>
+  </div>
+</div>
+
+
+<!-- ══════════════════════════════════════════════════════
+     SLIDE 5 — EXPERIENCE TIMELINE
+══════════════════════════════════════════════════════ -->
+<div class="page">
+  <div class="tap-watermark">
+    <div class="tap-watermark-icon">
+      <img src="1 (1).jpg" alt="TAP Logo" width="35" height="35" />
+    </div>
+    <span class="tap-watermark-text">Talent Acceleration Platform</span>
+  </div>
+  <div class="page-inner">
+    <div class="slide-header">
+      <div class="sec-banner">Chronologie des Expériences</div>
+      <div class="slide-num">05 / 07</div>
+    </div>
+    <!-- Max 3 expériences sur cette slide -->
+    <div class="exp-list exp-list--max3">
+
+      <div class="exp-card">
+        <div class="exp-num">1</div>
+        <div class="exp-body">
+          <div class="exp-role">CHARGÉ DE COMMUNICATION &amp; MARKETING</div>
+          <div class="exp-company">Entreprise 1 — AnyCity</div>
+          <div class="exp-period">Période : 12/12/2024 – Présent</div>
+          <ul class="exp-tasks">
+            <li>Lancement de marque et gestion stratégique des réseaux sociaux.</li>
+            <li>Community management et relations publiques.</li>
+            <li>Création de supports print et digitaux pour les campagnes marketing.</li>
+          </ul>
+        </div>
+      </div>
+
+      <div class="exp-card">
+        <div class="exp-num">2</div>
+        <div class="exp-body">
+          <div class="exp-role">ASSISTANT MARKETING SERVICE SUPPORT</div>
+          <div class="exp-company">Entreprise 2 — AnyCity</div>
+          <div class="exp-period">Période : 12/12/2024 – Présent</div>
+          <ul class="exp-tasks">
+            <li>Organisation et coordination de visites lycées pour les équipes de recrutement.</li>
+            <li>Support opérationnel aux chargés de recrutement (logistique, communication).</li>
+            <li>Coordination événementielle et suivi administratif des campagnes.</li>
+          </ul>
+        </div>
+      </div>
+
+      <div class="exp-card">
+        <div class="exp-num">3</div>
+        <div class="exp-body">
+          <div class="exp-role">STAGIAIRE COMMUNICATION DIGITALE</div>
+          <div class="exp-company">Agence 3 — AnyCity</div>
+          <div class="exp-period">Période : 01/06/2023 – 31/08/2023</div>
+          <ul class="exp-tasks">
+            <li>Rédaction de posts et briefs créatifs sous supervision.</li>
+            <li>Veille tendances réseaux et reporting hebdomadaire simple.</li>
+          </ul>
+        </div>
+      </div>
+
+    </div>
+    <div class="page-footer"><span>Généré par</span><span class="tap">TAP</span><span>—</span><span>Talent Acceleration Platform</span></div>
+  </div>
+</div>
+
+
+<!-- ══════════════════════════════════════════════════════
+     SLIDE 6 — LEARNING & GROWTH
+══════════════════════════════════════════════════════ -->
+<div class="page">
+  <div class="tap-watermark">
+    <div class="tap-watermark-icon">
+      <img src="1 (1).jpg" alt="TAP Logo" width="35" height="35" />
+    </div>
+    <span class="tap-watermark-text">Talent Acceleration Platform</span>
+  </div>
+  <div class="page-inner">
+    <div class="slide-header">
+      <div class="sec-banner">Apprentissage &amp; Croissance</div>
+      <div class="slide-num">06 / 07</div>
+    </div>
+    <div class="learn-grid">
+
+      <div class="learn-block">
+        <div class="learn-label">Formations</div>
+        <div class="learn-item">Masters spécialisé en technique — École Ingénieur — 2022</div>
+        <div class="learn-item">Licence commerce vente — École 1 — 2020</div>
+        <div class="learn-item">Formation Community Management avancé — OpenClassrooms — 2023</div>
+        <div class="learn-item">Formation Marketing Digital &amp; SEO — Google Digital Garage — 2022</div>
+      </div>
+
+      <div class="learn-block">
+        <div class="learn-label">Certifications</div>
+        <div class="learn-item">Google Analytics — Google — 2023</div>
+        <div class="learn-item">Meta Blueprint — Facebook / Instagram Ads — 2023</div>
+        <div class="learn-item">Certification Communication Digitale — HubSpot Academy — 2022</div>
+        <div class="learn-item">Adobe Certified Professional — Photoshop — 2021</div>
+      </div>
+
+    </div>
+
+    <!-- Langues -->
+    <div style="margin-top:20px;">
+      <div class="sec-title">Langues</div>
+      <div style="display:flex;gap:12px;flex-wrap:wrap;">
+        <div style="padding:8px 18px;border-radius:10px;background:var(--surface);border:1px solid var(--border);font-size:12px;color:var(--t2)"><b style="color:var(--t1)">Arabe</b> — Natif</div>
+        <div style="padding:8px 18px;border-radius:10px;background:var(--surface);border:1px solid var(--border);font-size:12px;color:var(--t2)"><b style="color:var(--t1)">Anglais</b> — Scolaire</div>
+        <div style="padding:8px 18px;border-radius:10px;background:var(--surface);border:1px solid var(--border);font-size:12px;color:var(--t2)"><b style="color:var(--t1)">Espagnol</b> — Scolaire</div>
+      </div>
+    </div>
+
+    <div class="page-footer"><span>Généré par</span><span class="tap">TAP</span><span>—</span><span>Talent Acceleration Platform</span></div>
+  </div>
+</div>
+
+
+<!-- ══════════════════════════════════════════════════════
+     SLIDE 7 — READINESS SCORE
+══════════════════════════════════════════════════════ -->
+<div class="page">
+  <div class="tap-watermark">
+    <div class="tap-watermark-icon">
+      <img src="1 (1).jpg" alt="TAP Logo" width="35" height="35" />
+    </div>
+    <span class="tap-watermark-text">Talent Acceleration Platform</span>
+  </div>
+  <div class="page-inner">
+    <div class="slide-header">
+      <div class="sec-banner">Score de Préparation</div>
+      <div class="slide-num">07 / 07</div>
+    </div>
+
+    <div class="score-layout">
+
+      <!-- Ring -->
+      <div class="score-hero">
+        <div class="score-ring">
+          <svg viewBox="0 0 90 90">
+            <circle class="bg" cx="45" cy="45" r="40"/>
+            <!-- 78/100 → dashoffset = 251 - (251 * 78/100) = 251 - 195.78 = 55.22 -->
+            <circle class="fg" cx="45" cy="45" r="40" stroke-dasharray="251" stroke-dashoffset="55"/>
+          </svg>
+          <div class="score-val">
+            <span class="n">78</span>
+            <span class="l">/ 100</span>
+          </div>
+        </div>
+        <div class="score-txt">
+          <h3>Score Global</h3>
+          <p>Score global qui reflète le niveau de préparation professionnelle pour un environnement entreprise.</p>
+        </div>
+      </div>
+
+      <!-- Dimensions -->
+      <div>
+        <div class="sec-title">Détails du score</div>
+        <div class="dim-grid">
+
+          <div class="dim-card">
+            <div class="dim-label">Hard Skills Fit</div>
+            <div class="dim-bar"><div class="dim-fill" style="width:75%"></div></div>
+            <div class="dim-pct">75 %</div>
+            <div class="dim-desc">Adéquation des compétences techniques avec le poste cible</div>
+          </div>
+
+          <div class="dim-card">
+            <div class="dim-label">Soft Skills</div>
+            <div class="dim-bar"><div class="dim-fill" style="width:82%"></div></div>
+            <div class="dim-pct">82 %</div>
+            <div class="dim-desc">Niveau de maturité comportementale et interpersonnelle</div>
+          </div>
+
+          <div class="dim-card">
+            <div class="dim-label">Expérience</div>
+            <div class="dim-bar"><div class="dim-fill" style="width:70%"></div></div>
+            <div class="dim-pct">70 %</div>
+            <div class="dim-desc">Pertinence et profondeur des expériences professionnelles</div>
+          </div>
+
+          <div class="dim-card">
+            <div class="dim-label">Formation</div>
+            <div class="dim-bar"><div class="dim-fill" style="width:80%"></div></div>
+            <div class="dim-pct">80 %</div>
+            <div class="dim-desc">Niveau d'études et certifications obtenues</div>
+          </div>
+
+          <div class="dim-card">
+            <div class="dim-label">Disponibilité</div>
+            <div class="dim-bar"><div class="dim-fill" style="width:95%"></div></div>
+            <div class="dim-pct">95 %</div>
+            <div class="dim-desc">Disponibilité immédiate et mobilité géographique</div>
+          </div>
+
+          <div class="dim-card">
+            <div class="dim-label">Langues</div>
+            <div class="dim-bar"><div class="dim-fill" style="width:65%"></div></div>
+            <div class="dim-pct">65 %</div>
+            <div class="dim-desc">Maîtrise des langues étrangères requises</div>
+          </div>
+
+        </div>
+
+        <div style="margin-top:16px;padding:14px 18px;background:var(--surface);border:1px solid var(--border);border-radius:12px">
+          <p style="font-size:12px;color:var(--t3);font-weight:300;line-height:1.6">Chaque dimension contribue au score final. Le score reflète une évaluation objective basée sur les informations fournies par le candidat.</p>
+        </div>
+      </div>
+
+    </div>
+
+    <div class="page-footer"><span>Généré par</span><span class="tap">TAP</span><span>—</span><span>Talent Acceleration Platform</span></div>
+  </div>
+</div>
+
+</body>
+</html>

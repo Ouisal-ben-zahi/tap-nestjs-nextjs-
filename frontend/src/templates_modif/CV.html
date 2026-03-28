@@ -1,0 +1,642 @@
+<!DOCTYPE html>
+<html lang="fr">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>CV - Yassine El Amri</title>
+  <link href="https://fonts.googleapis.com/css2?family=Syne:wght@400;600;700;800&family=DM+Sans:opsz,wght@9..40,300;9..40,400;9..40,500;9..40,600&display=swap" rel="stylesheet">
+  <style>
+    /* ─── PRINT SETUP ─── */
+    @page {
+      size: 21cm 29.7cm;
+      margin: 0;
+    }
+
+    /* ─── DESIGN TOKENS ─── */
+    :root {
+      --red:          #c0181f;
+      --red-light:    #e8282f;
+      --red-soft:     rgba(192, 24, 31, 0.08);
+      --red-border:   rgba(192, 24, 31, 0.20);
+
+      --ink-900:      #111111;
+      --ink-700:      #2e2e2e;
+      --ink-500:      #5a5a5a;
+      --ink-400:      #7a7a7a;
+      --ink-200:      #d4d4d4;
+      --ink-100:      #eeeeee;
+      --ink-50:       #f7f7f7;
+
+      --radius-sm:    4px;
+      --radius-md:    7px;
+      --radius-pill:  999px;
+
+      --space-1:  4px;
+      --space-2:  8px;
+      --space-3:  12px;
+      --space-4:  16px;
+      --space-5:  20px;
+      --space-6:  24px;
+    }
+
+    /* ─── BASE ─── */
+    *, *::before, *::after { margin: 0; padding: 0; box-sizing: border-box; }
+
+    body {
+      font-family: 'DM Sans', system-ui, sans-serif;
+      font-size: 8.4pt;
+      line-height: 1.55;
+      color: var(--ink-700);
+      background: #fff;
+      width: 21cm;
+      min-height: 29.7cm;
+      max-width: 21cm;
+      margin: 0 auto;
+      padding: 12mm 14mm 10mm;
+    }
+
+    @media print {
+      body {
+        width: 21cm;
+        min-height: 29.7cm;
+        padding: 12mm 14mm 10mm;
+        -webkit-print-color-adjust: exact;
+        print-color-adjust: exact;
+      }
+    }
+
+    /* ═══════════════════════════════════
+       HEADER
+    ═══════════════════════════════════ */
+    .cv-header {
+      display: grid;
+      grid-template-columns: auto 1fr;
+      gap: var(--space-5);
+      align-items: center;
+      padding-bottom: var(--space-4);
+      border-bottom: 1.5px solid var(--ink-100);
+      margin-bottom: var(--space-4);
+    }
+
+    /* Photo */
+    .cv-photo {
+      width: 88px;
+      height: 88px;
+      border-radius: 14px;
+      overflow: hidden;
+      flex-shrink: 0;
+      border: 1.5px solid var(--ink-200);
+      background: var(--ink-50);
+      display: flex;
+      align-items: center;
+      justify-content: center;
+    }
+    .cv-photo img {
+      width: 100%; height: 100%;
+      object-fit: cover;
+      object-position: center top;
+    }
+    .cv-photo-initials {
+      font-family: 'Syne', sans-serif;
+      font-size: 22pt;
+      font-weight: 700;
+      color: var(--ink-400);
+    }
+
+    /* Header right */
+    .cv-header-right {
+      display: flex;
+      flex-direction: column;
+      gap: var(--space-1);
+      justify-content: center;
+    }
+
+    .cv-name {
+      font-family: "DM Sans", system-ui, sans-serif;
+      font-size: 20pt;
+      font-weight: 800;
+      letter-spacing: -0.03em;
+      color: var(--ink-900);
+      line-height: 1.05;
+    }
+
+    /* Title badge — soft pill instead of harsh block */
+    .cv-title-badge {
+      display: inline-flex;
+      align-items: center;
+      gap: var(--space-2);
+      padding: 3px 12px;
+      border-radius: var(--radius-pill);
+      background: var(--red-soft);
+      border: 1px solid var(--red-border);
+      width: fit-content;
+      margin-top: 2px;
+    }
+    .cv-title-badge::before {
+      content: '';
+      display: block;
+      width: 5px; height: 5px;
+      border-radius: 50%;
+      background: var(--red);
+      flex-shrink: 0;
+    }
+    .cv-title-badge span {
+      font-size: 8pt;
+      font-weight: 600;
+      color: var(--red);
+      text-transform: uppercase;
+      letter-spacing: 0.06em;
+    }
+
+    /* Contact row */
+    .cv-contact-row {
+      display: flex;
+      gap: var(--space-4);
+      flex-wrap: wrap;
+      margin-top: var(--space-2);
+      align-items: center;
+    }
+    .cv-contact-item {
+      display: flex;
+      align-items: center;
+      gap: 5px;
+      font-size: 7.8pt;
+      color: var(--ink-500);
+    }
+    .cv-contact-icon {
+      width: 16px; height: 16px;
+      border-radius: var(--radius-sm);
+      background: var(--red-soft);
+      border: 1px solid var(--red-border);
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      flex-shrink: 0;
+    }
+    .cv-contact-icon svg {
+      width: 9px; height: 9px;
+      stroke: var(--red); fill: none; stroke-width: 2;
+    }
+
+    /* ═══════════════════════════════════
+       SECTION HEADERS — minimal & elegant
+    ═══════════════════════════════════ */
+    .cv-section {
+      margin-bottom: var(--space-4);
+    }
+
+    .cv-section-header {
+      display: flex;
+      align-items: center;
+      gap: var(--space-2);
+      margin-bottom: var(--space-3);
+      padding-bottom: 5px;
+      border-bottom: 1px solid var(--ink-100);
+    }
+
+    /* Thin red accent bar on left */
+    .cv-section-bar {
+      width: 3px;
+      height: 13px;
+      border-radius: 999px;
+      background: var(--red);
+      flex-shrink: 0;
+    }
+
+    .cv-section-title {
+      font-family: 'Syne', sans-serif;
+      font-size: 8.2pt;
+      font-weight: 700;
+      text-transform: uppercase;
+      letter-spacing: 0.14em;
+      color: var(--ink-900);
+    }
+
+    /* ═══════════════════════════════════
+       PROFIL
+    ═══════════════════════════════════ */
+    .cv-profil {
+      font-size: 8.2pt;
+      color: var(--ink-500);
+      font-weight: 400;
+      line-height: 1.65;
+      text-align: justify;
+      padding: 0 2px;
+    }
+
+    /* ═══════════════════════════════════
+       GRID LAYOUTS
+    ═══════════════════════════════════ */
+    .cv-two-cols {
+      display: grid;
+      grid-template-columns: 1fr 1fr;
+      gap: var(--space-3) var(--space-6);
+    }
+    .cv-exp-grid {
+      display: grid;
+      grid-template-columns: 1fr 1fr;
+      gap: var(--space-3) var(--space-6);
+    }
+    .cv-section-divider {
+      display: grid;
+      grid-template-columns: 1fr 1fr;
+      gap: var(--space-3) var(--space-6);
+    }
+
+    /* ═══════════════════════════════════
+       EXPERIENCE BLOCKS
+    ═══════════════════════════════════ */
+    .cv-exp-item {
+      margin-bottom: var(--space-3);
+    }
+
+    /* Job title strip — softer than solid red block */
+    .cv-exp-title-bar {
+      display: inline-flex;
+      align-items: center;
+      gap: 6px;
+      padding: 3px 10px 3px 8px;
+      border-radius: var(--radius-md);
+      background: var(--red-soft);
+      border: 1px solid var(--red-border);
+      margin-bottom: var(--space-1);
+    }
+    .cv-exp-title-bar::before {
+      content: '';
+      display: block;
+      width: 4px; height: 4px;
+      border-radius: 50%;
+      background: var(--red);
+      flex-shrink: 0;
+    }
+    .cv-exp-title-bar span {
+      font-weight: 600;
+      font-size: 8pt;
+      color: var(--red);
+      letter-spacing: 0.01em;
+    }
+
+    .cv-exp-meta {
+      font-size: 7.8pt;
+      color: var(--ink-400);
+      font-weight: 400;
+      margin-bottom: 2px;
+      padding-left: 2px;
+    }
+
+    .cv-exp-list {
+      list-style: none;
+      padding-left: 0;
+      font-size: 7.8pt;
+      font-weight: 400;
+      margin-top: var(--space-1);
+    }
+    .cv-exp-list li {
+      position: relative;
+      padding-left: 11px;
+      margin-bottom: 2px;
+      color: var(--ink-500);
+      line-height: 1.55;
+    }
+    .cv-exp-list li::before {
+      content: '';
+      position: absolute;
+      left: 0; top: 6px;
+      width: 4px; height: 4px;
+      border-radius: 50%;
+      background: var(--red-border);
+      border: 1px solid var(--red);
+    }
+
+    /* ═══════════════════════════════════
+       PROJECTS
+    ═══════════════════════════════════ */
+    .cv-project-name {
+      font-family: 'Syne', sans-serif;
+      font-weight: 700;
+      font-size: 8pt;
+      color: var(--ink-800);
+      margin-bottom: var(--space-1);
+      letter-spacing: -0.01em;
+    }
+    .cv-project-meta {
+      font-size: 7.8pt;
+      font-weight: 400;
+      color: var(--ink-500);
+      margin-bottom: 2px;
+      line-height: 1.5;
+    }
+    .cv-project-meta strong {
+      font-weight: 500;
+      color: var(--ink-700);
+    }
+
+    /* ═══════════════════════════════════
+       SKILLS — pill tags instead of bullets
+    ═══════════════════════════════════ */
+    .cv-skills-tags {
+      display: flex;
+      flex-wrap: wrap;
+      gap: 4px 0;
+      align-items: center;
+      padding: 2px 0;
+    }
+    .cv-skill-tag {
+      font-size: 7.8pt;
+      font-weight: 400;
+      color: var(--ink-600);
+      letter-spacing: 0.01em;
+      white-space: nowrap;
+    }
+    /* dot separator between tags */
+    .cv-skill-tag + .cv-skill-tag::before {
+      content: '·';
+      margin-right: 6px;
+      color: var(--ink-300);
+      font-weight: 300;
+    }
+
+    /* ═══════════════════════════════════
+       EDUCATION
+    ═══════════════════════════════════ */
+    .cv-edu-item {
+      margin-bottom: var(--space-3);
+      padding-left: var(--space-2);
+      border-left: 2px solid var(--ink-100);
+    }
+    .cv-edu-diploma {
+      font-weight: 600;
+      font-size: 8pt;
+      color: var(--ink-700);
+      margin-bottom: 1px;
+    }
+    .cv-edu-meta {
+      font-size: 7.8pt;
+      color: var(--ink-400);
+      font-weight: 400;
+    }
+    .cv-edu-year {
+      font-size: 7.5pt;
+      color: var(--red);
+      font-weight: 500;
+      margin-top: 1px;
+    }
+
+    /* ═══════════════════════════════════
+       LANGUAGES
+    ═══════════════════════════════════ */
+    .cv-langues {
+      display: flex;
+      flex-wrap: wrap;
+      gap: 4px 20px;
+    }
+    .cv-langue-item {
+      display: inline-flex;
+      align-items: center;
+      gap: 4px;
+      font-size: 7.8pt;
+      color: var(--ink-500);
+    }
+    .cv-langue-item span {
+      font-weight: 600;
+      color: var(--ink-700);
+    }
+
+    /* ═══════════════════════════════════
+       SOFT SKILLS — refined chips
+    ═══════════════════════════════════ */
+    .cv-soft-list {
+      list-style: none;
+      padding: 0;
+      display: flex;
+      flex-wrap: wrap;
+      gap: 5px;
+    }
+    .cv-soft-list li {
+      padding: 3px 11px;
+      border-radius: var(--radius-pill);
+      font-size: 7.8pt;
+      font-weight: 500;
+      background: var(--red-soft);
+      border: 1px solid var(--red-border);
+      color: var(--red);
+      letter-spacing: 0.01em;
+    }
+
+    /* ═══════════════════════════════════
+       FOOTER
+    ═══════════════════════════════════ */
+    .cv-footer {
+      margin-top: auto;
+      padding-top: var(--space-2);
+      border-top: 1px solid var(--ink-100);
+      display: flex;
+      align-items: center;
+      gap: 5px;
+      font-size: 7pt;
+      color: var(--ink-400);
+    }
+    .cv-footer .tap {
+      color: var(--red);
+      font-weight: 700;
+      font-family: 'Syne', sans-serif;
+      letter-spacing: 0.05em;
+    }
+  </style>
+</head>
+<body>
+
+  <!-- ══ HEADER ══ -->
+  <header class="cv-header">
+    <div class="cv-photo">
+      <img
+        src="https://ujswvbuluelkbkqngrzk.supabase.co/storage/v1/object/sign/tap_files/candidates/Data%20science/112/image.png?token=eyJraWQiOiJzdG9yYWdlLXVybC1zaWduaW5nLWtleV8zOWM3NGI3ZS00OTRlLTRiZTEtOTZjNy05NmYyMzQ1NzdkZGQiLCJhbGciOiJIUzI1NiJ9.eyJ1cmwiOiJ0YXBfZmlsZXMvY2FuZGlkYXRlcy9EYXRhIHNjaWVuY2UvMTEyL2ltYWdlLnBuZyIsImlhdCI6MTc3NDcwNzUxNSwiZXhwIjoxNzkwMjU5NTE1fQ.4GEvr60kmcXqMlySie-9x6kH1OwxWDSG9s_K8zs9aqs"
+        alt="Yassine El Amri"
+        onerror="this.style.display='none'; this.parentElement.querySelector('.cv-photo-initials').style.display='block';"
+      />
+      <div class="cv-photo-initials" style="display:none;">YA</div>
+    </div>
+
+    <div class="cv-header-right">
+      <div class="cv-name">Yassine El Amri</div>
+
+      <div class="cv-title-badge">
+        <span>Chargé de Communication &amp; Marketing</span>
+      </div>
+
+      <div class="cv-contact-row">
+        <div class="cv-contact-item">
+          <div class="cv-contact-icon">
+            <svg viewBox="0 0 24 24"><path d="M12 2C8.13 2 5 5.13 5 9c0 5.25 7 13 7 13s7-7.75 7-13c0-3.87-3.13-7-7-7z"/><circle cx="12" cy="9" r="2.5"/></svg>
+          </div>
+          AnyCity, Non spécifié
+        </div>
+        <div class="cv-contact-item">
+          <div class="cv-contact-icon">
+            <svg viewBox="0 0 24 24"><path d="M22 16.92v3a2 2 0 01-2.18 2 19.79 19.79 0 01-8.63-3.07 19.5 19.5 0 01-6-6A19.79 19.79 0 014.12 2.18 2 2 0 016.11 2h3a2 2 0 012 1.72c.127.96.361 1.903.7 2.81a2 2 0 01-.45 2.11L8.09 9.91a16 16 0 006 6l1.27-1.27a2 2 0 012.11-.45c.907.339 1.85.573 2.81.7A2 2 0 0122 16.92z"/></svg>
+          </div>
+          123-456-7890
+        </div>
+        <div class="cv-contact-item">
+          <div class="cv-contact-icon">
+            <svg viewBox="0 0 24 24"><rect x="2" y="4" width="20" height="16" rx="2"/><path d="M22 7l-10 7L2 7"/></svg>
+          </div>
+          hello@reallygreatsite.com
+        </div>
+      </div>
+    </div>
+  </header>
+
+  <!-- ══ PROFIL ══ -->
+  <section class="cv-section">
+    <div class="cv-section-header">
+      <div class="cv-section-bar"></div>
+      <div class="cv-section-title">Profil</div>
+    </div>
+    <div class="cv-profil">
+      Chargé de Communication &amp; Marketing déterminé, spécialisé dans le lancement de marques et la gestion de campagnes digitales. Autonome et rigoureux, il apporte une valeur moteur grâce à son approche proactive.
+    </div>
+  </section>
+
+  <!-- ══ EXPÉRIENCE ══ -->
+  <section class="cv-section">
+    <div class="cv-section-header">
+      <div class="cv-section-bar"></div>
+      <div class="cv-section-title">Expérience professionnelle</div>
+    </div>
+    <div class="cv-exp-grid">
+
+      <div class="cv-exp-item">
+        <div class="cv-exp-title-bar">
+          <span>Chargé de Communication &amp; Marketing</span>
+        </div>
+        <div class="cv-exp-meta">Entreprise 1</div>
+        <div class="cv-exp-meta">12/12/2024 – Présent</div>
+        <ul class="cv-exp-list">
+          <li>Lancement de marque et gestion réseaux sociaux.</li>
+          <li>Community management et RP.</li>
+          <li>Création supports print et digitaux.</li>
+        </ul>
+      </div>
+
+      <div class="cv-exp-item">
+        <div class="cv-exp-title-bar">
+          <span>Assistant Marketing Service Support</span>
+        </div>
+        <div class="cv-exp-meta">Entreprise 2</div>
+        <div class="cv-exp-meta">12/12/2024 – Présent</div>
+        <ul class="cv-exp-list">
+          <li>Organisation de visites lycées.</li>
+          <li>Support aux chargés de recrutement.</li>
+          <li>Coordination événementielle.</li>
+        </ul>
+      </div>
+
+    </div>
+  </section>
+
+  <!-- ══ PROJETS ══ -->
+  <section class="cv-section">
+    <div class="cv-section-header">
+      <div class="cv-section-bar"></div>
+      <div class="cv-section-title">Projets sélectionnés</div>
+    </div>
+    <div class="cv-two-cols">
+
+      <div class="cv-exp-item">
+        <div class="cv-project-name">Lancement de Marque Digitale</div>
+        <div class="cv-project-meta">Stratégie de communication digitale</div>
+        <div class="cv-project-meta"><strong>Stack :</strong> Instagram, LinkedIn, Planification éditoriale</div>
+        <div class="cv-project-meta"><strong>Résultat :</strong> Élaboration et exécution de la stratégie de communication digitale, incluant la gestion des comptes sociaux et l'analyse des performances.</div>
+      </div>
+
+      <div class="cv-exp-item">
+        <div class="cv-project-name">Campagne Événementielle</div>
+        <div class="cv-project-meta">Organisation d'un événement promotionnel</div>
+        <div class="cv-project-meta"><strong>Stack :</strong> Création d'affiches, supports print</div>
+        <div class="cv-project-meta"><strong>Résultat :</strong> Conception et réalisation d'affiches et de supports promotionnels pour un événement, en assurant la cohérence visuelle de la marque.</div>
+      </div>
+
+    </div>
+  </section>
+
+  <!-- ══ COMPÉTENCES + FORMATION ══ -->
+  <div class="cv-section-divider">
+
+    <section class="cv-section">
+      <div class="cv-section-header">
+        <div class="cv-section-bar"></div>
+        <div class="cv-section-title">Compétences</div>
+      </div>
+      <div class="cv-skills-tags">
+        <span class="cv-skill-tag">Marketing Digital</span>
+        <span class="cv-skill-tag">Communication</span>
+        <span class="cv-skill-tag">Réseaux Sociaux</span>
+        <span class="cv-skill-tag">Relations Publiques</span>
+        <span class="cv-skill-tag">Gestion de Projet</span>
+        <span class="cv-skill-tag">Support Marketing</span>
+        <span class="cv-skill-tag">Création de contenu</span>
+        <span class="cv-skill-tag">Planification éditoriale</span>
+      </div>
+    </section>
+
+    <section class="cv-section">
+      <div class="cv-section-header">
+        <div class="cv-section-bar"></div>
+        <div class="cv-section-title">Formation</div>
+      </div>
+      <div style="padding-left:2px; display:flex; flex-direction:column; gap:10px;">
+        <div class="cv-edu-item">
+          <div class="cv-edu-diploma">Licence commerce vente</div>
+          <div class="cv-edu-meta">École 1</div>
+          <div class="cv-edu-year">2019 – 2020</div>
+        </div>
+        <div class="cv-edu-item">
+          <div class="cv-edu-diploma">Masters spécialisé en technique</div>
+          <div class="cv-edu-meta">École ingénieur</div>
+          <div class="cv-edu-year">2020 – 2022</div>
+        </div>
+      </div>
+    </section>
+
+  </div>
+
+  <!-- ══ LANGUES + SOFT SKILLS ══ -->
+  <div class="cv-section-divider">
+
+    <section class="cv-section">
+      <div class="cv-section-header">
+        <div class="cv-section-bar"></div>
+        <div class="cv-section-title">Langues</div>
+      </div>
+      <div class="cv-langues">
+        <div class="cv-langue-item"><span>Arabe</span> — Natif</div>
+        <div class="cv-langue-item"><span>Anglais</span> — Scolaire</div>
+        <div class="cv-langue-item"><span>Espagnol</span> — Scolaire</div>
+      </div>
+    </section>
+
+    <section class="cv-section">
+      <div class="cv-section-header">
+        <div class="cv-section-bar"></div>
+        <div class="cv-section-title">Soft Skills</div>
+      </div>
+      <ul class="cv-soft-list">
+        <li>Travail en équipe</li>
+        <li>Autonomie</li>
+        <li>Organisation</li>
+      </ul>
+    </section>
+
+  </div>
+
+  <!-- ══ FOOTER ══ -->
+  <div class="cv-footer">
+    <span>Généré par</span>
+    <span class="tap">TAP</span>
+    <span>—</span>
+    <span>Talent Acceleration Platform</span>
+  </div>
+
+</body>
+</html>
