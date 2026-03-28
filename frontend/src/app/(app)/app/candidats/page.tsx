@@ -447,13 +447,13 @@ export default function CandidatsPage() {
                               }
                             >
                               <div className="w-12 h-12 rounded-full overflow-hidden border border-white/[0.10] bg-white/[0.04] flex items-center justify-center shrink-0">
-                                <span
+                          <span
                                   className={`text-[13px] font-semibold ${
                                     isLight ? "text-black/60" : "text-white/70"
                                   }`}
-                                >
+                          >
                                   {getInitials(candidateName)}
-                                </span>
+                          </span>
                               </div>
                               <p
                                 className={`text-[14px] font-semibold leading-snug line-clamp-2 ${
@@ -463,7 +463,7 @@ export default function CandidatsPage() {
                                 {candidateName}
                               </p>
                             </button>
-                          </div>
+                        </div>
 
                           <p
                             className={`text-[12px] leading-snug line-clamp-2 border-t pt-3 ${
@@ -474,85 +474,85 @@ export default function CandidatsPage() {
                           </p>
 
                           <div className="mt-auto flex justify-end items-center gap-2 pt-2">
-                            <button
-                              type="button"
+                          <button
+                            type="button"
                               title={validateTitle}
                               aria-label={validateTitle}
-                              onClick={async () => {
-                                if (!selectedJobId || !candidateId) return;
-                                const isRegenerate =
-                                  alreadyValidated || Boolean(existingInterviewPdfUrl);
+                            onClick={async () => {
+                              if (!selectedJobId || !candidateId) return;
+                              const isRegenerate =
+                                alreadyValidated || Boolean(existingInterviewPdfUrl);
 
-                                if (!isRegenerate) {
-                                  validateCandidateMutation.mutate(
-                                    { jobId: selectedJobId, candidateId },
-                                    {
-                                      onSuccess: (data) =>
-                                        openModalFromValidateResponse(data, candidateName, candidateId),
-                                    },
+                              if (!isRegenerate) {
+                                validateCandidateMutation.mutate(
+                                  { jobId: selectedJobId, candidateId },
+                                  {
+                                    onSuccess: (data) =>
+                                      openModalFromValidateResponse(data, candidateName, candidateId),
+                                  },
+                                );
+                                return;
+                              }
+
+                              setRegeneratingCandidateId(candidateId);
+                              try {
+                                let last: ValidateCandidateResponse | null = null;
+                                for (let attempt = 0; attempt < REGENERATE_MAX_ATTEMPTS; attempt++) {
+                                  if (attempt > 0) {
+                                    await new Promise((r) => setTimeout(r, REGENERATE_DELAY_MS));
+                                  }
+                                  last = await recruteurService.validateCandidateForJob(
+                                    selectedJobId,
+                                    candidateId,
                                   );
-                                  return;
-                                }
-
-                                setRegeneratingCandidateId(candidateId);
-                                try {
-                                  let last: ValidateCandidateResponse | null = null;
-                                  for (let attempt = 0; attempt < REGENERATE_MAX_ATTEMPTS; attempt++) {
-                                    if (attempt > 0) {
-                                      await new Promise((r) => setTimeout(r, REGENERATE_DELAY_MS));
-                                    }
-                                    last = await recruteurService.validateCandidateForJob(
-                                      selectedJobId,
-                                      candidateId,
-                                    );
-                                    const qs = normalizeInterviewQuestions(last);
-                                    if (qs.length > 0) {
-                                      await queryClient.invalidateQueries({
-                                        queryKey: ["recruteur", "matched-candidates", selectedJobId],
-                                      });
-                                      await queryClient.invalidateQueries({
-                                        queryKey: ["recruteur", "overview"],
-                                      });
-                                      openModalFromValidateResponse(last, candidateName, candidateId);
-                                      addToast({
-                                        message: `${qs.length} question(s) d’entretien générée(s).`,
-                                        type: "success",
-                                      });
-                                      return;
-                                    }
-                                  }
-                                  await queryClient.invalidateQueries({
-                                    queryKey: ["recruteur", "matched-candidates", selectedJobId],
-                                  });
-                                  await queryClient.invalidateQueries({
-                                    queryKey: ["recruteur", "overview"],
-                                  });
-                                  if (last) {
-                                    openModalFromValidateResponse(last, candidateName, candidateId, {
-                                      emptyNoticeOverride:
-                                        "Après plusieurs tentatives automatiques, aucune question n’a été reçue. Utilisez « Générer le PDF (questions IA) » dans la modale ou réessayez plus tard.",
+                                  const qs = normalizeInterviewQuestions(last);
+                                  if (qs.length > 0) {
+                                    await queryClient.invalidateQueries({
+                                      queryKey: ["recruteur", "matched-candidates", selectedJobId],
                                     });
+                                    await queryClient.invalidateQueries({
+                                      queryKey: ["recruteur", "overview"],
+                                    });
+                                    openModalFromValidateResponse(last, candidateName, candidateId);
                                     addToast({
-                                      message:
-                                        "Aucune question reçue après plusieurs tentatives. Voir la modale.",
-                                      type: "error",
+                                      message: `${qs.length} question(s) d’entretien générée(s).`,
+                                      type: "success",
                                     });
+                                    return;
                                   }
-                                } catch {
+                                }
+                                await queryClient.invalidateQueries({
+                                  queryKey: ["recruteur", "matched-candidates", selectedJobId],
+                                });
+                                await queryClient.invalidateQueries({
+                                  queryKey: ["recruteur", "overview"],
+                                });
+                                if (last) {
+                                  openModalFromValidateResponse(last, candidateName, candidateId, {
+                                    emptyNoticeOverride:
+                                      "Après plusieurs tentatives automatiques, aucune question n’a été reçue. Utilisez « Générer le PDF (questions IA) » dans la modale ou réessayez plus tard.",
+                                  });
                                   addToast({
-                                    message: "Impossible de régénérer les questions pour le moment.",
+                                    message:
+                                      "Aucune question reçue après plusieurs tentatives. Voir la modale.",
                                     type: "error",
                                   });
-                                } finally {
-                                  setRegeneratingCandidateId(null);
                                 }
-                              }}
-                              disabled={
-                                !selectedJobId ||
-                                !candidateId ||
-                                isValidatingThisCandidate ||
-                                regeneratingCandidateId === candidateId
+                              } catch {
+                                addToast({
+                                  message: "Impossible de régénérer les questions pour le moment.",
+                                  type: "error",
+                                });
+                              } finally {
+                                setRegeneratingCandidateId(null);
                               }
+                            }}
+                            disabled={
+                              !selectedJobId ||
+                              !candidateId ||
+                              isValidatingThisCandidate ||
+                              regeneratingCandidateId === candidateId
+                            }
                               className={`inline-flex size-10 shrink-0 items-center justify-center rounded-full border transition disabled:cursor-not-allowed disabled:opacity-45 ${
                                 isLight
                                   ? "border-emerald-500/40 bg-emerald-500/10 text-emerald-600 hover:bg-emerald-500/15"
@@ -564,23 +564,23 @@ export default function CandidatsPage() {
                               ) : (
                                 <CheckCircle2 size={16} strokeWidth={1.75} />
                               )}
-                            </button>
-                            {existingInterviewPdfUrl ? (
-                              <a
-                                href={existingInterviewPdfUrl}
-                                target="_blank"
-                                rel="noopener noreferrer"
+                          </button>
+                          {existingInterviewPdfUrl ? (
+                            <a
+                              href={existingInterviewPdfUrl}
+                              target="_blank"
+                              rel="noopener noreferrer"
                                 className={`inline-flex size-10 shrink-0 items-center justify-center rounded-full border transition ${
                                   isLight
                                     ? "border-black/10 bg-black/[0.03] text-black/70 hover:bg-black/[0.08]"
                                     : "border-white/[0.14] bg-white/[0.04] text-zinc-200 hover:bg-white/[0.08]"
                                 }`}
-                                title="Télécharger les questions d'entretien"
-                                aria-label="Télécharger les questions d'entretien"
-                              >
+                              title="Télécharger les questions d'entretien"
+                              aria-label="Télécharger les questions d'entretien"
+                            >
                                 <Download size={16} strokeWidth={1.75} />
-                              </a>
-                            ) : null}
+                            </a>
+                          ) : null}
                           </div>
                         </div>
                       </div>
@@ -594,7 +594,7 @@ export default function CandidatsPage() {
           <section aria-labelledby="candidatures-heading">
             <div className="flex flex-col gap-4 mb-5">
               <div className="flex items-center gap-3">
-                <div className="w-1 h-5 rounded-full bg-blue-500" />
+              <div className="w-1 h-5 rounded-full bg-blue-500" />
                 <h2 id="candidatures-heading" className="text-[13px] uppercase tracking-[2px] text-white/50 font-semibold">
                   Candidatures
                 </h2>
@@ -853,33 +853,33 @@ export default function CandidatsPage() {
 
                     <div className="relative z-[2] flex flex-col gap-3 flex-1 min-h-0 min-w-0">
                       <div className="flex items-start justify-between gap-3">
-                        <button
-                          type="button"
-                          disabled={!canOpenTalent}
-                          onClick={() => {
-                            if (!canOpenTalent) return;
-                            openTalentPanel({
-                              candidateId: cid,
-                              candidateName: app.candidateName?.trim() || "Candidat",
-                            });
-                          }}
+                    <button
+                      type="button"
+                      disabled={!canOpenTalent}
+                      onClick={() => {
+                        if (!canOpenTalent) return;
+                        openTalentPanel({
+                          candidateId: cid,
+                          candidateName: app.candidateName?.trim() || "Candidat",
+                        });
+                      }}
                           className="min-w-0 flex-1 flex items-center gap-3 text-left rounded-lg cursor-pointer disabled:cursor-not-allowed disabled:opacity-50 focus:outline-none focus-visible:ring-2 focus-visible:ring-tap-red/50"
-                          aria-label={app.candidateName ? `Voir le portfolio de ${app.candidateName}` : "Voir le portfolio du candidat"}
-                          title={app.candidateName ? `Voir le portfolio de ${app.candidateName}` : "Voir le portfolio du candidat"}
-                        >
+                      aria-label={app.candidateName ? `Voir le portfolio de ${app.candidateName}` : "Voir le portfolio du candidat"}
+                      title={app.candidateName ? `Voir le portfolio de ${app.candidateName}` : "Voir le portfolio du candidat"}
+                    >
                           <div className="w-12 h-12 rounded-full overflow-hidden border border-white/[0.10] bg-white/[0.04] flex items-center justify-center shrink-0">
-                            {app.candidateAvatarUrl ? (
-                              <img
-                                src={app.candidateAvatarUrl}
-                                alt={app.candidateName ?? "Avatar candidat"}
-                                className="w-full h-full object-cover"
-                              />
-                            ) : (
+                        {app.candidateAvatarUrl ? (
+                          <img
+                            src={app.candidateAvatarUrl}
+                            alt={app.candidateName ?? "Avatar candidat"}
+                            className="w-full h-full object-cover"
+                          />
+                        ) : (
                               <span className={`text-[13px] font-semibold ${isLight ? "text-black/60" : "text-white/70"}`}>
                                 {getInitials(app.candidateName)}
                               </span>
-                            )}
-                          </div>
+                        )}
+                      </div>
                           <p
                             className={`text-[14px] font-semibold leading-snug line-clamp-2 ${
                               isLight ? "text-black" : "text-white"
@@ -887,7 +887,7 @@ export default function CandidatsPage() {
                           >
                             {app.candidateName}
                           </p>
-                        </button>
+                    </button>
                         <p
                           className={`text-[11px] shrink-0 text-right leading-tight pt-0.5 max-w-[38%] ${
                             isLight ? "text-black/45" : "text-white/40"
@@ -1024,7 +1024,7 @@ export default function CandidatsPage() {
                       Suivant
                       <ChevronRight size={16} strokeWidth={2} />
                     </button>
-                  </div>
+          </div>
                 </div>
               ) : null}
               </>

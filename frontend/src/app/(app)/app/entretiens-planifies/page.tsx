@@ -375,7 +375,7 @@ export default function EntretiensPlanifiesPage() {
                 </label>
                 <div className="relative">
                   <Search
-                    className={`pointer-events-none absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 ${
+                    className={`pointer-events-none absolute left-3.5 top-1/2 z-[1] -translate-y-1/2 w-4 h-4 shrink-0 ${
                       isLight ? "text-black/35" : "text-white/35"
                     }`}
                     aria-hidden
@@ -386,7 +386,7 @@ export default function EntretiensPlanifiesPage() {
                     value={nameQuery}
                     onChange={(e) => setNameQuery(e.target.value)}
                     placeholder="Nom du candidat…"
-                    className={`input-premium w-full rounded-xl border pl-10 pr-3 py-2.5 text-[13px] outline-none transition focus:ring-2 focus:ring-tap-red/30 ${
+                    className={`input-premium w-full rounded-xl border !py-2.5 !pl-11 !pr-3 text-[13px] outline-none transition focus:ring-2 focus:ring-tap-red/30 [appearance:textfield] [&::-webkit-search-cancel-button]:appearance-none [&::-webkit-search-decoration]:appearance-none ${
                       isLight
                         ? "!bg-white !border-black/10 !text-black placeholder:!text-black/40"
                         : ""

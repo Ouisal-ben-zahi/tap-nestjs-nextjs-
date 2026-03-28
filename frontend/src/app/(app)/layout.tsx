@@ -1,14 +1,13 @@
 "use client";
 
 import { useEffect, useRef, useState } from "react";
-import Link from "next/link";
 import { usePathname } from "next/navigation";
 import AuthGuard from "@/components/app/AuthGuard";
 import HydrationGate from "@/components/app/HydrationGate";
 import AppSidebar from "@/components/app/AppSidebar";
 import RecruiterTalentCardSidebar from "@/components/app/RecruiterTalentCardSidebar";
 import { useRecruiterTalentPanelStore } from "@/stores/recruiter-talent-panel";
-import { Menu, ArrowUpRight, X } from "lucide-react";
+import { Menu, X } from "lucide-react";
 
 export default function AppLayout({ children }: { children: React.ReactNode }) {
   const [sidebarOpen, setSidebarOpen] = useState(false);
@@ -87,32 +86,6 @@ export default function AppLayout({ children }: { children: React.ReactNode }) {
             >
               <Menu size={18} />
             </button>
-
-            {/* Header fixe du dashboard (comme avant) */}
-            <div className="fixed top-0 left-0 right-0 z-30">
-              <div
-                className={`flex items-center justify-between px-3 py-2 sm:px-6 sm:py-3 ${sidebarLeftPaddingClass} bg-transparent`}
-              >
-                {/* Left: (vide) */}
-                <div />
-
-                {/* Right: Retour au site */}
-                <div className="flex items-center gap-3">
-                  <Link
-                    href="/"
-                    className="btn-primary btn-sm gap-2 w-auto !py-1.5 !px-3 text-[12px]"
-                    aria-label="Retour au site"
-                  >
-                    <span className="hidden sm:inline">Retour au site</span>
-                    <ArrowUpRight size={14} />
-                  </Link>
-                </div>
-              </div>
-            </div>
-
-            {/* Avatar/menu profil retirés : la sidebar contient maintenant l'avatar + email/role */}
-            {/* Espace sous la barre fixe (margin-bottom visuel) */}
-            <div className="h-[64px] mb-6 sm:mb-8" />
 
             {children}
           </main>

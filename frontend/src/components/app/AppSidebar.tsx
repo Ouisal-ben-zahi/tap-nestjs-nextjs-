@@ -15,14 +15,14 @@ import {
   X,
   Briefcase,
   Search,
-  UserCheck,
-  LayoutList,
+  Sparkles,
   LogOut,
   Settings,
   ClipboardList,
-  Mic,
+  Video,
   Megaphone,
-  Calendar,
+  CalendarCheck,
+  Home,
 } from "lucide-react";
 
 const candidatNavItems = [
@@ -31,7 +31,7 @@ const candidatNavItems = [
   { href: "/app/scoring", label: "Évaluation", icon: BarChart3 },
   { href: "/app/matching", label: "Offres IA", icon: Briefcase },
   { href: "/app/formation", label: "Formation", icon: GraduationCap },
-  { href: "/app/entretien", label: "Entretien IA", icon: Mic },
+  { href: "/app/entretien", label: "Entretien IA", icon: Video },
   { href: "/app/mes-fichiers", label: "Mes fichiers", icon: FolderOpen },
   { href: "/app/mes-candidatures", label: "Mes candidatures", icon: ClipboardList },
   { href: "/app/parametres", label: "Paramètres", icon: Settings },
@@ -41,8 +41,8 @@ const recruteurNavItems = [
   { href: "/app", label: "Tableau de bord", icon: LayoutDashboard },
   { href: "/app/offres", label: "Mes offres", icon: Megaphone },
   { href: "/app/candidats", label: "Candidats", icon: Search },
-  { href: "/app/matching-recruteur", label: "Appariement IA", icon: UserCheck },
-  { href: "/app/entretiens-planifies", label: "Entretiens", icon: Calendar },
+  { href: "/app/matching-recruteur", label: "Appariement IA", icon: Sparkles },
+  { href: "/app/entretiens-planifies", label: "Entretiens", icon: CalendarCheck },
   { href: "/app/parametres", label: "Paramètres", icon: Settings },
 ];
 
@@ -96,11 +96,7 @@ export default function AppSidebar({
         <aside
           className={`relative shrink-0 self-stretch min-h-0 top-0 bottom-0 left-0 ${
             collapsed ? "w-[80px]" : "w-[250px]"
-          } ${
-            isLight
-              ? "text-white border border-white/20 border-l-0 border-y-0"
-              : "text-white border border-white/[0.12] border-l-0 border-y-0"
-          } z-50 flex flex-col transition-transform duration-300 lg:translate-x-0 ${
+          } text-white border-0 z-50 flex flex-col transition-transform duration-300 lg:translate-x-0 ${
             open ? "translate-x-0" : "-translate-x-full"
           } rounded-none rounded-r-2xl overflow-hidden`}
           onDoubleClick={(e) => {
@@ -182,7 +178,7 @@ export default function AppSidebar({
 
             const baseClasses = collapsed
               ? "relative flex items-center justify-center px-3 py-2.5 rounded-full border border-transparent transition-all duration-300 group"
-              : "relative flex items-center gap-3 px-3 py-2.5 rounded-full text-[13px] border border-transparent transition-all duration-300 group";
+              : "relative flex items-center gap-3 px-3 py-2.5 rounded-full text-[13px] normal-case border border-transparent transition-all duration-300 group";
             const activeClasses = isActive
               ? isLight
                 ? "bg-white/[0.06] text-[#ECF4E8] font-bold border border-tap-red shadow-none !rounded-full overflow-hidden"
@@ -257,21 +253,38 @@ export default function AppSidebar({
         <div
           className="relative z-10 p-3 space-y-2"
         >
+          <Link
+            href="/"
+            onClick={onClose}
+            className={
+              isLight
+                ? `inline-flex items-center justify-center w-full px-3 py-2.5 ${
+                    collapsed ? "gap-0" : "gap-3"
+                  } rounded-full text-[13px] font-normal tracking-normal font-[family-name:var(--font-body)] bg-transparent text-white border border-white/25 shadow-none transition-colors hover:bg-white/10 hover:text-white`
+                : `inline-flex items-center justify-center w-full px-3 py-2.5 ${
+                    collapsed ? "gap-0" : "gap-3"
+                  } rounded-full text-[13px] font-normal tracking-normal font-[family-name:var(--font-body)] bg-transparent text-white border border-white/20 shadow-none transition-colors hover:bg-white/[0.08] hover:text-white`
+            }
+            aria-label="Retour au site"
+          >
+            <Home size={16} strokeWidth={1.5} className="shrink-0" />
+            {!collapsed && <span className="flex-1 text-left">Retour au site</span>}
+          </Link>
           <button
             onClick={handleLogout}
             type="button"
             className={
               isLight
-                ? `inline-flex items-center justify-center w-full btn-sm ${
-                    collapsed ? "gap-0" : "gap-2"
-                  } rounded-full bg-[#E6E6E6] text-tap-red border-t border-b border-tap-red/20 transition-colors hover:bg-[#E6E6E6]/85`
-                : `btn-primary btn-sm w-full justify-center ${collapsed ? "gap-0" : "gap-2"}`
+                ? `inline-flex items-center justify-center w-full px-3 py-2.5 ${
+                    collapsed ? "gap-0" : "gap-3"
+                  } rounded-full text-[13px] font-normal tracking-normal font-[family-name:var(--font-body)] bg-[#CA1B28] text-white border border-white/25 shadow-[inset_0_1px_0_rgba(255,255,255,0.12)] transition-colors hover:bg-[#b71724] hover:text-white`
+                : `inline-flex items-center justify-center w-full px-3 py-2.5 ${
+                    collapsed ? "gap-0" : "gap-3"
+                  } rounded-full text-[13px] font-normal tracking-normal font-[family-name:var(--font-body)] bg-white text-[#CA1B28] border border-white/30 shadow-sm transition-colors hover:bg-white/92 hover:text-[#a01520]`
             }
           >
-            <LogOut size={14} />
-            {!collapsed && (
-              <span>Se déconnecter</span>
-            )}
+            <LogOut size={16} strokeWidth={1.5} className="shrink-0" />
+            {!collapsed && <span className="flex-1 text-left">Se déconnecter</span>}
           </button>
         </div>
         </aside>

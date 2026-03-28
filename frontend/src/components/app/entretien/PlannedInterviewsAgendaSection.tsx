@@ -90,6 +90,151 @@ function isSameDay(a: Date, b: Date) {
   return a.getFullYear() === b.getFullYear() && a.getMonth() === b.getMonth() && a.getDate() === b.getDate();
 }
 
+/** Calendrier des entretiens (réutilisable : page entretiens, dashboard recruteur). */
+export function InterviewAgendaCalendarPanel({
+  items,
+  isLight,
+  variant = "candidate",
+  gridClassName = "lg:col-span-5 lg:sticky lg:top-24 self-start",
+}: {
+  items: PlannedInterviewItem[];
+  isLight: boolean;
+  variant?: "candidate" | "recruiter";
+  /** Classes pour placement dans une grille (ex. lg:col-span-5) */
+  gridClassName?: string;
+}) {
+  const [agendaMonth, setAgendaMonth] = useState(() => new Date());
+
+  const interviewsByDay = useMemo(() => {
+    const map = new Map<string, PlannedInterviewItem[]>();
+    for (const it of items) {
+      if (!it.interviewDate) continue;
+      const d = new Date(it.interviewDate);
+      if (Number.isNaN(d.getTime())) continue;
+      const key = dateKey(d);
+      if (!map.has(key)) map.set(key, []);
+      map.get(key)!.push(it);
+    }
+    return map;
+  }, [items]);
+
+  const y = agendaMonth.getFullYear();
+  const mo = agendaMonth.getMonth();
+  const cells = useMemo(() => getCalendarCells(y, mo), [y, mo]);
+  const monthLabel = agendaMonth.toLocaleDateString("fr-FR", { month: "long", year: "numeric" });
+
+  return (
+    <div
+      className={`${gridClassName} rounded-2xl p-5 sm:p-6 ${
+        isLight ? "card-luxury-light" : "bg-zinc-900/50 border border-white/[0.08]"
+      }`}
+    >
+      <div className="flex items-center justify-between gap-2 mb-4">
+        <div className="flex items-center gap-2 min-w-0">
+          <Calendar size={18} className="text-tap-red shrink-0" />
+          <h3 className={`text-[13px] uppercase tracking-[2px] font-semibold truncate capitalize ${isLight ? "text-black" : "text-white/70"}`}>
+            {monthLabel}
+          </h3>
+        </div>
+        <div className="flex items-center gap-1 shrink-0">
+          <button
+            type="button"
+            onClick={() => setAgendaMonth(new Date(y, mo - 1, 1))}
+            className={`inline-flex items-center justify-center w-9 h-9 rounded-xl border transition ${
+              isLight
+                ? "border-black/12 hover:bg-black/5 text-black/70"
+                : "border-white/[0.12] hover:bg-white/[0.06] text-white/80"
+            }`}
+            aria-label="Mois précédent"
+          >
+            <ChevronLeft size={18} />
+          </button>
+          <button
+            type="button"
+            onClick={() => setAgendaMonth(new Date(y, mo + 1, 1))}
+            className={`inline-flex items-center justify-center w-9 h-9 rounded-xl border transition ${
+              isLight
+                ? "border-black/12 hover:bg-black/5 text-black/70"
+                : "border-white/[0.12] hover:bg-white/[0.06] text-white/80"
+            }`}
+            aria-label="Mois suivant"
+          >
+            <ChevronRight size={18} />
+          </button>
+        </div>
+      </div>
+
+      <div className="grid grid-cols-7 gap-1 text-center text-[10px] uppercase tracking-wide mb-2 opacity-70">
+        {["Lun", "Mar", "Mer", "Jeu", "Ven", "Sam", "Dim"].map((d) => (
+          <span key={d} className={isLight ? "text-black/50" : "text-white/40"}>
+            {d}
+          </span>
+        ))}
+      </div>
+
+      <div className="grid grid-cols-7 gap-1">
+        {cells.map((cell, idx) => {
+          if (!cell.date) {
+            return <div key={`empty-${idx}`} className="aspect-square min-h-[2.25rem]" />;
+          }
+          const dk = dateKey(cell.date);
+          const dayItems = interviewsByDay.get(dk) ?? [];
+          const today = new Date();
+          const isToday = isSameDay(cell.date, today);
+
+          return (
+            <div
+              key={dk}
+              className={`aspect-square min-h-[2.25rem] rounded-lg flex flex-col items-center justify-start pt-1 px-0.5 pb-1 border ${
+                isToday
+                  ? isLight
+                    ? "border-tap-red/50 bg-tap-red/5"
+                    : "border-tap-red/40 bg-tap-red/10"
+                  : isLight
+                    ? "border-black/[0.06] bg-black/[0.02]"
+                    : "border-white/[0.06] bg-white/[0.02]"
+              }`}
+            >
+              <span className={`text-[11px] font-medium leading-none ${isLight ? "text-black/80" : "text-white/80"}`}>
+                {cell.date.getDate()}
+              </span>
+              {dayItems.length > 0 ? (
+                <div className="mt-auto flex flex-wrap justify-center gap-0.5 w-full pb-0.5">
+                  {dayItems.map((it) => {
+                    const dot = getModeMeta(it.interviewType).dot;
+                    const tip =
+                      variant === "recruiter" && it.candidateName
+                        ? `${it.candidateName} — ${it.jobTitle ?? ""}`
+                        : (it.jobTitle ?? "");
+                    return <span key={it.id} className={`size-1.5 rounded-full shrink-0 ${dot}`} title={tip} />;
+                  })}
+                </div>
+              ) : null}
+            </div>
+          );
+        })}
+      </div>
+
+      <p className={`text-[10px] mt-3 mb-3 leading-snug ${isLight ? "text-black/45" : "text-white/35"}`}>
+        Chaque couleur correspond au type de modalité d&apos;entretien (en ligne, présentiel ou téléphonique).
+      </p>
+
+      <div className={`flex flex-wrap gap-x-4 gap-y-2 pt-3 border-t ${isLight ? "border-black/10" : "border-white/[0.08]"}`}>
+        {Object.entries(MODE_META).map(([k, v]) => {
+          const LegIcon = v.Icon;
+          return (
+            <span key={k} className={`inline-flex items-center gap-1.5 text-[11px] ${isLight ? "text-black/70" : "text-white/60"}`}>
+              <span className={`size-2 rounded-full shrink-0 ${v.dot}`} />
+              <LegIcon size={12} className={v.legendClass} strokeWidth={2} />
+              {v.label}
+            </span>
+          );
+        })}
+      </div>
+    </div>
+  );
+}
+
 interface PlannedInterviewsAgendaSectionProps {
   items: PlannedInterviewItem[];
   isLight: boolean;
@@ -117,7 +262,6 @@ export default function PlannedInterviewsAgendaSection({
 
   const [page, setPage] = useState(1);
   const [showAll, setShowAll] = useState(false);
-  const [agendaMonth, setAgendaMonth] = useState(() => new Date());
 
   /** Prochains entretiens en premier : date croissante, puis heure (sans date en dernier). */
   const sorted = useMemo(() => {
@@ -155,24 +299,6 @@ export default function PlannedInterviewsAgendaSection({
 
   const rangeFrom = sorted.length === 0 ? 0 : (page - 1) * pageSize + 1;
   const rangeTo = showAll ? sorted.length : Math.min(page * pageSize, sorted.length);
-
-  const interviewsByDay = useMemo(() => {
-    const m = new Map<string, PlannedInterviewItem[]>();
-    for (const it of items) {
-      if (!it.interviewDate) continue;
-      const d = new Date(it.interviewDate);
-      if (Number.isNaN(d.getTime())) continue;
-      const key = dateKey(d);
-      if (!m.has(key)) m.set(key, []);
-      m.get(key)!.push(it);
-    }
-    return m;
-  }, [items]);
-
-  const y = agendaMonth.getFullYear();
-  const m = agendaMonth.getMonth();
-  const cells = useMemo(() => getCalendarCells(y, m), [y, m]);
-  const monthLabel = agendaMonth.toLocaleDateString("fr-FR", { month: "long", year: "numeric" });
 
   const listRowClass = `group relative card-animated-border rounded-2xl overflow-hidden border p-4 cursor-default w-full ${
     isLight
@@ -402,115 +528,7 @@ export default function PlannedInterviewsAgendaSection({
           </div>
         </div>
 
-        {/* Droite : agenda (même logique que dashboard candidat ; sticky sur grand écran) */}
-        <div
-          className={`lg:col-span-5 lg:sticky lg:top-24 self-start rounded-2xl p-5 sm:p-6 ${
-            isLight ? "card-luxury-light" : "bg-zinc-900/50 border border-white/[0.08]"
-          }`}
-        >
-          <div className="flex items-center justify-between gap-2 mb-4">
-            <div className="flex items-center gap-2 min-w-0">
-              <Calendar size={18} className="text-tap-red shrink-0" />
-              <h3 className={`text-[13px] uppercase tracking-[2px] font-semibold truncate capitalize ${isLight ? "text-black" : "text-white/70"}`}>
-                {monthLabel}
-              </h3>
-            </div>
-            <div className="flex items-center gap-1 shrink-0">
-              <button
-                type="button"
-                onClick={() => setAgendaMonth(new Date(y, m - 1, 1))}
-                className={`inline-flex items-center justify-center w-9 h-9 rounded-xl border transition ${
-                  isLight
-                    ? "border-black/12 hover:bg-black/5 text-black/70"
-                    : "border-white/[0.12] hover:bg-white/[0.06] text-white/80"
-                }`}
-                aria-label="Mois précédent"
-              >
-                <ChevronLeft size={18} />
-              </button>
-              <button
-                type="button"
-                onClick={() => setAgendaMonth(new Date(y, m + 1, 1))}
-                className={`inline-flex items-center justify-center w-9 h-9 rounded-xl border transition ${
-                  isLight
-                    ? "border-black/12 hover:bg-black/5 text-black/70"
-                    : "border-white/[0.12] hover:bg-white/[0.06] text-white/80"
-                }`}
-                aria-label="Mois suivant"
-              >
-                <ChevronRight size={18} />
-              </button>
-            </div>
-          </div>
-
-          <div className="grid grid-cols-7 gap-1 text-center text-[10px] uppercase tracking-wide mb-2 opacity-70">
-            {["Lun", "Mar", "Mer", "Jeu", "Ven", "Sam", "Dim"].map((d) => (
-              <span key={d} className={isLight ? "text-black/50" : "text-white/40"}>
-                {d}
-              </span>
-            ))}
-          </div>
-
-          <div className="grid grid-cols-7 gap-1">
-            {cells.map((cell, idx) => {
-              if (!cell.date) {
-                return <div key={`empty-${idx}`} className="aspect-square min-h-[2.25rem]" />;
-              }
-              const key = dateKey(cell.date);
-              const dayItems = interviewsByDay.get(key) ?? [];
-              const today = new Date();
-              const isToday = isSameDay(cell.date, today);
-
-              return (
-                <div
-                  key={key}
-                  className={`aspect-square min-h-[2.25rem] rounded-lg flex flex-col items-center justify-start pt-1 px-0.5 pb-1 border ${
-                    isToday
-                      ? isLight
-                        ? "border-tap-red/50 bg-tap-red/5"
-                        : "border-tap-red/40 bg-tap-red/10"
-                      : isLight
-                        ? "border-black/[0.06] bg-black/[0.02]"
-                        : "border-white/[0.06] bg-white/[0.02]"
-                  }`}
-                >
-                  <span className={`text-[11px] font-medium leading-none ${isLight ? "text-black/80" : "text-white/80"}`}>
-                    {cell.date.getDate()}
-                  </span>
-                  {dayItems.length > 0 ? (
-                    <div className="mt-auto flex flex-wrap justify-center gap-0.5 w-full pb-0.5">
-                      {dayItems.map((it) => {
-                        const dot = getModeMeta(it.interviewType).dot;
-                        const tip =
-                          variant === "recruiter" && it.candidateName
-                            ? `${it.candidateName} — ${it.jobTitle ?? ""}`
-                            : (it.jobTitle ?? "");
-                        return <span key={it.id} className={`size-1.5 rounded-full shrink-0 ${dot}`} title={tip} />;
-                      })}
-                    </div>
-                  ) : null}
-                </div>
-              );
-            })}
-          </div>
-
-          <p className={`text-[10px] mt-3 mb-3 leading-snug ${isLight ? "text-black/45" : "text-white/35"}`}>
-            Chaque couleur correspond au type de modalité d&apos;entretien (en ligne, présentiel ou téléphonique).
-          </p>
-
-          <div className={`flex flex-wrap gap-x-4 gap-y-2 pt-3 border-t ${isLight ? "border-black/10" : "border-white/[0.08]"}`}>
-            {Object.entries(MODE_META).map(([k, v]) => {
-              const LegIcon = v.Icon;
-              return (
-                <span key={k} className={`inline-flex items-center gap-1.5 text-[11px] ${isLight ? "text-black/70" : "text-white/60"}`}>
-                  <span className={`size-2 rounded-full shrink-0 ${v.dot}`} />
-                  <LegIcon size={12} className={v.legendClass} strokeWidth={2} />
-                  {v.label}
-                </span>
-              );
-            })}
-          </div>
-        </div>
+        <InterviewAgendaCalendarPanel items={items} isLight={isLight} variant={variant} />
       </div>
     </div>
   );

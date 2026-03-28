@@ -181,13 +181,24 @@ export default function MatchingPage() {
     }
     const selectedStillExists = filteredJobs.some((job) => job.id === selectedJobId);
     if (!selectedStillExists) {
-      setSelectedJobId(filteredJobs[filteredJobs.length - 1]?.id ?? null);
+      setSelectedJobId(filteredJobs[0]?.id ?? null);
     }
   }, [filteredJobs, selectedJobId]);
 
+  /** Changement de page (ou taille de page) : détail = 1ʳᵉ offre de la page si la sélection n’y figure plus. */
+  useEffect(() => {
+    const start = (listPage - 1) * effectivePageSize;
+    const pageSlice = filteredJobs.slice(start, start + effectivePageSize);
+    if (!pageSlice.length) return;
+    setSelectedJobId((current) =>
+      pageSlice.some((j) => j.id === current) ? current : pageSlice[0]!.id,
+    );
+    // filteredJobs : volontairement lu depuis la dernière render (évite de relancer à chaque rendu).
+    // eslint-disable-next-line react-hooks/exhaustive-deps -- listPage / effectivePageSize uniquement
+  }, [listPage, effectivePageSize]);
+
   const selectedJob =
-    filteredJobs.find((job) => job.id === selectedJobId) ??
-    (filteredJobs.length ? filteredJobs[filteredJobs.length - 1] : null);
+    filteredJobs.find((job) => job.id === selectedJobId) ?? (filteredJobs.length ? filteredJobs[0]! : null);
   const selectedJobIsSaved = selectedJob ? (savedJobsQuery.data?.jobIds ?? []).includes(selectedJob.id) : false;
   const selectedJobSkillNames = selectedJob
     ? Array.isArray((selectedJob as { skills?: unknown }).skills)
