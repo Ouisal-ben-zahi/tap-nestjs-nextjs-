@@ -4,8 +4,28 @@ import { useState } from "react";
 import { useRouter } from "next/navigation";
 import { useAuth } from "@/hooks/use-auth";
 import EmptyState from "@/components/ui/EmptyState";
+import api from "@/lib/api";
 
 type OtherLink = { type: string; url: string };
+type GenerationStep = { id: string; label: string };
+
+const generationSteps: GenerationStep[] = [
+  { id: "upload", label: "Envoi des fichiers" },
+  { id: "cv", label: "Analyse du CV" },
+  { id: "talentCard", label: "Génération de la Talent Card" },
+  { id: "scoring", label: "Calcul du scoring candidat" },
+  { id: "portfolio", label: "Génération du Portfolio One Page" },
+  { id: "finalize", label: "Finalisation du profil" },
+];
+
+const progressByStep: Record<string, number> = {
+  upload: 18,
+  cv: 36,
+  talentCard: 58,
+  scoring: 78,
+  portfolio: 92,
+  finalize: 100,
+};
 
 const wizardSteps = [
   {
@@ -82,6 +102,13 @@ export default function OnboardingCandidatPage() {
   const [talentCardLang, setTalentCardLang] = useState<"fr" | "en">("fr");
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
+  const [generationProgress, setGenerationProgress] = useState(0);
+  const [currentGenerationStep, setCurrentGenerationStep] = useState<string | null>(
+    null,
+  );
+  const [completedGenerationSteps, setCompletedGenerationSteps] = useState<string[]>(
+    [],
+  );
 
   if (!isCandidat) {
     return (
@@ -149,6 +176,9 @@ export default function OnboardingCandidatPage() {
     e.preventDefault();
     setLoading(true);
     setError(null);
+    setGenerationProgress(0);
+    setCurrentGenerationStep(null);
+    setCompletedGenerationSteps([]);
 
     try {
       if (!cvFile && !linkedinUrl.trim()) {
@@ -159,8 +189,184 @@ export default function OnboardingCandidatPage() {
         return;
       }
 
-      // TODO: ici, appeler ton backend (Nest/Flask) avec FormData comme dans ton exemple
-      await new Promise((resolve) => setTimeout(resolve, 800));
+      const markStepDone = (stepId: string) => {
+        setCompletedGenerationSteps((prev) =>
+          prev.includes(stepId) ? prev : [...prev, stepId],
+        );
+        setGenerationProgress((prev) =>
+          Math.max(prev, progressByStep[stepId] ?? prev),
+        );
+      };
+
+      const sleep = (ms: number) =>
+        new Promise<void>((resolve) => setTimeout(resolve, ms));
+      const isFreshTimestamp = (value: unknown, startedAtMs: number) => {
+        if (typeof value !== "string" || !value.trim()) return false;
+        const parsedMs = new Date(value).getTime();
+        if (!Number.isFinite(parsedMs)) return false;
+        // Tolérance légère pour éviter les faux négatifs dus aux écarts d'horloge.
+        return parsedMs >= startedAtMs - 3000;
+      };
+      const hasFreshFile = (
+        files: Array<{ updatedAt?: string | null; createdAt?: string | null }>,
+        startedAtMs: number,
+      ) =>
+        files.some((file) =>
+          isFreshTimestamp(file.updatedAt, startedAtMs) ||
+          isFreshTimestamp(file.createdAt, startedAtMs),
+        );
+      const generationStartedAtMs = Date.now();
+
+      setCurrentGenerationStep("upload");
+
+      const formData = new FormData();
+      if (cvFile) {
+        formData.append("file", cvFile);
+      }
+      if (imgFile) {
+        formData.append("img_file", imgFile);
+      }
+      formData.append("lang", talentCardLang);
+      if (linkedinUrl.trim()) formData.append("linkedin_url", linkedinUrl.trim());
+      if (githubUrl.trim()) formData.append("github_url", githubUrl.trim());
+      if (targetPosition.trim())
+        formData.append("target_position", targetPosition.trim());
+      if (targetCountry.trim())
+        formData.append("target_country", targetCountry.trim());
+      if (pretARelocater.trim())
+        formData.append("pret_a_relocater", pretARelocater.trim());
+      if (constraints.trim()) formData.append("constraints", constraints.trim());
+      if (searchCriteria.trim())
+        formData.append("search_criteria", searchCriteria.trim());
+      if (nationality.trim()) formData.append("nationality", nationality.trim());
+      if (locationCountry.trim())
+        formData.append("location_country", locationCountry.trim());
+      if (seniorityLevel.trim())
+        formData.append("seniority_level", seniorityLevel.trim());
+      if (disponibilite.trim()) formData.append("disponibilite", disponibilite.trim());
+      if (salaireMinimum.trim())
+        formData.append("salaire_minimum", salaireMinimum.trim());
+      if (domaineActivite.trim())
+        formData.append("domaine_activite", domaineActivite.trim());
+      typeContrat.forEach((t) => formData.append("type_contrat", t));
+      if (otherLinks.length > 0) {
+        formData.append("other_links", JSON.stringify(otherLinks));
+      }
+
+      await api.post("/dashboard/candidat/upload-cv", formData);
+      markStepDone("upload");
+      // CV uploadé et disponible immédiatement via Nest.
+      markStepDone("cv");
+
+      const generationOrder = ["cv", "talentCard", "scoring", "portfolio"] as const;
+      let readyCv = true;
+      let readyTalentCard = false;
+      let readyScoring = false;
+      let readyPortfolio = false;
+      const maxAttempts = 80;
+
+      for (let attempt = 0; attempt < maxAttempts; attempt += 1) {
+        const nextStep = generationOrder.find((stepId) => {
+          if (stepId === "cv") return !readyCv;
+          if (stepId === "talentCard") return !readyTalentCard;
+          if (stepId === "scoring") return !readyScoring;
+          return !readyPortfolio;
+        });
+        if (nextStep) setCurrentGenerationStep(nextStep);
+
+        const [cvRes, talentCardRes, scoreRes, portfolioRes] = await Promise.all([
+          api
+            .get<{ cvFiles: Array<{ updatedAt?: string | null; createdAt?: string | null }> }>(
+              "/dashboard/candidat/cv-files",
+            )
+            .catch(() => null),
+          api
+            .get<{
+              talentcardFiles: Array<{
+                updatedAt?: string | null;
+                createdAt?: string | null;
+              }>;
+            }>("/dashboard/candidat/talentcard-files")
+            .catch(() => null),
+          api
+            .get<{
+              scoreGlobal: number | null;
+              dimensions?: unknown[];
+              metadataTimestamp?: string | null;
+            }>(
+              "/dashboard/candidat/score-json",
+            )
+            .catch(() => null),
+          api
+            .get<{
+              portfolioShort: Array<{ updatedAt?: string | null; createdAt?: string | null }>;
+              portfolioLong: Array<{ updatedAt?: string | null; createdAt?: string | null }>;
+            }>(
+              "/dashboard/candidat/portfolio-pdf-files",
+            )
+            .catch(() => null),
+        ]);
+
+        if (
+          !readyCv &&
+          Array.isArray(cvRes?.data?.cvFiles) &&
+          hasFreshFile(cvRes.data.cvFiles, generationStartedAtMs)
+        ) {
+          readyCv = true;
+          markStepDone("cv");
+        }
+        if (
+          !readyTalentCard &&
+          Array.isArray(talentCardRes?.data?.talentcardFiles) &&
+          hasFreshFile(talentCardRes.data.talentcardFiles, generationStartedAtMs)
+        ) {
+          readyTalentCard = true;
+          markStepDone("talentCard");
+        }
+        if (
+          !readyScoring &&
+          (isFreshTimestamp(scoreRes?.data?.metadataTimestamp, generationStartedAtMs) ||
+            (attempt > 15 &&
+              (typeof scoreRes?.data?.scoreGlobal === "number" ||
+                (scoreRes?.data?.dimensions?.length ?? 0) > 0)))
+        ) {
+          readyScoring = true;
+          markStepDone("scoring");
+        }
+        if (
+          !readyPortfolio &&
+          (hasFreshFile(
+            portfolioRes?.data?.portfolioShort ?? [],
+            generationStartedAtMs,
+          ) ||
+            hasFreshFile(
+              portfolioRes?.data?.portfolioLong ?? [],
+              generationStartedAtMs,
+            ))
+        ) {
+          readyPortfolio = true;
+          markStepDone("portfolio");
+        }
+
+        if (readyCv && readyTalentCard && readyScoring && readyPortfolio) {
+          break;
+        }
+
+        // Avance légère entre deux checks pour une sensation plus fluide
+        setGenerationProgress((prev) => Math.min(prev + 1, 96));
+        await sleep(2000);
+      }
+
+      if (!(readyCv && readyTalentCard && readyScoring && readyPortfolio)) {
+        throw new Error(
+          "La génération prend plus de temps que prévu. Merci de patienter puis réessayer dans quelques instants.",
+        );
+      }
+
+      setCurrentGenerationStep("finalize");
+      await sleep(350);
+      markStepDone("finalize");
+
       router.push("/app/matching");
     } catch (err: any) {
       setError(err?.message || "Erreur lors de la sauvegarde du profil.");
@@ -613,6 +819,79 @@ export default function OnboardingCandidatPage() {
               💡 La génération peut prendre quelques instants. Tu pourras ensuite
               utiliser ton profil pour le matching et les candidatures.
             </p>
+            {loading && (
+              <div className="mt-5 rounded-xl border border-white/15 bg-black/25 p-4 text-left">
+                <div className="mb-2 flex items-center justify-between text-[12px]">
+                  <span className="text-white/80">Progression de la génération</span>
+                  <span className="font-semibold text-white">
+                    {generationProgress}%
+                  </span>
+                </div>
+                <div className="h-2 w-full overflow-hidden rounded-full bg-white/10">
+                  <div
+                    className="h-full rounded-full bg-tap-red transition-all duration-500 ease-out"
+                    style={{ width: `${generationProgress}%` }}
+                  />
+                </div>
+
+                <div className="mt-3 space-y-2">
+                  {generationSteps.map((step) => {
+                    const isDone = completedGenerationSteps.includes(step.id);
+                    const isCurrent = currentGenerationStep === step.id && !isDone;
+                    return (
+                      <div
+                        key={step.id}
+                        className="flex items-center justify-between text-[12px]"
+                      >
+                        <span
+                          className={
+                            isDone
+                              ? "text-emerald-300"
+                              : isCurrent
+                                ? "text-white"
+                                : "text-white/45"
+                          }
+                        >
+                          {step.label}
+                        </span>
+                        <span
+                          className={
+                            isDone
+                              ? "text-emerald-300"
+                              : isCurrent
+                                ? "text-tap-red"
+                                : "text-white/40"
+                          }
+                        >
+                          {isDone ? "Terminé" : isCurrent ? "En cours..." : "En attente"}
+                        </span>
+                      </div>
+                    );
+                  })}
+                </div>
+
+                {completedGenerationSteps.includes("talentCard") && (
+                  <p className="mt-3 text-[12px] text-emerald-300">
+                    ✅ Talent Card prête.
+                  </p>
+                )}
+                {completedGenerationSteps.includes("cv") && (
+                  <p className="mt-1 text-[12px] text-emerald-300">
+                    ✅ CV analysé avec succès.
+                  </p>
+                )}
+                {completedGenerationSteps.includes("scoring") && (
+                  <p className="mt-1 text-[12px] text-emerald-300">
+                    ✅ Scoring candidat calculé.
+                  </p>
+                )}
+                {completedGenerationSteps.includes("portfolio") && (
+                  <p className="mt-1 text-[12px] text-emerald-300">
+                    ✅ Portfolio One Page prêt.
+                  </p>
+                )}
+              </div>
+            )}
           </div>
         )}
 

@@ -343,31 +343,8 @@ def start_interview(candidate_uuid):
                 agent_data = _get_agent_data_cached(db_candidate_id, candidate_uuid, retrieve_all_agent_data)
                 interview_sessions[session_id]["agent_data"] = agent_data
                 
-                # Construire le prompt personnalisé
-                interview_prompt = build_interview_prompt_from_data(agent_data)
-                type_prompt_map = {
-                    "technical": (
-                        "\n\nMODE ENTRETIEN TECHNIQUE:\n"
-                        "- Priorise les questions sur outils, stack, projets techniques, méthodologie et résolution de problèmes.\n"
-                        "- Pose des questions ciblées sur les technos vues dans le CV/portfolio."
-                    ),
-                    "behavioral": (
-                        "\n\nMODE ENTRETIEN COMPORTEMENTAL:\n"
-                        "- Priorise les situations vécues, collaboration, gestion de conflit, leadership, adaptation, communication.\n"
-                        "- Demande des exemples concrets (méthode STAR)."
-                    ),
-                    "presentation": (
-                        "\n\nMODE PRÉSENTATION PERSONNELLE:\n"
-                        "- Priorise la présentation du candidat, son pitch, sa valeur ajoutée, son positionnement.\n"
-                        "- Aide à structurer un discours clair et impactant."
-                    ),
-                    "hr": (
-                        "\n\nMODE ENTRETIEN RH:\n"
-                        "- Priorise motivation, disponibilité, salaire, mobilité, projection, culture d'entreprise, soft skills.\n"
-                        "- Reste orienté questions RH classiques."
-                    ),
-                }
-                interview_prompt += type_prompt_map.get(interview_type, type_prompt_map["technical"])
+                # Construire le prompt personnalisé (déjà spécialisé par type)
+                interview_prompt = build_interview_prompt_from_data(agent_data, interview_type)
                 conversation_history = interview_prompt
                 interview_sessions[session_id]["conversation_history"] = conversation_history
                 

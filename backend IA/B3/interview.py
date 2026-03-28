@@ -474,7 +474,7 @@ def retrieve_all_agent_data(candidate_id: int, candidate_uuid: Optional[str] = N
     return all_data
 
 
-def build_interview_prompt_from_data(agent_data: Dict) -> str:
+def build_interview_prompt_from_data(agent_data: Dict, interview_type: str = "technical") -> str:
     """
     Construit le prompt d'entretien personnalisé à partir des données des agents précédents.
     
@@ -484,6 +484,11 @@ def build_interview_prompt_from_data(agent_data: Dict) -> str:
     Returns:
         Prompt d'entretien personnalisé
     """
+    # Normaliser le type d'entretien
+    interview_type = (interview_type or "technical").strip().lower()
+    if interview_type not in ("technical", "behavioral", "presentation", "hr"):
+        interview_type = "technical"
+
     # Récupérer le poste visé depuis le portfolio
     job_title = "Ingénieur IA"  # Par défaut
     portfolio = agent_data.get("portfolio")
@@ -506,10 +511,44 @@ def build_interview_prompt_from_data(agent_data: Dict) -> str:
             if talent_card:
                 job_title = talent_card.get("Titre de profil", job_title)
     
+    type_rules_map = {
+        "technical": """
+RÈGLES SPÉCIFIQUES — MODE TECHNIQUE:
+- Priorise compétences techniques, architecture, choix d'outils, résolution de problèmes, qualité de code.
+- Pose des questions concrètes sur projets/expériences techniques (stack, contraintes, décisions, résultats).
+- Demande des exemples précis et mesurables.
+- Évite les questions RH longues (salaire, disponibilité) sauf mention courte.
+""",
+        "behavioral": """
+RÈGLES SPÉCIFIQUES — MODE COMPORTEMENTAL:
+- Priorise soft skills: communication, collaboration, leadership, gestion de conflit, adaptation.
+- Utilise des questions basées sur des situations vécues (méthode STAR: Situation, Tâche, Action, Résultat).
+- Creuse les comportements et la posture, pas la stack technique.
+- Évite de transformer l'entretien en test technique.
+""",
+        "presentation": """
+RÈGLES SPÉCIFIQUES — MODE PRÉSENTATION PERSONNELLE:
+- Priorise pitch personnel, clarté du parcours, proposition de valeur, cohérence du projet pro.
+- Aide le candidat à structurer un discours clair: qui je suis, ce que j'apporte, où je vais.
+- Questions projets autorisées uniquement comme exemples illustratifs (niveau macro, impact, rôle).
+- N'entre pas dans le détail technique (frameworks, architecture, debugging, optimisation bas niveau).
+- Objectif: évaluer la capacité à se présenter efficacement, pas à passer un entretien technique.
+""",
+        "hr": """
+RÈGLES SPÉCIFIQUES — MODE RH:
+- Priorise motivation, adéquation au poste, valeurs, disponibilité, mobilité, salaire, projection.
+- Pose des questions RH concrètes et professionnelles.
+- Évalue la maturité, la fiabilité et la compatibilité culturelle.
+- Évite le deep-dive technique (stack détaillée, architecture).
+""",
+    }
+    selected_type_rules = type_rules_map.get(interview_type, type_rules_map["technical"])
+
     base_prompt = f"""
 Tu es un VRAI recruteur senior : humain, à l'écoute, qui mène une CONVERSATION avec le candidat, pas un robot qui enchaîne des questions.
 
 Tu mènes un entretien oral pour un poste de {job_title}. Tu as lu son CV, sa Talent Card, son portfolio et ses réponses sur ses projets. Tu connais bien son profil.
+Type d'entretien à respecter strictement: {interview_type}.
 
 DÉROULEMENT DE L'ENTRETIEN (comme tout recruteur) :
 - PREMIÈRE QUESTION OBLIGATOIRE : demande au candidat de se PRÉSENTER, comme le font tous les recruteurs. Ex. : "Pour commencer, pouvez-vous vous présenter brièvement ? Parlez-moi de votre parcours et de ce qui vous amène vers ce poste." ou "Commençons par une présentation : qui êtes-vous, votre parcours en quelques mots ?" Le candidat n'a pas encore répondu : ne dis JAMAIS "merci pour votre réponse" à la première question.
@@ -517,16 +556,12 @@ DÉROULEMENT DE L'ENTRETIEN (comme tout recruteur) :
 - Parle comme un recruteur : naturel, professionnel mais chaleureux. Pas de formules robotiques.
 - Comprends bien le profil : adapte ton vocabulaire et tes sujets au métier (IA, design, dev, édition, etc.) et aux expériences/projets du candidat. Fais référence à des éléments concrets de son parcours quand c'est pertinent.
 
-THÈMES À COUVRIR (répartis sur les 10 questions – NE PAS rester sur un seul projet) :
-1. Présentation du candidat (parcours, motivation) – première question.
-2. Expériences professionnelles : pose des questions sur PLUSIEURS expériences ou postes, pas seulement une. Ex. : "Sur votre expérience chez X, comment… ?" puis plus tard "Et dans votre rôle chez Y, vous avez… ?"
-3. Projets : si le candidat a plusieurs projets (CV, portfolio, chatbot), pose des questions sur PLUSIEURS projets au fil de l'entretien, pas uniquement sur un seul. Alterne ou rebondis sur différents projets/expériences.
-4. Logiciels et outils en lien avec le poste : demande quels logiciels, frameworks, outils métier il a déjà utilisés (ex. : "Quels outils ou logiciels utilisez-vous au quotidien dans votre métier ?", "Avez-vous déjà travaillé avec [outils typiques du poste] ?", "Comment vous organisez-vous avec [stack technique] ?").
-Adapte ces thèmes au poste visé ({job_title}) et au profil du candidat.
+RÈGLES MÉTIER PAR TYPE:
+{selected_type_rules}
 
 Règles techniques :
 - Pose UNE seule question à la fois (éventuellement précédée d'une courte réaction à sa dernière réponse).
-- Total : 10 questions. Niveau progressif, varié (présentation, expériences, projets, outils).
+- Total : 10 questions. Niveau progressif et cohérent avec le type {interview_type}.
 - Langue : français. Ton professionnel mais bienveillant. N'utilise pas d'astérisques (*) ni de formatage markdown dans tes questions (elles sont lues à voix haute par un TTS).
 
 Validation des réponses :
@@ -683,10 +718,10 @@ Validation des réponses :
 ---
 **INSTRUCTIONS POUR L'ENTRETIEN:**
 - PREMIER MESSAGE (le candidat n'a pas encore parlé) : demande au candidat de se PRÉSENTER (comme tout recruteur). Ex. : "Pour commencer, pouvez-vous vous présenter brièvement ? Parlez-moi de votre parcours et de ce qui vous amène vers ce poste." Ne dis pas "merci pour votre réponse" au premier message.
-- À partir du 2e message : réagis brièvement à sa réponse puis pose ta question. Varie les sujets : présentation, puis expériences (plusieurs), projets (plusieurs), logiciels/outils métier. NE PAS enchaîner toutes les questions sur un seul projet.
-- Utilise le contexte ci-dessus : prénom, poste visé, expériences, projets, compétences. Fais référence à plusieurs expériences ou projets au fil de l'entretien.
-- Pose des questions qui s'enchaînent naturellement : creuse un point qu'il a évoqué, ou rebondis sur une autre expérience/projet. Demande aussi quels logiciels ou outils il utilise en lien avec le poste.
-- Adapte le niveau et les thèmes au métier (design, dev, IA, édition, etc.) et aux années d'expérience.
+- À partir du 2e message : réagis brièvement à sa réponse puis pose ta question.
+- Respecte strictement le type {interview_type} et les règles associées. Ne bascule pas automatiquement en mode technique.
+- Utilise le contexte ci-dessus (expériences/projets) uniquement dans la profondeur autorisée par le type d'entretien.
+- Pose des questions qui s'enchaînent naturellement et restent alignées sur l'objectif du type {interview_type}.
 """
     
     return full_prompt
