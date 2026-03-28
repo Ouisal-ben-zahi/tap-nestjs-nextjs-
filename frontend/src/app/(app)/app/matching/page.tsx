@@ -703,6 +703,7 @@ export default function MatchingPage() {
                 return (
                   <div
                     key={job.id}
+<<<<<<< Updated upstream
                     ref={index === 0 ? firstLeftCardRef : undefined}
                     onClick={() => setSelectedJobId(job.id)}
                     className={`group relative card-animated-border rounded-2xl overflow-hidden border p-4 sm:p-5 lg:p-6 cursor-pointer transform-gpu will-change-transform transition-all duration-300 hover:-translate-y-0.5 w-full ${
@@ -719,6 +720,40 @@ export default function MatchingPage() {
                       <div className="pointer-events-none absolute inset-0 opacity-100 group-hover:opacity-0 transition-opacity duration-500">
                         <div className="absolute -top-16 -right-8 w-48 h-48 rounded-full bg-white/5 blur-2xl" />
                         <div className="absolute -bottom-12 -left-8 w-56 h-56 rounded-full bg-tap-red/10 blur-2xl opacity-40" />
+=======
+                    onClick={() => router.push(`/app/matching/offres/${job.id}`)}
+                    className={`rounded-xl p-5 transition group cursor-pointer ${
+                      isLight
+                        ? "bg-white border border-tap-red/40 hover:border-tap-red/70"
+                        : "bg-zinc-900/50 border border-white/[0.06] hover:border-white/[0.1]"
+                    }`}
+                  >
+                    <div className="flex items-start justify-between gap-4">
+                      <div className="flex-1 min-w-0">
+                        <div className="flex items-center gap-2.5 flex-wrap mb-1.5">
+                          <h3 className="text-[15px] font-semibold text-white truncate">
+                            {job.title ?? "Offre sans titre"}
+                          </h3>
+                          {job.categorie_profil && (
+                            <span className="text-[11px] px-2 py-0.5 rounded-full bg-white/[0.05] border border-white/[0.08] text-white/45 shrink-0">
+                              {job.categorie_profil}
+                            </span>
+                          )}
+                          {job.urgent && (
+                            <span className="text-[11px] px-2 py-0.5 rounded-full bg-red-500/10 border border-red-500/20 text-red-400 shrink-0">
+                              Urgent
+                            </span>
+                          )}
+                        </div>
+                        <div className={`mt-1 flex items-center gap-3 text-[12px] ${isLight ? "text-black/70" : "text-white/45"}`}>
+                          {localisation && (
+                            <span className="flex items-center gap-1">
+                              <MapPin size={12} />
+                              {localisation}
+                            </span>
+                          )}
+                        </div>
+>>>>>>> Stashed changes
                       </div>
                     )}
                     <div className="relative flex flex-row items-stretch justify-between gap-3 sm:gap-4 min-w-0">

@@ -114,6 +114,7 @@ export function useRecruteurJobs() {
   });
 }
 
+<<<<<<< Updated upstream
 export function useRecruteurJob(jobId: number | null, enabled = true) {
   return useQuery({
     queryKey: ['recruteur', 'job', jobId],
@@ -162,6 +163,8 @@ export function useDeleteJob() {
   });
 }
 
+=======
+>>>>>>> Stashed changes
 export function useMatchedCandidatesByOffer(jobId: number | null, enabled = true) {
   return useQuery({
     queryKey: ['recruteur', 'matched-candidates', jobId],
@@ -170,6 +173,7 @@ export function useMatchedCandidatesByOffer(jobId: number | null, enabled = true
   });
 }
 
+<<<<<<< Updated upstream
 export function useRecruiterScheduledInterviewForApplication(
   jobId: number | null,
   candidateId: number | null,
@@ -188,6 +192,8 @@ export function useRecruiterScheduledInterviewForApplication(
   });
 }
 
+=======
+>>>>>>> Stashed changes
 export function useCreateJob() {
   const queryClient = useQueryClient();
   const addToast = useUiStore((s) => s.addToast);

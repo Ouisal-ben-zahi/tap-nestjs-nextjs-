@@ -186,7 +186,11 @@ def load_candidates_for_domaine(domaine_activite: Optional[str]) -> List[Dict[st
     fallback_select = (
         "id, id_agent, candidate_uuid, nom, prenom, titre_profil, categorie_profil, "
         "ville, pays, annees_experience, disponibilite, niveau_seniorite, pret_a_relocater, "
+<<<<<<< Updated upstream
         "pays_cible, constraints, search_criteria, salaire_minimum, skills, type_contrat, langues"
+=======
+        "pays_cible, constraints, search_criteria, salaire_minimum"
+>>>>>>> Stashed changes
     )
     try:
         query = supabase_db.table("candidates").select(full_select)

@@ -244,11 +244,35 @@ export default function MatchingRecruteurPage() {
                           </Link>
                         </div>
                       </div>
+<<<<<<< Updated upstream
 
                       <p
                         className={`text-[12px] sm:text-[13px] leading-snug line-clamp-2 ${
                           isLight ? "text-black/55" : "text-white/45"
                         }`}
+=======
+                      <div className="flex items-center gap-2 shrink-0">
+                        <div className="text-right">
+                          <p className="text-[18px] font-bold text-emerald-400">{matchScore}%</p>
+                          <p className="text-[10px] text-white/30">score matching</p>
+                        </div>
+                      </div>
+                    </div>
+                    <div className="flex items-center justify-between">
+                      <div className="flex items-center gap-4">
+                        <div className="flex items-center gap-1.5 text-[12px] text-white/40">
+                          <Users size={13} />
+                          <span>{appCount} candidat{appCount > 1 ? "s" : ""}</span>
+                        </div>
+                        <div className="flex items-center gap-1.5 text-[12px] text-emerald-400/70">
+                          <TrendingUp size={13} />
+                          <span>Matching actif</span>
+                        </div>
+                      </div>
+                      <Link
+                        href={`/app/candidats?jobId=${job.id}`}
+                        className="flex items-center gap-1.5 text-[12px] text-emerald-400 hover:text-emerald-300 transition-colors opacity-0 group-hover:opacity-100"
+>>>>>>> Stashed changes
                       >
                         {job.categorie_profil || "Catégorie non précisée"}
                       </p>

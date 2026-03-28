@@ -2,6 +2,7 @@
 
 import Link from "next/link";
 import { useSearchParams } from "next/navigation";
+<<<<<<< Updated upstream
 import { useState, useMemo, useEffect } from "react";
 import { useQueryClient } from "@tanstack/react-query";
 import { useAuth } from "@/hooks/use-auth";
@@ -16,6 +17,10 @@ import {
 import { recruteurService, type ValidateCandidateResponse } from "@/services/recruteur.service";
 import { useUiStore } from "@/stores/ui";
 import { useRecruiterTalentPanelStore } from "@/stores/recruiter-talent-panel";
+=======
+import { useAuth } from "@/hooks/use-auth";
+import { useMatchedCandidatesByOffer, useRecruteurOverview } from "@/hooks/use-recruteur";
+>>>>>>> Stashed changes
 import EmptyState from "@/components/ui/EmptyState";
 import ErrorState from "@/components/ui/ErrorState";
 import { Skeleton } from "@/components/ui/Skeleton";
@@ -117,6 +122,7 @@ export default function CandidatsPage() {
   const { user } = useAuth();
   const isRecruteur = user?.role === "recruteur";
   const overviewQuery = useRecruteurOverview();
+<<<<<<< Updated upstream
   const jobsQuery = useRecruteurJobs();
   const matchedCandidatesQuery = useMatchedCandidatesByOffer(selectedJobId, isRecruteur);
   const queryClient = useQueryClient();
@@ -260,6 +266,9 @@ export default function CandidatsPage() {
     );
     setInterviewModalOpen(true);
   };
+=======
+  const matchedCandidatesQuery = useMatchedCandidatesByOffer(selectedJobId, isRecruteur);
+>>>>>>> Stashed changes
 
   if (!isRecruteur) {
     return (
@@ -385,6 +394,7 @@ export default function CandidatsPage() {
                             ? "Régénérer d'autres questions d'entretien"
                             : "Valider et générer les questions d'entretien";
 
+<<<<<<< Updated upstream
                     return (
                       <div
                         key={`${item.candidate_id ?? candidateName}-${scorePct}`}
@@ -394,6 +404,144 @@ export default function CandidatsPage() {
                             : "hover:brightness-105 shadow-[0_18px_40px_rgba(0,0,0,0.25)]"
                         }`}
                       >
+=======
+          {selectedJobId ? (
+            <div className="mb-8">
+              <div className="flex items-center justify-between gap-3 mb-5">
+                <div className="flex items-center gap-3">
+                  <div className="w-1 h-5 rounded-full bg-emerald-500" />
+                  <h2 className="text-[13px] uppercase tracking-[2px] text-white/50 font-semibold">
+                    Candidats matchés par IA
+                  </h2>
+                </div>
+                <Link
+                  href="/app/matching-recruteur"
+                  className="text-[12px] text-emerald-400 hover:text-emerald-300 transition-colors"
+                >
+                  Retour au matching
+                </Link>
+              </div>
+
+              {matchedCandidatesQuery.isLoading ? (
+                <div className="space-y-3">
+                  {Array.from({ length: 3 }).map((_, i) => (
+                    <Skeleton key={i} className="h-24 w-full" />
+                  ))}
+                </div>
+              ) : matchedCandidatesQuery.isError ? (
+                <ErrorState onRetry={() => matchedCandidatesQuery.refetch()} />
+              ) : !matchedCandidatesQuery.data?.candidates?.length ? (
+                <EmptyState
+                  icon={<Users className="w-10 h-10" />}
+                  title="Aucun candidat matché"
+                  description={
+                    matchedCandidatesQuery.data?.message ??
+                    "Aucun candidat matché IA n'a été trouvé pour cette offre."
+                  }
+                />
+              ) : (
+                <div className="space-y-3">
+                  {matchedCandidatesQuery.data.candidates.map((item) => {
+                    const rawScore = Number(item.global_score ?? 0);
+                    const normalizedScore =
+                      rawScore <= 1 ? rawScore * 100 : rawScore;
+                    const scorePct = Math.max(0, Math.min(100, Math.round(normalizedScore)));
+                    const candidateName =
+                      item.name ||
+                      [item.candidate?.prenom, item.candidate?.nom]
+                        .filter(Boolean)
+                        .join(" ")
+                        .trim() ||
+                      "Candidat sans nom";
+                    const missingSkills = Array.isArray(item.missing_skills)
+                      ? item.missing_skills
+                      : typeof item.missing_skills === "string"
+                        ? item.missing_skills
+                            .split(",")
+                            .map((skill) => skill.trim())
+                            .filter((skill) => skill && skill.toLowerCase() !== "aucune")
+                        : [];
+
+                    return (
+                      <div
+                        key={`${item.candidate_id ?? candidateName}-${scorePct}`}
+                        className="bg-zinc-900/50 border border-white/[0.06] rounded-xl p-5 hover:border-white/[0.1] transition"
+                      >
+                        <div className="flex items-start justify-between gap-4">
+                          <div className="min-w-0 flex-1">
+                            <p className="text-[15px] font-semibold text-white truncate">{candidateName}</p>
+                            <p className="text-[12px] text-white/45 mt-1">
+                              {item.candidate?.titre_profil || "Profil non renseigné"}
+                            </p>
+                            <div className="mt-2 flex flex-wrap items-center gap-2 text-[11px] text-white/40">
+                              {item.candidate?.categorie_profil ? (
+                                <span className="px-2 py-0.5 rounded-full bg-white/[0.04] border border-white/[0.08]">
+                                  {item.candidate.categorie_profil}
+                                </span>
+                              ) : null}
+                              {item.candidate?.niveau_seniorite ? (
+                                <span className="px-2 py-0.5 rounded-full bg-white/[0.04] border border-white/[0.08]">
+                                  {item.candidate.niveau_seniorite}
+                                </span>
+                              ) : null}
+                              {item.candidate?.ville || item.candidate?.pays ? (
+                                <span>
+                                  {[item.candidate?.ville, item.candidate?.pays].filter(Boolean).join(", ")}
+                                </span>
+                              ) : null}
+                            </div>
+                            {missingSkills.length ? (
+                              <p className="text-[11px] text-amber-300/80 mt-2">
+                                Compétences manquantes: {missingSkills.slice(0, 4).join(", ")}
+                              </p>
+                            ) : null}
+                          </div>
+                          <div className="shrink-0 text-right">
+                            <p className="text-[20px] font-bold text-emerald-400">{scorePct}%</p>
+                            <p className="text-[10px] text-white/30">score global A4</p>
+                          </div>
+                        </div>
+                        <div className="mt-3 h-1.5 bg-zinc-800 rounded-full overflow-hidden">
+                          <div
+                            className="h-full bg-emerald-500/60 rounded-full transition-all duration-700"
+                            style={{ width: `${Math.max(0, Math.min(100, scorePct))}%` }}
+                          />
+                        </div>
+                      </div>
+                    );
+                  })}
+                </div>
+              )}
+            </div>
+          ) : null}
+
+          {/* Candidatures par offre */}
+          <div className="mb-8">
+            <div className="flex items-center gap-3 mb-5">
+              <div className="w-1 h-5 rounded-full bg-blue-500" />
+              <h2 className="text-[13px] uppercase tracking-[2px] text-white/50 font-semibold">Candidatures par offre</h2>
+            </div>
+
+            {!overview?.applicationsPerJob?.length ? (
+              <EmptyState
+                icon={<Users className="w-10 h-10" />}
+                title="Aucun candidat"
+                description="Les candidats apparaîtront ici lorsqu'ils postuleront à vos offres."
+              />
+            ) : (
+              <div className="space-y-3">
+                {overview.applicationsPerJob.map((item, i) => {
+                  const maxCount = Math.max(...overview.applicationsPerJob.map((a) => a.value), 1);
+                  return (
+                    <div key={i} className="bg-zinc-900/50 border border-white/[0.06] rounded-xl px-5 py-4 hover:border-white/[0.1] transition">
+                      <div className="flex items-center justify-between mb-2">
+                        <span className="text-[14px] font-medium text-white truncate">{item.title}</span>
+                        <span className="text-[13px] text-blue-400 font-semibold shrink-0 ml-3">
+                          {item.value} candidat{item.value > 1 ? "s" : ""}
+                        </span>
+                      </div>
+                      <div className="h-2 bg-zinc-800 rounded-full overflow-hidden">
+>>>>>>> Stashed changes
                         <div
                           className="pointer-events-none absolute -top-2 -right-2 z-20 size-[3.75rem] rounded-full p-[2px] shadow-[0_8px_28px_rgba(0,0,0,0.45)] ring-2 ring-white/10 sm:-top-2.5 sm:-right-2.5 sm:size-16 lg:size-[4.25rem]"
                           style={{

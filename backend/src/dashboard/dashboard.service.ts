@@ -274,16 +274,20 @@ export interface ApplyJobPayload {
   lien?: string | null;
 }
 
+<<<<<<< Updated upstream
 export interface ToggleSavedJobPayload {
   jobId: number;
 }
 
+=======
+>>>>>>> Stashed changes
 export interface RecruiterMatchByOfferPayload {
   job_id: number;
   top_n?: number;
   only_postule?: boolean;
 }
 
+<<<<<<< Updated upstream
 export interface RecruiterValidateCandidatePayload {
   job_id: number;
   candidate_id: number;
@@ -315,6 +319,8 @@ export interface RecruiterScheduleInterviewPayload {
   interview_time: string; // HH:MM
 }
 
+=======
+>>>>>>> Stashed changes
 export interface CandidateScoreFromJson {
   candidateId: number | null;
   scoreGlobal: number | null;
@@ -3138,6 +3144,7 @@ export class DashboardService {
     });
   }
 
+<<<<<<< Updated upstream
   async validateCandidateApplication(
     userId: number,
     payload: RecruiterValidateCandidatePayload,
@@ -4035,6 +4042,8 @@ export class DashboardService {
     };
   }
 
+=======
+>>>>>>> Stashed changes
   async getRecruiterOverview(
     userId: number,
   ): Promise<RecruiterOverviewStats> {
