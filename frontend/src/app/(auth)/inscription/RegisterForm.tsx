@@ -59,8 +59,10 @@ export default function RegisterForm() {
     setError("");
     setLoading(true);
     try {
-      await verifyAndRegister({ email, code });
-      router.push("/app");
+      const tokens = await verifyAndRegister({ email, code });
+      const dest =
+        tokens.user.role === "recruteur" ? "/app/onboarding-recruteur" : "/app";
+      router.push(dest);
     } catch (err) {
       setError(getErrorMsg(err));
     } finally {

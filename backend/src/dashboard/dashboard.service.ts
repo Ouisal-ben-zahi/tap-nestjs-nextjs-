@@ -215,6 +215,30 @@ export interface RecruiterOverviewStats {
   alerts: { type: string; message: string }[];
 }
 
+export interface RecruiterProfileRow {
+  id: number;
+  userId: number;
+  nomSociete: string | null;
+  nomContact: string | null;
+  telephone: string | null;
+  emailPersonnel: string | null;
+  emailPro: string | null;
+  ice: string | null;
+  adresse: string | null;
+  createdAt: string | null;
+  updatedAt: string | null;
+}
+
+export interface RecruiterProfileUpsertPayload {
+  nom_societe: string;
+  nom_contact: string;
+  telephone: string;
+  email_personnel: string;
+  email_pro: string;
+  ice: string;
+  adresse: string;
+}
+
 export interface PublicJobItem {
   id: number;
   title: string | null;
@@ -551,8 +575,164 @@ export class DashboardService {
     return this.resolveUserId(userRef);
   }
 
+  private mapRecruiterRow(row: Record<string, unknown>): RecruiterProfileRow {
+    return {
+      id: row.id as number,
+      userId: row.user_id as number,
+      nomSociete: (row.nom_societe as string) ?? null,
+      nomContact: (row.nom_contact as string) ?? null,
+      telephone: (row.telephone as string) ?? null,
+      emailPersonnel: (row.email_personnel as string) ?? null,
+      emailPro: (row.email_pro as string) ?? null,
+      ice: (row.ice as string) ?? null,
+      adresse: (row.adresse as string) ?? null,
+      createdAt: (row.created_at as string) ?? null,
+      updatedAt: (row.updated_at as string) ?? null,
+    };
+  }
+
+  /**
+   * Profil entreprise recruteur (table `recruteurs`). Null si pas encore complété (onboarding).
+   */
+  async getRecruiterProfileByUser(userId: number): Promise<RecruiterProfileRow | null> {
+    if (!userId || Number.isNaN(userId)) {
+      throw new BadRequestException('userId invalide');
+    }
+    const { data: userRow, error: userErr } = await this.supabase
+      .from('users')
+      .select('id, role')
+      .eq('id', userId)
+      .maybeSingle();
+    if (userErr) {
+      throw new BadRequestException(userErr.message || 'Erreur utilisateur');
+    }
+    if (!userRow || userRow.role !== 'recruteur') {
+      throw new ForbiddenException('Accès réservé aux recruteurs');
+    }
+    const { data, error } = await this.supabase
+      .from('recruteurs')
+      .select('*')
+      .eq('user_id', userId)
+      .maybeSingle();
+    if (error) {
+      throw new BadRequestException(error.message || 'Erreur chargement profil recruteur');
+    }
+    if (!data) return null;
+    return this.mapRecruiterRow(data as Record<string, unknown>);
+  }
+
+  /**
+   * Crée ou met à jour le profil recruteur. Refusé si l'utilisateur a une ligne `candidates` (compte candidat).
+   */
+  async upsertRecruiterProfileByUser(
+    userId: number,
+    payload: RecruiterProfileUpsertPayload,
+  ): Promise<RecruiterProfileRow> {
+    if (!userId || Number.isNaN(userId)) {
+      throw new BadRequestException('userId invalide');
+    }
+    const trim = (s: string) => String(s ?? '').trim();
+    const nom_societe = trim(payload.nom_societe);
+    const nom_contact = trim(payload.nom_contact);
+    const telephone = trim(payload.telephone);
+    const email_personnel = trim(payload.email_personnel).toLowerCase();
+    const email_pro = trim(payload.email_pro).toLowerCase();
+    const ice = trim(payload.ice);
+    const adresse = trim(payload.adresse);
+    if (
+      !nom_societe ||
+      !nom_contact ||
+      !telephone ||
+      !email_personnel ||
+      !email_pro ||
+      !ice ||
+      !adresse
+    ) {
+      throw new BadRequestException(
+        'Tous les champs sont requis (société, contact, téléphone, emails, ICE, adresse).',
+      );
+    }
+
+    const { data: userRow, error: userErr } = await this.supabase
+      .from('users')
+      .select('id, role')
+      .eq('id', userId)
+      .maybeSingle();
+    if (userErr) {
+      throw new BadRequestException(userErr.message || 'Erreur utilisateur');
+    }
+    if (!userRow || userRow.role !== 'recruteur') {
+      throw new ForbiddenException('Accès réservé aux recruteurs');
+    }
+
+    const { data: candRow } = await this.supabase
+      .from('candidates')
+      .select('id')
+      .eq('user_id', userId)
+      .limit(1)
+      .maybeSingle();
+    if (candRow && userRow.role !== 'recruteur') {
+      throw new BadRequestException(
+        'Ce compte est lié à un profil candidat : le profil recruteur entreprise ne peut pas être enregistré.',
+      );
+    }
+
+    const { data: existing } = await this.supabase
+      .from('recruteurs')
+      .select('id')
+      .eq('user_id', userId)
+      .maybeSingle();
+
+    const now = new Date().toISOString();
+    const base = {
+      nom_societe,
+      nom_contact,
+      telephone,
+      email_personnel,
+      email_pro,
+      ice,
+      adresse,
+      updated_at: now,
+    };
+
+    if (existing?.id) {
+      const { data: updated, error: upErr } = await this.supabase
+        .from('recruteurs')
+        .update(base)
+        .eq('id', existing.id)
+        .select('*')
+        .single();
+      if (upErr || !updated) {
+        throw new BadRequestException(upErr?.message || 'Mise à jour profil recruteur impossible');
+      }
+      return this.mapRecruiterRow(updated as Record<string, unknown>);
+    }
+
+    const { data: inserted, error: insErr } = await this.supabase
+      .from('recruteurs')
+      .insert({
+        user_id: userId,
+        ...base,
+        created_at: now,
+      })
+      .select('*')
+      .single();
+    if (insErr || !inserted) {
+      throw new BadRequestException(insErr?.message || 'Création profil recruteur impossible');
+    }
+    return this.mapRecruiterRow(inserted as Record<string, unknown>);
+  }
 
   private async getOrCreateCandidate(userId: number): Promise<{ id: number; categorie_profil: string | null }> {
+    const { data: roleRow } = await this.supabase
+      .from('users')
+      .select('role')
+      .eq('id', userId)
+      .maybeSingle();
+    if (roleRow && (roleRow as { role?: string }).role === 'recruteur') {
+      throw new ForbiddenException('Cette action est réservée aux comptes candidat.');
+    }
+
     const { data: existing } = await this.supabase
       .from("candidates")
       .select("id, categorie_profil")
@@ -586,16 +766,14 @@ export class DashboardService {
     return created;
   }
 
-  /** Base URL Flask optionnelle (ex. création d’offre sans IA en local). */
+  /** Base URL Flask depuis `FLASK_AI_URL` dans le `.env` du backend uniquement. */
   private tryGetFlaskBaseUrl(): string | null {
-    const raw =
-      this.config.get<string>('FLASK_AI_URL') ||
-      this.config.get<string>('NEXT_PUBLIC_FLASK_AI_URL');
+    const raw = this.config.get<string>('FLASK_AI_URL');
     if (!raw || !String(raw).trim()) {
       return null;
     }
     let flaskUrl = String(raw).trim().replace(/\/$/, '');
-    // Sans schéma (ex. localhost:5000), `new URL(...)` lève « Invalid URL ».
+    // Sans schéma http(s), `new URL(...)` lève « Invalid URL ».
     if (!/^https?:\/\//i.test(flaskUrl)) {
       flaskUrl = `http://${flaskUrl}`;
     }
@@ -614,25 +792,19 @@ export class DashboardService {
     const base = this.tryGetFlaskBaseUrl();
     if (!base) {
       throw new BadRequestException(
-        'FLASK_AI_URL non configuré ou invalide (ex. http://127.0.0.1:5000, sans guillemets superflus).',
+        'FLASK_AI_URL est absent ou invalide dans le fichier .env du backend (URL complète avec schéma http ou https).',
       );
     }
     return base;
   }
 
   /**
-   * URL publique utilisée dans les réponses API renvoyées au navigateur.
-   * Elle doit être HTTPS (ou relative) pour éviter le Mixed Content.
-   *
-   * Exemples recommandés en prod:
-   * - FLASK_AI_PUBLIC_URL=/ia
-   * - FLASK_AI_PUBLIC_URL=https://demo.tap-hr.com/ia
+   * URL publique utilisée dans les réponses API renvoyées au navigateur (variable
+   * `FLASK_AI_PUBLIC_URL` dans le .env du backend). Relative ou HTTPS pour éviter le Mixed Content.
    */
   private getFlaskPublicBaseUrl(): string {
     const raw =
-      this.config.get<string>('FLASK_AI_PUBLIC_URL') ||
-      this.config.get<string>('NEXT_PUBLIC_FLASK_AI_URL') ||
-      '/ia';
+      this.config.get<string>('FLASK_AI_PUBLIC_URL') || '/ia';
     const value = String(raw || '').trim().replace(/\/$/, '');
     if (!value) return '/ia';
     if (value.startsWith('/')) return value;
@@ -658,7 +830,7 @@ export class DashboardService {
         url = new URL(pathNorm, base);
       } catch (e: any) {
         throw new BadRequestException(
-          `URL Flask invalide (FLASK_AI_URL). Vérifiez le schéma http(s) et l'hôte. Détail : ${e?.message ?? e}`,
+          `URL Flask invalide (FLASK_AI_URL dans .env). Détail : ${e?.message ?? e}`,
         );
       }
       const transport = url.protocol === 'https:' ? https : http;
@@ -745,19 +917,43 @@ export class DashboardService {
   }
 
   /**
-   * Appelle le backend IA pour générer l’embedding document d’une offre (matching sémantique).
-   * L'embedding est requis pour la création d'offre côté recruteur.
+   * Vecteur de secours si Flask n’est pas disponible : même dimension que l’embedding attendu
+   * (défaut 768, surcharger avec JOB_EMBEDDING_FALLBACK_DIM si votre modèle Gemini en utilise une autre).
+   * Le matching sémantique reste dégradé tant que les offres n’ont pas d’embedding réel.
    */
-  private async fetchJobEmbeddingFromFlask(
+  private buildFallbackJobEmbedding(): number[] {
+    const raw = this.config.get<string>('JOB_EMBEDDING_FALLBACK_DIM');
+    let dim = Number.parseInt(String(raw ?? '768'), 10);
+    if (!Number.isFinite(dim) || dim < 16 || dim > 4096) {
+      dim = 768;
+    }
+    const c = 1 / Math.sqrt(dim);
+    return Array.from({ length: dim }, () => c);
+  }
+
+  /**
+   * Embedding d’offre : Flask si FLASK_AI_URL est défini, sinon vecteur de secours (pas d’erreur à la création).
+   */
+  private async resolveJobEmbeddingForRecruiterJob(
     payload: RecruiterJobPayload,
   ): Promise<number[]> {
     const base = this.tryGetFlaskBaseUrl();
     if (!base) {
-      throw new BadRequestException(
-        'FLASK_AI_URL non configuré ou invalide (NEXT_PUBLIC_FLASK_AI_URL). Exemple : http://127.0.0.1:5000 — impossible de générer l’embedding de l’offre.',
+      console.warn(
+        '[TAP dashboard] FLASK_AI_URL absent du .env backend : embedding de secours pour l’offre. Définissez FLASK_AI_URL dans backend/.env pour le matching sémantique.',
       );
+      return this.buildFallbackJobEmbedding();
     }
+    return this.fetchJobEmbeddingFromFlaskWithBase(base, payload);
+  }
 
+  /**
+   * Appelle le backend IA pour générer l’embedding document d’une offre (matching sémantique).
+   */
+  private async fetchJobEmbeddingFromFlaskWithBase(
+    base: string,
+    payload: RecruiterJobPayload,
+  ): Promise<number[]> {
     const embedPayload = {
       title: payload.title,
       categorie_profil: payload.categorie_profil ?? null,
@@ -1834,6 +2030,27 @@ export class DashboardService {
     return this.getCandidateTalentcardFilesByCandidateId(candidateId);
   }
 
+  /**
+   * Fichiers CV (PDF) d'un candidat pour un recruteur connecté (JWT), uniquement si une candidature existe.
+   */
+  async getRecruiterCandidateCvFiles(
+    recruiterUserId: number,
+    candidateId: number,
+  ): Promise<{ cvFiles: CandidateCvFileItem[] }> {
+    if (!recruiterUserId || Number.isNaN(recruiterUserId)) {
+      throw new BadRequestException('userId invalide');
+    }
+    if (!candidateId || Number.isNaN(candidateId)) {
+      throw new BadRequestException('candidateId invalide');
+    }
+
+    await this.assertRecruiterHasCandidateApplication(
+      recruiterUserId,
+      candidateId,
+    );
+    return this.getCandidateCvFilesByCandidateId(candidateId);
+  }
+
   async getRecruiterCandidateBasicProfile(
     recruiterUserId: number,
     candidateId: number,
@@ -2593,7 +2810,7 @@ export class DashboardService {
         ? payload.localisation.trim()
         : null;
 
-    const embedding = await this.fetchJobEmbeddingFromFlask({
+    const embedding = await this.resolveJobEmbeddingForRecruiterJob({
       ...payload,
       title,
       localisation: locationType ?? payload.localisation,
@@ -2757,7 +2974,7 @@ export class DashboardService {
         ? payload.localisation.trim()
         : null;
 
-    const embedding = await this.fetchJobEmbeddingFromFlask({
+    const embedding = await this.resolveJobEmbeddingForRecruiterJob({
       ...payload,
       title,
       localisation: locationType ?? payload.localisation,

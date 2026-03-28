@@ -15,3 +15,28 @@ export type Job = PublicJobItem & {
 
 export type JobPayload = RecruiterJobPayload;
 
+/** Profil entreprise (table `recruteurs`), aligné sur le backend Nest. */
+export type RecruiterCompanyProfile = {
+  id: number;
+  userId: number;
+  nomSociete: string | null;
+  nomContact: string | null;
+  telephone: string | null;
+  emailPersonnel: string | null;
+  emailPro: string | null;
+  ice: string | null;
+  adresse: string | null;
+  createdAt: string | null;
+  updatedAt: string | null;
+};
+
+export type RecruiterCompanyProfilePayload = {
+  nom_societe: string;
+  nom_contact: string;
+  telephone: string;
+  email_personnel: string;
+  email_pro: string;
+  ice: string;
+  adresse: string;
+};
+

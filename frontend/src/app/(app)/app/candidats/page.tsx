@@ -437,13 +437,13 @@ export default function CandidatsPage() {
                               className="min-w-0 flex-1 flex items-center gap-3 text-left rounded-lg cursor-pointer disabled:cursor-not-allowed disabled:opacity-50 focus:outline-none focus-visible:ring-2 focus-visible:ring-tap-red/50"
                               aria-label={
                                 candidateName
-                                  ? `Voir le portfolio de ${candidateName}`
-                                  : "Voir le portfolio du candidat"
+                                  ? `Voir la Talent Card de ${candidateName}`
+                                  : "Voir la Talent Card du candidat"
                               }
                               title={
                                 candidateName
-                                  ? `Voir le portfolio de ${candidateName}`
-                                  : "Voir le portfolio du candidat"
+                                  ? `Voir la Talent Card de ${candidateName}`
+                                  : "Voir la Talent Card du candidat"
                               }
                             >
                               <div className="w-12 h-12 rounded-full overflow-hidden border border-white/[0.10] bg-white/[0.04] flex items-center justify-center shrink-0">
@@ -616,7 +616,7 @@ export default function CandidatsPage() {
                     </label>
                     <div className="relative">
                       <Search
-                        className={`pointer-events-none absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 ${
+                        className={`pointer-events-none absolute left-3.5 top-1/2 z-[1] -translate-y-1/2 w-4 h-4 shrink-0 ${
                           isLight ? "text-black/35" : "text-white/35"
                         }`}
                         aria-hidden
@@ -627,7 +627,7 @@ export default function CandidatsPage() {
                         value={candidatureSearch}
                         onChange={(e) => setCandidatureSearch(e.target.value)}
                         placeholder="Nom du candidat…"
-                        className={`input-premium w-full rounded-xl border pl-10 pr-3 py-2.5 text-[13px] outline-none transition focus:ring-2 focus:ring-tap-red/30 ${
+                        className={`input-premium w-full rounded-xl border !py-2.5 !pl-11 !pr-3 text-[13px] outline-none transition focus:ring-2 focus:ring-tap-red/30 [appearance:textfield] [&::-webkit-search-cancel-button]:appearance-none [&::-webkit-search-decoration]:appearance-none ${
                           isLight
                             ? "!bg-white !border-black/10 !text-black placeholder:!text-black/40"
                             : ""
@@ -864,8 +864,16 @@ export default function CandidatsPage() {
                         });
                       }}
                           className="min-w-0 flex-1 flex items-center gap-3 text-left rounded-lg cursor-pointer disabled:cursor-not-allowed disabled:opacity-50 focus:outline-none focus-visible:ring-2 focus-visible:ring-tap-red/50"
-                      aria-label={app.candidateName ? `Voir le portfolio de ${app.candidateName}` : "Voir le portfolio du candidat"}
-                      title={app.candidateName ? `Voir le portfolio de ${app.candidateName}` : "Voir le portfolio du candidat"}
+                      aria-label={
+                        app.candidateName
+                          ? `Voir la Talent Card de ${app.candidateName}`
+                          : "Voir la Talent Card du candidat"
+                      }
+                      title={
+                        app.candidateName
+                          ? `Voir la Talent Card de ${app.candidateName}`
+                          : "Voir la Talent Card du candidat"
+                      }
                     >
                           <div className="w-12 h-12 rounded-full overflow-hidden border border-white/[0.10] bg-white/[0.04] flex items-center justify-center shrink-0">
                         {app.candidateAvatarUrl ? (

@@ -1,16 +1,28 @@
 "use client";
 
+import { useEffect, useMemo, useState } from "react";
 import { useAuth } from "@/hooks/use-auth";
 import { useRecruteurOverview, useRecruteurJobs } from "@/hooks/use-recruteur";
 import { useDashboardTheme } from "@/hooks/use-dashboard-theme";
 import EmptyState from "@/components/ui/EmptyState";
 import ErrorState from "@/components/ui/ErrorState";
 import { Skeleton } from "@/components/ui/Skeleton";
-import { UserCheck, Briefcase, Users, Target, ArrowRight, Eye } from "lucide-react";
+import {
+  UserCheck,
+  Briefcase,
+  Users,
+  Target,
+  ArrowRight,
+  Eye,
+  ChevronLeft,
+  ChevronRight,
+} from "lucide-react";
 import Link from "next/link";
 
 const RECRUTEUR_DASHBOARD_CARD_BASE =
   "group card-animated-border relative rounded-2xl border border-white/[0.08] bg-[#020001] shadow-[0_10px_28px_rgba(0,0,0,0.45)] hover:bg-[linear-gradient(180deg,rgba(202,27,40,0.08)_0%,rgba(10,10,10,0.96)_30%,rgba(10,10,10,0.96)_100%)] hover:border-tap-red/15 transition-all duration-500 overflow-visible hover:-translate-y-0.5";
+
+const OFFRES_MATCHING_PAR_PAGE = 8;
 
 export default function MatchingRecruteurPage() {
   const { user } = useAuth();
@@ -19,6 +31,22 @@ export default function MatchingRecruteurPage() {
   const jobsQuery = useRecruteurJobs();
   const theme = useDashboardTheme();
   const isLight = theme === "light";
+  const [jobsPage, setJobsPage] = useState(1);
+
+  const overview = overviewQuery.data;
+  const jobs = jobsQuery.data?.jobs || [];
+  const jobsTotalPages = Math.max(1, Math.ceil(jobs.length / OFFRES_MATCHING_PAR_PAGE));
+  const paginatedJobs = useMemo(() => {
+    const start = (jobsPage - 1) * OFFRES_MATCHING_PAR_PAGE;
+    return jobs.slice(start, start + OFFRES_MATCHING_PAR_PAGE);
+  }, [jobs, jobsPage]);
+
+  useEffect(() => {
+    setJobsPage((p) => {
+      const max = Math.max(1, Math.ceil(jobs.length / OFFRES_MATCHING_PAR_PAGE));
+      return p > max ? max : p < 1 ? 1 : p;
+    });
+  }, [jobs.length]);
 
   if (!isRecruteur) {
     return (
@@ -30,8 +58,6 @@ export default function MatchingRecruteurPage() {
     );
   }
 
-  const overview = overviewQuery.data;
-  const jobs = jobsQuery.data?.jobs || [];
   const isLoading = overviewQuery.isLoading || jobsQuery.isLoading;
   const isError = overviewQuery.isError || jobsQuery.isError;
 
@@ -163,7 +189,7 @@ export default function MatchingRecruteurPage() {
             </div>
 
             <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-              {jobs.map((job) => {
+              {paginatedJobs.map((job) => {
                 const appCount =
                   overview?.applicationsPerJob?.find((a) => a.jobId === job.id)?.value ?? 0;
 
@@ -254,6 +280,52 @@ export default function MatchingRecruteurPage() {
                 );
               })}
             </div>
+
+            {jobsTotalPages > 1 ? (
+              <div
+                className={`mt-6 flex flex-col sm:flex-row sm:items-center sm:justify-between gap-3 pt-4 ${
+                  isLight ? "border-t border-black/10" : "border-t border-white/[0.06]"
+                }`}
+              >
+                <p className={`text-[12px] ${isLight ? "text-black/50" : "text-white/45"}`}>
+                  Affichage de{" "}
+                  {(jobsPage - 1) * OFFRES_MATCHING_PAR_PAGE + 1}
+                  {" — "}
+                  {Math.min(jobsPage * OFFRES_MATCHING_PAR_PAGE, jobs.length)} sur {jobs.length}
+                </p>
+                <div className="flex flex-wrap items-center justify-center sm:justify-end gap-2">
+                  <button
+                    type="button"
+                    disabled={jobsPage <= 1}
+                    onClick={() => setJobsPage((p) => Math.max(1, p - 1))}
+                    className={`inline-flex items-center gap-1.5 h-9 px-3 rounded-xl border text-[12px] font-medium transition disabled:opacity-40 disabled:cursor-not-allowed ${
+                      isLight
+                        ? "border-black/15 text-black/80 hover:bg-black/[0.04]"
+                        : "border-white/[0.14] text-white/80 hover:bg-white/[0.06]"
+                    }`}
+                  >
+                    <ChevronLeft size={16} strokeWidth={2} />
+                    Précédent
+                  </button>
+                  <span className={`text-[12px] tabular-nums px-2 ${isLight ? "text-black/55" : "text-white/50"}`}>
+                    Page {jobsPage} / {jobsTotalPages}
+                  </span>
+                  <button
+                    type="button"
+                    disabled={jobsPage >= jobsTotalPages}
+                    onClick={() => setJobsPage((p) => Math.min(jobsTotalPages, p + 1))}
+                    className={`inline-flex items-center gap-1.5 h-9 px-3 rounded-xl border text-[12px] font-medium transition disabled:opacity-40 disabled:cursor-not-allowed ${
+                      isLight
+                        ? "border-black/15 text-black/80 hover:bg-black/[0.04]"
+                        : "border-white/[0.14] text-white/80 hover:bg-white/[0.06]"
+                    }`}
+                  >
+                    Suivant
+                    <ChevronRight size={16} strokeWidth={2} />
+                  </button>
+                </div>
+              </div>
+            ) : null}
           </div>
 
           {/* Comment ça marche */}

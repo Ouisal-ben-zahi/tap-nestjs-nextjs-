@@ -1,5 +1,12 @@
 import api from '@/lib/api';
-import type { RecruteurOverview, Job, JobPayload } from '@/types/recruteur';
+import { normalizeRecruiterCompanyProfileResponse } from '@/lib/recruiter-profile';
+import type {
+  RecruteurOverview,
+  Job,
+  JobPayload,
+  RecruiterCompanyProfile,
+  RecruiterCompanyProfilePayload,
+} from '@/types/recruteur';
 import type { CvFile, PortfolioPdfFile } from '@/types/candidat';
 
 export type MatchedCandidate = {
@@ -104,6 +111,16 @@ export type RecruiterPlannedInterviewItem = {
 };
 
 export const recruteurService = {
+  getCompanyProfile: () =>
+    api
+      .get<unknown>('/dashboard/recruteur/profile')
+      .then((r) => normalizeRecruiterCompanyProfileResponse(r.data)),
+
+  upsertCompanyProfile: (payload: RecruiterCompanyProfilePayload) =>
+    api
+      .put<RecruiterCompanyProfile>('/dashboard/recruteur/profile', payload)
+      .then((r) => r.data),
+
   getOverview: () =>
     api.get<RecruteurOverview>('/dashboard/recruteur/overview').then((r) => r.data),
 
@@ -118,6 +135,13 @@ export const recruteurService = {
     api
       .get<{ talentcardFiles: RecruiterTalentcardFile[] }>(
         `/dashboard/recruteur/candidats/${candidateId}/talentcard-files`,
+      )
+      .then((r) => r.data),
+
+  getCandidateCvFiles: (candidateId: number) =>
+    api
+      .get<{ cvFiles: CvFile[] }>(
+        `/dashboard/recruteur/candidats/${candidateId}/cv-files`,
       )
       .then((r) => r.data),
 

@@ -30,7 +30,18 @@ import {
   startWith,
   distinctUntilChanged,
 } from 'rxjs';
-import { DashboardService, type ApplyJobPayload, type RecruiterJobPayload, type RecruiterMatchByOfferPayload, type RecruiterScheduleInterviewPayload, type RecruiterValidateCandidatePayload, type RecruiterSaveInterviewPdfPayload, type RecruiterUpdateCandidateStatusPayload, type ToggleSavedJobPayload } from './dashboard.service';
+import {
+  DashboardService,
+  type ApplyJobPayload,
+  type RecruiterJobPayload,
+  type RecruiterMatchByOfferPayload,
+  type RecruiterScheduleInterviewPayload,
+  type RecruiterValidateCandidatePayload,
+  type RecruiterSaveInterviewPdfPayload,
+  type RecruiterUpdateCandidateStatusPayload,
+  type ToggleSavedJobPayload,
+  type RecruiterProfileUpsertPayload,
+} from './dashboard.service';
 
 @Controller('dashboard')
 export class DashboardController {
@@ -411,6 +422,23 @@ export class DashboardController {
     return this.dashboardService.getRecruiterOverview(userId);
   }
 
+  @Get('recruteur/profile')
+  @UseGuards(AuthGuard('jwt'))
+  async getRecruiterProfileByJwt(@Req() req: any) {
+    const userId = await this.dashboardService.resolveJwtUserId(req?.user);
+    return this.dashboardService.getRecruiterProfileByUser(userId);
+  }
+
+  @Put('recruteur/profile')
+  @UseGuards(AuthGuard('jwt'))
+  async upsertRecruiterProfileByJwt(
+    @Req() req: any,
+    @Body() body: RecruiterProfileUpsertPayload,
+  ) {
+    const userId = await this.dashboardService.resolveJwtUserId(req?.user);
+    return this.dashboardService.upsertRecruiterProfileByUser(userId, body);
+  }
+
   @Get('recruteur/candidats/:candidateId/talentcard-files')
   @UseGuards(AuthGuard('jwt'))
   async getRecruiterCandidateTalentcardFilesByJwt(
@@ -420,6 +448,17 @@ export class DashboardController {
     const userId = await this.dashboardService.resolveJwtUserId(req?.user);
     const id = Number.parseInt(candidateId, 10);
     return this.dashboardService.getRecruiterCandidateTalentcardFiles(userId, id);
+  }
+
+  @Get('recruteur/candidats/:candidateId/cv-files')
+  @UseGuards(AuthGuard('jwt'))
+  async getRecruiterCandidateCvFilesByJwt(
+    @Req() req: any,
+    @Param('candidateId') candidateId: string,
+  ) {
+    const userId = await this.dashboardService.resolveJwtUserId(req?.user);
+    const id = Number.parseInt(candidateId, 10);
+    return this.dashboardService.getRecruiterCandidateCvFiles(userId, id);
   }
 
   @Get('recruteur/candidats/:candidateId/basic-profile')

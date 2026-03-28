@@ -4,8 +4,49 @@ import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
 import { getApiErrorMessage } from '@/lib/api-error';
 import { recruteurService } from '@/services/recruteur.service';
 import { useUiStore } from '@/stores/ui';
-import type { JobPayload } from '@/types/recruteur';
+import type { JobPayload, RecruiterCompanyProfilePayload } from '@/types/recruteur';
 import type { PortfolioPdfFile } from '@/types/candidat';
+import { useAuthStore } from '@/stores/auth';
+
+function useRecruiterAuthEnabled(enabled?: boolean) {
+  const isHydrated = useAuthStore((s) => s.isHydrated);
+  const user = useAuthStore((s) => s.user);
+  const isRecruteur = user?.role === 'recruteur';
+  return Boolean((enabled ?? true) && isHydrated && isRecruteur);
+}
+
+export function useRecruiterCompanyProfile(enabled?: boolean) {
+  const authOk = useRecruiterAuthEnabled(enabled);
+  const userId = useAuthStore((s) => s.user?.id);
+  return useQuery({
+    // Inclure l’utilisateur : évite un cache « profil OK » réutilisé par erreur entre comptes
+    queryKey: ['recruteur', 'company-profile', userId ?? 'none'],
+    queryFn: recruteurService.getCompanyProfile,
+    enabled: authOk && userId != null,
+    staleTime: 0,
+    retry: 1,
+  });
+}
+
+export function useUpsertRecruiterCompanyProfile() {
+  const queryClient = useQueryClient();
+  const addToast = useUiStore((s) => s.addToast);
+  return useMutation({
+    mutationFn: (payload: RecruiterCompanyProfilePayload) =>
+      recruteurService.upsertCompanyProfile(payload),
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ['recruteur', 'company-profile'] });
+      queryClient.invalidateQueries({ queryKey: ['recruteur', 'overview'] });
+      addToast({ message: 'Profil entreprise enregistré', type: 'success' });
+    },
+    onError: (error) => {
+      addToast({
+        message: getApiErrorMessage(error, "Impossible d'enregistrer le profil entreprise"),
+        type: 'error',
+      });
+    },
+  });
+}
 
 export function useRecruteurOverview() {
   return useQuery({
@@ -29,6 +70,17 @@ export function useRecruiterCandidateTalentcardFiles(
   return useQuery({
     queryKey: ['recruteur', 'candidate-talentcard-files', candidateId],
     queryFn: () => recruteurService.getCandidateTalentcardFiles(candidateId as number),
+    enabled: Boolean(enabled && candidateId != null && candidateId > 0),
+  });
+}
+
+export function useRecruiterCandidateCvFiles(
+  candidateId: number | null,
+  enabled = true,
+) {
+  return useQuery({
+    queryKey: ['recruteur', 'candidate-cv-files', candidateId],
+    queryFn: () => recruteurService.getCandidateCvFiles(candidateId as number),
     enabled: Boolean(enabled && candidateId != null && candidateId > 0),
   });
 }

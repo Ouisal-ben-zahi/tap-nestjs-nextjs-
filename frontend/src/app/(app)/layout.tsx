@@ -7,6 +7,7 @@ import HydrationGate from "@/components/app/HydrationGate";
 import AppSidebar from "@/components/app/AppSidebar";
 import RecruiterTalentCardSidebar from "@/components/app/RecruiterTalentCardSidebar";
 import { useRecruiterTalentPanelStore } from "@/stores/recruiter-talent-panel";
+import RecruiterIncompleteProfileGuard from "@/components/app/RecruiterIncompleteProfileGuard";
 import { Menu, X } from "lucide-react";
 
 export default function AppLayout({ children }: { children: React.ReactNode }) {
@@ -27,16 +28,11 @@ export default function AppLayout({ children }: { children: React.ReactNode }) {
 
   useEffect(() => {
     if (!recruiterTalentOpen) return;
-    const el = mainScrollRef.current;
-    if (!el) return;
-    const close = () => closeRecruiterTalentPanel();
-    el.addEventListener("scroll", close, { passive: true });
-    /* La molette ne déclenche pas toujours scroll (ex. fond sans défilement) */
-    el.addEventListener("wheel", close, { passive: true });
-    return () => {
-      el.removeEventListener("scroll", close);
-      el.removeEventListener("wheel", close);
+    const onKey = (e: KeyboardEvent) => {
+      if (e.key === "Escape") closeRecruiterTalentPanel();
     };
+    window.addEventListener("keydown", onKey);
+    return () => window.removeEventListener("keydown", onKey);
   }, [recruiterTalentOpen, closeRecruiterTalentPanel]);
   // Sidebar collée au bord gauche / haut / bas (sans marge) : largeur + même espacement qu’avant vers le contenu.
   const sidebarLeftPaddingClass = collapsed ? "lg:pl-[100px]" : "lg:pl-[288px]";
@@ -50,6 +46,7 @@ export default function AppLayout({ children }: { children: React.ReactNode }) {
   return (
     <HydrationGate>
     <AuthGuard>
+      <RecruiterIncompleteProfileGuard />
       <div className={`h-screen relative overflow-hidden ${layoutCardLikeBgClass}`}>
         {/* Background effects (dark only) */}
         <div className="fixed inset-0 pointer-events-none">
@@ -93,33 +90,22 @@ export default function AppLayout({ children }: { children: React.ReactNode }) {
 
         {recruiterTalentOpen ? (
           <div
-            className="fixed inset-0 z-[60] flex items-center justify-center p-0 sm:p-6"
+            className="fixed right-0 top-1/2 z-[60] flex h-[80dvh] max-h-[80vh] w-full max-w-full -translate-y-1/2 flex-col overflow-hidden border-0 bg-black shadow-none pointer-events-auto lg:max-w-[40vw] lg:w-[40vw]"
             role="dialog"
-            aria-modal="true"
-            aria-label="Portfolio"
+            aria-modal="false"
+            aria-label="Talent Card du candidat"
+            data-recruiter-talent-panel
           >
             <button
               type="button"
-              className="absolute inset-0 cursor-default border-0 bg-transparent p-0"
               onClick={closeRecruiterTalentPanel}
-              aria-label="Fermer le portfolio"
-            />
-            <div
-              className={`relative z-10 w-full h-full sm:h-auto sm:max-h-[92vh] shrink-0 overflow-y-auto pointer-events-auto ${layoutCardLikeBgClass} rounded-none sm:rounded-2xl lg:w-[420px] lg:min-w-[420px] lg:max-w-[420px]`}
-              data-recruiter-talent-panel
-              onClick={(e) => e.stopPropagation()}
+              className="absolute top-3 right-3 z-20 w-9 h-9 rounded-lg border border-white/[0.10] bg-black/60 text-white/90 hover:bg-black/70 flex items-center justify-center"
+              aria-label="Fermer"
+              title="Fermer (Échap)"
             >
-              <button
-                type="button"
-                onClick={closeRecruiterTalentPanel}
-                className="absolute top-3 right-3 z-10 lg:hidden w-9 h-9 rounded-lg border border-white/[0.10] bg-white/[0.06] text-white/70 hover:text-white hover:bg-white/[0.10] flex items-center justify-center"
-                aria-label="Fermer"
-                title="Fermer"
-              >
-                <X size={18} />
-              </button>
-              <RecruiterTalentCardSidebar />
-            </div>
+              <X size={18} />
+            </button>
+            <RecruiterTalentCardSidebar />
           </div>
         ) : null}
       </div>

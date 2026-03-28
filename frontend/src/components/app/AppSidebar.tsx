@@ -5,6 +5,8 @@ import Image from "next/image";
 import { usePathname } from "next/navigation";
 import { useAuth } from "@/hooks/use-auth";
 import { useCandidatStats } from "@/hooks/use-candidat";
+import { useRecruiterCompanyProfile } from "@/hooks/use-recruteur";
+import { isRecruiterCompanyProfileComplete } from "@/lib/recruiter-profile";
 import { useDashboardTheme } from "@/hooks/use-dashboard-theme";
 import {
   LayoutDashboard,
@@ -15,13 +17,13 @@ import {
   X,
   Briefcase,
   Search,
-  Sparkles,
+  UserSearch,
   LogOut,
   Settings,
   ClipboardList,
-  Video,
+  Mic2,
   Megaphone,
-  CalendarCheck,
+  CalendarClock,
   Home,
 } from "lucide-react";
 
@@ -31,7 +33,7 @@ const candidatNavItems = [
   { href: "/app/scoring", label: "Évaluation", icon: BarChart3 },
   { href: "/app/matching", label: "Offres IA", icon: Briefcase },
   { href: "/app/formation", label: "Formation", icon: GraduationCap },
-  { href: "/app/entretien", label: "Entretien IA", icon: Video },
+  { href: "/app/entretien", label: "Entretien IA", icon: Mic2 },
   { href: "/app/mes-fichiers", label: "Mes fichiers", icon: FolderOpen },
   { href: "/app/mes-candidatures", label: "Mes candidatures", icon: ClipboardList },
   { href: "/app/parametres", label: "Paramètres", icon: Settings },
@@ -41,8 +43,8 @@ const recruteurNavItems = [
   { href: "/app", label: "Tableau de bord", icon: LayoutDashboard },
   { href: "/app/offres", label: "Mes offres", icon: Megaphone },
   { href: "/app/candidats", label: "Candidats", icon: Search },
-  { href: "/app/matching-recruteur", label: "Appariement IA", icon: Sparkles },
-  { href: "/app/entretiens-planifies", label: "Entretiens", icon: CalendarCheck },
+  { href: "/app/matching-recruteur", label: "Appariement IA", icon: UserSearch },
+  { href: "/app/entretiens-planifies", label: "Entretiens", icon: CalendarClock },
   { href: "/app/parametres", label: "Paramètres", icon: Settings },
 ];
 
@@ -62,6 +64,7 @@ export default function AppSidebar({
   const pathname = usePathname();
   const { user, logout } = useAuth();
   const isCandidat = user?.role === "candidat";
+  const isRecruteur = user?.role === "recruteur";
   const theme = useDashboardTheme();
   const isLight = theme === "light";
 
@@ -73,6 +76,12 @@ export default function AppSidebar({
   const hasProfile =
     !isCandidat ||
     (stats?.candidateId !== null && stats?.candidateId !== undefined);
+
+  const recruiterProfileQuery = useRecruiterCompanyProfile(isRecruteur);
+  const hasRecruiterCompanyProfile =
+    !isRecruteur ||
+    (recruiterProfileQuery.isSuccess &&
+      isRecruiterCompanyProfileComplete(recruiterProfileQuery.data));
 
   const navItems = user?.role === "recruteur" ? recruteurNavItems : candidatNavItems;
 
@@ -172,9 +181,11 @@ export default function AppSidebar({
             const isActive = pathname === item.href;
             const Icon = item.icon;
 
-            // Si candidat sans profil : on ne laisse cliquer que sur Paramètres
-            const isCandidatParam = isCandidat && item.href === "/app/parametres";
-            const disabled = isCandidat && !hasProfile && !isCandidatParam;
+            // Candidat sans profil en base, ou recruteur sans ligne `recruteurs` : seul Paramètres reste actif
+            const isParametres = item.href === "/app/parametres";
+            const disabled =
+              (isCandidat && !hasProfile && !isParametres) ||
+              (isRecruteur && !hasRecruiterCompanyProfile && !isParametres);
 
             const baseClasses = collapsed
               ? "relative flex items-center justify-center px-3 py-2.5 rounded-full border border-transparent transition-all duration-300 group"

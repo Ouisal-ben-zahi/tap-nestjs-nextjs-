@@ -86,45 +86,46 @@ function isoBar3DPaths(x: number, yBottom: number, w: number, h: number, depth: 
   };
 }
 
+/** Barres 3D : déclinaisons rouge TAP (#CA1B28) + bordeaux / corail (cohérent avec le site). */
 const CATEGORY_CLUSTER_PALETTE = {
   light: {
     primary: [
       { front: "#CA1B28", right: "#7a1018", top: "#E01F26" },
-      { front: "#4f46e5", right: "#312e81", top: "#6366f1" },
-      { front: "#0d9488", right: "#115e59", top: "#14b8a6" },
-      { front: "#c026d3", right: "#86198f", top: "#d946ef" },
-      { front: "#d97706", right: "#92400e", top: "#f59e0b" },
-      { front: "#0284c7", right: "#075985", top: "#0ea5e9" },
-      { front: "#db2777", right: "#9d174d", top: "#ec4899" },
+      { front: "#E01F26", right: "#881118", top: "#f87171" },
+      { front: "#a01520", right: "#4c0710", top: "#fca5a5" },
+      { front: "#9f1239", right: "#4c0519", top: "#fb7185" },
+      { front: "#b91c1c", right: "#7f1d1d", top: "#fecaca" },
+      { front: "#dc2626", right: "#991b1b", top: "#f87171" },
+      { front: "#c2410c", right: "#7c2d12", top: "#fb923c" },
     ],
     secondary: [
       { front: "#fca5a5", right: "#b91c1c", top: "#fecaca" },
-      { front: "#a5b4fc", right: "#4338ca", top: "#c7d2fe" },
-      { front: "#5eead4", right: "#0f766e", top: "#99f6e4" },
-      { front: "#f0abfc", right: "#a21caf", top: "#f5d0fe" },
-      { front: "#fcd34d", right: "#b45309", top: "#fde68a" },
-      { front: "#7dd3fc", right: "#0369a1", top: "#bae6fd" },
-      { front: "#f9a8d4", right: "#be185d", top: "#fbcfe8" },
+      { front: "#fda4af", right: "#be123c", top: "#fecdd3" },
+      { front: "#fecaca", right: "#b91c1c", top: "#fee2e2" },
+      { front: "#fb7185", right: "#9f1239", top: "#fecdd3" },
+      { front: "#fdba74", right: "#c2410c", top: "#ffedd5" },
+      { front: "#fca5a5", right: "#991b1b", top: "#fef2f2" },
+      { front: "#f9a8d4", right: "#9d174d", top: "#fce7f3" },
     ],
   },
   dark: {
     primary: [
       { front: "rgba(224,31,38,0.95)", right: "rgba(90,14,22,0.98)", top: "rgba(248,113,113,0.9)" },
-      { front: "rgba(129,140,248,0.92)", right: "rgba(49,46,120,0.95)", top: "rgba(165,180,252,0.85)" },
-      { front: "rgba(45,212,191,0.9)", right: "rgba(15,118,110,0.95)", top: "rgba(94,234,212,0.8)" },
-      { front: "rgba(217,70,239,0.88)", right: "rgba(112,26,117,0.95)", top: "rgba(240,171,252,0.75)" },
-      { front: "rgba(251,191,36,0.9)", right: "rgba(146,64,14,0.95)", top: "rgba(253,224,71,0.75)" },
-      { front: "rgba(56,189,248,0.9)", right: "rgba(7,89,133,0.95)", top: "rgba(125,211,252,0.8)" },
-      { front: "rgba(244,114,182,0.9)", right: "rgba(131,24,67,0.95)", top: "rgba(251,207,232,0.75)" },
+      { front: "rgba(202,27,40,0.92)", right: "rgba(60,10,16,0.95)", top: "rgba(248,113,113,0.88)" },
+      { front: "rgba(224,31,38,0.88)", right: "rgba(76,7,16,0.96)", top: "rgba(252,165,165,0.82)" },
+      { front: "rgba(190,18,60,0.9)", right: "rgba(76,5,25,0.95)", top: "rgba(251,113,133,0.85)" },
+      { front: "rgba(220,38,38,0.9)", right: "rgba(91,15,15,0.95)", top: "rgba(254,202,202,0.7)" },
+      { front: "rgba(234,88,12,0.88)", right: "rgba(124,45,18,0.95)", top: "rgba(253,186,116,0.8)" },
+      { front: "rgba(239,68,68,0.9)", right: "rgba(127,29,29,0.95)", top: "rgba(254,226,226,0.65)" },
     ],
     secondary: [
       { front: "rgba(248,113,113,0.75)", right: "rgba(127,29,29,0.9)", top: "rgba(254,202,202,0.55)" },
-      { front: "rgba(165,180,252,0.7)", right: "rgba(55,48,163,0.9)", top: "rgba(199,210,254,0.5)" },
-      { front: "rgba(94,234,212,0.7)", right: "rgba(17,94,89,0.9)", top: "rgba(153,246,228,0.5)" },
-      { front: "rgba(240,171,252,0.68)", right: "rgba(134,25,143,0.9)", top: "rgba(245,208,254,0.48)" },
-      { front: "rgba(253,224,71,0.72)", right: "rgba(161,98,7,0.9)", top: "rgba(254,240,138,0.5)" },
-      { front: "rgba(125,211,252,0.72)", right: "rgba(3,105,161,0.9)", top: "rgba(186,230,253,0.5)" },
-      { front: "rgba(251,207,232,0.7)", right: "rgba(157,23,77,0.9)", top: "rgba(252,231,243,0.5)" },
+      { front: "rgba(251,113,133,0.72)", right: "rgba(136,19,55,0.92)", top: "rgba(254,205,211,0.5)" },
+      { front: "rgba(252,165,165,0.7)", right: "rgba(153,27,27,0.9)", top: "rgba(254,226,226,0.48)" },
+      { front: "rgba(253,164,175,0.68)", right: "rgba(157,23,77,0.9)", top: "rgba(252,231,243,0.45)" },
+      { front: "rgba(253,186,116,0.72)", right: "rgba(154,52,18,0.9)", top: "rgba(255,237,213,0.48)" },
+      { front: "rgba(248,113,113,0.65)", right: "rgba(91,15,15,0.92)", top: "rgba(254,242,242,0.42)" },
+      { front: "rgba(244,114,182,0.68)", right: "rgba(131,24,67,0.9)", top: "rgba(252,231,243,0.45)" },
     ],
   },
 } as const;
@@ -237,9 +238,9 @@ export default function RecruteurDashboard() {
   const pipelineRose = useMemo(() => {
     const { acceptee, attente, refusee, autre } = pipelineBuckets;
     const parts = [
-      { key: "acceptee", label: "Acceptées", value: acceptee, fillL: "#16a34a", fillD: "#4ade80" },
+      { key: "acceptee", label: "Acceptées", value: acceptee, fillL: "#15803d", fillD: "#4ade80" },
       { key: "attente", label: "En cours", value: attente, fillL: "#d97706", fillD: "#fbbf24" },
-      { key: "refusee", label: "Refusées", value: refusee, fillL: "#dc2626", fillD: "#fb7185" },
+      { key: "refusee", label: "Refusées", value: refusee, fillL: "#CA1B28", fillD: "#f87171" },
       { key: "autre", label: "Autre", value: autre, fillL: "#52525b", fillD: "#a1a1aa" },
     ].filter((p) => p.value > 0);
     const appsTotal = acceptee + attente + refusee + autre;
@@ -301,32 +302,40 @@ export default function RecruteurDashboard() {
       value: overview?.totalJobs ?? 0,
       meta: `${overview?.urgentJobs ?? 0} postes urgents`,
       icon: Briefcase,
-      iconClass: "text-red-500",
-      badgeClass: "bg-red-500/10 border-red-500/20",
+      iconClass: "text-tap-red",
+      badgeClass: "bg-tap-red/10 border-tap-red/20",
+      iconDark: "text-tap-red",
+      badgeDark: "bg-tap-red/[0.12] border-tap-red/25",
     },
     {
       label: "Candidats",
       value: overview?.totalCandidates ?? 0,
       meta: `${overview?.totalApplications ?? 0} candidatures`,
       icon: Users,
-      iconClass: "text-blue-500",
-      badgeClass: "bg-blue-500/10 border-blue-500/20",
+      iconClass: "text-[#E01F26]",
+      badgeClass: "bg-[#E01F26]/10 border-[#E01F26]/20",
+      iconDark: "text-[#f87171]",
+      badgeDark: "bg-[#f87171]/10 border-[#f87171]/20",
     },
     {
       label: "Candidatures",
       value: overview?.totalApplications ?? 0,
       meta: `${overview?.totalCandidates ?? 0} profils`,
       icon: FileText,
-      iconClass: "text-green-500",
-      badgeClass: "bg-green-500/10 border-green-500/20",
+      iconClass: "text-[#a01520]",
+      badgeClass: "bg-[#a01520]/10 border-[#a01520]/20",
+      iconDark: "text-[#fca5a5]",
+      badgeDark: "bg-[#fca5a5]/10 border-[#fca5a5]/20",
     },
     {
       label: "Postes urgents",
       value: overview?.urgentJobs ?? 0,
       meta: "priorité recrutement",
       icon: AlertTriangle,
-      iconClass: "text-yellow-500",
-      badgeClass: "bg-yellow-500/10 border-yellow-500/20",
+      iconClass: "text-[#ff5a44]",
+      badgeClass: "bg-tap-red/12 border-tap-red/25",
+      iconDark: "text-[#fdba74]",
+      badgeDark: "bg-[#fdba74]/10 border-orange-400/25",
     },
   ];
   const themedCardClass =
@@ -390,10 +399,13 @@ export default function RecruteurDashboard() {
                       </div>
                       <div
                         className={`w-11 h-11 rounded-xl border flex items-center justify-center ${
-                          isLight ? card.badgeClass : "bg-tap-red/[0.08] border-tap-red/20"
+                          isLight ? card.badgeClass : card.badgeDark ?? "bg-tap-red/[0.08] border-tap-red/20"
                         }`}
                       >
-                        <Icon size={18} className={isLight ? card.iconClass : "text-tap-red"} />
+                        <Icon
+                          size={18}
+                          className={isLight ? card.iconClass : card.iconDark ?? "text-tap-red"}
+                        />
                       </div>
                     </div>
                   </div>
@@ -427,7 +439,7 @@ export default function RecruteurDashboard() {
               {!isLight && (
                 <div className="pointer-events-none absolute inset-0 opacity-100 group-hover:opacity-0 transition-opacity duration-500">
                   <div className="absolute -top-24 -right-28 w-72 h-72 rounded-full bg-white/5 blur-2xl" />
-                  <div className="absolute -bottom-28 -left-24 w-72 h-72 rounded-full bg-emerald-500/10 blur-2xl opacity-45" />
+                  <div className="absolute -bottom-28 -left-24 w-72 h-72 rounded-full bg-tap-red/10 blur-2xl opacity-45" />
                 </div>
               )}
               <div className="relative grid grid-cols-1 lg:grid-cols-12 gap-6 lg:gap-8 lg:items-start">
@@ -519,12 +531,12 @@ export default function RecruteurDashboard() {
               {!isLight && (
                 <div className="pointer-events-none absolute inset-0 opacity-100 group-hover:opacity-0 transition-opacity duration-500">
                   <div className="absolute -top-24 -right-28 w-72 h-72 rounded-full bg-white/5 blur-2xl" />
-                  <div className="absolute -bottom-28 -left-24 w-72 h-72 rounded-full bg-blue-500/10 blur-2xl opacity-55" />
+                  <div className="absolute -bottom-28 -left-24 w-72 h-72 rounded-full bg-tap-red/10 blur-2xl opacity-55" />
                 </div>
               )}
               <div className="relative">
                 <div className="flex items-center gap-2 mb-4">
-                  <TrendingUp size={14} className="text-blue-400" />
+                  <TrendingUp size={14} className="text-tap-red" />
                   <h3 className={`text-[13px] uppercase tracking-[2px] font-semibold ${isLight ? "text-black" : "text-white/50"}`}>
                     Activité (14 jours)
                   </h3>
@@ -540,8 +552,8 @@ export default function RecruteurDashboard() {
                   >
                     <defs>
                       <linearGradient id="recDashActivityFill" x1="0" y1="0" x2="0" y2="1">
-                        <stop offset="0%" stopColor={isLight ? "rgba(59,130,246,0.35)" : "rgba(59,130,246,0.45)"} />
-                        <stop offset="100%" stopColor={isLight ? "rgba(59,130,246,0.02)" : "rgba(59,130,246,0.05)"} />
+                        <stop offset="0%" stopColor={isLight ? "rgba(202,27,40,0.32)" : "rgba(202,27,40,0.42)"} />
+                        <stop offset="100%" stopColor={isLight ? "rgba(202,27,40,0.02)" : "rgba(202,27,40,0.06)"} />
                       </linearGradient>
                     </defs>
                     <g opacity={isLight ? 0.2 : 0.22} stroke={isLight ? "#000" : "#fff"} strokeWidth={0.6}>
@@ -559,14 +571,14 @@ export default function RecruteurDashboard() {
                     <path
                       d={activityChartGeometry.lineD}
                       fill="none"
-                      stroke={isLight ? "rgba(37,99,235,0.95)" : "rgba(96,165,250,0.95)"}
+                      stroke={isLight ? "rgba(202,27,40,0.95)" : "rgba(248,113,113,0.95)"}
                       strokeWidth={2}
                       strokeLinejoin="round"
                       strokeLinecap="round"
                     />
                     {activityChartGeometry.pts.map((p, i) => (
                       <g key={i}>
-                        <circle cx={p.x} cy={p.y} r={3} fill={isLight ? "#2563eb" : "#60a5fa"} />
+                        <circle cx={p.x} cy={p.y} r={3} fill={isLight ? "#CA1B28" : "#f87171"} />
                       </g>
                     ))}
                   </svg>
@@ -596,12 +608,12 @@ export default function RecruteurDashboard() {
               {!isLight && (
                 <div className="pointer-events-none absolute inset-0 opacity-100 group-hover:opacity-0 transition-opacity duration-500">
                   <div className="absolute -top-24 -right-28 w-72 h-72 rounded-full bg-white/5 blur-2xl" />
-                  <div className="absolute -bottom-28 -left-24 w-72 h-72 rounded-full bg-amber-500/10 blur-2xl opacity-45" />
+                  <div className="absolute -bottom-28 -left-24 w-72 h-72 rounded-full bg-tap-red/10 blur-2xl opacity-45" />
                 </div>
               )}
               <div className="relative">
                 <div className="flex items-center gap-2 mb-4">
-                  <BarChart3 size={14} className="text-amber-400" />
+                  <BarChart3 size={14} className="text-tap-red" />
                   <h3 className={`text-[13px] uppercase tracking-[2px] font-semibold ${isLight ? "text-black" : "text-white/50"}`}>
                     Pipeline des candidatures
                   </h3>
@@ -702,7 +714,7 @@ export default function RecruteurDashboard() {
             {!isLight && (
               <div className="pointer-events-none absolute inset-0 opacity-100 group-hover:opacity-0 transition-opacity duration-500">
                 <div className="absolute -top-24 -right-28 w-72 h-72 rounded-full bg-white/5 blur-2xl" />
-                <div className="absolute -bottom-28 -left-24 w-72 h-72 rounded-full bg-blue-500/10 blur-2xl opacity-60" />
+                <div className="absolute -bottom-28 -left-24 w-72 h-72 rounded-full bg-tap-red/10 blur-2xl opacity-60" />
               </div>
             )}
             <div className="relative">
@@ -948,8 +960,8 @@ export default function RecruteurDashboard() {
                         </div>
                         <div className="flex items-center gap-2">
                           <span className="inline-flex gap-0.5" aria-hidden>
-                            <span className="w-2 h-2.5 rounded-[2px] bg-indigo-400/70" />
-                            <span className="w-1 h-2.5 rounded-[1px] bg-indigo-600/50 -ml-0.5 opacity-90" />
+                            <span className="w-2 h-2.5 rounded-[2px] bg-[#E01F26]/85" />
+                            <span className="w-1 h-2.5 rounded-[1px] bg-[#a01520]/55 -ml-0.5 opacity-90" />
                           </span>
                           <span className={isLight ? "text-black/65" : "text-white/55"}>Part du total</span>
                         </div>
@@ -998,12 +1010,12 @@ export default function RecruteurDashboard() {
           {!isLight && (
             <div className="pointer-events-none absolute inset-0 opacity-100 group-hover:opacity-0 transition-opacity duration-500">
               <div className="absolute -top-24 -right-28 w-72 h-72 rounded-full bg-white/5 blur-2xl" />
-              <div className="absolute -bottom-28 -left-24 w-72 h-72 rounded-full bg-amber-500/10 blur-2xl opacity-50" />
+              <div className="absolute -bottom-28 -left-24 w-72 h-72 rounded-full bg-tap-red/10 blur-2xl opacity-50" />
             </div>
           )}
           <div className="relative">
             <div className="flex items-center gap-2 mb-5">
-              <Activity size={14} className="text-amber-500" />
+              <Activity size={14} className="text-tap-red" />
               <h3 className={`text-[13px] uppercase tracking-[2px] font-semibold ${isLight ? "text-black" : "text-white/50"}`}>
                 Répartition des candidatures
               </h3>
@@ -1036,7 +1048,7 @@ export default function RecruteurDashboard() {
                     case "refusé":
                     case "refusee":
                     case "rejected":
-                      return isLight ? "bg-red-500" : "bg-red-400";
+                      return isLight ? "bg-tap-red" : "bg-[#f87171]";
                     case "pending":
                     case "en attente":
                     case "en_attente":
@@ -1094,8 +1106,8 @@ export default function RecruteurDashboard() {
                     case "refusee":
                     case "rejected":
                       return {
-                        fill: isLight ? "#ef4444" : "#fb7185",
-                        stroke: isLight ? "#dc2626" : "#f43f5e",
+                        fill: isLight ? "#f87171" : "#fb7185",
+                        stroke: isLight ? "#CA1B28" : "#E01F26",
                       };
                     case "pending":
                     case "en attente":
@@ -1354,20 +1366,20 @@ export default function RecruteurDashboard() {
               {!isLight && (
                 <div className="pointer-events-none absolute inset-0 opacity-100 group-hover:opacity-0 transition-opacity duration-500">
                   <div className="absolute -top-24 -right-28 w-72 h-72 rounded-full bg-white/5 blur-2xl" />
-                  <div className="absolute -bottom-28 -left-24 w-72 h-72 rounded-full bg-amber-500/10 blur-2xl opacity-50" />
+                  <div className="absolute -bottom-28 -left-24 w-72 h-72 rounded-full bg-tap-red/10 blur-2xl opacity-50" />
                 </div>
               )}
               <div className="relative">
               <h2 className={`text-[13px] uppercase tracking-[2px] font-semibold flex items-center gap-2 ${isLight ? "text-black" : "text-white/60"}`}>
-                <Bell size={13} className="text-yellow-500" /> Alertes
+                <Bell size={13} className="text-tap-red" /> Alertes
               </h2>
               <div className="mt-4 space-y-2">
                 {(overview?.alerts ?? []).map((alert, i) => (
                   <div
                     key={i}
-                    className="flex items-start gap-3 bg-yellow-500/[0.05] border border-yellow-500/15 rounded-xl px-5 py-4"
+                    className="flex items-start gap-3 bg-tap-red/[0.05] border border-tap-red/15 rounded-xl px-5 py-4"
                   >
-                    <AlertTriangle size={14} className="text-yellow-500 mt-0.5 shrink-0" />
+                    <AlertTriangle size={14} className="text-tap-red mt-0.5 shrink-0" />
                     <p className={`text-[13px] ${isLight ? "text-black" : "text-white/60"}`}>{alert.message}</p>
                   </div>
                 ))}
