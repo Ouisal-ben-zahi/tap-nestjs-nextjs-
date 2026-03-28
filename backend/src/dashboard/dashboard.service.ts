@@ -7,6 +7,7 @@ import { ConfigService } from '@nestjs/config';
 import { SupabaseClient, createClient } from '@supabase/supabase-js';
 import PDFDocument from 'pdfkit';
 import * as nodemailer from 'nodemailer';
+import type { CandidateGenerationStatusResponseDto } from './dto/candidate-generation-status.dto';
 
 export interface CandidateDashboardStats {
   candidateId: number | null;
@@ -942,11 +943,14 @@ export class DashboardService {
     const safeLang: 'fr' | 'en' = lang === 'en' ? 'en' : 'fr';
 
     try {
+      // Flask: si `lang` est explicite, auto_generate_other_lang vaut false par défaut
+      // → une seule langue. On force les deux PDF (fr + en) comme sur l’UI « Mes fichiers ».
       const result = await this.callFlaskJson<any>('POST', `/portfolio/${encodeURIComponent(candidateUuid)}/generate-html`, {
         db_candidate_id: candidateId,
         version: 'long',
         save_to_minio: true,
         lang: safeLang,
+        auto_generate_other_lang: true,
       });
 
       // If Flask returned success, consider it launched
@@ -1990,6 +1994,187 @@ export class DashboardService {
     }
 
     return { portfolioShort, portfolioLong };
+  }
+
+  /** Tolérance horloge alignée sur le front (onboarding). */
+  private isFreshGenerationTimestamp(
+    value: unknown,
+    startedAtMs: number,
+  ): boolean {
+    if (typeof value !== 'string' || !value.trim()) return false;
+    const parsedMs = new Date(value).getTime();
+    if (!Number.isFinite(parsedMs)) return false;
+    return parsedMs >= startedAtMs - 3000;
+  }
+
+  private hasMeaningfulScoreJson(score: CandidateScoreFromJson): boolean {
+    return (
+      typeof score.scoreGlobal === 'number' ||
+      (Array.isArray(score.dimensions) && score.dimensions.length > 0) ||
+      (typeof score.metadataTimestamp === 'string' &&
+        score.metadataTimestamp.trim().length > 0)
+    );
+  }
+
+  private listHasFreshGenerationFile(
+    files: Array<{ updatedAt?: string | null; createdAt?: string | null }>,
+    startedAtMs: number,
+  ): boolean {
+    return files.some(
+      (f) =>
+        this.isFreshGenerationTimestamp(f.updatedAt, startedAtMs) ||
+        this.isFreshGenerationTimestamp(f.createdAt, startedAtMs),
+    );
+  }
+
+  /** PDF CV corrigé généré par l’IA (ex. CV_TAP_fr.pdf). */
+  private isCorrectedCvTapPdfFileName(fileName: string): boolean {
+    const n = fileName.trim().toLowerCase();
+    return n.startsWith('cv_tap') && n.endsWith('.pdf');
+  }
+
+  private listHasFreshCorrectedCvTapPdf(
+    files: CandidateCvFileItem[],
+    startedAtMs: number,
+  ): boolean {
+    return files.some(
+      (f) =>
+        this.isCorrectedCvTapPdfFileName(f.name) &&
+        this.isFreshGenerationTimestamp(f.updatedAt, startedAtMs),
+    );
+  }
+
+  /**
+   * Agrège l’état réel de la chaîne de génération (stockage + score JSON).
+   * Sans `generationStartedAtMs` : considère tout fichier / score existant comme terminé (tableau de bord).
+   * Avec `generationStartedAtMs` : n’accepte que les artefacts « frais » (même logique que le polling onboarding).
+   */
+  async getCandidateGenerationStatus(
+    userId: number,
+    generationStartedAtMs?: number,
+  ): Promise<CandidateGenerationStatusResponseDto> {
+    if (!userId || Number.isNaN(userId)) {
+      throw new BadRequestException('userId invalide');
+    }
+
+    const since = generationStartedAtMs;
+    const [cvRes, tcRes, scoreRes, portfolioRes] = await Promise.all([
+      this.getCandidateCvFiles(userId),
+      this.getCandidateTalentcardFiles(userId),
+      this.getCandidateScoreFromJsonByUser(userId),
+      this.getCandidatePortfolioPdfFiles(userId),
+    ]);
+
+    const cvFiles = cvRes.cvFiles;
+    const tcFiles = tcRes.talentcardFiles;
+    const score = scoreRes;
+    const portfolioAll = [
+      ...portfolioRes.portfolioShort,
+      ...portfolioRes.portfolioLong,
+    ];
+
+    const readyCv =
+      cvFiles.length > 0 &&
+      (since == null || this.listHasFreshGenerationFile(cvFiles, since));
+    const readyTalentCard =
+      tcFiles.length > 0 &&
+      (since == null || this.listHasFreshGenerationFile(tcFiles, since));
+    const hasAnyCorrectedCvTap = cvFiles.some((f) =>
+      this.isCorrectedCvTapPdfFileName(f.name),
+    );
+    const readyCvPdf =
+      hasAnyCorrectedCvTap &&
+      (since == null || this.listHasFreshCorrectedCvTapPdf(cvFiles, since));
+    const readyScoring =
+      since == null
+        ? this.hasMeaningfulScoreJson(score)
+        : this.isFreshGenerationTimestamp(score.metadataTimestamp, since) ||
+          (this.hasMeaningfulScoreJson(score) && readyTalentCard);
+    const readyPortfolio =
+      portfolioAll.length > 0 &&
+      (since == null || this.listHasFreshGenerationFile(portfolioAll, since));
+
+    const pipeline: Array<{
+      id: string;
+      label: string;
+      completed: boolean;
+      workingMessage: string;
+      doneMessage: string;
+    }> = [
+      {
+        id: 'cv',
+        label: 'CV',
+        completed: readyCv,
+        workingMessage: 'Enregistrement et analyse du CV en cours…',
+        doneMessage: 'CV enregistré et disponible.',
+      },
+      {
+        id: 'talentCard',
+        label: 'Talent Card',
+        completed: readyTalentCard,
+        workingMessage: 'Génération de la Talent Card par l’IA…',
+        doneMessage: 'Talent Card générée.',
+      },
+      {
+        id: 'cvPdf',
+        label: 'CV corrigé (PDF)',
+        completed: readyCvPdf,
+        workingMessage: 'Génération du CV corrigé (PDF TAP)…',
+        doneMessage: 'CV corrigé disponible.',
+      },
+      {
+        id: 'scoring',
+        label: 'Scoring candidat',
+        completed: readyScoring,
+        workingMessage: 'Calcul du scoring candidat…',
+        doneMessage: 'Scoring disponible.',
+      },
+      {
+        id: 'portfolio',
+        label: 'Portfolio One Page',
+        completed: readyPortfolio,
+        workingMessage: 'Génération du portfolio IA (One Page)…',
+        doneMessage: 'Portfolio One Page prêt.',
+      },
+    ];
+
+    let seenIncomplete = false;
+    const steps = pipeline.map((p) => {
+      let status: 'pending' | 'in_progress' | 'completed';
+      let message: string;
+      if (p.completed) {
+        status = 'completed';
+        message = p.doneMessage;
+      } else if (!seenIncomplete) {
+        status = 'in_progress';
+        message = p.workingMessage;
+        seenIncomplete = true;
+      } else {
+        status = 'pending';
+        message = 'En attente de l’étape précédente…';
+      }
+      return {
+        id: p.id,
+        status,
+        label: p.label,
+        message,
+      };
+    });
+
+    const completedCount = pipeline.filter((p) => p.completed).length;
+    const allComplete = completedCount === pipeline.length;
+    const currentStepId = allComplete
+      ? null
+      : (pipeline.find((p) => !p.completed)?.id ?? null);
+
+    return {
+      candidateId: score.candidateId,
+      steps,
+      currentStepId,
+      progressPercent: Math.round((completedCount / pipeline.length) * 100),
+      allComplete,
+      serverTime: new Date().toISOString(),
+    };
   }
 
   async getCandidatePortfolioPdfFilesByCandidateId(

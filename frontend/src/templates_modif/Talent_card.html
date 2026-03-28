@@ -1,605 +1,492 @@
 <!DOCTYPE html>
 <html lang="fr">
 <head>
-    <meta charset="UTF-8">
-    <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Portfolio - Nom Prenom</title>
-    <link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=DM+Sans:wght@400;500;600;700&display=swap" />
-    <link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Material+Symbols+Rounded:opsz,wght,FILL,GRAD@20..48,100..700,0..1,-50..200" />
-    <style>
-        :root {
-            --tap-black: #000000;
-            --tap-dark: #050505;
-            --tap-surface: #111111;
-            --tap-card: #0C0C0C;
-            --tap-border: #1A1A1A;
-            --tap-text: #F0F0F0;
-            --tap-muted: #777777;
-            --tap-red: #CA1B28;
-            --tap-red-hover: #E01F26;
-        }
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>Talent Card</title>
+  <link rel="preconnect" href="https://fonts.googleapis.com" />
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
+  <link href="https://fonts.googleapis.com/css2?family=Syne:wght@400;600;700;800&family=DM+Sans:opsz,wght@9..40,300;9..40,400;9..40,500;9..40,600&display=swap" rel="stylesheet" />
+  <style>
+    * { margin: 0; padding: 0; box-sizing: border-box; }
 
-        * { margin: 0; padding: 0; box-sizing: border-box; }
+    body {
+      font-family: 'DM Sans', system-ui, sans-serif;
+      min-height: 100vh;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      padding: 32px 16px;
+      background: #000;
+    }
 
-        body {
-            font-family: "DM Sans", system-ui, -apple-system, BlinkMacSystemFont, sans-serif;
-            min-height: 100vh;
-            display: grid;
-            place-items: center;
-            padding: 24px;
-            background:#000000
-        }
+    /* ── CARD SHELL ── */
+    .tc-card {
+      position: relative;
+      width: 340px;
+      border-radius: 28px;
+      border: 1.5px solid rgba(255,255,255,0.13);
+      overflow: hidden;
+      background:
+        radial-gradient(ellipse 80% 55% at 50% -10%, rgba(180,20,30,0.45) 0%, transparent 70%),
+        radial-gradient(ellipse 60% 40% at 90% 80%, rgba(140,10,18,0.25) 0%, transparent 65%),
+        linear-gradient(175deg, #1a0505 0%, #0d0303 40%, #060202 100%);
+      box-shadow:
+        0 32px 80px rgba(0,0,0,0.75),
+        0 0 0 1px rgba(255,255,255,0.07) inset,
+        0 1px 0 rgba(255,255,255,0.12) inset;
+    }
 
-        .talent-card {
-            position: relative;
-            color: #fff;
-            width: min(10cm, 92vw);
-            height: calc(min(10cm, 92vw) * (20 / 20));
-            border: 2px solid #fff;
-            border-radius: 10%;
-        }
+    /* diagonal texture */
+    .tc-card::before {
+      content: '';
+      position: absolute;
+      inset: 0;
+      background: repeating-linear-gradient(
+        135deg,
+        rgba(255,255,255,0.018) 0px,
+        rgba(255,255,255,0.018) 1px,
+        transparent 1px,
+        transparent 12px
+      );
+      pointer-events: none;
+      z-index: 0;
+    }
 
+    /* vignette */
+    .tc-card::after {
+      content: '';
+      position: absolute;
+      inset: 0;
+      background: radial-gradient(ellipse 90% 90% at 50% 50%, transparent 40%, rgba(0,0,0,0.55) 100%);
+      pointer-events: none;
+      z-index: 0;
+    }
 
-        
-        .fut {
-            position: relative;
-            width: 100%;
-            height: 100%;
-            overflow: hidden;
-            background:radial-gradient(circle at 12% -6%, rgba(202, 27, 40, 0.22), transparent 58%), radial-gradient(circle at 110% 26%, rgba(255, 255, 255, 0.08), transparent 62%), linear-gradient(180deg, rgb(110 13 13 / 92%), rgb(12 9 9 / 96%));
-            box-shadow:
-                0 40px 120px rgba(0,0,0,0.7),
-                0 0 0 1px rgba(255,255,255,0.08);
-            border-radius: inherit;
-        }
+    .tc-inner {
+      position: relative;
+      z-index: 1;
+      padding: 18px 20px 20px;
+      display: flex;
+      flex-direction: column;
+      gap: 16px;
+    }
 
-        .fut::before {
-            content: "";
-            position: absolute;
-            inset: -2%;
-            background:
-                linear-gradient(135deg, rgba(255,255,255,0.14), transparent 35%),
-                repeating-linear-gradient(
-                    135deg,
-                    rgba(255, 255, 255, 0.06) 0px,
-                    rgba(255, 255, 255, 0.06) 2px,
-                    transparent 2px,
-                    transparent 14px
-                );
-            opacity: 0.35;
-            pointer-events: none;
-            mix-blend-mode: screen;
-        }
+    /* ── TOP ROW ── */
+    .tc-top {
+      display: flex;
+      align-items: flex-start;
+      justify-content: space-between;
+    }
 
-        .fut::after {
-            content: "";
-            position: absolute;
-            inset: 0;
-            pointer-events: none;
-            background:
-                radial-gradient(70% 55% at 50% 40%, transparent 35%, rgba(0,0,0,0.75) 78%),
-                linear-gradient(180deg, rgba(0,0,0,0.15), rgba(0,0,0,0.72));
-        }
+    /* LOGO */
+    .tc-logo {
+      width: 34px;
+      height: 34px;
+      background: rgba(255,255,255,0.07);
+      border: 1px solid rgba(255,255,255,0.12);
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      backdrop-filter: blur(8px);
+      -webkit-backdrop-filter: blur(8px);
+      overflow: hidden;
+    }
+    .tc-logo img {
+      width: 100%;
+      height: 100%;
+      object-fit: contain;
+    }
+    .tc-logo-fallback {
+      font-family: 'Syne', sans-serif;
+      font-size: 14px;
+      font-weight: 800;
+      color: #fff;
+    }
 
-        .fut-border {
-            position: absolute;
-            inset: 0;
-            clip-path: inherit;
-            pointer-events: none;
-            background: linear-gradient(135deg, rgba(202, 27, 40, 0.65), rgba(255,255,255,0.18), rgba(202, 27, 40, 0.25));
-            opacity: 0.22;
-            filter: blur(0.2px);
-        }
+    /* QR */
+    .tc-qr {
+      width: 52px;
+      height: 52px;
+      border-radius: 12px;
+      background: rgba(255,255,255,0.06);
+      border: 1px solid rgba(255,255,255,0.11);
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      backdrop-filter: blur(10px);
+      -webkit-backdrop-filter: blur(10px);
+      box-shadow: 0 4px 18px rgba(0,0,0,0.4), 0 0 0 1px rgba(255,255,255,0.05) inset;
+      overflow: hidden;
+    }
+    .tc-qr img {
+      width: 80%;
+      height: 80%;
+      object-fit: contain;
+      filter: invert(1);
+      mix-blend-mode: screen;
+    }
+    /* pixel QR fallback */
+    .tc-qr-grid {
+      width: 38px;
+      height: 38px;
+      display: grid;
+      grid-template-columns: repeat(7, 1fr);
+      grid-template-rows: repeat(7, 1fr);
+      gap: 1.5px;
+    }
+    .tc-qr-grid span {
+      border-radius: 1px;
+      background: rgba(255,255,255,0.85);
+    }
+    .tc-qr-grid span.off { background: transparent; }
 
-        .fut-inner {
-            position: relative;
-            z-index: 1;
-            height: 100%;
-            padding: 0.35cm 0.2cm 0.75cm;
-            display: grid;
-            grid-template-rows: auto auto 1fr;
-            gap: 0.45cm;
-        }
+    /* ── PROFILE ── */
+    .tc-profile {
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+      gap: 8px;
+      margin-top: -8px;
+    }
 
-        .fut-top {
-            display: flex;
-            align-items: center;
-            justify-content: space-between;
-            gap: 0.35cm;
-            text-align: center;
-        }
+    .tc-avatar {
+      width: 100px;
+      height: 100px;
+      border-radius: 50%;
+      border: 1.5px solid rgba(255,255,255,0.2);
+      background: rgba(255,255,255,0.06);
+      overflow: hidden;
+      box-shadow: 0 0 0 4px rgba(255,255,255,0.04), 0 12px 32px rgba(0,0,0,0.5);
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      position: relative;
+    }
+    .tc-avatar::after {
+      content: '';
+      position: absolute;
+      inset: 0;
+      border-radius: 50%;
+      box-shadow: 0 0 28px rgba(180,20,30,0.3) inset;
+      pointer-events: none;
+    }
+    .tc-avatar img {
+      width: 100%;
+      height: 100%;
+      object-fit: cover;
+      object-position: center top;
+    }
+    .tc-avatar-initials {
+      font-family: 'Syne', sans-serif;
+      font-size: 22px;
+      font-weight: 700;
+      color: rgba(255,255,255,0.7);
+      letter-spacing: 0.04em;
+    }
 
-        .fut-top-left,
-        .fut-top-right {
-            flex: 0 0 auto;
-            display: grid;
-            place-items: center;
-        }
+    .tc-name {
+      font-family: 11px "DM Sans", system-ui, sans-serif;
+      font-size: 17px;
+      font-weight: 700;
+      color: #fff;
+      letter-spacing: -0.01em;
+      text-align: center;
+      line-height: 1.2;
+    }
+    .tc-title {
+      font-size: 11.5px;
+      font-weight: 400;
+      color: rgba(255,255,255,0.48);
+      text-align: center;
+      letter-spacing: 0.03em;
+      margin-top: -4px;
+    }
 
-        .fut-top-center {
-            flex: 1 1 auto;
-            min-width: 0;
-            display: grid;
-            place-items: center;
-            gap: 0.12cm;
-        }
+    /* ── DIVIDER ── */
+    .tc-divider {
+      height: 1px;
+      background: linear-gradient(90deg, transparent, rgba(255,255,255,0.10), transparent);
+      margin: 0 -4px;
+    }
 
-        .logo-corner {
-            position: absolute;
-            top: 0.45cm;
-            left: 0.55cm;
-            z-index: 2;
-        }
+    /* ── SECTION LABEL ── */
+    .tc-section-label {
+      font-size: 9px;
+      font-weight: 600;
+      letter-spacing: 0.18em;
+      text-transform: uppercase;
+      color: rgba(255,255,255,0.3);
+      margin-bottom: 8px;
+    }
 
-        .rating {
-            width: 7.2cm;
-            padding: 1.15cm 1.05cm;
-            border-radius: 18px;
-            background: rgba(255,255,255,0.05);
-            border: 1px solid rgba(255,255,255,0.10);
-            backdrop-filter: blur(18px) saturate(1.25);
-            -webkit-backdrop-filter: blur(18px) saturate(1.25);
-            box-shadow: 0 18px 60px rgba(0,0,0,0.55);
-        }
+    /* ── SKILL BARS ── */
+    .tc-bars-grid {
+      display: grid;
+      grid-template-columns: 1fr 1fr;
+      gap: 6px 16px;
+    }
+    .tc-bar-row {
+      display: flex;
+      flex-direction: column;
+      gap: 4px;
+    }
+    .tc-bar-meta {
+      display: flex;
+      align-items: baseline;
+      justify-content: space-between;
+    }
+    .tc-bar-name {
+      font-size: 11px;
+      font-weight: 500;
+      color: rgba(255,255,255,0.72);
+      letter-spacing: 0.01em;
+    }
+    .tc-bar-pct {
+      font-size: 10.5px;
+      font-weight: 600;
+      color: rgba(255,255,255,0.55);
+      font-variant-numeric: tabular-nums;
+    }
+    .tc-bar-track {
+      height: 5px;
+      border-radius: 999px;
+      background: rgba(255,255,255,0.07);
+      overflow: hidden;
+    }
+    .tc-bar-fill {
+      height: 100%;
+      border-radius: 999px;
+      background: linear-gradient(90deg, #7a0a10 0%, #c81b24 55%, #f54250 100%);
+      box-shadow: 0 0 10px rgba(200,27,36,0.5);
+      width: 0;
+      transition: width 1.1s cubic-bezier(0.16, 1, 0.3, 1);
+    }
 
-        .rating .ovr {
-            font-size: 2.8cm;
-            line-height: 0.95;
-            font-weight: 800;
-            letter-spacing: -0.04em;
-        }
+    /* ── SOFT SKILL PILLS ── */
+    .tc-pills {
+      display: flex;
+      flex-wrap: wrap;
+      gap: 6px;
+    }
+    .tc-pill {
+      padding: 4px 11px;
+      border-radius: 999px;
+      font-size: 10.5px;
+      font-weight: 500;
+      letter-spacing: 0.015em;
+      color: rgba(255,255,255,0.65);
+      background: rgba(255,255,255,0.055);
+      border: 1px solid rgba(255,255,255,0.10);
+      cursor: default;
+      transition: background 0.2s, border-color 0.2s, color 0.2s;
+    }
+    .tc-pill:hover {
+      background: rgba(200,27,36,0.14);
+      border-color: rgba(200,27,36,0.28);
+      color: rgba(255,255,255,0.85);
+    }
+    .tc-pill.accent {
+      background: rgba(180,16,24,0.18);
+      border-color: rgba(200,27,36,0.3);
+      color: rgba(255,210,210,0.8);
+    }
 
-        .rating .pos {
-            margin-top: 0.2cm;
-            font-size: 0.6cm;
-            font-weight: 800;
-            letter-spacing: 0.22em;
-            opacity: 0.92;
-        }
+    /* ── FOOTER ── */
+    .tc-footer {
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      padding-top: 4px;
+    }
+    .tc-badge {
+      display: flex;
+      align-items: center;
+      gap: 5px;
+      padding: 4px 10px;
+      border-radius: 999px;
+      background: rgba(200,27,36,0.10);
+      border: 1px solid rgba(200,27,36,0.20);
+      font-size: 10px;
+      font-weight: 600;
+      color: rgba(255,190,190,0.75);
+      letter-spacing: 0.05em;
+    }
+    .tc-badge-dot {
+      width: 5px;
+      height: 5px;
+      border-radius: 50%;
+      background: #c81b24;
+      box-shadow: 0 0 6px rgba(200,27,36,0.7);
+    }
+    .tc-score {
+      font-family: 11px "DM Sans", system-ui, sans-serif;
+      font-size: 11px;
+      font-weight: 700;
+      color: rgba(255,255,255,0.35);
+      letter-spacing: 0.06em;
+    }
 
-        .rating .meta {
-            margin-top: 0.9cm;
-            display: grid;
-            gap: 0.35cm;
-        }
-
-        .pill {
-            display: inline-flex;
-            align-items: center;
-            gap: 0.25cm;
-            padding: 0.28cm 0.45cm;
-            border-radius: 999px;
-            background: rgba(202, 27, 40, 0.10);
-            border: 1px solid rgba(202, 27, 40, 0.22);
-            color: rgba(255,255,255,0.86);
-            font-size: 0.36cm;
-            font-weight: 700;
-        }
-
-        .pill-dot {
-            width: 0.22cm;
-            height: 0.22cm;
-            border-radius: 999px;
-            background: var(--tap-red);
-            box-shadow: 0 0 22px rgba(202, 27, 40, 0.35);
-        }
-
-        .portrait {
-            position: relative;
-            height: 7.2cm;
-            border-radius: 26px;
-            overflow: hidden;
-            display: grid;
-            place-items: center;
-            background: radial-gradient(circle at 50% 30%, rgba(202, 27, 40, 0.20), transparent 55%);
-            border: 1px solid rgba(255,255,255,0.08);
-            box-shadow: 0 28px 80px rgba(0,0,0,0.55);
-        }
-
-        .qr-code, .logo {
-            position: relative;
-            height: 1cm;
-            width: 1cm;
-            overflow: hidden;
-        }
-
-        .portrait::before,.qr-code::before {
-            content: "";
-            position: absolute;
-            inset: 0;
-            pointer-events: none;
-        }
-
-        .portrait img {
-            width: 100%;
-            height: 100%;
-            object-fit: contain;
-            object-position: 50% 50%;
-            filter: contrast(1.04) saturate(1.02);
-            transform: scale(1);
-        }
-
-        .qr-code img {
-            width: 100%;
-            height: 100%;
-            object-fit: contain;
-            object-position: 50% 50%;
-            filter: invert(1);
-            mix-blend-mode: screen;
-        }
-
-        .logo img {
-            width: 100%;
-            height: 100%;
-            object-fit: contain;
-            object-position: 50% 50%;
-        }
-
-        .portrait-fallback {
-            height: 100%;
-            display: grid;
-            place-items: center;
-            color: rgba(255,255,255,0.85);
-            font-size: 1cm;
-            font-weight: 800;
-            letter-spacing: 0.08em;
-            text-transform: uppercase;
-        }
-
-        .name-strip {
-            font-size: 12px;
-            gap: 28px;
-            align-content: center;
-            align-items: center;
-            text-align: center;
-        }
-
-        .name-strip h1 {
-            font-size: 0.7cm;
-            line-height: 1.05;
-            letter-spacing: -0.03em;
-            font-weight: 500;
-            text-transform: uppercase;
-            align-content: center;
-        }
-
-
-        .qr-code img{
-            width: 100%;
-            height: 100%;
-            object-position: 50% 18%;
-            filter: contrast(1.04) saturate(1.02);
-            transform: scale(1.02);
-        }
-
-        .name-strip .subtitle {
-            color: rgba(255,255,255,0.62);
-            font-weight: 600;
-            align-content: center;
-        }
-
-        .stats {
-            display: grid;
-            gap: 0.9cm;
-            align-content: end;
-        }
-
-        .stats-grid {
-            display: grid;
-            grid-template-columns: 1fr;
-            gap: 0.2cm;
-            padding: 0.4cm 0.2cm;
-            border-radius: 26px;
-            backdrop-filter: blur(18px) saturate(1.25);
-            -webkit-backdrop-filter: blur(18px) saturate(1.25);
-            box-shadow: 0 24px 80px rgba(0,0,0,0.55);
-        }
-
-        .skill-bars {
-            display: grid;
-            gap: 0.16cm;
-            width: 4cm;
-        }
-
-        .skill-row {
-            display: grid;
-            gap: 0.1cm;
-        }
-
-        .skill-row-top {
-            display: flex;
-            align-items: baseline;
-            justify-content: space-between;
-            gap: 0.25cm;
-        }
-
-        .skill-name {
-            font-size: 0.32cm;
-            font-weight: 750;
-            color: rgba(255,255,255,0.80);
-            overflow: hidden;
-            text-overflow: ellipsis;
-            white-space: nowrap;
-            max-width: 6.2cm;
-        }
-
-        .skill-pct {
-            font-size: 0.32cm;
-            font-weight: 900;
-            color: rgba(255,255,255,0.90);
-            font-variant-numeric: tabular-nums;
-            white-space: nowrap;
-        }
-
-        .skill-track {
-            height: 0.18cm;
-            border-radius: 999px;
-            background: rgba(255,255,255,0.10);
-            overflow: hidden;
-            border: 1px solid rgba(255,255,255,0.10);
-        }
-
-        .skill-fill {
-            height: 100%;
-            width: calc(var(--pct, 0) * 1%);
-            background: linear-gradient(90deg, color-mix(in srgb, var(--skill-color, #CA1B28) 85%, #ffffff 15%), var(--skill-color, #CA1B28));
-            border-radius: inherit;
-            box-shadow: 0 0 22px color-mix(in srgb, var(--skill-color, #CA1B28) 55%, transparent 45%);
-        }
-
-        .skills-title {
-            font-size: 0.46cm;
-            font-weight: 900;
-            letter-spacing: 0.22em;
-            text-transform: uppercase;
-            color: rgba(255,255,255,0.72);
-        }
-
-        .skills-chips {
-            display: flex;
-            flex-wrap: wrap;
-            gap: 0.28cm;
-        }
-
-        .skill-chip {
-            padding: 0.28cm 0.46cm;
-            border-radius: 999px;
-            background: rgba(255,255,255,0.05);
-            border: 1px solid rgba(255,255,255,0.10);
-            color: rgba(255,255,255,0.85);
-            font-size: 0.44cm;
-            font-weight: 700;
-            letter-spacing: 0.01em;
-        }
-
-        .skill-chip.is-accent {
-            background: rgba(202, 27, 40, 0.12);
-            border-color: rgba(202, 27, 40, 0.28);
-            box-shadow: 0 0 24px rgba(202, 27, 40, 0.12);
-        }
-
-        .bottom-row {
-            display: grid;
-            grid-template-columns: 1fr auto;
-            gap: 1cm;
-            align-items: center;
-            padding: 0 0.2cm;
-        }
-
-        .badges {
-            display: flex;
-            gap: 0.45cm;
-            align-items: center;
-            flex-wrap: wrap;
-            padding-left: 32px;
-        }
-
-        .badge {
-            width: 1.8cm;
-            height: 1.25cm;
-            border-radius: 12px;
-            background: rgba(255,255,255,0.06);
-            border: 1px solid rgba(255,255,255,0.10);
-            display: grid;
-            place-items: center;
-            font-size: 0.38cm;
-            color: rgba(255,255,255,0.78);
-            font-weight: 900;
-            letter-spacing: 0.06em;
-        }
-
-        .qr,
-        .qr-code {
-            width: 2cm;
-            height: 2cm;
-            border-radius: 18px;
-            overflow: hidden;
-            display: grid;
-            place-items: center;
-        }
-
-        .qr img,
-        .qr-code img {
-            width: 90%;
-            height: 90%;
-            object-fit: contain;
-            filter: invert(1);
-            mix-blend-mode: screen;
-        }
-
-        .portrait-img {
-            width: 3.3cm;
-            height: 3.3cm;
-            border-radius: 50%;
-            overflow: hidden;
-            background: rgba(255,255,255,0.06);
-            border: 1px solid white;
-            display: grid;
-            place-items: center;
-            box-shadow: 0 16px 55px rgba(0,0,0,0.55);
-            margin-left: 20px;
-        }
-
-        .tc-section-title {
-            margin-top: 0.25cm;
-            font-size: 0.32cm;
-            font-weight: 800;
-            letter-spacing: -0.02em;
-            text-align: center;
-        }
-
-        .tc-grid {
-            margin-top: 0.35cm;
-            display: grid;
-            grid-template-columns: repeat(2, minmax(0, 1fr));
-            gap: 0.22cm;
-        }
-
-        .tc-grid-item {
-            display: grid;
-            grid-template-columns: 1fr;
-            gap: 0.06cm;
-            padding: 0.16cm 0.2cm;
-            border-radius: 12px;
-            background: rgba(255,255,255,0.04);
-            border: 1px solid rgba(255,255,255,0.08);
-        }
-
-        .tc-grid-label {
-            font-size: 0.25cm;
-            font-weight: 750;
-            color: rgba(255,255,255,0.72);
-        }
-
-        .tc-grid-value {
-            font-size: 0.25cm;
-            font-weight: 800;
-            color: rgba(255,255,255,0.96);
-            word-break: break-word;
-        }
-
-        @page {
-            size: A4 portrait;
-            margin: 0;
-        }
-
-        @media print {
-            html,
-            body {
-                width: 100%;
-                min-height: auto;
-                margin: 0;
-                padding: 0;
-                background: #fff;
-            }
-
-            body {
-                display: block;
-            }
-
-            .talent-card {
-                width: 10cm;
-                height: 10cm;
-                margin: 1cm auto 0;
-                break-inside: avoid;
-                page-break-inside: avoid;
-            }
-
-            .fut {
-                box-shadow: none;
-            }
-        }
-    </style>
+    /* ── PRINT ── */
+    @media print {
+      body { background: #fff; padding: 0; }
+      .tc-card { box-shadow: none; margin: 1cm auto; }
+    }
+  </style>
 </head>
 <body>
-    <div class="talent-card">
-        <div class="fut">
-            <div class="fut-border"></div>
-           
-            <div class="fut-inner" >
 
-                <div class="logo-corner">
-                    <div class="logo">
-                        <img src="1 (1).jpg" alt="Logo" onerror="this.style.display='none'; this.parentElement.querySelector('.portrait-fallback').style.display='grid';" style="width: 1cm; height: 1cm;">
-                        <div class="portrait-fallback" style="display:none">TAP</div>
-                    </div>
-                </div>
-                <div class="fut-top">
+  <div class="tc-card">
+    <div class="tc-inner">
 
-               
+      <!-- TOP ROW : Logo + QR -->
+      <div class="tc-top">
 
-                <div class="fut-top-center">
-                    <div class="portrait-img">
-                        <img src="candidate_bg_EEEEEE.png" alt="Photo" onerror="this.style.display='none'; this.parentElement.querySelector('.portrait-fallback').style.display='grid';" style="width: 100%; height: 100%;">
-                        <div class="portrait-fallback" style="display:none">TAP</div>
-                    </div>
-                    <div class="name-strip">
-                        <h1>NOM PRENOM</h1>
-                    </div>
-    
-                    <div class="subtitle" style="font-size: 12px;">
-                        <h2>Titre de profil</h2>
-                    </div>
-                </div>  
-                
-               
-               
-            </div>
-
-            <div class="stats" style="display: flex;">
-                
-                <div class="stats-grid" >
-                    <div class="skill-bars-container" style="display: flex; gap: 20px;">
-                    <div class="skill-bars">
-                        <div class="skill-row" style="--pct: 75; --skill-color: #ff2a2a;">
-                            <div class="skill-row-top">
-                                <div class="skill-name">Hard skills fit</div>
-                                <div class="skill-pct">75%</div>
-                            </div>
-                            <div class="skill-track"><div class="skill-fill"></div></div>
-                        </div>
-
-                        <div class="skill-row" style="--pct: 60; --skill-color: #CF0A0A">
-                            <div class="skill-row-top">
-                                <div class="skill-name">BI</div>
-                                <div class="skill-pct">60%</div>
-                            </div>
-                            <div class="skill-track"><div class="skill-fill"></div></div>
-                        </div>
-                    </div>
-                    <div class="skill-bars">
-                        <div class="skill-row" style="--pct: 40; --skill-color: #B33030;">
-                            <div class="skill-row-top">
-                                <div class="skill-name">Dev</div>
-                                <div class="skill-pct">40%</div>
-                            </div>
-                            <div class="skill-track"><div class="skill-fill"></div></div>
-                        </div>
-
-                        <div class="skill-row" style="--pct: 66; --skill-color: #461111;">
-                            <div class="skill-row-top">
-                                <div class="skill-name">Data</div>
-                                <div class="skill-pct">66%</div>
-                            </div>
-                            <div class="skill-track"><div class="skill-fill"></div></div>
-                        </div>
-                    </div>
-                    </div>
-
-                        
-
-                    <div class="fut-top-left">
-                        <div class="qr-code">
-                            <img src="qr-code.svg" alt="QR code" onerror="this.style.display='none'; this.parentElement.querySelector('.portrait-fallback').style.display='grid';">
-                            <div class="portrait-fallback" style="display:none">TAP</div>
-                        </div>
-                    </div>
-                    </div>
-                </div>
-            </div>
-
-            </div>
-            </div>
+        <!-- LOGO — remplacez src par votre image -->
+        <div class="tc-logo">
+          <img
+            src="1 (1).jpg"
+            alt="Logo"
+            onerror="this.style.display='none'; this.nextElementSibling.style.display='block';"
+          />
+          <span class="tc-logo-fallback" style="display:none;">t</span>
         </div>
+
+        <!-- QR CODE — remplacez src par votre QR réel -->
+        <div class="tc-qr">
+          <img
+            src="qr-code.svg"
+            alt="QR Code"
+            onerror="this.style.display='none'; this.nextElementSibling.style.display='grid';"
+          />
+          <!-- Pixel QR décoratif (fallback si image absente) -->
+          <div class="tc-qr-grid" id="qr-grid" style="display:none;"></div>
+        </div>
+
+      </div>
+
+      <!-- PROFIL -->
+      <div class="tc-profile">
+
+        <!-- PHOTO — remplacez src par votre photo candidat -->
+        <div class="tc-avatar">
+          <img
+            src="candidate_bg_EEEEEE.png"
+            alt="Photo"
+            onerror="this.style.display='none'; this.nextElementSibling.style.display='flex';"
+          />
+          <div class="tc-avatar-initials" style="display:none;">NP</div>
+        </div>
+
+        <div class="tc-name">NOM PRÉNOM</div>
+        <div class="tc-title">Titre de profil · Data &amp; BI</div>
+
+      </div>
+
+      <div class="tc-divider"></div>
+
+      <!-- HARD SKILLS -->
+      <div>
+        <div class="tc-section-label">Hard Skills</div>
+        <div class="tc-bars-grid">
+
+          <div class="tc-bar-row">
+            <div class="tc-bar-meta">
+              <span class="tc-bar-name">Hard Skills Fit</span>
+              <span class="tc-bar-pct">75%</span>
+            </div>
+            <div class="tc-bar-track">
+              <div class="tc-bar-fill" data-pct="75"></div>
+            </div>
+          </div>
+
+          <div class="tc-bar-row">
+            <div class="tc-bar-meta">
+              <span class="tc-bar-name">Dev</span>
+              <span class="tc-bar-pct">40%</span>
+            </div>
+            <div class="tc-bar-track">
+              <div class="tc-bar-fill" data-pct="40"></div>
+            </div>
+          </div>
+
+          <div class="tc-bar-row">
+            <div class="tc-bar-meta">
+              <span class="tc-bar-name">BI</span>
+              <span class="tc-bar-pct">60%</span>
+            </div>
+            <div class="tc-bar-track">
+              <div class="tc-bar-fill" data-pct="60"></div>
+            </div>
+          </div>
+
+          <div class="tc-bar-row">
+            <div class="tc-bar-meta">
+              <span class="tc-bar-name">Data</span>
+              <span class="tc-bar-pct">66%</span>
+            </div>
+            <div class="tc-bar-track">
+              <div class="tc-bar-fill" data-pct="66"></div>
+            </div>
+          </div>
+
+        </div>
+      </div>
+
+      <div class="tc-divider"></div>
+
+      <!-- SOFT SKILLS -->
+      <div>
+        <div class="tc-section-label">Soft Skills</div>
+        <div class="tc-pills">
+          <span class="tc-pill accent">Communication</span>
+          <span class="tc-pill">Leadership</span>
+          <span class="tc-pill">Teamwork</span>
+          <span class="tc-pill accent">Problem Solving</span>
+          <span class="tc-pill">Adaptabilité</span>
+          <span class="tc-pill">Esprit critique</span>
+        </div>
+      </div>
+
+      <!-- FOOTER -->
+      <div class="tc-footer">
+        <div class="tc-badge">
+          <div class="tc-badge-dot"></div>
+          DISPONIBLE
+        </div>
+        <div class="tc-score">SCORE 78 / 100</div>
+      </div>
+
     </div>
+  </div>
+
+  <script>
+    // ── PIXEL QR FALLBACK (affiché si qr-code.svg est absent) ──
+    const qrPattern = [
+      1,1,1,0,1,1,1,
+      1,0,1,0,1,0,1,
+      1,1,1,1,1,1,1,
+      0,1,0,0,0,1,0,
+      1,1,1,1,1,1,1,
+      1,0,1,0,1,0,1,
+      1,1,1,0,1,1,1,
+    ];
+    const grid = document.getElementById('qr-grid');
+    qrPattern.forEach(bit => {
+      const s = document.createElement('span');
+      if (!bit) s.classList.add('off');
+      grid.appendChild(s);
+    });
+
+    // ── ANIMATION DES BARRES au chargement ──
+    window.addEventListener('DOMContentLoaded', () => {
+      setTimeout(() => {
+        document.querySelectorAll('.tc-bar-fill').forEach(el => {
+          el.style.width = el.dataset.pct + '%';
+        });
+      }, 200);
+    });
+  </script>
+
 </body>
+</html>

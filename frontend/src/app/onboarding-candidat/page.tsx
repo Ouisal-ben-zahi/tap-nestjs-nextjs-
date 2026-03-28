@@ -1,10 +1,13 @@
 "use client";
 
-import { useState } from "react";
+import { useState, useRef } from "react";
 import { useRouter } from "next/navigation";
+import { useQueryClient } from "@tanstack/react-query";
 import { useAuth } from "@/hooks/use-auth";
 import EmptyState from "@/components/ui/EmptyState";
 import api from "@/lib/api";
+import { candidatService } from "@/services/candidat.service";
+import { useUiStore } from "@/stores/ui";
 
 type OtherLink = { type: string; url: string };
 type GenerationStep = { id: string; label: string };
@@ -13,17 +16,19 @@ const generationSteps: GenerationStep[] = [
   { id: "upload", label: "Envoi des fichiers" },
   { id: "cv", label: "Analyse du CV" },
   { id: "talentCard", label: "Génération de la Talent Card" },
+  { id: "cvPdf", label: "Génération du CV corrigé (PDF)" },
   { id: "scoring", label: "Calcul du scoring candidat" },
   { id: "portfolio", label: "Génération du Portfolio One Page" },
   { id: "finalize", label: "Finalisation du profil" },
 ];
 
 const progressByStep: Record<string, number> = {
-  upload: 18,
-  cv: 36,
-  talentCard: 58,
-  scoring: 78,
-  portfolio: 92,
+  upload: 16,
+  cv: 32,
+  talentCard: 48,
+  cvPdf: 62,
+  scoring: 76,
+  portfolio: 90,
   finalize: 100,
 };
 
@@ -77,6 +82,11 @@ const wizardSteps = [
 export default function OnboardingCandidatPage() {
   const { isCandidat } = useAuth();
   const router = useRouter();
+  const queryClient = useQueryClient();
+  const addToast = useUiStore((s) => s.addToast);
+  const updateToast = useUiStore((s) => s.updateToast);
+  const removeToast = useUiStore((s) => s.removeToast);
+  const generationToastIdRef = useRef<string | null>(null);
 
   // Wizard state
   const [currentWizardStep, setCurrentWizardStep] = useState(1);
@@ -172,6 +182,38 @@ export default function OnboardingCandidatPage() {
     setImgFile(null);
   };
 
+  const clearGenerationToast = () => {
+    if (generationToastIdRef.current) {
+      removeToast(generationToastIdRef.current);
+      generationToastIdRef.current = null;
+    }
+  };
+
+  const openGenerationToast = (progressLabel: string, progress: number) => {
+    clearGenerationToast();
+    generationToastIdRef.current = addToast({
+      message:
+        "L’IA génère vos fichiers (Talent Card, scoring, portfolio One Page)…",
+      type: "info",
+      duration: 600_000,
+      progress,
+      progressLabel,
+    });
+  };
+
+  const syncGenerationToast = (stepId: string | null, progress: number) => {
+    const id = generationToastIdRef.current;
+    if (!id) return;
+    const label =
+      stepId != null
+        ? generationSteps.find((s) => s.id === stepId)?.label ?? "En cours…"
+        : "Finalisation du profil";
+    updateToast(id, {
+      progress: Math.min(100, Math.max(0, progress)),
+      progressLabel: label,
+    });
+  };
+
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
     setLoading(true);
@@ -215,9 +257,31 @@ export default function OnboardingCandidatPage() {
           isFreshTimestamp(file.updatedAt, startedAtMs) ||
           isFreshTimestamp(file.createdAt, startedAtMs),
         );
+
+      const isCorrectedCvTapPdfName = (fileName: string) => {
+        const n = fileName.trim().toLowerCase();
+        return n.startsWith("cv_tap") && n.endsWith(".pdf");
+      };
+      const hasFreshCorrectedCvPdf = (
+        files: Array<{
+          name?: string;
+          updatedAt?: string | null;
+          createdAt?: string | null;
+        }>,
+        startedAtMs: number,
+      ) =>
+        files.some(
+          (f) =>
+            typeof f.name === "string" &&
+            isCorrectedCvTapPdfName(f.name) &&
+            (isFreshTimestamp(f.updatedAt, startedAtMs) ||
+              isFreshTimestamp(f.createdAt, startedAtMs)),
+        );
+
       const generationStartedAtMs = Date.now();
 
       setCurrentGenerationStep("upload");
+      openGenerationToast("Envoi des fichiers", progressByStep.upload);
 
       const formData = new FormData();
       if (cvFile) {
@@ -257,28 +321,44 @@ export default function OnboardingCandidatPage() {
       markStepDone("upload");
       // CV uploadé et disponible immédiatement via Nest.
       markStepDone("cv");
+      syncGenerationToast("talentCard", progressByStep.talentCard);
 
-      const generationOrder = ["cv", "talentCard", "scoring", "portfolio"] as const;
-      let readyCv = true;
+      const generationOrder = [
+        "talentCard",
+        "cvPdf",
+        "scoring",
+        "portfolio",
+      ] as const;
       let readyTalentCard = false;
+      let readyCvPdf = false;
       let readyScoring = false;
       let readyPortfolio = false;
       const maxAttempts = 80;
 
       for (let attempt = 0; attempt < maxAttempts; attempt += 1) {
         const nextStep = generationOrder.find((stepId) => {
-          if (stepId === "cv") return !readyCv;
           if (stepId === "talentCard") return !readyTalentCard;
+          if (stepId === "cvPdf") return !readyCvPdf;
           if (stepId === "scoring") return !readyScoring;
           return !readyPortfolio;
         });
         if (nextStep) setCurrentGenerationStep(nextStep);
+        if (nextStep) {
+          syncGenerationToast(
+            nextStep,
+            progressByStep[nextStep] ?? generationProgress,
+          );
+        }
 
         const [cvRes, talentCardRes, scoreRes, portfolioRes] = await Promise.all([
           api
-            .get<{ cvFiles: Array<{ updatedAt?: string | null; createdAt?: string | null }> }>(
-              "/dashboard/candidat/cv-files",
-            )
+            .get<{
+              cvFiles: Array<{
+                name?: string;
+                updatedAt?: string | null;
+                createdAt?: string | null;
+              }>;
+            }>("/dashboard/candidat/cv-files")
             .catch(() => null),
           api
             .get<{
@@ -308,20 +388,20 @@ export default function OnboardingCandidatPage() {
         ]);
 
         if (
-          !readyCv &&
-          Array.isArray(cvRes?.data?.cvFiles) &&
-          hasFreshFile(cvRes.data.cvFiles, generationStartedAtMs)
-        ) {
-          readyCv = true;
-          markStepDone("cv");
-        }
-        if (
           !readyTalentCard &&
           Array.isArray(talentCardRes?.data?.talentcardFiles) &&
           hasFreshFile(talentCardRes.data.talentcardFiles, generationStartedAtMs)
         ) {
           readyTalentCard = true;
           markStepDone("talentCard");
+        }
+        if (
+          !readyCvPdf &&
+          Array.isArray(cvRes?.data?.cvFiles) &&
+          hasFreshCorrectedCvPdf(cvRes.data.cvFiles, generationStartedAtMs)
+        ) {
+          readyCvPdf = true;
+          markStepDone("cvPdf");
         }
         if (
           !readyScoring &&
@@ -348,7 +428,13 @@ export default function OnboardingCandidatPage() {
           markStepDone("portfolio");
         }
 
-        if (readyCv && readyTalentCard && readyScoring && readyPortfolio) {
+        if (
+          readyTalentCard &&
+          readyCvPdf &&
+          readyScoring &&
+          readyPortfolio
+        ) {
+          syncGenerationToast("portfolio", progressByStep.portfolio);
           break;
         }
 
@@ -357,19 +443,64 @@ export default function OnboardingCandidatPage() {
         await sleep(2000);
       }
 
-      if (!(readyCv && readyTalentCard && readyScoring && readyPortfolio)) {
+      if (
+        !(
+          readyTalentCard &&
+          readyCvPdf &&
+          readyScoring &&
+          readyPortfolio
+        )
+      ) {
         throw new Error(
           "La génération prend plus de temps que prévu. Merci de patienter puis réessayer dans quelques instants.",
         );
       }
 
       setCurrentGenerationStep("finalize");
+      syncGenerationToast(null, progressByStep.finalize);
       await sleep(350);
       markStepDone("finalize");
 
-      router.push("/app/matching");
-    } catch (err: any) {
-      setError(err?.message || "Erreur lors de la sauvegarde du profil.");
+      clearGenerationToast();
+      addToast({
+        message:
+          "Votre dossier est prêt. Vous allez être redirigé vers le tableau de bord.",
+        type: "success",
+        duration: 5500,
+      });
+      await queryClient.invalidateQueries({ queryKey: ["candidat", "generation-complete"] });
+      await queryClient.invalidateQueries({ queryKey: ["candidat", "stats"] });
+
+      let serverReady = false;
+      for (let v = 0; v < 28; v += 1) {
+        const ok = await candidatService.checkGenerationCompleteSnapshot();
+        if (ok) {
+          serverReady = true;
+          break;
+        }
+        await sleep(1200);
+      }
+      if (!serverReady) {
+        addToast({
+          message:
+            "Synchronisation avec le serveur en cours — le tableau de bord peut afficher tous les fichiers dans quelques secondes.",
+          type: "info",
+          duration: 6500,
+        });
+      }
+      await queryClient.invalidateQueries({
+        queryKey: ["candidat", "generation-complete"],
+      });
+      await sleep(400);
+      router.push("/app");
+    } catch (err: unknown) {
+      clearGenerationToast();
+      const msg =
+        err instanceof Error
+          ? err.message
+          : "Erreur lors de la sauvegarde du profil.";
+      setError(msg);
+      addToast({ message: msg, type: "error", duration: 8000 });
     } finally {
       setLoading(false);
     }

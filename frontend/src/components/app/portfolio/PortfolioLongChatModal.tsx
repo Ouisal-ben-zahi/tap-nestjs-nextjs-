@@ -1,7 +1,8 @@
 "use client";
 
-import { useEffect, useMemo, useState } from "react";
-import { Briefcase, Loader2, Send, X } from "lucide-react";
+import { useEffect, useMemo, useRef, useState } from "react";
+import { useQueryClient } from "@tanstack/react-query";
+import { Briefcase, Check, Loader2, Send, X } from "lucide-react";
 import { useDashboardTheme } from "@/hooks/use-dashboard-theme";
 import {
   useCandidatScore,
@@ -9,19 +10,49 @@ import {
   useSendPortfolioLongChatMessage,
   useStartPortfolioLongChat,
 } from "@/hooks/use-candidat";
+import { candidatService } from "@/services/candidat.service";
 
 type Props = {
   open: boolean;
   onClose: () => void;
 };
 
+const PIPELINE_POLL_MS = 2500;
+const PIPELINE_MAX_WAIT_MS = 8 * 60 * 1000;
+const PIPELINE_TIME_SKEW_MS = 15000;
+
+/** Aligné sur dashboard.service (fichiers long FR / EN). */
+function isPortfolioLongPdfFr(name: string): boolean {
+  const n = name.toLowerCase();
+  const isShort =
+    n.endsWith("_one-page_fr.pdf") ||
+    n.endsWith("_one-page_en.pdf") ||
+    n.endsWith("_one_page_fr.pdf") ||
+    n.endsWith("_one_page_en.pdf");
+  return n.endsWith("_long_fr.pdf") || (n.endsWith("_fr.pdf") && !isShort);
+}
+
+function isPortfolioLongPdfEn(name: string): boolean {
+  const n = name.toLowerCase();
+  const isShort =
+    n.endsWith("_one-page_fr.pdf") ||
+    n.endsWith("_one-page_en.pdf") ||
+    n.endsWith("_one_page_fr.pdf") ||
+    n.endsWith("_one_page_en.pdf");
+  return n.endsWith("_long_en.pdf") || (n.endsWith("_en.pdf") && !isShort);
+}
+
 export default function PortfolioLongChatModal({ open, onClose }: Props) {
+  const queryClient = useQueryClient();
   const startChat = useStartPortfolioLongChat();
   const sendMessage = useSendPortfolioLongChatMessage();
   const runPipeline = useRunPortfolioLongPipeline();
   const candidatScore = useCandidatScore();
   const theme = useDashboardTheme();
   const isLight = theme === "light";
+
+  const pipelineRunStartedAtRef = useRef<number | null>(null);
+  const lastRunResponseRef = useRef<any>(null);
 
   const [sessionId, setSessionId] = useState<string | null>(null);
   const [question, setQuestion] = useState<string | null>(null);
@@ -34,6 +65,11 @@ export default function PortfolioLongChatModal({ open, onClose }: Props) {
   const [initialMissingTotal, setInitialMissingTotal] = useState<number | null>(null);
   const [pipelineStartedAt, setPipelineStartedAt] = useState<number | null>(null);
   const [pipelineSoftTimeout, setPipelineSoftTimeout] = useState(false);
+  const [awaitingBackgroundArtifacts, setAwaitingBackgroundArtifacts] = useState(false);
+  const [bgScoringDone, setBgScoringDone] = useState(false);
+  const [bgLongPdfFrDone, setBgLongPdfFrDone] = useState(false);
+  const [bgLongPdfEnDone, setBgLongPdfEnDone] = useState(false);
+  const [bgPollTimedOut, setBgPollTimedOut] = useState(false);
 
   const busy = startChat.isPending || sendMessage.isPending || runPipeline.isPending;
 
@@ -57,6 +93,15 @@ export default function PortfolioLongChatModal({ open, onClose }: Props) {
     setPipelineResult(null);
     setProgress(0);
     setInitialMissingTotal(null);
+    setPipelineStartedAt(null);
+    setPipelineSoftTimeout(false);
+    setAwaitingBackgroundArtifacts(false);
+    setBgScoringDone(false);
+    setBgLongPdfFrDone(false);
+    setBgLongPdfEnDone(false);
+    setBgPollTimedOut(false);
+    pipelineRunStartedAtRef.current = null;
+    lastRunResponseRef.current = null;
 
     startChat.mutate("fr", {
       onSuccess: (data) => {
@@ -69,6 +114,26 @@ export default function PortfolioLongChatModal({ open, onClose }: Props) {
     });
     
   }, [open]);
+
+  function applyPipelineRunSuccess(res: any) {
+    lastRunResponseRef.current = res ?? null;
+    setPipelineResult(res ?? null);
+    if (!res?.success) {
+      setAwaitingBackgroundArtifacts(false);
+      return;
+    }
+    pipelineRunStartedAtRef.current = Date.now();
+    const inlineScoring = Boolean(
+      res?.scoring?.scores ?? res?.scoring?.score_global ?? res?.scoring?.decision ?? res?.scoring,
+    );
+    setAwaitingBackgroundArtifacts(true);
+    setBgPollTimedOut(false);
+    setBgScoringDone(inlineScoring);
+    setBgLongPdfFrDone(false);
+    setBgLongPdfEnDone(false);
+  }
+
+  const pipelineArtifactsDone = bgScoringDone && bgLongPdfFrDone && bgLongPdfEnDone;
 
   const handleSend = () => {
     const msg = input.trim();
@@ -92,7 +157,7 @@ export default function PortfolioLongChatModal({ open, onClose }: Props) {
             setPipelineSoftTimeout(false);
             runPipeline.mutate("fr", {
               onSuccess: (res) => {
-                setPipelineResult(res ?? null);
+                applyPipelineRunSuccess(res);
               },
             });
           }
@@ -107,7 +172,7 @@ export default function PortfolioLongChatModal({ open, onClose }: Props) {
     setPipelineSoftTimeout(false);
     runPipeline.mutate("fr", {
       onSuccess: (res) => {
-        setPipelineResult(res ?? null);
+        applyPipelineRunSuccess(res);
       },
     });
   };
@@ -125,27 +190,38 @@ export default function PortfolioLongChatModal({ open, onClose }: Props) {
     null;
   const generationMessage =
     pipelineResult?.generation?.message ??
-    pipelineResult?.generation?.success
+    (pipelineResult?.generation?.success
       ? "Génération du portfolio long lancée. Le PDF apparaîtra dans la liste dans quelques instants."
-      : null;
+      : null);
 
-  const generationDone = Boolean(pipelineResult?.generation?.success);
   const pipelineLaunched = Boolean(pipelineStartedAt) || autoRunTriggered;
-  const pipelineInProgress = isComplete && pipelineLaunched && !generationDone && (runPipeline.isPending || pipelineSoftTimeout);
+  const showPipelineWorking =
+    isComplete &&
+    pipelineLaunched &&
+    !bgPollTimedOut &&
+    (runPipeline.isPending || (awaitingBackgroundArtifacts && !pipelineArtifactsDone));
 
   const progressLabel = useMemo(() => {
-    if (pipelineResult) return "Terminé";
-    if (pipelineSoftTimeout) return "Génération en cours…";
-    if (runPipeline.isPending) return "Scoring + génération…";
+    if (pipelineArtifactsDone && pipelineResult?.success) return "Terminé";
+    if (bgPollTimedOut && !pipelineArtifactsDone) return "Génération en arrière-plan…";
+    if (pipelineSoftTimeout || awaitingBackgroundArtifacts || runPipeline.isPending) return "Scoring + génération…";
     if (sendMessage.isPending) return "Envoi…";
     if (startChat.isPending) return "Initialisation…";
     if (isComplete) return "Prêt";
     return "Collecte…";
-  }, [pipelineResult, pipelineSoftTimeout, runPipeline.isPending, sendMessage.isPending, startChat.isPending, isComplete]);
+  }, [
+    pipelineArtifactsDone,
+    pipelineResult?.success,
+    bgPollTimedOut,
+    pipelineSoftTimeout,
+    awaitingBackgroundArtifacts,
+    runPipeline.isPending,
+    sendMessage.isPending,
+    startChat.isPending,
+    isComplete,
+  ]);
 
-  
   useEffect(() => {
-   
     if (typeof missingCount === "number" && missingCount >= 0 && !runPipeline.isPending && !pipelineResult) {
       if (initialMissingTotal === null) {
         setInitialMissingTotal(Math.max(missingCount, 1));
@@ -153,11 +229,14 @@ export default function PortfolioLongChatModal({ open, onClose }: Props) {
       const total = Math.max(initialMissingTotal ?? missingCount, 1);
       const doneRatio = 1 - Math.min(missingCount / total, 1);
       const next = Math.max(0, Math.min(70, Math.round(doneRatio * 70)));
-      setProgress((p) => (pipelineResult ? 100 : Math.max(p, next)));
+      setProgress((p) => (pipelineResult ? p : Math.max(p, next)));
     }
 
-   
-    if (runPipeline.isPending && !pipelineResult) {
+    const pipelineBusy =
+      runPipeline.isPending ||
+      Boolean(pipelineResult && awaitingBackgroundArtifacts && !pipelineArtifactsDone);
+
+    if (pipelineBusy) {
       const id = window.setInterval(() => {
         setProgress((p) => {
           const base = Math.max(p, 70);
@@ -168,16 +247,89 @@ export default function PortfolioLongChatModal({ open, onClose }: Props) {
       return () => window.clearInterval(id);
     }
 
-    // 3) Done (100)
-    if (pipelineResult) {
+    if (pipelineArtifactsDone && pipelineResult?.success) {
       setProgress(100);
     }
-  }, [missingCount, runPipeline.isPending, pipelineResult, initialMissingTotal]); 
+  }, [
+    missingCount,
+    runPipeline.isPending,
+    pipelineResult,
+    initialMissingTotal,
+    awaitingBackgroundArtifacts,
+    pipelineArtifactsDone,
+  ]);
+
+  useEffect(() => {
+    if (!open || !awaitingBackgroundArtifacts) return;
+    const started = pipelineRunStartedAtRef.current;
+    if (started == null) return;
+
+    let cancelled = false;
+
+    const isFresh = (iso: string | null | undefined) => {
+      if (!iso) return false;
+      const t = new Date(iso).getTime();
+      return Number.isFinite(t) && t >= started - PIPELINE_TIME_SKEW_MS;
+    };
+
+    const tick = async () => {
+      if (cancelled) return;
+      if (Date.now() - started > PIPELINE_MAX_WAIT_MS) {
+        setBgPollTimedOut(true);
+        setAwaitingBackgroundArtifacts(false);
+        return;
+      }
+
+      try {
+        const [pdfsRes, scoreRes] = await Promise.all([
+          candidatService.getPortfolioPdfFiles(),
+          candidatService.getScore(),
+        ]);
+        if (cancelled) return;
+
+        const resSnap = lastRunResponseRef.current;
+        const hasInlineScoring = Boolean(
+          resSnap?.scoring?.scores ??
+            resSnap?.scoring?.score_global ??
+            resSnap?.scoring?.decision ??
+            resSnap?.scoring,
+        );
+        const scoringReady = hasInlineScoring || isFresh(scoreRes.metadataTimestamp);
+        const longs = pdfsRes.portfolioPdfFiles.filter((p) => p.type === "long");
+        const longFrReady = longs.some(
+          (p) => isFresh(p.updatedAt) && isPortfolioLongPdfFr(p.name),
+        );
+        const longEnReady = longs.some(
+          (p) => isFresh(p.updatedAt) && isPortfolioLongPdfEn(p.name),
+        );
+
+        setBgScoringDone((p) => scoringReady || p);
+        setBgLongPdfFrDone((p) => longFrReady || p);
+        setBgLongPdfEnDone((p) => longEnReady || p);
+
+        if (scoringReady && longFrReady && longEnReady) {
+          setAwaitingBackgroundArtifacts(false);
+          queryClient.invalidateQueries({ queryKey: ["candidat", "portfolio-pdfs"] });
+          queryClient.invalidateQueries({ queryKey: ["candidat", "score"] });
+          void candidatScore.refetch();
+        }
+      } catch {
+        /* retry next tick */
+      }
+    };
+
+    void tick();
+    const id = window.setInterval(() => void tick(), PIPELINE_POLL_MS);
+    return () => {
+      cancelled = true;
+      window.clearInterval(id);
+    };
+  }, [open, awaitingBackgroundArtifacts, queryClient, candidatScore]);
 
   useEffect(() => {
     if (!pipelineStartedAt) return;
-    if (pipelineResult) return;
-    if (!runPipeline.isPending) return;
+    if (pipelineArtifactsDone) return;
+    if (!runPipeline.isPending && !awaitingBackgroundArtifacts) return;
 
     const id = window.setInterval(() => {
       const elapsedMs = Date.now() - pipelineStartedAt;
@@ -186,7 +338,7 @@ export default function PortfolioLongChatModal({ open, onClose }: Props) {
       }
     }, 500);
     return () => window.clearInterval(id);
-  }, [pipelineStartedAt, runPipeline.isPending, pipelineResult]);
+  }, [pipelineStartedAt, runPipeline.isPending, awaitingBackgroundArtifacts, pipelineArtifactsDone]);
 
   if (!open) return null;
 
@@ -274,7 +426,7 @@ export default function PortfolioLongChatModal({ open, onClose }: Props) {
           </div>
 
           <div className="px-5 py-5 space-y-4">
-            {pipelineInProgress ? (
+            {showPipelineWorking ? (
               <div
                 className={`rounded-xl border p-6 ${
                   isLight
@@ -282,14 +434,14 @@ export default function PortfolioLongChatModal({ open, onClose }: Props) {
                     : "border-white/[0.06] bg-white/[0.03]"
                 }`}
               >
-                <div className="flex items-center gap-3">
+                <div className="flex items-start gap-3">
                   <Loader2
                     size={18}
-                    className={`animate-spin ${
+                    className={`animate-spin shrink-0 mt-0.5 ${
                       isLight ? "text-black/70" : "text-white/70"
                     }`}
                   />
-                  <div>
+                  <div className="min-w-0 flex-1">
                     <div
                       className={`text-[13px] font-medium ${
                         isLight ? "text-black/80" : "text-white/85"
@@ -304,6 +456,117 @@ export default function PortfolioLongChatModal({ open, onClose }: Props) {
                     >
                       Vous pouvez fermer cette fenêtre, ça continue en arrière-plan.
                     </div>
+                    <div className="mt-4 space-y-2">
+                      <div
+                        className={`flex items-center gap-2 text-[12px] ${
+                          isLight ? "text-black/70" : "text-white/65"
+                        }`}
+                      >
+                        {bgScoringDone ? (
+                          <Check size={14} className="shrink-0 text-emerald-600" />
+                        ) : (
+                          <Loader2 size={14} className="shrink-0 animate-spin opacity-70" />
+                        )}
+                        <span>Scoring — {bgScoringDone ? "terminé" : "en cours…"}</span>
+                      </div>
+                      <div
+                        className={`flex items-center gap-2 text-[12px] ${
+                          isLight ? "text-black/70" : "text-white/65"
+                        }`}
+                      >
+                        {bgLongPdfFrDone ? (
+                          <Check size={14} className="shrink-0 text-emerald-600" />
+                        ) : (
+                          <Loader2 size={14} className="shrink-0 animate-spin opacity-70" />
+                        )}
+                        <span>
+                          PDF portfolio long français — {bgLongPdfFrDone ? "prêt" : "en cours…"}
+                        </span>
+                      </div>
+                      <div
+                        className={`flex items-center gap-2 text-[12px] ${
+                          isLight ? "text-black/70" : "text-white/65"
+                        }`}
+                      >
+                        {bgLongPdfEnDone ? (
+                          <Check size={14} className="shrink-0 text-emerald-600" />
+                        ) : (
+                          <Loader2 size={14} className="shrink-0 animate-spin opacity-70" />
+                        )}
+                        <span>
+                          PDF portfolio long anglais — {bgLongPdfEnDone ? "prêt" : "en cours…"}
+                        </span>
+                      </div>
+                    </div>
+                  </div>
+                </div>
+              </div>
+            ) : bgPollTimedOut && !pipelineArtifactsDone ? (
+              <div
+                className={`rounded-xl border p-6 ${
+                  isLight
+                    ? "border-amber-200/80 bg-amber-50/60"
+                    : "border-amber-500/25 bg-amber-500/[0.07]"
+                }`}
+              >
+                <div
+                  className={`text-[13px] font-medium ${
+                    isLight ? "text-black/85" : "text-white/90"
+                  }`}
+                >
+                  Génération toujours en cours
+                </div>
+                <div
+                  className={`text-[12px] mt-2 leading-relaxed ${
+                    isLight ? "text-black/55" : "text-white/45"
+                  }`}
+                >
+                  Le délai d’attente dans cette fenêtre est dépassé, mais le traitement peut encore
+                  tourner côté serveur. Vérifiez bientôt la liste des PDF portfolio long dans vos
+                  fichiers.
+                </div>
+                <div className="mt-3 space-y-2">
+                  <div
+                    className={`flex items-center gap-2 text-[12px] ${
+                      isLight ? "text-black/65" : "text-white/55"
+                    }`}
+                  >
+                    {bgScoringDone ? (
+                      <Check size={14} className="shrink-0 text-emerald-600" />
+                    ) : (
+                      <span className="w-[14px] shrink-0 rounded-full h-1.5 bg-black/15 dark:bg-white/20" />
+                    )}
+                    <span>Scoring — {bgScoringDone ? "terminé" : "statut inconnu / en cours"}</span>
+                  </div>
+                  <div
+                    className={`flex items-center gap-2 text-[12px] ${
+                      isLight ? "text-black/65" : "text-white/55"
+                    }`}
+                  >
+                    {bgLongPdfFrDone ? (
+                      <Check size={14} className="shrink-0 text-emerald-600" />
+                    ) : (
+                      <span className="w-[14px] shrink-0 rounded-full h-1.5 bg-black/15 dark:bg-white/20" />
+                    )}
+                    <span>
+                      PDF portfolio long français —{" "}
+                      {bgLongPdfFrDone ? "prêt" : "pas encore détecté"}
+                    </span>
+                  </div>
+                  <div
+                    className={`flex items-center gap-2 text-[12px] ${
+                      isLight ? "text-black/65" : "text-white/55"
+                    }`}
+                  >
+                    {bgLongPdfEnDone ? (
+                      <Check size={14} className="shrink-0 text-emerald-600" />
+                    ) : (
+                      <span className="w-[14px] shrink-0 rounded-full h-1.5 bg-black/15 dark:bg-white/20" />
+                    )}
+                    <span>
+                      PDF portfolio long anglais —{" "}
+                      {bgLongPdfEnDone ? "prêt" : "pas encore détecté"}
+                    </span>
                   </div>
                 </div>
               </div>
@@ -471,18 +734,24 @@ export default function PortfolioLongChatModal({ open, onClose }: Props) {
                 isLight ? "text-black/55" : "text-white/35"
               }`}
             >
-              {pipelineResult
-                ? "Scoring terminé, génération lancée."
-                : isComplete
-                  ? "Prêt à lancer le scoring et la génération."
-                  : "Terminez le questionnaire pour continuer."}
+              {pipelineArtifactsDone
+                ? "Scoring et PDF portfolio long (FR + EN) à jour."
+                : bgPollTimedOut && !pipelineArtifactsDone
+                  ? "Délai dépassé : vérifiez vos fichiers dans quelques instants."
+                  : pipelineResult?.success
+                    ? "Traitement lancé — l’état ci-dessus indique quand tout est prêt."
+                    : isComplete
+                      ? "Prêt à lancer le scoring et la génération."
+                      : "Terminez le questionnaire pour continuer."}
             </div>
             <button
               onClick={handleRun}
               disabled={!isComplete || busy || Boolean(pipelineResult)}
               className="h-10 px-4 rounded-xl bg-tap-red text-white text-[13px] font-semibold hover:bg-tap-red-hover transition disabled:opacity-50 disabled:cursor-not-allowed inline-flex items-center gap-2"
             >
-              {runPipeline.isPending ? <Loader2 size={14} className="animate-spin" /> : null}
+              {runPipeline.isPending || awaitingBackgroundArtifacts ? (
+                <Loader2 size={14} className="animate-spin" />
+              ) : null}
               {pipelineResult ? "Terminé" : "Lancer scoring + génération"}
             </button>
           </div>

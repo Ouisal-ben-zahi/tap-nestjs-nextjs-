@@ -7,6 +7,7 @@ import json
 import sys
 import re
 import time
+import threading
 from urllib.parse import urlparse, unquote
 from concurrent.futures import ThreadPoolExecutor, as_completed
 from datetime import datetime
@@ -2037,7 +2038,30 @@ def transform_portfolio_data_for_template(
     return result
 
 
+# Playwright sync n'est pas thread-safe : deux PDF (FR + EN) en parallèle peuvent bloquer ou échouer.
+_convert_html_to_pdf_lock = threading.Lock()
+
+
 def convert_html_to_pdf(
+    html_content: str,
+    candidate_id: int,
+    candidate_uuid: str,
+    base_url: Optional[str] = None,
+    pdf_page_format: Optional[str] = None,
+    lang: Optional[str] = None,
+) -> Tuple[bool, Optional[str], Optional[str]]:
+    with _convert_html_to_pdf_lock:
+        return _convert_html_to_pdf_impl(
+            html_content,
+            candidate_id,
+            candidate_uuid,
+            base_url=base_url,
+            pdf_page_format=pdf_page_format,
+            lang=lang,
+        )
+
+
+def _convert_html_to_pdf_impl(
     html_content: str,
     candidate_id: int,
     candidate_uuid: str,

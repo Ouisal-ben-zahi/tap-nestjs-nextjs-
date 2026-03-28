@@ -1,4 +1,5 @@
 import api from '@/lib/api';
+import { isCandidatGenerationComplete } from '@/lib/candidat-generation-complete';
 import type {
   CandidatStats,
   Application,
@@ -39,6 +40,25 @@ export type CandidatDashboardJob = {
 };
 
 type DashboardJobsResponse = { jobs: CandidatDashboardJob[] };
+
+/** Aligné sur GET /dashboard/candidat/generation-status (Nest). */
+export type CandidatGenerationStepStatus = 'pending' | 'in_progress' | 'completed';
+
+export interface CandidatGenerationStep {
+  id: string;
+  status: CandidatGenerationStepStatus;
+  label: string;
+  message: string;
+}
+
+export interface CandidatGenerationStatus {
+  candidateId: number | null;
+  steps: CandidatGenerationStep[];
+  currentStepId: string | null;
+  progressPercent: number;
+  allComplete: boolean;
+  serverTime: string;
+}
 
 const fetchDashboardJobs = () =>
   api.get<DashboardJobsResponse>('/dashboard/jobs').then((r) => r.data);
@@ -113,6 +133,40 @@ export const candidatService = {
       return { portfolioPdfFiles: [...short, ...long] };
     }),
 
+  /** État de génération ; passer `sinceMs` = Date.now() au début de l’onboarding pour ne suivre que cette session. */
+  getGenerationStatus: (sinceMs?: number) =>
+    api
+      .get<CandidatGenerationStatus>('/dashboard/candidat/generation-status', {
+        params: sinceMs != null ? { since: sinceMs } : {},
+      })
+      .then((r) => r.data),
+
+  /**
+   * Snapshot aligné sur le garde du tableau de bord / fin d’onboarding.
+   * Utilisé pour éviter une navigation /app alors que le stockage n’a pas encore convergé.
+   */
+  checkGenerationCompleteSnapshot: async (): Promise<boolean> => {
+    const [cvRes, tcRes, scoreRes, portfolioRes] = await Promise.all([
+      api.get<{ cvFiles: CvFile[] }>('/dashboard/candidat/cv-files').then((r) => r.data),
+      api
+        .get<{ talentcardFiles: TalentCardFile[] }>('/dashboard/candidat/talentcard-files')
+        .then((r) => r.data),
+      api.get<CandidatScore>('/dashboard/candidat/score-json').then((r) => r.data),
+      api
+        .get<{ portfolioShort: unknown[]; portfolioLong: unknown[] }>(
+          '/dashboard/candidat/portfolio-pdf-files',
+        )
+        .then((r) => r.data),
+    ]);
+    return isCandidatGenerationComplete({
+      cvFiles: cvRes.cvFiles,
+      talentcardFiles: tcRes.talentcardFiles,
+      score: scoreRes,
+      portfolioShort: portfolioRes.portfolioShort,
+      portfolioLong: portfolioRes.portfolioLong,
+    });
+  },
+
   getPublicJobs: () => api.get<DashboardJobsResponse>('/dashboard/jobs').then((r) => r.data),
 
   applyToJob: (payload: {
@@ -172,7 +226,15 @@ export const candidatService = {
   runPortfolioLongPipeline: (lang: 'fr' | 'en' = 'fr') =>
     api
       .post('/dashboard/candidat/portfolio-long/run', { lang })
-      .then((r) => r.data as { success: boolean; scoring?: any; generation?: { success: boolean; message?: string } }),
+      .then(
+        (r) =>
+          r.data as {
+            success: boolean;
+            started?: boolean;
+            scoring?: any;
+            generation?: { success: boolean; message?: string };
+          },
+      ),
 
   startInterviewSimulation: (interviewType: string) =>
     api

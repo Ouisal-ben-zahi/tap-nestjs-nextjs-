@@ -1,11 +1,51 @@
-import { Body, Controller, Delete, Get, HttpCode, Param, Post, Put, Query, Req, UploadedFile, UploadedFiles, UseGuards, UseInterceptors } from '@nestjs/common';
+import {
+  BadRequestException,
+  Body,
+  Controller,
+  Delete,
+  Get,
+  HttpCode,
+  MessageEvent,
+  Param,
+  Post,
+  Put,
+  Query,
+  Req,
+  Sse,
+  UploadedFile,
+  UploadedFiles,
+  UseGuards,
+  UseInterceptors,
+} from '@nestjs/common';
 import { AuthGuard } from '@nestjs/passport';
 import { FileFieldsInterceptor, FileInterceptor } from '@nestjs/platform-express';
+import {
+  Observable,
+  from,
+  interval,
+  mergeMap,
+  map,
+  takeWhile,
+  take,
+  startWith,
+  distinctUntilChanged,
+} from 'rxjs';
 import { DashboardService, type ApplyJobPayload, type RecruiterJobPayload, type RecruiterMatchByOfferPayload, type RecruiterScheduleInterviewPayload, type RecruiterValidateCandidatePayload, type RecruiterSaveInterviewPdfPayload, type RecruiterUpdateCandidateStatusPayload, type ToggleSavedJobPayload } from './dashboard.service';
 
 @Controller('dashboard')
 export class DashboardController {
   constructor(private readonly dashboardService: DashboardService) {}
+
+  private parseGenerationSinceMs(sinceRaw?: string): number | undefined {
+    if (sinceRaw === undefined || sinceRaw === '') return undefined;
+    const n = Number(sinceRaw);
+    if (!Number.isFinite(n) || n < 0) {
+      throw new BadRequestException(
+        'Le paramètre since doit être un timestamp unix en millisecondes.',
+      );
+    }
+    return Math.floor(n);
+  }
 
 
   // === JWT-based routes (no userId in URL) ===
@@ -78,6 +118,70 @@ export class DashboardController {
   async getCandidatePortfolioPdfFilesByJwt(@Req() req: any) {
     const userId = await this.dashboardService.resolveJwtUserId(req?.user);
     return this.dashboardService.getCandidatePortfolioPdfFiles(userId);
+  }
+
+  /**
+   * État agrégé de la génération (CV → Talent Card → scoring → portfolio).
+   * Query optionnel `since` = timestamp ms (début côté client) pour ne compter que les fichiers « frais ».
+   */
+  @Get('candidat/generation-status')
+  @UseGuards(AuthGuard('jwt'))
+  async getCandidateGenerationStatusByJwt(
+    @Req() req: any,
+    @Query('since') sinceRaw?: string,
+  ) {
+    const userId = await this.dashboardService.resolveJwtUserId(req?.user);
+    const sinceMs = this.parseGenerationSinceMs(sinceRaw);
+    return this.dashboardService.getCandidateGenerationStatus(
+      userId,
+      sinceMs,
+    );
+  }
+
+  /**
+   * Flux SSE : ré-émet le même JSON que GET generation-status toutes les 2 s
+   * jusqu’à `allComplete` (inclut le dernier événement) ou 600 ticks (~20 min).
+   * Auth : header Authorization Bearer (utiliser fetch + ReadableStream côté navigateur, pas EventSource).
+   */
+  @Sse('candidat/generation-status/stream')
+  @UseGuards(AuthGuard('jwt'))
+  candidateGenerationStatusStream(
+    @Req() req: any,
+    @Query('since') sinceRaw?: string,
+  ): Observable<MessageEvent> {
+    const sinceMs = this.parseGenerationSinceMs(sinceRaw);
+
+    return from(this.dashboardService.resolveJwtUserId(req?.user)).pipe(
+      mergeMap((userId) =>
+        interval(2000).pipe(
+          startWith(0),
+          mergeMap(() =>
+            from(
+              this.dashboardService.getCandidateGenerationStatus(
+                userId,
+                sinceMs,
+              ),
+            ),
+          ),
+          distinctUntilChanged(
+            (a, b) => JSON.stringify(a) === JSON.stringify(b),
+          ),
+          map(
+            (payload) =>
+              ({ data: JSON.stringify(payload) }) as MessageEvent,
+          ),
+          takeWhile((ev) => {
+            try {
+              const d = JSON.parse(String(ev.data)) as { allComplete?: boolean };
+              return !d.allComplete;
+            } catch {
+              return true;
+            }
+          }, true),
+          take(600),
+        ),
+      ),
+    );
   }
 
   @Post('candidat/generate-portfolio-long')

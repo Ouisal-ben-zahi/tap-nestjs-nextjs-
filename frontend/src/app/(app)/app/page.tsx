@@ -3,9 +3,15 @@
 import { useEffect } from "react";
 import { useRouter } from "next/navigation";
 import { useAuth } from "@/hooks/use-auth";
-import { useCandidatProfile, useCandidatStats } from "@/hooks/use-candidat";
+import {
+  useCandidatProfile,
+  useCandidatStats,
+  useCandidatGenerationComplete,
+} from "@/hooks/use-candidat";
 import CandidatDashboard from "@/components/app/dashboard/CandidatDashboard";
 import RecruteurDashboard from "@/components/app/dashboard/RecruteurDashboard";
+import { Skeleton } from "@/components/ui/Skeleton";
+import ErrorState from "@/components/ui/ErrorState";
 import Link from "next/link";
 import {
   FileText,
@@ -57,6 +63,14 @@ export default function DashboardPage() {
   const recruiterProfileQuery = useCandidatProfile(isRecruteur);
   const features = isRecruteur ? recruteurFeatures : candidatFeatures;
   const stats = statsQuery.data;
+  const hasCandidateProfile =
+    stats?.candidateId !== null && stats?.candidateId !== undefined;
+  const generationCheckEnabled =
+    isCandidat &&
+    !statsQuery.isLoading &&
+    !statsQuery.isError &&
+    hasCandidateProfile;
+  const generationQuery = useCandidatGenerationComplete(generationCheckEnabled);
   const candidateFullName = isCandidat
     ? [stats?.firstName, stats?.lastName].filter((v) => Boolean(v && String(v).trim())).join(" ")
     : "";
@@ -82,19 +96,62 @@ export default function DashboardPage() {
     if (!isCandidat) return;
     if (statsQuery.isLoading || statsQuery.isError || statsQuery.isFetching)
       return;
-    const hasProfile =
-      stats?.candidateId !== null && stats?.candidateId !== undefined;
-    if (!hasProfile) {
+    if (!hasCandidateProfile) {
       router.push("/app/onboarding-candidat");
     }
   }, [
     isCandidat,
+    hasCandidateProfile,
     statsQuery.isLoading,
     statsQuery.isError,
     statsQuery.isFetching,
     statsQuery.data,
     router,
   ]);
+
+  // Profil créé mais fichiers (CV, Talent Card, scoring, portfolio) encore absents → onboarding
+  useEffect(() => {
+    if (!isCandidat) return;
+    if (!generationCheckEnabled) return;
+    if (generationQuery.isLoading) return;
+    if (generationQuery.isError) return;
+    if (generationQuery.data !== false) return;
+    router.push("/app/onboarding-candidat?resume=1");
+  }, [
+    isCandidat,
+    generationCheckEnabled,
+    generationQuery.isLoading,
+    generationQuery.isError,
+    generationQuery.data,
+    router,
+  ]);
+
+  const generationGateBlocking =
+    isCandidat &&
+    hasCandidateProfile &&
+    (generationQuery.isLoading ||
+      generationQuery.data === false ||
+      (generationQuery.isError && generationQuery.data !== true));
+
+  if (generationGateBlocking) {
+    if (generationQuery.isError) {
+      return (
+        <div className="max-w-[1100px] mx-auto py-12">
+          <ErrorState
+            message="Impossible de vérifier que ton profil est prêt. Réessaie dans un instant."
+            onRetry={() => generationQuery.refetch()}
+          />
+        </div>
+      );
+    }
+    return (
+      <div className="max-w-[1100px] mx-auto py-12">
+        <Skeleton className="h-10 w-2/3 max-w-md mb-6 rounded-lg" />
+        <Skeleton className="h-48 w-full mb-4 rounded-2xl" />
+        <Skeleton className="h-48 w-full rounded-2xl" />
+      </div>
+    );
+  }
 
   return (
     <div className="max-w-[1100px] mx-auto">

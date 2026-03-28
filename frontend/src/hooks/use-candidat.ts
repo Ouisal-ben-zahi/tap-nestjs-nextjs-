@@ -123,6 +123,22 @@ export function useCandidatPublicJobs(enabled?: boolean) {
   });
 }
 
+/**
+ * Agrège CV, Talent Card, score JSON et PDFs portfolio (one-pager).
+ * Utilisé pour ne pas afficher le tableau de bord tant que l’onboarding n’est pas réellement terminé.
+ */
+export function useCandidatGenerationComplete(enabled?: boolean) {
+  const authEnabled = useAuthEnabled();
+  return useQuery({
+    queryKey: ['candidat', 'generation-complete'],
+    queryFn: () => candidatService.checkGenerationCompleteSnapshot(),
+    enabled: enabled ?? authEnabled,
+    // Toujours reprendre l’état réel au montage (évite d’afficher le dashboard sur un cache « true » obsolète).
+    staleTime: 0,
+    gcTime: 5 * 60 * 1000,
+  });
+}
+
 export function useCandidatCvFiles(refetchInterval?: number | false) {
   return useQuery({
     queryKey: ['candidat', 'cv-files'],
@@ -254,6 +270,7 @@ export function useUploadCv() {
       queryClient.invalidateQueries({ queryKey: ['candidat', 'cv-files'] });
       queryClient.invalidateQueries({ queryKey: ['candidat', 'talentcard-files'] });
       queryClient.invalidateQueries({ queryKey: ['candidat', 'portfolio-pdfs'] });
+      queryClient.invalidateQueries({ queryKey: ['candidat', 'generation-complete'] });
       const msg = isRegenerationRef.current
         ? 'CV importé — régénération de tous les fichiers en cours…'
         : 'CV uploadé avec succès';
