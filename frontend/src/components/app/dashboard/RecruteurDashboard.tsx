@@ -1,19 +1,20 @@
- "use client";
+"use client";
 
 import { useEffect, useState } from "react";
 import { useRouter } from "next/navigation";
- import { useRecruteurOverview } from "@/hooks/use-recruteur";
- import EmptyState from "@/components/ui/EmptyState";
- import ErrorState from "@/components/ui/ErrorState";
- import { StatCardSkeleton, Skeleton } from "@/components/ui/Skeleton";
- import {
+import { useRecruteurOverview } from "@/hooks/use-recruteur";
+import { useDashboardTheme } from "@/hooks/use-dashboard-theme";
+import EmptyState from "@/components/ui/EmptyState";
+import ErrorState from "@/components/ui/ErrorState";
+import { StatCardSkeleton, Skeleton } from "@/components/ui/Skeleton";
+import {
   Briefcase,
   Users,
   FileText,
   AlertTriangle,
   Bell,
   Activity,
- } from "lucide-react";
+} from "lucide-react";
 import { formatRelative } from "@/lib/utils";
 
 function getInitials(name: string | null | undefined) {
@@ -29,7 +30,8 @@ function getInitials(name: string | null | undefined) {
 export default function RecruteurDashboard() {
   const overviewQuery = useRecruteurOverview();
   const overview = overviewQuery.data;
-  const isLight = false;
+  const theme = useDashboardTheme();
+  const isLight = theme === "light";
   const router = useRouter();
 
   if (overviewQuery.isError) return <ErrorState onRetry={() => overviewQuery.refetch()} />;
@@ -79,7 +81,7 @@ export default function RecruteurDashboard() {
     },
   ];
   const themedCardClass =
-    "group card-animated-border relative overflow-hidden rounded-2xl border border-white/[0.08] bg-[linear-gradient(180deg,rgba(202,27,40,0.08)_0%,rgba(10,10,10,0.96)_30%,rgba(10,10,10,0.96)_100%)] shadow-[0_10px_28px_rgba(0,0,0,0.45)] hover:border-tap-red/15 transition-all duration-500";
+    "group card-animated-border relative overflow-hidden rounded-2xl border border-white/[0.08] bg-[#020001] shadow-[0_10px_28px_rgba(0,0,0,0.45)] hover:bg-[linear-gradient(180deg,rgba(202,27,40,0.08)_0%,rgba(10,10,10,0.96)_30%,rgba(10,10,10,0.96)_100%)] hover:border-tap-red/15 transition-all duration-500";
   const themedParagraphClass = isLight ? "text-black/60" : "text-white/60";
 
   return (
@@ -113,8 +115,7 @@ export default function RecruteurDashboard() {
                       transitionDelay: isMounted ? `${40 * kpiCards.indexOf(card)}ms` : "0ms",
                     }}
                   >
-                    {/* Overlay glint premium */}
-                    <div className="pointer-events-none absolute inset-0 opacity-0 group-hover:opacity-100 transition-opacity duration-500">
+                    <div className="pointer-events-none absolute inset-0 opacity-100 group-hover:opacity-0 transition-opacity duration-500">
                       <div className="absolute -top-20 -right-10 w-48 h-48 rounded-full bg-white/10 blur-2xl" />
                       <div className="absolute -bottom-24 -left-20 w-56 h-56 rounded-full bg-tap-red/10 blur-2xl opacity-40" />
                     </div>
@@ -158,7 +159,18 @@ export default function RecruteurDashboard() {
       {!overviewQuery.isLoading && overview && (
         <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
           {/* Candidatures par offre */}
-          <div className={`${themedCardClass} p-6 ${isLight ? "card-luxury-light" : ""}`}>
+          <div
+            className={`${themedCardClass} p-6 transition-all duration-300 hover:-translate-y-0.5 hover:shadow-[0_18px_45px_rgba(0,0,0,0.35)] ${
+              isLight ? "card-luxury-light" : ""
+            }`}
+          >
+            {!isLight && (
+              <div className="pointer-events-none absolute inset-0 opacity-100 group-hover:opacity-0 transition-opacity duration-500">
+                <div className="absolute -top-24 -right-28 w-72 h-72 rounded-full bg-white/5 blur-2xl" />
+                <div className="absolute -bottom-28 -left-24 w-72 h-72 rounded-full bg-blue-500/10 blur-2xl opacity-60" />
+              </div>
+            )}
+            <div className="relative">
             <h3 className={`text-[13px] uppercase tracking-[2px] font-semibold mb-5 ${isLight ? "text-black" : "text-white/50"}`}>Candidatures par offre</h3>
             {!overview.applicationsPerJob?.length ? (
               <p className={`text-[13px] ${themedParagraphClass}`}>Aucune donnée</p>
@@ -205,10 +217,22 @@ export default function RecruteurDashboard() {
                 );
               })()
             )}
+            </div>
           </div>
 
           {/* Offres par catégorie */}
-          <div className={`${themedCardClass} p-6 ${isLight ? "card-luxury-light" : ""}`}>
+          <div
+            className={`${themedCardClass} p-6 transition-all duration-300 hover:-translate-y-0.5 hover:shadow-[0_18px_45px_rgba(0,0,0,0.35)] ${
+              isLight ? "card-luxury-light" : ""
+            }`}
+          >
+            {!isLight && (
+              <div className="pointer-events-none absolute inset-0 opacity-100 group-hover:opacity-0 transition-opacity duration-500">
+                <div className="absolute -top-24 -right-28 w-72 h-72 rounded-full bg-white/5 blur-2xl" />
+                <div className="absolute -bottom-28 -left-24 w-72 h-72 rounded-full bg-violet-500/10 blur-2xl opacity-50" />
+              </div>
+            )}
+            <div className="relative">
             <h3 className={`text-[13px] uppercase tracking-[2px] font-semibold mb-5 ${isLight ? "text-black" : "text-white/50"}`}>Offres par catégorie</h3>
             {!overview.jobsPerCategory?.length ? (
               <p className={`text-[13px] ${themedParagraphClass}`}>Aucune donnée</p>
@@ -300,14 +324,25 @@ export default function RecruteurDashboard() {
                 })()}
               </div>
             )}
+            </div>
           </div>
         </div>
       )}
 
       {/* Répartition des candidatures */}
       {!overviewQuery.isLoading && overview && (
-        <div className="rounded-2xl p-6">
-          <div className={`${themedCardClass} rounded-2xl p-6 ${isLight ? "card-luxury-light" : ""}`}>
+        <div
+          className={`${themedCardClass} p-6 transition-all duration-300 hover:-translate-y-0.5 hover:shadow-[0_18px_45px_rgba(0,0,0,0.35)] ${
+            isLight ? "card-luxury-light" : ""
+          }`}
+        >
+          {!isLight && (
+            <div className="pointer-events-none absolute inset-0 opacity-100 group-hover:opacity-0 transition-opacity duration-500">
+              <div className="absolute -top-24 -right-28 w-72 h-72 rounded-full bg-white/5 blur-2xl" />
+              <div className="absolute -bottom-28 -left-24 w-72 h-72 rounded-full bg-amber-500/10 blur-2xl opacity-50" />
+            </div>
+          )}
+          <div className="relative">
             <div className="flex items-center gap-2 mb-5">
               <Activity size={14} className="text-amber-500" />
               <h3 className={`text-[13px] uppercase tracking-[2px] font-semibold ${isLight ? "text-black" : "text-white/50"}`}>
@@ -516,7 +551,18 @@ export default function RecruteurDashboard() {
       {/* Candidatures récentes + Alertes */}
       <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
         <div className={hasAlerts ? "" : "lg:col-span-2"}>
-          <div className={`${themedCardClass} p-6 ${isLight ? "card-luxury-light" : ""}`}>
+          <div
+            className={`${themedCardClass} p-6 transition-all duration-300 hover:-translate-y-0.5 hover:shadow-[0_18px_45px_rgba(0,0,0,0.35)] ${
+              isLight ? "card-luxury-light" : ""
+            }`}
+          >
+            {!isLight && (
+              <div className="pointer-events-none absolute inset-0 opacity-100 group-hover:opacity-0 transition-opacity duration-500">
+                <div className="absolute -top-24 -right-28 w-72 h-72 rounded-full bg-white/5 blur-2xl" />
+                <div className="absolute -bottom-28 -left-24 w-72 h-72 rounded-full bg-tap-red/10 blur-2xl opacity-40" />
+              </div>
+            )}
+            <div className="relative">
             <h2 className={`text-[13px] uppercase tracking-[2px] font-semibold ${isLight ? "text-black/60" : "text-white/60"}`}>
               Candidatures récentes
             </h2>
@@ -541,7 +587,7 @@ export default function RecruteurDashboard() {
                       className={`rounded-xl px-5 py-4 transition cursor-pointer ${
                         isLight
                           ? "card-luxury-light hover:border-tap-red/70"
-                          : "bg-[#0A0A0A] border border-white/[0.06] hover:border-tap-red/15"
+                          : "border border-white/[0.06] bg-white/[0.02] hover:border-tap-red/15"
                       }`}
                       role="button"
                       tabIndex={0}
@@ -602,12 +648,24 @@ export default function RecruteurDashboard() {
                 </div>
               )}
             </div>
+            </div>
           </div>
         </div>
 
         {hasAlerts && (
           <div>
-            <div className={`${themedCardClass} p-6 ${isLight ? "card-luxury-light" : ""}`}>
+            <div
+              className={`${themedCardClass} p-6 transition-all duration-300 hover:-translate-y-0.5 hover:shadow-[0_18px_45px_rgba(0,0,0,0.35)] ${
+                isLight ? "card-luxury-light" : ""
+              }`}
+            >
+              {!isLight && (
+                <div className="pointer-events-none absolute inset-0 opacity-100 group-hover:opacity-0 transition-opacity duration-500">
+                  <div className="absolute -top-24 -right-28 w-72 h-72 rounded-full bg-white/5 blur-2xl" />
+                  <div className="absolute -bottom-28 -left-24 w-72 h-72 rounded-full bg-amber-500/10 blur-2xl opacity-50" />
+                </div>
+              )}
+              <div className="relative">
               <h2 className={`text-[13px] uppercase tracking-[2px] font-semibold flex items-center gap-2 ${isLight ? "text-black" : "text-white/60"}`}>
                 <Bell size={13} className="text-yellow-500" /> Alertes
               </h2>
@@ -621,6 +679,7 @@ export default function RecruteurDashboard() {
                     <p className={`text-[13px] ${isLight ? "text-black" : "text-white/60"}`}>{alert.message}</p>
                   </div>
                 ))}
+              </div>
               </div>
             </div>
           </div>
