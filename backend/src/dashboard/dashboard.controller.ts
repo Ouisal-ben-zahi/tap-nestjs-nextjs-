@@ -479,6 +479,30 @@ export class DashboardController {
     return this.dashboardService.updateCandidateApplicationStatus(userId, body);
   }
 
+  @Get('recruteur/planned-interviews')
+  @UseGuards(AuthGuard('jwt'))
+  async listRecruiterPlannedInterviewsByJwt(@Req() req: any) {
+    const userId = await this.dashboardService.resolveJwtUserId(req?.user);
+    return this.dashboardService.listRecruiterPlannedInterviews(userId);
+  }
+
+  @Get('recruteur/scheduled-interviews')
+  @UseGuards(AuthGuard('jwt'))
+  async getRecruiterScheduledInterviewByJwt(
+    @Req() req: any,
+    @Query('job_id') jobIdParam: string,
+    @Query('candidate_id') candidateIdParam: string,
+  ) {
+    const userId = await this.dashboardService.resolveJwtUserId(req?.user);
+    const jobId = Number(jobIdParam);
+    const candidateId = Number(candidateIdParam);
+    return this.dashboardService.getRecruiterScheduledInterviewForApplication(
+      userId,
+      jobId,
+      candidateId,
+    );
+  }
+
   @Post('recruteur/scheduled-interviews')
   @UseGuards(AuthGuard('jwt'))
   async scheduleRecruiterInterviewByJwt(

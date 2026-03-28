@@ -14,6 +14,14 @@ export function useRecruteurOverview() {
   });
 }
 
+export function useRecruiterPlannedInterviews(enabled = true) {
+  return useQuery({
+    queryKey: ['recruteur', 'planned-interviews'],
+    queryFn: recruteurService.getPlannedInterviews,
+    enabled,
+  });
+}
+
 export function useRecruiterCandidateTalentcardFiles(
   candidateId: number | null,
   enabled = true,
@@ -107,6 +115,24 @@ export function useMatchedCandidatesByOffer(jobId: number | null, enabled = true
     queryKey: ['recruteur', 'matched-candidates', jobId],
     queryFn: () => recruteurService.getMatchedCandidatesByOffer(jobId as number),
     enabled: Boolean(enabled && jobId),
+  });
+}
+
+export function useRecruiterScheduledInterviewForApplication(
+  jobId: number | null,
+  candidateId: number | null,
+  enabled = true,
+) {
+  return useQuery({
+    queryKey: ['recruteur', 'scheduled-interview', jobId, candidateId],
+    queryFn: () =>
+      recruteurService.getScheduledInterviewForApplication(
+        jobId as number,
+        candidateId as number,
+      ),
+    enabled: Boolean(
+      enabled && jobId != null && candidateId != null && jobId > 0 && candidateId > 0,
+    ),
   });
 }
 

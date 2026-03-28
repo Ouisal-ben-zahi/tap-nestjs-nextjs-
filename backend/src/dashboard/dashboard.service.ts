@@ -209,6 +209,8 @@ export interface RecruiterOverviewStats {
     jobTitle: string | null;
     status: string | null;
     validatedAt: string | null;
+    /** Entretien enregistré dans recruiter_scheduled_interviews (statut PLANIFIE) pour cette candidature */
+    hasScheduledInterview: boolean;
   }[];
   alerts: { type: string; message: string }[];
 }
@@ -3135,6 +3137,7 @@ export class DashboardService {
     interviewId: number;
     mailSent: boolean;
     mailError?: string | null;
+    updated: boolean;
   }> {
     if (!recruiterUserId || Number.isNaN(recruiterUserId)) {
       throw new BadRequestException('userId invalide');
@@ -3206,26 +3209,67 @@ export class DashboardService {
       throw new BadRequestException("Candidature introuvable pour ce candidat et cette offre");
     }
 
-    const { data: inserted, error: insertError } = await this.supabase
+    const { data: existingInterview, error: existingErr } = await this.supabase
       .from('recruiter_scheduled_interviews')
-      .insert({
-        recruiter_user_id: recruiterUserId,
-        job_id: jobId,
-        candidate_id: candidateId,
-        candidate_postule_id: candidatePostule.id,
-        interview_type: normalizedInterviewType,
-        interview_date: interviewDate,
-        interview_time: interviewTime,
-        status: 'PLANIFIE',
-      })
       .select('id')
-      .single();
+      .eq('recruiter_user_id', recruiterUserId)
+      .eq('candidate_postule_id', candidatePostule.id)
+      .eq('status', 'PLANIFIE')
+      .maybeSingle();
 
-    if (insertError || !inserted?.id) {
-      throw new BadRequestException(insertError?.message || "Erreur lors de la planification de l'entretien");
+    if (existingErr) {
+      throw new BadRequestException(
+        existingErr.message || 'Erreur lors de la recherche d’un entretien existant',
+      );
     }
 
-    // Envoi e-mail best-effort (on ne bloque pas la DB si l'e-mail échoue).
+    const isUpdate = Boolean(existingInterview?.id);
+    let finalInterviewId: number;
+
+    if (isUpdate) {
+      const existingId = Number(existingInterview?.id);
+      const { data: updatedRow, error: updateError } = await this.supabase
+        .from('recruiter_scheduled_interviews')
+        .update({
+          interview_type: normalizedInterviewType,
+          interview_date: interviewDate,
+          interview_time: interviewTime,
+        })
+        .eq('id', existingId)
+        .select('id')
+        .single();
+
+      if (updateError || !updatedRow?.id) {
+        throw new BadRequestException(
+          updateError?.message || "Erreur lors de la mise à jour de l'entretien",
+        );
+      }
+      finalInterviewId = Number(updatedRow.id);
+    } else {
+      const { data: inserted, error: insertError } = await this.supabase
+        .from('recruiter_scheduled_interviews')
+        .insert({
+          recruiter_user_id: recruiterUserId,
+          job_id: jobId,
+          candidate_id: candidateId,
+          candidate_postule_id: candidatePostule.id,
+          interview_type: normalizedInterviewType,
+          interview_date: interviewDate,
+          interview_time: interviewTime,
+          status: 'PLANIFIE',
+        })
+        .select('id')
+        .single();
+
+      if (insertError || !inserted?.id) {
+        throw new BadRequestException(
+          insertError?.message || "Erreur lors de la planification de l'entretien",
+        );
+      }
+      finalInterviewId = Number(inserted.id);
+    }
+
+    // Envoi e-mail au candidat et au recruteur (best-effort).
     let mailSent = false;
     let mailError: string | null = null;
 
@@ -3243,37 +3287,63 @@ export class DashboardService {
           throw new Error(candidateError.message || 'Erreur lors du chargement du candidat');
         }
 
-        const candidateEmail = (candidate?.email as string | null) ?? null;
-        if (!candidateEmail) {
-          mailError = 'Email candidat introuvable';
-        } else {
-          const from =
-            this.config.get<string>('MAILER_FROM') ||
-            this.config.get<string>('MAILER_USER') ||
-            'noreply@tap.com';
+        const { data: recruiterRow, error: recruiterUserError } = await this.supabase
+          .from('users')
+          .select('email')
+          .eq('id', recruiterUserId)
+          .maybeSingle();
 
-          const candidateFirstName = (candidate?.prenom as string | null) ?? '';
-          const candidateLastName = (candidate?.nom as string | null) ?? '';
-          const candidateName = [candidateFirstName, candidateLastName].filter(Boolean).join(' ').trim();
+        if (recruiterUserError) {
+          throw new Error(recruiterUserError.message || 'Erreur lors du chargement du recruteur');
+        }
 
-          const formatDisplayType =
-            normalizedInterviewType === 'EN_LIGNE'
-              ? 'Visio'
-              : normalizedInterviewType === 'PRESENTIEL'
-                ? 'Présentiel'
-                : 'Téléphone';
+        const candidateEmailRaw = (candidate?.email as string | null) ?? null;
+        const candidateEmail =
+          typeof candidateEmailRaw === 'string' && candidateEmailRaw.trim()
+            ? candidateEmailRaw.trim()
+            : null;
+        const recruiterEmailRaw = (recruiterRow?.email as string | null) ?? null;
+        const recruiterEmail =
+          typeof recruiterEmailRaw === 'string' && recruiterEmailRaw.trim()
+            ? recruiterEmailRaw.trim()
+            : null;
 
-          const dateDisplay = new Date(`${interviewDate}T00:00:00`).toLocaleDateString('fr-FR', {
-            year: 'numeric',
-            month: 'long',
-            day: 'numeric',
-          });
+        const from =
+          this.config.get<string>('MAILER_FROM') ||
+          this.config.get<string>('MAILER_USER') ||
+          'noreply@tap.com';
 
-          const subject = `Entretien planifié (${formatDisplayType}) - ${String(job.title ?? 'Offre')}`;
+        const candidateFirstName = (candidate?.prenom as string | null) ?? '';
+        const candidateLastName = (candidate?.nom as string | null) ?? '';
+        const candidateName = [candidateFirstName, candidateLastName].filter(Boolean).join(' ').trim();
 
-          const html = `
+        const formatDisplayType =
+          normalizedInterviewType === 'EN_LIGNE'
+            ? 'Visio'
+            : normalizedInterviewType === 'PRESENTIEL'
+              ? 'Présentiel'
+              : 'Téléphone';
+
+        const dateDisplay = new Date(`${interviewDate}T00:00:00`).toLocaleDateString('fr-FR', {
+          year: 'numeric',
+          month: 'long',
+          day: 'numeric',
+        });
+
+        const subjectPrefix = isUpdate ? 'Entretien modifié' : 'Entretien planifié';
+        const subjectShared = `${subjectPrefix} (${formatDisplayType}) - ${String(job.title ?? 'Offre')}`;
+
+        const introCandidateHtml = isUpdate
+          ? '<p>Votre entretien a été <strong>modifié</strong>. Voici les nouvelles informations :</p>'
+          : '<p>Votre entretien a bien été planifié.</p>';
+
+        const introCandidateText = isUpdate
+          ? 'Votre entretien a été modifié. Voici les nouvelles informations :'
+          : 'Votre entretien a bien été planifié.';
+
+        const htmlCandidate = `
             <p>Bonjour${candidateName ? ` ${candidateName}` : ''},</p>
-            <p>Votre entretien a bien été planifié.</p>
+            ${introCandidateHtml}
             <ul>
               <li><strong>Offre :</strong> ${String(job.title ?? '')}</li>
               <li><strong>Format :</strong> ${formatDisplayType}</li>
@@ -3284,30 +3354,102 @@ export class DashboardService {
             <p>Cordialement,<br/>${String(job.entreprise ?? 'L’équipe recrutement')}</p>
           `;
 
-          const text = [
-            `Bonjour${candidateName ? ` ${candidateName}` : ''},`,
-            '',
-            'Votre entretien a bien été planifié.',
-            '',
-            `Offre : ${String(job.title ?? '')}`,
-            `Format : ${formatDisplayType}`,
-            `Date : ${dateDisplay}`,
-            `Heure : ${interviewTime}`,
-            '',
-            'Cordialement,',
-            String(job.entreprise ?? 'L’équipe recrutement'),
-          ].join('\n');
+        const textCandidate = [
+          `Bonjour${candidateName ? ` ${candidateName}` : ''},`,
+          '',
+          introCandidateText,
+          '',
+          `Offre : ${String(job.title ?? '')}`,
+          `Format : ${formatDisplayType}`,
+          `Date : ${dateDisplay}`,
+          `Heure : ${interviewTime}`,
+          '',
+          'Cordialement,',
+          String(job.entreprise ?? 'L’équipe recrutement'),
+        ].join('\n');
 
-          await this.mailer.sendMail({
-            from: `"TAP" <${from}>`,
-            to: candidateEmail,
-            subject,
-            text,
-            html,
-          });
+        const introRecruiterHtml = isUpdate
+          ? `<p>Vous avez <strong>modifié</strong> la planification d’un entretien${candidateName ? ` avec <strong>${candidateName}</strong>` : ''}.</p>`
+          : `<p>Vous avez planifié un entretien${candidateName ? ` avec <strong>${candidateName}</strong>` : ''}.</p>`;
 
-          mailSent = true;
+        const introRecruiterText = isUpdate
+          ? `Vous avez modifié la planification d’un entretien${candidateName ? ` avec ${candidateName}` : ''}.`
+          : `Vous avez planifié un entretien${candidateName ? ` avec ${candidateName}` : ''}.`;
+
+        const htmlRecruiter = `
+            <p>Bonjour,</p>
+            ${introRecruiterHtml}
+            <p><strong>Rappel pour votre agenda :</strong></p>
+            <ul>
+              <li><strong>Candidat :</strong> ${candidateName || `ID ${candidateId}`}</li>
+              <li><strong>Offre :</strong> ${String(job.title ?? '')}</li>
+              <li><strong>Format :</strong> ${formatDisplayType}</li>
+              <li><strong>Date :</strong> ${dateDisplay}</li>
+              <li><strong>Heure :</strong> ${interviewTime}</li>
+            </ul>
+            <p>Ce message confirme l’enregistrement sur TAP.</p>
+            <p>Cordialement,<br/>TAP</p>
+          `;
+
+        const textRecruiter = [
+          'Bonjour,',
+          '',
+          introRecruiterText,
+          '',
+          'Rappel pour votre agenda :',
+          `Candidat : ${candidateName || `ID ${candidateId}`}`,
+          `Offre : ${String(job.title ?? '')}`,
+          `Format : ${formatDisplayType}`,
+          `Date : ${dateDisplay}`,
+          `Heure : ${interviewTime}`,
+          '',
+          'Ce message confirme l’enregistrement sur TAP.',
+          'Cordialement,',
+          'TAP',
+        ].join('\n');
+
+        const failures: string[] = [];
+        let candidateOk = false;
+        let recruiterOk = false;
+
+        if (candidateEmail) {
+          try {
+            await this.mailer.sendMail({
+              from: `"TAP" <${from}>`,
+              to: candidateEmail,
+              subject: subjectShared,
+              text: textCandidate,
+              html: htmlCandidate,
+            });
+            candidateOk = true;
+          } catch (e: any) {
+            failures.push(`Candidat : ${String(e?.message ?? e ?? 'échec envoi')}`);
+          }
+        } else {
+          failures.push('Email candidat introuvable');
         }
+
+        if (recruiterEmail) {
+          try {
+            await this.mailer.sendMail({
+              from: `"TAP" <${from}>`,
+              to: recruiterEmail,
+              subject: `[TAP] ${subjectShared}`,
+              text: textRecruiter,
+              html: htmlRecruiter,
+            });
+            recruiterOk = true;
+          } catch (e: any) {
+            failures.push(`Recruteur : ${String(e?.message ?? e ?? 'échec envoi')}`);
+          }
+        } else {
+          failures.push('Email recruteur introuvable');
+        }
+
+        const targets = (candidateEmail ? 1 : 0) + (recruiterEmail ? 1 : 0);
+        const oks = (candidateOk ? 1 : 0) + (recruiterOk ? 1 : 0);
+        mailSent = targets > 0 && oks === targets;
+        mailError = failures.length ? failures.join(' — ') : null;
       }
     } catch (err: any) {
       mailError = String(err?.message ?? err ?? 'Erreur envoi e-mail');
@@ -3315,10 +3457,146 @@ export class DashboardService {
 
     return {
       success: true,
-      interviewId: Number(inserted.id),
+      interviewId: finalInterviewId,
       mailSent,
       mailError,
+      updated: isUpdate,
     };
+  }
+
+  async getRecruiterScheduledInterviewForApplication(
+    recruiterUserId: number,
+    jobId: number,
+    candidateId: number,
+  ): Promise<{
+    interview: {
+      id: number;
+      interview_type: string;
+      interview_date: string;
+      interview_time: string;
+    } | null;
+  }> {
+    if (!recruiterUserId || Number.isNaN(recruiterUserId)) {
+      throw new BadRequestException('userId invalide');
+    }
+    if (!jobId || Number.isNaN(jobId)) {
+      throw new BadRequestException("Le paramètre 'job_id' est requis");
+    }
+    if (!candidateId || Number.isNaN(candidateId)) {
+      throw new BadRequestException("Le paramètre 'candidate_id' est requis");
+    }
+
+    const { data: job, error: jobError } = await this.supabase
+      .from('jobs')
+      .select('id')
+      .eq('id', jobId)
+      .eq('user_id', recruiterUserId)
+      .limit(1)
+      .maybeSingle();
+
+    if (jobError) {
+      throw new BadRequestException(jobError.message || "Erreur lors du chargement de l'offre");
+    }
+    if (!job) {
+      throw new BadRequestException('Offre introuvable pour ce recruteur');
+    }
+
+    const { data: row, error: rowError } = await this.supabase
+      .from('recruiter_scheduled_interviews')
+      .select('id, interview_type, interview_date, interview_time')
+      .eq('recruiter_user_id', recruiterUserId)
+      .eq('job_id', jobId)
+      .eq('candidate_id', candidateId)
+      .eq('status', 'PLANIFIE')
+      .maybeSingle();
+
+    if (rowError) {
+      throw new BadRequestException(rowError.message || 'Erreur lors du chargement de l’entretien');
+    }
+
+    if (!row?.id) {
+      return { interview: null };
+    }
+
+    return {
+      interview: {
+        id: Number(row.id),
+        interview_type: String((row as any).interview_type ?? ''),
+        interview_date: String((row as any).interview_date ?? ''),
+        interview_time: String((row as any).interview_time ?? ''),
+      },
+    };
+  }
+
+  async listRecruiterPlannedInterviews(recruiterUserId: number): Promise<{
+    plannedInterviews: {
+      id: number;
+      jobId: number;
+      candidateId: number;
+      candidateName: string | null;
+      candidateAvatarUrl: string | null;
+      jobTitle: string | null;
+      interviewType: string;
+      interviewDate: string | null;
+      interviewTime: string | null;
+    }[];
+  }> {
+    if (!recruiterUserId || Number.isNaN(recruiterUserId)) {
+      throw new BadRequestException('userId invalide');
+    }
+
+    const { data, error } = await this.supabase
+      .from('recruiter_scheduled_interviews')
+      .select(
+        `
+        id,
+        job_id,
+        candidate_id,
+        interview_type,
+        interview_date,
+        interview_time,
+        jobs ( title ),
+        candidates ( nom, prenom, image_minio_url )
+      `,
+      )
+      .eq('recruiter_user_id', recruiterUserId)
+      .eq('status', 'PLANIFIE')
+      .order('interview_date', { ascending: true })
+      .order('interview_time', { ascending: true });
+
+    if (error) {
+      throw new BadRequestException(
+        error.message || 'Erreur lors du chargement des entretiens planifiés',
+      );
+    }
+
+    const rows = data ?? [];
+    const plannedInterviews = await Promise.all(
+      rows.map(async (row: any) => {
+        const cand = row.candidates || row.candidate || null;
+        const job = row.jobs || row.job || null;
+        const nom = (cand?.nom as string | null) ?? null;
+        const prenom = (cand?.prenom as string | null) ?? null;
+        const name =
+          nom || prenom ? [prenom, nom].filter(Boolean).join(' ').trim() : null;
+        const avatarUrl = await this.resolveCandidateAvatarUrl(
+          (cand?.image_minio_url as string | null) ?? null,
+        );
+        return {
+          id: Number(row.id),
+          jobId: Number(row.job_id),
+          candidateId: Number(row.candidate_id),
+          candidateName: name,
+          candidateAvatarUrl: avatarUrl,
+          jobTitle: (job?.title as string) ?? null,
+          interviewType: String(row.interview_type ?? 'EN_LIGNE'),
+          interviewDate: (row.interview_date as string) ?? null,
+          interviewTime: (row.interview_time as string) ?? null,
+        };
+      }),
+    );
+
+    return { plannedInterviews };
   }
 
   async saveInterviewQuestionsPdf(
@@ -3732,6 +4010,20 @@ export class DashboardService {
         jobTitleMap.set(job.id as number, (job.title as string) ?? 'Offre');
       });
 
+      const { data: scheduledRows } = await this.supabase
+        .from('recruiter_scheduled_interviews')
+        .select('candidate_postule_id')
+        .eq('recruiter_user_id', userId)
+        .eq('status', 'PLANIFIE');
+
+      const scheduledPostuleIds = new Set<number>();
+      for (const row of scheduledRows ?? []) {
+        const pid = (row as { candidate_postule_id?: unknown })?.candidate_postule_id;
+        if (typeof pid === 'number' && Number.isFinite(pid)) {
+          scheduledPostuleIds.add(pid);
+        }
+      }
+
       acceptedApplications = Array.from(bestByCandidate.values())
         .sort((a, b) => {
           const da = a.validatedAt ? new Date(a.validatedAt).getTime() : 0;
@@ -3754,6 +4046,7 @@ export class DashboardService {
             jobTitle: jobTitleMap.get(a.jobId) ?? 'Offre',
             status: a.status ?? null,
             validatedAt: a.validatedAt,
+            hasScheduledInterview: scheduledPostuleIds.has(a.id),
           };
         });
     }

@@ -114,7 +114,7 @@ export default function EntretienPage() {
           {hasProfile && scheduledInterviewsQuery.isLoading ? (
             <div className="mb-10 grid grid-cols-1 lg:grid-cols-12 gap-6">
               <div className="lg:col-span-7 space-y-3">
-                {Array.from({ length: 3 }).map((_, i) => (
+                {Array.from({ length: 4 }).map((_, i) => (
                   <Skeleton key={i} className="h-24 w-full rounded-2xl" />
                 ))}
               </div>

@@ -80,11 +80,39 @@ export type ScheduleRecruiterInterviewResponse = {
   interviewId: number;
   mailSent: boolean;
   mailError?: string | null;
+  /** true si une ligne PLANIFIE existait déjà pour cette candidature (mise à jour) */
+  updated?: boolean;
+};
+
+export type RecruiterScheduledInterviewDto = {
+  id: number;
+  interview_type: string;
+  interview_date: string;
+  interview_time: string;
+};
+
+export type RecruiterPlannedInterviewItem = {
+  id: number;
+  jobId: number;
+  candidateId: number;
+  candidateName: string | null;
+  candidateAvatarUrl: string | null;
+  jobTitle: string | null;
+  interviewType: string;
+  interviewDate: string | null;
+  interviewTime: string | null;
 };
 
 export const recruteurService = {
   getOverview: () =>
     api.get<RecruteurOverview>('/dashboard/recruteur/overview').then((r) => r.data),
+
+  getPlannedInterviews: () =>
+    api
+      .get<{ plannedInterviews: RecruiterPlannedInterviewItem[] }>(
+        '/dashboard/recruteur/planned-interviews',
+      )
+      .then((r) => r.data),
 
   getCandidateTalentcardFiles: (candidateId: number) =>
     api
@@ -186,6 +214,14 @@ export const recruteurService = {
         candidate_id: params.candidateId,
         status: params.status,
       })
+      .then((r) => r.data),
+
+  getScheduledInterviewForApplication: (jobId: number, candidateId: number) =>
+    api
+      .get<{ interview: RecruiterScheduledInterviewDto | null }>(
+        '/dashboard/recruteur/scheduled-interviews',
+        { params: { job_id: jobId, candidate_id: candidateId } },
+      )
       .then((r) => r.data),
 
   scheduleRecruiterInterview: (payload: ScheduleRecruiterInterviewPayload) =>

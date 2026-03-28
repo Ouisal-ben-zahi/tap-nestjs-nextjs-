@@ -1,10 +1,12 @@
 "use client";
 
 import { useEffect, useMemo, useState } from "react";
+import Link from "next/link";
 import { ChevronLeft, ChevronRight, Calendar, Video, MapPin, Phone } from "lucide-react";
 import { formatInterviewType } from "@/lib/format-interview-type";
 
-const PAGE_SIZE = 5;
+const PAGE_SIZE_CANDIDAT = 4;
+const PAGE_SIZE_RECRUTEUR = 4;
 
 export type PlannedInterviewItem = {
   id: number;
@@ -12,7 +14,22 @@ export type PlannedInterviewItem = {
   interviewType: string;
   interviewDate: string | null;
   interviewTime: string | null;
+  /** Variante recruteur : carte centrée sur le candidat */
+  candidateName?: string | null;
+  candidateAvatarUrl?: string | null;
+  jobId?: number;
+  candidateId?: number;
 };
+
+function getInitials(name: string | null | undefined) {
+  const parts = String(name ?? "")
+    .trim()
+    .split(/\s+/)
+    .filter(Boolean);
+  const first = parts[0]?.[0] ?? "";
+  const second = parts.length > 1 ? parts[parts.length - 1]?.[0] ?? "" : "";
+  return `${first}${second}`.toUpperCase() || "C";
+}
 
 const MODE_META: Record<
   string,
@@ -76,31 +93,68 @@ function isSameDay(a: Date, b: Date) {
 interface PlannedInterviewsAgendaSectionProps {
   items: PlannedInterviewItem[];
   isLight: boolean;
+  /** candidat : liste par offre (défaut) ; recruteur : cartes candidat à gauche + même calendrier à droite */
+  variant?: "candidate" | "recruiter";
+  /** Barre verticale à côté du titre (ex. bg-tap-red, bg-emerald-500) */
+  headerAccentClass?: string;
+  /** Masquer le titre (ex. page parente qui gère chargement / vide avec le même titre) */
+  hideTitle?: boolean;
+  /** Nombre d’entrées par page (défaut : 4) */
+  pageSize?: number;
 }
 
-export default function PlannedInterviewsAgendaSection({ items, isLight }: PlannedInterviewsAgendaSectionProps) {
+export default function PlannedInterviewsAgendaSection({
+  items,
+  isLight,
+  variant = "candidate",
+  headerAccentClass,
+  hideTitle = false,
+  pageSize: pageSizeProp,
+}: PlannedInterviewsAgendaSectionProps) {
+  const accent = headerAccentClass ?? (variant === "recruiter" ? "bg-emerald-500" : "bg-tap-red");
+  const pageSize =
+    pageSizeProp ?? (variant === "recruiter" ? PAGE_SIZE_RECRUTEUR : PAGE_SIZE_CANDIDAT);
+
   const [page, setPage] = useState(1);
   const [showAll, setShowAll] = useState(false);
   const [agendaMonth, setAgendaMonth] = useState(() => new Date());
 
+  /** Prochains entretiens en premier : date croissante, puis heure (sans date en dernier). */
   const sorted = useMemo(() => {
+    const dayKey = (iso: string | null | undefined) => {
+      if (!iso) return Number.POSITIVE_INFINITY;
+      const t = new Date(`${iso}T12:00:00`).getTime();
+      return Number.isFinite(t) ? t : Number.POSITIVE_INFINITY;
+    };
     const copy = [...items];
     copy.sort((a, b) => {
-      const da = a.interviewDate ? new Date(a.interviewDate).getTime() : 0;
-      const db = b.interviewDate ? new Date(b.interviewDate).getTime() : 0;
-      if (db !== da) return db - da;
-      return String(b.interviewTime ?? "").localeCompare(String(a.interviewTime ?? ""));
+      const da = dayKey(a.interviewDate);
+      const db = dayKey(b.interviewDate);
+      if (da !== db) return da - db;
+      const ta = String(a.interviewTime ?? "").padStart(5, "0");
+      const tb = String(b.interviewTime ?? "").padStart(5, "0");
+      if (ta !== tb) return ta.localeCompare(tb);
+      return b.id - a.id;
     });
     return copy;
   }, [items]);
 
-  const totalPages = Math.max(1, Math.ceil(sorted.length / PAGE_SIZE));
+  const itemsIdentityKey = useMemo(() => items.map((i) => i.id).join(","), [items]);
+
+  useEffect(() => {
+    setPage(1);
+  }, [itemsIdentityKey]);
+
+  const totalPages = Math.max(1, Math.ceil(sorted.length / pageSize));
 
   useEffect(() => {
     if (page > totalPages) setPage(totalPages);
   }, [page, totalPages]);
 
-  const visibleList = showAll ? sorted : sorted.slice((page - 1) * PAGE_SIZE, page * PAGE_SIZE);
+  const visibleList = showAll ? sorted : sorted.slice((page - 1) * pageSize, page * pageSize);
+
+  const rangeFrom = sorted.length === 0 ? 0 : (page - 1) * pageSize + 1;
+  const rangeTo = showAll ? sorted.length : Math.min(page * pageSize, sorted.length);
 
   const interviewsByDay = useMemo(() => {
     const m = new Map<string, PlannedInterviewItem[]>();
@@ -127,21 +181,102 @@ export default function PlannedInterviewsAgendaSection({ items, isLight }: Plann
   }`;
 
   return (
-    <div id="entretiens-planifies" className="mb-10">
-      <div className="flex flex-wrap items-center gap-3 mb-5">
-        <div className="w-1 h-5 rounded-full shrink-0 bg-tap-red" />
-        <h2 className={`text-[13px] uppercase tracking-[2px] font-semibold ${isLight ? "text-black" : "text-white/50"}`}>
-          Entretiens déjà planifiés
-        </h2>
-      </div>
+    <div id="entretiens-planifies" className={hideTitle ? "mb-0" : "mb-10"}>
+      {!hideTitle ? (
+        <div className="flex flex-wrap items-center gap-3 mb-5">
+          <div className={`w-1 h-5 rounded-full shrink-0 ${accent}`} />
+          <h2 className={`text-[13px] uppercase tracking-[2px] font-semibold ${isLight ? "text-black" : "text-white/50"}`}>
+            Entretiens déjà planifiés
+          </h2>
+        </div>
+      ) : null}
 
       <div className="grid grid-cols-1 lg:grid-cols-12 gap-6 lg:gap-8 lg:items-start">
-        {/* Gauche : liste */}
+        {/* Gauche : liste ; sur mobile : au-dessus du calendrier (même ordre que candidat) */}
         <div className="lg:col-span-7 flex flex-col gap-3 min-w-0">
           <div className={showAll ? "max-h-[min(520px,70vh)] overflow-y-auto pr-1 space-y-3" : "space-y-3"}>
             {visibleList.map((item) => {
               const meta = getModeMeta(item.interviewType);
               const Icon = meta.Icon;
+
+              if (variant === "recruiter") {
+                const planifierHref = `/app/entretiens-planifies/planifier?jobId=${item.jobId ?? ""}&candidateId=${item.candidateId ?? ""}&candidateName=${encodeURIComponent(item.candidateName ?? "")}&jobTitle=${encodeURIComponent(item.jobTitle ?? "")}`;
+                return (
+                  <div key={item.id} className={listRowClass}>
+                    {!isLight && (
+                      <div className="pointer-events-none absolute inset-0 opacity-100 group-hover:opacity-0 transition-opacity duration-500">
+                        <div className="absolute -top-12 -right-6 w-40 h-40 rounded-full bg-white/5 blur-2xl" />
+                        <div className="absolute -bottom-10 -left-6 w-48 h-48 rounded-full bg-emerald-500/10 blur-2xl opacity-40" />
+                      </div>
+                    )}
+                    <div className="relative grid grid-cols-1 min-[520px]:grid-cols-[auto_1fr_minmax(0,9rem)_auto] gap-3 min-[520px]:gap-4 min-[520px]:items-center">
+                      <div className="w-12 h-12 rounded-full overflow-hidden border border-white/[0.10] bg-white/[0.04] flex items-center justify-center shrink-0">
+                        {item.candidateAvatarUrl ? (
+                          <img
+                            src={item.candidateAvatarUrl}
+                            alt={item.candidateName ?? "Candidat"}
+                            className="w-full h-full object-cover"
+                          />
+                        ) : (
+                          <span className={`text-[12px] font-semibold ${isLight ? "text-black/60" : "text-white/70"}`}>
+                            {getInitials(item.candidateName)}
+                          </span>
+                        )}
+                      </div>
+
+                      <div className="min-w-0 flex flex-col gap-1.5">
+                        <p className={`text-[14px] sm:text-[15px] font-semibold leading-snug ${isLight ? "text-black" : "text-white"}`}>
+                          {item.candidateName ?? "Candidat"}
+                        </p>
+                        <p className={`text-[12px] leading-snug line-clamp-2 ${isLight ? "text-black/55" : "text-white/45"}`}>
+                          {item.jobTitle ?? "Offre sans titre"}
+                        </p>
+                        <p className={`text-[12px] tabular-nums ${isLight ? "text-black/70" : "text-white/55"}`}>
+                          {item.interviewDate
+                            ? new Date(item.interviewDate).toLocaleDateString("fr-FR", {
+                                weekday: "long",
+                                day: "numeric",
+                                month: "long",
+                                year: "numeric",
+                              })
+                            : "Date non définie"}{" "}
+                          <span className={isLight ? "text-black/40" : "text-white/35"}>·</span>{" "}
+                          {item.interviewTime ? item.interviewTime.slice(0, 5) : "—"}
+                        </p>
+                        <Link
+                          href={planifierHref}
+                          className={`text-[12px] font-medium w-fit mt-0.5 ${isLight ? "text-tap-red hover:text-tap-red/80" : "text-tap-red hover:text-red-300"}`}
+                        >
+                          Modifier la planification
+                        </Link>
+                      </div>
+
+                      <div className="min-w-0 flex flex-col gap-1 min-[520px]:items-end min-[520px]:justify-center min-[520px]:text-right">
+                        <span
+                          className={`text-[10px] uppercase tracking-[0.12em] font-semibold ${isLight ? "text-black/45" : "text-white/40"}`}
+                        >
+                          Type d&apos;entretien
+                        </span>
+                        <span
+                          className={`inline-flex w-fit max-w-full items-center gap-1.5 rounded-full border px-2.5 py-1 text-[11px] font-medium ${
+                            isLight ? "border-white/10 bg-white/5 text-black/85" : "border-white/[0.08] bg-white/[0.04] text-white/90"
+                          }`}
+                        >
+                          <span className={`size-1.5 shrink-0 rounded-full ${meta.dot}`} aria-hidden />
+                          <span className="truncate">{meta.label}</span>
+                        </span>
+                      </div>
+
+                      <div className="flex justify-start min-[520px]:justify-end">
+                        <div className="w-11 h-11 shrink-0 rounded-xl border flex items-center justify-center bg-tap-red/[0.08] border-tap-red/20">
+                          <Icon size={18} className="text-tap-red" strokeWidth={1.75} />
+                        </div>
+                      </div>
+                    </div>
+                  </div>
+                );
+              }
+
               return (
                 <div key={item.id} className={listRowClass}>
                   {!isLight && (
@@ -199,67 +334,77 @@ export default function PlannedInterviewsAgendaSection({ items, isLight }: Plann
             })}
           </div>
 
-          <div className="flex flex-col sm:flex-row sm:flex-wrap sm:items-center gap-3 pt-1">
-            {sorted.length > PAGE_SIZE ? (
-              <button
-                type="button"
-                onClick={() => {
-                  setShowAll((v) => !v);
-                  if (showAll) setPage(1);
-                }}
-                className={`inline-flex items-center justify-center rounded-xl border px-4 py-2.5 text-[12px] font-medium transition ${
-                  isLight
-                    ? "border-black/15 hover:bg-black/5 text-black/80"
-                    : "border-white/[0.12] hover:bg-white/[0.06] text-white/85"
-                }`}
-              >
-                {showAll ? "Réduire la liste" : `Liste des entretiens (${sorted.length})`}
-              </button>
+          <div className="flex flex-col gap-2 pt-1">
+            {sorted.length > pageSize ? (
+              <p className={`text-[11px] ${isLight ? "text-black/50" : "text-white/45"}`}>
+                {showAll
+                  ? `Affichage de tous les entretiens (${sorted.length})`
+                  : `Affichage de ${rangeFrom} à ${rangeTo} sur ${sorted.length}`}
+              </p>
             ) : null}
 
-            {!showAll && sorted.length > PAGE_SIZE ? (
-              <div
-                className={`flex items-center justify-center gap-2 sm:ml-auto ${
-                  isLight ? "border-t border-black/10 sm:border-0 pt-3 sm:pt-0" : "border-t border-white/[0.08] sm:border-0 pt-3 sm:pt-0"
-                }`}
-              >
+            <div className="flex flex-col sm:flex-row sm:flex-wrap sm:items-center gap-3">
+              {sorted.length > pageSize ? (
                 <button
                   type="button"
-                  disabled={page <= 1}
-                  onClick={() => setPage((p) => Math.max(1, p - 1))}
-                  className={`inline-flex items-center justify-center w-9 h-9 rounded-xl border transition disabled:opacity-35 disabled:cursor-not-allowed ${
+                  onClick={() => {
+                    setShowAll((v) => !v);
+                    if (showAll) setPage(1);
+                  }}
+                  className={`inline-flex items-center justify-center rounded-xl border px-4 py-2.5 text-[12px] font-medium transition ${
                     isLight
-                      ? "border-black/15 hover:bg-black/5 text-black/70"
-                      : "border-white/[0.12] hover:bg-white/[0.06] text-white/80"
+                      ? "border-black/15 hover:bg-black/5 text-black/80"
+                      : "border-white/[0.12] hover:bg-white/[0.06] text-white/85"
                   }`}
-                  aria-label="Page précédente"
                 >
-                  <ChevronLeft size={18} />
+                  {showAll ? "Réduire la liste" : `Voir toute la liste (${sorted.length})`}
                 </button>
-                <span className={`text-[12px] tabular-nums min-w-[7rem] text-center ${isLight ? "text-black/70" : "text-white/70"}`}>
-                  Page {page} / {totalPages}
-                </span>
-                <button
-                  type="button"
-                  disabled={page >= totalPages}
-                  onClick={() => setPage((p) => Math.min(totalPages, p + 1))}
-                  className={`inline-flex items-center justify-center w-9 h-9 rounded-xl border transition disabled:opacity-35 disabled:cursor-not-allowed ${
-                    isLight
-                      ? "border-black/15 hover:bg-black/5 text-black/70"
-                      : "border-white/[0.12] hover:bg-white/[0.06] text-white/80"
+              ) : null}
+
+              {!showAll && sorted.length > pageSize ? (
+                <div
+                  className={`flex items-center justify-center gap-2 sm:ml-auto ${
+                    isLight ? "border-t border-black/10 sm:border-0 pt-3 sm:pt-0" : "border-t border-white/[0.08] sm:border-0 pt-3 sm:pt-0"
                   }`}
-                  aria-label="Page suivante"
                 >
-                  <ChevronRight size={18} />
-                </button>
-              </div>
-            ) : null}
+                  <button
+                    type="button"
+                    disabled={page <= 1}
+                    onClick={() => setPage((p) => Math.max(1, p - 1))}
+                    className={`inline-flex items-center justify-center w-9 h-9 rounded-xl border transition disabled:opacity-35 disabled:cursor-not-allowed ${
+                      isLight
+                        ? "border-black/15 hover:bg-black/5 text-black/70"
+                        : "border-white/[0.12] hover:bg-white/[0.06] text-white/80"
+                    }`}
+                    aria-label="Page précédente"
+                  >
+                    <ChevronLeft size={18} />
+                  </button>
+                  <span className={`text-[12px] tabular-nums min-w-[7rem] text-center ${isLight ? "text-black/70" : "text-white/70"}`}>
+                    Page {page} / {totalPages}
+                  </span>
+                  <button
+                    type="button"
+                    disabled={page >= totalPages}
+                    onClick={() => setPage((p) => Math.min(totalPages, p + 1))}
+                    className={`inline-flex items-center justify-center w-9 h-9 rounded-xl border transition disabled:opacity-35 disabled:cursor-not-allowed ${
+                      isLight
+                        ? "border-black/15 hover:bg-black/5 text-black/70"
+                        : "border-white/[0.12] hover:bg-white/[0.06] text-white/80"
+                    }`}
+                    aria-label="Page suivante"
+                  >
+                    <ChevronRight size={18} />
+                  </button>
+                </div>
+              ) : null}
+            </div>
           </div>
         </div>
 
-        {/* Droite : agenda */}
+        {/* Droite : agenda (même logique que dashboard candidat ; sticky sur grand écran) */}
         <div
-          className={`lg:col-span-5 rounded-2xl p-5 sm:p-6 ${
+          className={`lg:col-span-5 lg:sticky lg:top-24 self-start rounded-2xl p-5 sm:p-6 ${
             isLight ? "card-luxury-light" : "bg-zinc-900/50 border border-white/[0.08]"
           }`}
         >
@@ -336,7 +481,11 @@ export default function PlannedInterviewsAgendaSection({ items, isLight }: Plann
                     <div className="mt-auto flex flex-wrap justify-center gap-0.5 w-full pb-0.5">
                       {dayItems.map((it) => {
                         const dot = getModeMeta(it.interviewType).dot;
-                        return <span key={it.id} className={`size-1.5 rounded-full shrink-0 ${dot}`} title={it.jobTitle ?? ""} />;
+                        const tip =
+                          variant === "recruiter" && it.candidateName
+                            ? `${it.candidateName} — ${it.jobTitle ?? ""}`
+                            : (it.jobTitle ?? "");
+                        return <span key={it.id} className={`size-1.5 rounded-full shrink-0 ${dot}`} title={tip} />;
                       })}
                     </div>
                   ) : null}

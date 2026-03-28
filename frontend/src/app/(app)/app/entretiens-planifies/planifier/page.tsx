@@ -1,6 +1,6 @@
 "use client";
 
-import { useEffect, useMemo, useState } from "react";
+import { useEffect, useMemo, useRef, useState } from "react";
 import Link from "next/link";
 import { useSearchParams } from "next/navigation";
 import { useRouter } from "next/navigation";
@@ -9,14 +9,22 @@ import { useAuth } from "@/hooks/use-auth";
 import {
   useMatchedCandidatesByOffer,
   useRecruiterCandidateBasicProfile,
+  useRecruiterScheduledInterviewForApplication,
 } from "@/hooks/use-recruteur";
 import { useUiStore } from "@/stores/ui";
 import EmptyState from "@/components/ui/EmptyState";
-import { useMutation } from "@tanstack/react-query";
+import { useMutation, useQueryClient } from "@tanstack/react-query";
 import { recruteurService } from "@/services/recruteur.service";
 import { getApiErrorMessage } from "@/lib/api-error";
 
 type InterviewType = "Visio" | "Présentiel" | "Téléphone";
+
+function dbInterviewTypeToUi(db: string): InterviewType {
+  const u = String(db).toUpperCase().replace(/\s/g, "_");
+  if (u === "EN_LIGNE") return "Visio";
+  if (u === "PRESENTIEL") return "Présentiel";
+  return "Téléphone";
+}
 
 const MONTHS_FR = [
   "Janvier",
@@ -41,6 +49,8 @@ export default function PlanifierEntretienPage() {
   const addToast = useUiStore((s) => s.addToast);
   const isRecruteur = user?.role === "recruteur";
   const router = useRouter();
+  const queryClient = useQueryClient();
+  const schedulePrefilledRef = useRef(false);
 
   const jobId = Number(searchParams.get("jobId") ?? 0);
   const candidateId = Number(searchParams.get("candidateId") ?? 0);
@@ -55,6 +65,18 @@ export default function PlanifierEntretienPage() {
     Number.isFinite(candidateId) && candidateId > 0 ? candidateId : null,
     isRecruteur && Number.isFinite(candidateId) && candidateId > 0,
   );
+
+  const scheduledInterviewQuery = useRecruiterScheduledInterviewForApplication(
+    Number.isFinite(jobId) && jobId > 0 ? jobId : null,
+    Number.isFinite(candidateId) && candidateId > 0 ? candidateId : null,
+    isRecruteur,
+  );
+
+  useEffect(() => {
+    schedulePrefilledRef.current = false;
+  }, [jobId, candidateId]);
+
+  const isEditMode = Boolean(scheduledInterviewQuery.data?.interview?.id);
 
   const matchedCandidate = useMemo(() => {
     const list = matchedQuery.data?.candidates ?? [];
@@ -121,6 +143,22 @@ export default function PlanifierEntretienPage() {
     setCity(basicProfileQuery.data?.ville ?? matchedCandidate?.candidate?.ville ?? "");
   }, [basicProfileQuery.data, candidateNameFromQuery, matchedCandidate]);
 
+  useEffect(() => {
+    if (!scheduledInterviewQuery.isSuccess) return;
+    if (schedulePrefilledRef.current) return;
+    schedulePrefilledRef.current = true;
+    const row = scheduledInterviewQuery.data?.interview;
+    if (!row?.interview_date) return;
+    setInterviewType(dbInterviewTypeToUi(row.interview_type));
+    setInterviewDate(row.interview_date);
+    const tm = String(row.interview_time ?? "").trim();
+    setInterviewTime(tm.length >= 5 ? tm.slice(0, 5) : tm);
+    const d = new Date(`${row.interview_date}T12:00:00`);
+    if (!Number.isNaN(d.getTime())) {
+      setCalendarCursor(new Date(d.getFullYear(), d.getMonth(), 1));
+    }
+  }, [scheduledInterviewQuery.isSuccess, scheduledInterviewQuery.data]);
+
   const scheduleInterviewMutation = useMutation({
     mutationFn: (payload: {
       job_id: number;
@@ -130,12 +168,27 @@ export default function PlanifierEntretienPage() {
       interview_time: string;
     }) => recruteurService.scheduleRecruiterInterview(payload),
     onSuccess: (res) => {
-      addToast({
-        message: res.mailSent
-          ? "Entretien planifié et e-mail envoyé au candidat."
-          : `Entretien planifié, mais envoi d'e-mail impossible: ${res.mailError ?? "inconnu"}`,
-        type: "success",
+      queryClient.invalidateQueries({ queryKey: ["recruteur", "overview"] });
+      queryClient.invalidateQueries({ queryKey: ["recruteur", "planned-interviews"] });
+      queryClient.invalidateQueries({
+        queryKey: ["recruteur", "scheduled-interview", jobId, candidateId],
       });
+      const updated = Boolean(res.updated);
+      if (updated) {
+        addToast({
+          message: res.mailSent
+            ? "Planification mise à jour — e-mails envoyés au candidat et au recruteur."
+            : `Planification mise à jour${res.mailError ? ` — e-mail : ${res.mailError}` : ""}.`,
+          type: "success",
+        });
+      } else {
+        addToast({
+          message: res.mailSent
+            ? "Entretien planifié — e-mails envoyés au candidat et au recruteur."
+            : `Entretien planifié, mais envoi d'e-mail incomplet ou impossible : ${res.mailError ?? "inconnu"}`,
+          type: "success",
+        });
+      }
       router.push("/app/entretiens-planifies");
     },
     onError: (error) => {
@@ -169,7 +222,7 @@ export default function PlanifierEntretienPage() {
             Retour aux entretiens
           </Link>
           <h1 className="text-[28px] sm:text-[36px] font-bold text-white tracking-[-0.04em] font-heading">
-            Planifier un entretien
+            {isEditMode ? "Modifier la planification" : "Planifier un entretien"}
           </h1>
           <p className="text-[14px] mt-2 text-white/45 font-light">
             Candidats validés — <span className="text-tap-red font-semibold">{jobTitle}</span>
@@ -179,7 +232,7 @@ export default function PlanifierEntretienPage() {
 
       <div className="rounded-2xl p-5 sm:p-6 bg-zinc-900/50 border border-white/[0.06]">
         <h2 className="text-[13px] uppercase tracking-[2px] text-white/50 font-semibold mb-5">
-          Formulaire de planification
+          {isEditMode ? "Modifier les informations" : "Formulaire de planification"}
         </h2>
 
         <form
@@ -407,9 +460,11 @@ export default function PlanifierEntretienPage() {
             <button
               type="submit"
               className="btn-primary whitespace-nowrap disabled:opacity-70 disabled:cursor-not-allowed"
-              disabled={scheduleInterviewMutation.isPending}
+              disabled={
+                scheduleInterviewMutation.isPending || scheduledInterviewQuery.isLoading
+              }
             >
-              Confirmer l&apos;entretien
+              {isEditMode ? "Enregistrer les modifications" : "Confirmer l'entretien"}
             </button>
           </div>
         </form>
