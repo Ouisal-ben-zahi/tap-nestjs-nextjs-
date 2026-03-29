@@ -53,6 +53,7 @@ export interface RecruiterOverviewStats {
         jobTitle: string | null;
         status: string | null;
         validatedAt: string | null;
+        hasScheduledInterview: boolean;
     }[];
     acceptedApplications: {
         id: number;

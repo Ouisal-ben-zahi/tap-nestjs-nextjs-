@@ -2,6 +2,7 @@ import {
   Injectable,
   BadRequestException,
   ForbiddenException,
+  Logger,
 } from '@nestjs/common';
 import { ConfigService } from '@nestjs/config';
 import { SupabaseClient, createClient } from '@supabase/supabase-js';
@@ -198,6 +199,8 @@ export interface RecruiterOverviewStats {
     jobTitle: string | null;
     status: string | null;
     validatedAt: string | null;
+    /** Entretien PLANIFIE dans recruiter_scheduled_interviews pour cette candidature */
+    hasScheduledInterview: boolean;
   }[];
   acceptedApplications: {
     id: number;
@@ -315,6 +318,8 @@ export interface RecruiterScheduleInterviewPayload {
   interview_type: 'EN_LIGNE' | 'PRESENTIEL' | 'TELEPHONIQUE' | string;
   interview_date: string; // YYYY-MM-DD
   interview_time: string; // HH:MM
+  /** Obligatoire si type = présentiel : lieu de l’entretien (synchronisé vers `recruteurs.adresse`). */
+  interview_address?: string | null;
 }
 
 export interface CandidateScoreFromJson {
@@ -358,6 +363,7 @@ export interface CandidateProfile {
 
 @Injectable()
 export class DashboardService {
+  private readonly logger = new Logger(DashboardService.name);
   private supabase: SupabaseClient;
   private mailer: nodemailer.Transporter | null = null;
 
@@ -3436,20 +3442,46 @@ export class DashboardService {
       throw new BadRequestException("Le champ 'interview_time' doit être au format HH:MM");
     }
 
-    // Normalise les libellés UI (Visio/Présentiel/Téléphone) vers les valeurs SQL attendues.
-    const normalizedInterviewType =
-      rawInterviewType.toLowerCase() === 'visio'
-        ? 'EN_LIGNE'
-        : rawInterviewType.toLowerCase() === 'présentiel' || rawInterviewType.toLowerCase() === 'presentiel'
-          ? 'PRESENTIEL'
-          : rawInterviewType.toLowerCase() === 'téléphone' || rawInterviewType.toLowerCase() === 'telephone'
-            ? 'TELEPHONIQUE'
-            : rawInterviewType;
+    const upperType = rawInterviewType.toUpperCase().trim();
+    const lowerType = rawInterviewType.toLowerCase().trim();
+    // Codes API + libellés UI (Visio / visioconférence / présentiel / téléphone, etc.)
+    let normalizedInterviewType: string;
+    if (['EN_LIGNE', 'PRESENTIEL', 'TELEPHONIQUE'].includes(upperType)) {
+      normalizedInterviewType = upperType;
+    } else if (
+      lowerType === 'visio' ||
+      lowerType.includes('visioconf') ||
+      lowerType === 'en ligne' ||
+      lowerType === 'en_ligne'
+    ) {
+      normalizedInterviewType = 'EN_LIGNE';
+    } else if (lowerType === 'présentiel' || lowerType === 'presentiel') {
+      normalizedInterviewType = 'PRESENTIEL';
+    } else if (
+      lowerType === 'téléphone' ||
+      lowerType === 'telephone' ||
+      lowerType === 'telephonique'
+    ) {
+      normalizedInterviewType = 'TELEPHONIQUE';
+    } else {
+      normalizedInterviewType = upperType.replace(/\s+/g, '_');
+    }
 
     const allowed = ['EN_LIGNE', 'PRESENTIEL', 'TELEPHONIQUE'];
     if (!allowed.includes(normalizedInterviewType)) {
       throw new BadRequestException("Type d'entretien invalide");
     }
+
+    const interviewAddressRaw = payload?.interview_address;
+    const interviewAddressTrimmed =
+      typeof interviewAddressRaw === 'string' ? interviewAddressRaw.trim() : '';
+    if (normalizedInterviewType === 'PRESENTIEL' && !interviewAddressTrimmed) {
+      throw new BadRequestException(
+        "L'adresse du lieu de l'entretien est requise pour un entretien en présentiel.",
+      );
+    }
+    const interviewAddressForDb =
+      normalizedInterviewType === 'PRESENTIEL' ? interviewAddressTrimmed : null;
 
     // Security: le recruteur ne peut planifier que sur ses propres offres.
     const { data: job, error: jobError } = await this.supabase
@@ -3507,6 +3539,7 @@ export class DashboardService {
           interview_type: normalizedInterviewType,
           interview_date: interviewDate,
           interview_time: interviewTime,
+          interview_address: interviewAddressForDb,
         })
         .eq('id', existingId)
         .select('id')
@@ -3529,6 +3562,7 @@ export class DashboardService {
           interview_type: normalizedInterviewType,
           interview_date: interviewDate,
           interview_time: interviewTime,
+          interview_address: interviewAddressForDb,
           status: 'PLANIFIE',
         })
         .select('id')
@@ -3540,6 +3574,45 @@ export class DashboardService {
         );
       }
       finalInterviewId = Number(inserted.id);
+    }
+
+    // Dès qu’un entretien est planifié (création ou mise à jour), la candidature passe en « Acceptée ».
+    const nowIso = new Date().toISOString();
+    const { error: syncStatusError } = await this.supabase
+      .from('candidate_postule')
+      .update({
+        status: 'ACCEPTEE',
+        validate: true,
+        validated_at: nowIso,
+      })
+      .eq('id', candidatePostule.id);
+
+    if (syncStatusError) {
+      throw new BadRequestException(
+        syncStatusError.message ||
+          "Entretien enregistré mais la mise à jour du statut de candidature a échoué.",
+      );
+    }
+
+    // Présentiel : enregistrer l’adresse sur le profil entreprise (`recruteurs`) si la ligne existe.
+    if (normalizedInterviewType === 'PRESENTIEL' && interviewAddressTrimmed) {
+      const { data: recRow } = await this.supabase
+        .from('recruteurs')
+        .select('id')
+        .eq('user_id', recruiterUserId)
+        .maybeSingle();
+      if (recRow?.id) {
+        const { error: addrErr } = await this.supabase
+          .from('recruteurs')
+          .update({
+            adresse: interviewAddressTrimmed,
+            updated_at: nowIso,
+          })
+          .eq('user_id', recruiterUserId);
+        if (addrErr) {
+          this.logger.warn(`Mise à jour recruteurs.adresse: ${addrErr.message}`);
+        }
+      }
     }
 
     // Envoi e-mail au candidat et au recruteur (best-effort).
@@ -3592,10 +3665,24 @@ export class DashboardService {
 
         const formatDisplayType =
           normalizedInterviewType === 'EN_LIGNE'
-            ? 'Visio'
+            ? 'Visioconférence'
             : normalizedInterviewType === 'PRESENTIEL'
               ? 'Présentiel'
-              : 'Téléphone';
+              : 'Entretien téléphonique';
+
+        const addrSafe = interviewAddressTrimmed
+          .replace(/&/g, '&amp;')
+          .replace(/</g, '&lt;')
+          .replace(/>/g, '&gt;')
+          .replace(/"/g, '&quot;');
+        const lieuBlockHtml =
+          normalizedInterviewType === 'PRESENTIEL' && interviewAddressTrimmed
+            ? `<li><strong>Lieu :</strong> ${addrSafe}</li>`
+            : '';
+        const lieuBlockText =
+          normalizedInterviewType === 'PRESENTIEL' && interviewAddressTrimmed
+            ? `Lieu : ${interviewAddressTrimmed}`
+            : '';
 
         const dateDisplay = new Date(`${interviewDate}T00:00:00`).toLocaleDateString('fr-FR', {
           year: 'numeric',
@@ -3620,6 +3707,7 @@ export class DashboardService {
             <ul>
               <li><strong>Offre :</strong> ${String(job.title ?? '')}</li>
               <li><strong>Format :</strong> ${formatDisplayType}</li>
+              ${lieuBlockHtml}
               <li><strong>Date :</strong> ${dateDisplay}</li>
               <li><strong>Heure :</strong> ${interviewTime}</li>
             </ul>
@@ -3634,6 +3722,7 @@ export class DashboardService {
           '',
           `Offre : ${String(job.title ?? '')}`,
           `Format : ${formatDisplayType}`,
+          ...(lieuBlockText ? [lieuBlockText] : []),
           `Date : ${dateDisplay}`,
           `Heure : ${interviewTime}`,
           '',
@@ -3657,6 +3746,7 @@ export class DashboardService {
               <li><strong>Candidat :</strong> ${candidateName || `ID ${candidateId}`}</li>
               <li><strong>Offre :</strong> ${String(job.title ?? '')}</li>
               <li><strong>Format :</strong> ${formatDisplayType}</li>
+              ${lieuBlockHtml}
               <li><strong>Date :</strong> ${dateDisplay}</li>
               <li><strong>Heure :</strong> ${interviewTime}</li>
             </ul>
@@ -3673,6 +3763,7 @@ export class DashboardService {
           `Candidat : ${candidateName || `ID ${candidateId}`}`,
           `Offre : ${String(job.title ?? '')}`,
           `Format : ${formatDisplayType}`,
+          ...(lieuBlockText ? [lieuBlockText] : []),
           `Date : ${dateDisplay}`,
           `Heure : ${interviewTime}`,
           '',
@@ -3747,6 +3838,7 @@ export class DashboardService {
       interview_type: string;
       interview_date: string;
       interview_time: string;
+      interview_address: string | null;
     } | null;
   }> {
     if (!recruiterUserId || Number.isNaN(recruiterUserId)) {
@@ -3776,7 +3868,7 @@ export class DashboardService {
 
     const { data: row, error: rowError } = await this.supabase
       .from('recruiter_scheduled_interviews')
-      .select('id, interview_type, interview_date, interview_time')
+      .select('id, interview_type, interview_date, interview_time, interview_address')
       .eq('recruiter_user_id', recruiterUserId)
       .eq('job_id', jobId)
       .eq('candidate_id', candidateId)
@@ -3791,12 +3883,17 @@ export class DashboardService {
       return { interview: null };
     }
 
+    const r = row as Record<string, unknown>;
     return {
       interview: {
         id: Number(row.id),
-        interview_type: String((row as any).interview_type ?? ''),
-        interview_date: String((row as any).interview_date ?? ''),
-        interview_time: String((row as any).interview_time ?? ''),
+        interview_type: String(r.interview_type ?? ''),
+        interview_date: String(r.interview_date ?? ''),
+        interview_time: String(r.interview_time ?? ''),
+        interview_address:
+          typeof r.interview_address === 'string' && r.interview_address.trim()
+            ? r.interview_address.trim()
+            : null,
       },
     };
   }
@@ -4064,12 +4161,82 @@ export class DashboardService {
     };
   }
 
+  /**
+   * Toute ligne `recruiter_scheduled_interviews` en PLANIFIE impose la candidature en « Acceptée ».
+   * Appelée au chargement de l’overview pour aligner l’historique (avant lecture des candidatures).
+   */
+  private async syncCandidatePostuleStatusForPlannedInterviews(
+    recruiterUserId: number,
+  ): Promise<void> {
+    const { data: scheduledRows, error } = await this.supabase
+      .from('recruiter_scheduled_interviews')
+      .select('candidate_postule_id')
+      .eq('recruiter_user_id', recruiterUserId)
+      .eq('status', 'PLANIFIE');
+
+    if (error) {
+      this.logger.warn(
+        `syncCandidatePostuleStatusForPlannedInterviews: lecture entretiens — ${error.message}`,
+      );
+      return;
+    }
+    if (!scheduledRows?.length) return;
+
+    const postuleIds = new Set<number>();
+    for (const row of scheduledRows) {
+      const raw = (row as { candidate_postule_id?: unknown }).candidate_postule_id;
+      const id = typeof raw === 'number' ? raw : Number(raw);
+      if (Number.isFinite(id) && id > 0) postuleIds.add(id);
+    }
+    if (postuleIds.size === 0) return;
+
+    const idsArr = Array.from(postuleIds);
+    const { data: postuleRows, error: selErr } = await this.supabase
+      .from('candidate_postule')
+      .select('id, status, validate, validated_at')
+      .in('id', idsArr);
+
+    if (selErr) {
+      this.logger.warn(
+        `syncCandidatePostuleStatusForPlannedInterviews: lecture candidatures — ${selErr.message}`,
+      );
+      return;
+    }
+
+    const nowIso = new Date().toISOString();
+    const needSync = (postuleRows ?? []).filter((r: any) => {
+      const st = String(r?.status ?? '').toUpperCase();
+      return st !== 'ACCEPTEE' || r?.validate !== true;
+    });
+
+    for (const row of needSync) {
+      const id = Number(row?.id);
+      if (!Number.isFinite(id)) continue;
+      const { error: upErr } = await this.supabase
+        .from('candidate_postule')
+        .update({
+          status: 'ACCEPTEE',
+          validate: true,
+          validated_at: row?.validated_at ?? nowIso,
+        })
+        .eq('id', id);
+
+      if (upErr) {
+        this.logger.warn(
+          `syncCandidatePostuleStatusForPlannedInterviews: id ${id} — ${upErr.message}`,
+        );
+      }
+    }
+  }
+
   async getRecruiterOverview(
     userId: number,
   ): Promise<RecruiterOverviewStats> {
     if (!userId || Number.isNaN(userId)) {
       throw new BadRequestException('userId invalide');
     }
+
+    await this.syncCandidatePostuleStatusForPlannedInterviews(userId);
 
     const { data: jobs, error } = await this.supabase
       .from('jobs')
@@ -4168,6 +4335,21 @@ export class DashboardService {
       return (b.id ?? 0) - (a.id ?? 0);
     });
 
+    const { data: scheduledRowsOverview } = await this.supabase
+      .from('recruiter_scheduled_interviews')
+      .select('candidate_postule_id')
+      .eq('recruiter_user_id', userId)
+      .eq('status', 'PLANIFIE');
+
+    const scheduledPostuleIds = new Set<number>();
+    for (const row of scheduledRowsOverview ?? []) {
+      const raw = (row as { candidate_postule_id?: unknown })?.candidate_postule_id;
+      const pid = typeof raw === 'number' ? raw : Number(raw);
+      if (Number.isFinite(pid)) {
+        scheduledPostuleIds.add(pid);
+      }
+    }
+
     let recentApplications: RecruiterOverviewStats['recentApplications'] = [];
     let acceptedApplications: RecruiterOverviewStats['acceptedApplications'] = [];
 
@@ -4227,6 +4409,7 @@ export class DashboardService {
           jobTitle: jobTitleMap.get(a.jobId) ?? 'Offre',
           status: a.status ?? null,
           validatedAt: a.validatedAt,
+          hasScheduledInterview: scheduledPostuleIds.has(Number(a.id)),
         };
       });
     }
@@ -4283,20 +4466,6 @@ export class DashboardService {
         jobTitleMap.set(job.id as number, (job.title as string) ?? 'Offre');
       });
 
-      const { data: scheduledRows } = await this.supabase
-        .from('recruiter_scheduled_interviews')
-        .select('candidate_postule_id')
-        .eq('recruiter_user_id', userId)
-        .eq('status', 'PLANIFIE');
-
-      const scheduledPostuleIds = new Set<number>();
-      for (const row of scheduledRows ?? []) {
-        const pid = (row as { candidate_postule_id?: unknown })?.candidate_postule_id;
-        if (typeof pid === 'number' && Number.isFinite(pid)) {
-          scheduledPostuleIds.add(pid);
-        }
-      }
-
       acceptedApplications = Array.from(bestByCandidate.values())
         .sort((a, b) => {
           const da = a.validatedAt ? new Date(a.validatedAt).getTime() : 0;
@@ -4319,7 +4488,7 @@ export class DashboardService {
             jobTitle: jobTitleMap.get(a.jobId) ?? 'Offre',
             status: a.status ?? null,
             validatedAt: a.validatedAt,
-            hasScheduledInterview: scheduledPostuleIds.has(a.id),
+            hasScheduledInterview: scheduledPostuleIds.has(Number(a.id)),
           };
         });
     }

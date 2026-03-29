@@ -4,26 +4,43 @@ import { useEffect, useMemo, useRef, useState } from "react";
 import Link from "next/link";
 import { useSearchParams } from "next/navigation";
 import { useRouter } from "next/navigation";
-import { User, ArrowLeft, ChevronDown, ChevronLeft, ChevronRight } from "lucide-react";
+import {
+  User,
+  ArrowLeft,
+  ChevronDown,
+  ChevronLeft,
+  ChevronRight,
+  Loader2,
+} from "lucide-react";
 import { useAuth } from "@/hooks/use-auth";
 import {
   useMatchedCandidatesByOffer,
   useRecruiterCandidateBasicProfile,
+  useRecruiterCompanyProfile,
   useRecruiterScheduledInterviewForApplication,
 } from "@/hooks/use-recruteur";
 import { useUiStore } from "@/stores/ui";
 import EmptyState from "@/components/ui/EmptyState";
 import { useMutation, useQueryClient } from "@tanstack/react-query";
-import { recruteurService } from "@/services/recruteur.service";
+import {
+  recruteurService,
+  type ScheduleRecruiterInterviewPayload,
+} from "@/services/recruteur.service";
 import { getApiErrorMessage } from "@/lib/api-error";
 
-type InterviewType = "Visio" | "Présentiel" | "Téléphone";
+type InterviewTypeKey = "EN_LIGNE" | "PRESENTIEL" | "TELEPHONIQUE";
 
-function dbInterviewTypeToUi(db: string): InterviewType {
+const INTERVIEW_TYPE_OPTIONS: { value: InterviewTypeKey; label: string }[] = [
+  { value: "EN_LIGNE", label: "Visioconférence" },
+  { value: "PRESENTIEL", label: "Présentiel" },
+  { value: "TELEPHONIQUE", label: "Entretien téléphonique" },
+];
+
+function dbInterviewTypeToKey(db: string): InterviewTypeKey {
   const u = String(db).toUpperCase().replace(/\s/g, "_");
-  if (u === "EN_LIGNE") return "Visio";
-  if (u === "PRESENTIEL") return "Présentiel";
-  return "Téléphone";
+  if (u === "EN_LIGNE") return "EN_LIGNE";
+  if (u === "PRESENTIEL") return "PRESENTIEL";
+  return "TELEPHONIQUE";
 }
 
 const MONTHS_FR = [
@@ -71,6 +88,7 @@ export default function PlanifierEntretienPage() {
     Number.isFinite(candidateId) && candidateId > 0 ? candidateId : null,
     isRecruteur,
   );
+  const companyProfileQuery = useRecruiterCompanyProfile(isRecruteur);
 
   useEffect(() => {
     schedulePrefilledRef.current = false;
@@ -87,7 +105,8 @@ export default function PlanifierEntretienPage() {
   const [lastName, setLastName] = useState("");
   const [country, setCountry] = useState("");
   const [city, setCity] = useState("");
-  const [interviewType, setInterviewType] = useState<InterviewType>("Visio");
+  const [interviewType, setInterviewType] = useState<InterviewTypeKey>("EN_LIGNE");
+  const [interviewAddress, setInterviewAddress] = useState("");
   const [interviewTypeOpen, setInterviewTypeOpen] = useState(false);
   const [dateOpen, setDateOpen] = useState(false);
   const [timeOpen, setTimeOpen] = useState(false);
@@ -149,7 +168,12 @@ export default function PlanifierEntretienPage() {
     schedulePrefilledRef.current = true;
     const row = scheduledInterviewQuery.data?.interview;
     if (!row?.interview_date) return;
-    setInterviewType(dbInterviewTypeToUi(row.interview_type));
+    setInterviewType(dbInterviewTypeToKey(row.interview_type));
+    setInterviewAddress(
+      typeof row.interview_address === "string" && row.interview_address.trim()
+        ? row.interview_address.trim()
+        : "",
+    );
     setInterviewDate(row.interview_date);
     const tm = String(row.interview_time ?? "").trim();
     setInterviewTime(tm.length >= 5 ? tm.slice(0, 5) : tm);
@@ -159,17 +183,21 @@ export default function PlanifierEntretienPage() {
     }
   }, [scheduledInterviewQuery.isSuccess, scheduledInterviewQuery.data]);
 
+  /** Préremplissage adresse présentiel depuis le profil entreprise (`recruteurs.adresse`). */
+  useEffect(() => {
+    if (interviewType !== "PRESENTIEL") return;
+    const fromProfile = companyProfileQuery.data?.adresse?.trim();
+    if (!fromProfile) return;
+    setInterviewAddress((prev) => (prev.trim() ? prev : fromProfile));
+  }, [interviewType, companyProfileQuery.data?.adresse]);
+
   const scheduleInterviewMutation = useMutation({
-    mutationFn: (payload: {
-      job_id: number;
-      candidate_id: number;
-      interview_type: string;
-      interview_date: string;
-      interview_time: string;
-    }) => recruteurService.scheduleRecruiterInterview(payload),
+    mutationFn: (payload: ScheduleRecruiterInterviewPayload) =>
+      recruteurService.scheduleRecruiterInterview(payload),
     onSuccess: (res) => {
       queryClient.invalidateQueries({ queryKey: ["recruteur", "overview"] });
       queryClient.invalidateQueries({ queryKey: ["recruteur", "planned-interviews"] });
+      queryClient.invalidateQueries({ queryKey: ["recruteur", "company-profile"] });
       queryClient.invalidateQueries({
         queryKey: ["recruteur", "scheduled-interview", jobId, candidateId],
       });
@@ -222,7 +250,7 @@ export default function PlanifierEntretienPage() {
             Retour aux entretiens
           </Link>
           <h1 className="text-[28px] sm:text-[36px] font-bold text-white tracking-[-0.04em] font-heading">
-            {isEditMode ? "Modifier la planification" : "Planifier un entretien"}
+            {isEditMode ? "Modifier l'entretien" : "Planifier un entretien"}
           </h1>
           <p className="text-[14px] mt-2 text-white/45 font-light">
             Candidats validés — <span className="text-tap-red font-semibold">{jobTitle}</span>
@@ -248,6 +276,13 @@ export default function PlanifierEntretienPage() {
               addToast({ message: "Choisissez une date et un horaire.", type: "error" });
               return;
             }
+            if (interviewType === "PRESENTIEL" && !interviewAddress.trim()) {
+              addToast({
+                message: "Indiquez l'adresse du lieu pour un entretien en présentiel.",
+                type: "error",
+              });
+              return;
+            }
 
             scheduleInterviewMutation.mutate({
               job_id: jobId,
@@ -255,6 +290,8 @@ export default function PlanifierEntretienPage() {
               interview_type: interviewType,
               interview_date: interviewDate,
               interview_time: interviewTime,
+              interview_address:
+                interviewType === "PRESENTIEL" ? interviewAddress.trim() : undefined,
             });
           }}
         >
@@ -300,44 +337,119 @@ export default function PlanifierEntretienPage() {
             />
           </div>
 
-          <div className="relative">
-            <label className="block text-[11px] text-white/45 mb-1.5">Type d&apos;entretien</label>
-            <button
-              type="button"
-              onClick={() => setInterviewTypeOpen((v) => !v)}
-              className="input-premium h-10 w-full rounded-xl border border-white/[0.08] bg-white/[0.03] hover:bg-white/[0.06] px-3 text-[13px] text-white/85 outline-none focus:border-white/[0.18] inline-flex items-center justify-between"
-            >
-              <span>{interviewType}</span>
-              <ChevronDown size={14} className="text-white/45" />
-            </button>
-            {interviewTypeOpen && (
-              <div className="absolute left-0 top-full mt-2 w-full bg-[#050505]/95 border border-white/[0.08] rounded-2xl shadow-lg backdrop-blur-xl overflow-hidden z-50">
-                {(["Visio", "Présentiel", "Téléphone"] as InterviewType[]).map((t) => {
-                  const active = interviewType === t;
-                  return (
-                    <button
-                      key={t}
-                      type="button"
-                      onClick={() => {
-                        setInterviewType(t);
-                        setInterviewTypeOpen(false);
-                      }}
-                      className={`w-full flex items-center gap-2.5 px-4 py-3 text-left text-[13px] transition-colors focus:outline-none focus-visible:outline-none ${
-                        active
-                          ? "text-white bg-red-500/15"
-                          : "text-white/80 hover:text-white hover:bg-red-500/8"
-                      }`}
-                    >
-                      <span className="flex-1 truncate">{t}</span>
-                    </button>
-                  );
-                })}
+          {interviewType === "PRESENTIEL" ? (
+            <div className="sm:col-span-2 grid grid-cols-1 sm:grid-cols-2 gap-4 items-start">
+              <div className="relative min-w-0">
+                <label className="block text-[11px] text-white/45 mb-1.5">
+                  Type d&apos;entretien
+                </label>
+                <button
+                  type="button"
+                  onClick={() => setInterviewTypeOpen((v) => !v)}
+                  className="input-premium h-10 w-full rounded-xl border border-white/[0.08] bg-white/[0.03] hover:bg-white/[0.06] px-3 text-[13px] text-white/85 outline-none focus:border-white/[0.18] inline-flex items-center justify-between"
+                >
+                  <span className="truncate text-left">
+                    {INTERVIEW_TYPE_OPTIONS.find((o) => o.value === interviewType)?.label ??
+                      interviewType}
+                  </span>
+                  <ChevronDown size={14} className="text-white/45 shrink-0" />
+                </button>
+                {interviewTypeOpen && (
+                  <div className="absolute left-0 top-full mt-2 w-full min-w-[min(100%,280px)] bg-[#050505]/95 border border-white/[0.08] rounded-2xl shadow-lg backdrop-blur-xl overflow-hidden z-50">
+                    {INTERVIEW_TYPE_OPTIONS.map((opt) => {
+                      const active = interviewType === opt.value;
+                      return (
+                        <button
+                          key={opt.value}
+                          type="button"
+                          onClick={() => {
+                            setInterviewType(opt.value);
+                            setInterviewTypeOpen(false);
+                            if (opt.value === "PRESENTIEL") {
+                              const fromProfile = companyProfileQuery.data?.adresse?.trim();
+                              setInterviewAddress((prev) =>
+                                prev.trim() ? prev : fromProfile ?? "",
+                              );
+                            }
+                          }}
+                          className={`w-full flex items-center gap-2.5 px-4 py-3 text-left text-[13px] transition-colors focus:outline-none focus-visible:outline-none ${
+                            active
+                              ? "text-white bg-red-500/15"
+                              : "text-white/80 hover:text-white hover:bg-red-500/8"
+                          }`}
+                        >
+                          <span className="flex-1 truncate">{opt.label}</span>
+                        </button>
+                      );
+                    })}
+                  </div>
+                )}
               </div>
-            )}
-          </div>
+              <div className="min-w-0 flex flex-col">
+                <label className="block text-[11px] text-white/45 mb-1.5">
+                  Adresse du lieu d&apos;entretien
+                </label>
+                <textarea
+                  value={interviewAddress}
+                  onChange={(e) => setInterviewAddress(e.target.value)}
+                  rows={3}
+                  placeholder="Prérempli depuis votre profil entreprise — modifiable"
+                  className="w-full flex-1 rounded-xl border border-white/[0.08] bg-white/[0.03] px-3 py-2.5 text-[13px] text-white/85 outline-none focus:border-white/[0.18] placeholder:text-white/35 resize-y min-h-[5rem]"
+                />
+                <p className="mt-1.5 text-[11px] text-white/35">
+                  Enregistrée sur l&apos;entretien et sur votre profil entreprise si modifiée.
+                </p>
+              </div>
+            </div>
+          ) : (
+            <div className="relative sm:col-span-2 min-w-0">
+              <label className="block text-[11px] text-white/45 mb-1.5">Type d&apos;entretien</label>
+              <button
+                type="button"
+                onClick={() => setInterviewTypeOpen((v) => !v)}
+                className="input-premium h-10 w-full rounded-xl border border-white/[0.08] bg-white/[0.03] hover:bg-white/[0.06] px-3 text-[13px] text-white/85 outline-none focus:border-white/[0.18] inline-flex items-center justify-between"
+              >
+                <span>
+                  {INTERVIEW_TYPE_OPTIONS.find((o) => o.value === interviewType)?.label ??
+                    interviewType}
+                </span>
+                <ChevronDown size={14} className="text-white/45" />
+              </button>
+              {interviewTypeOpen && (
+                <div className="absolute left-0 top-full mt-2 w-full bg-[#050505]/95 border border-white/[0.08] rounded-2xl shadow-lg backdrop-blur-xl overflow-hidden z-50">
+                  {INTERVIEW_TYPE_OPTIONS.map((opt) => {
+                    const active = interviewType === opt.value;
+                    return (
+                      <button
+                        key={opt.value}
+                        type="button"
+                        onClick={() => {
+                          setInterviewType(opt.value);
+                          setInterviewTypeOpen(false);
+                          if (opt.value === "PRESENTIEL") {
+                            const fromProfile = companyProfileQuery.data?.adresse?.trim();
+                            setInterviewAddress((prev) =>
+                              prev.trim() ? prev : fromProfile ?? "",
+                            );
+                          }
+                        }}
+                        className={`w-full flex items-center gap-2.5 px-4 py-3 text-left text-[13px] transition-colors focus:outline-none focus-visible:outline-none ${
+                          active
+                            ? "text-white bg-red-500/15"
+                            : "text-white/80 hover:text-white hover:bg-red-500/8"
+                        }`}
+                      >
+                        <span className="flex-1 truncate">{opt.label}</span>
+                      </button>
+                    );
+                  })}
+                </div>
+              )}
+            </div>
+          )}
 
-          <div className="grid grid-cols-2 gap-3">
-            <div>
+          <div className="sm:col-span-2 grid grid-cols-1 sm:grid-cols-2 gap-4">
+            <div className="min-w-0">
               <label className="block text-[11px] text-white/45 mb-1.5">Date</label>
               <div className="relative">
                 <button
@@ -415,7 +527,7 @@ export default function PlanifierEntretienPage() {
                 )}
               </div>
             </div>
-            <div>
+            <div className="min-w-0">
               <label className="block text-[11px] text-white/45 mb-1.5">Horaire</label>
               <div className="relative">
                 <button
@@ -459,12 +571,30 @@ export default function PlanifierEntretienPage() {
           <div className="sm:col-span-2 flex justify-end pt-2">
             <button
               type="submit"
-              className="btn-primary whitespace-nowrap disabled:opacity-70 disabled:cursor-not-allowed"
+              aria-busy={scheduleInterviewMutation.isPending}
+              className="btn-primary min-w-[220px] inline-flex items-center justify-center gap-2 whitespace-nowrap disabled:opacity-80 disabled:cursor-not-allowed transition-opacity"
               disabled={
                 scheduleInterviewMutation.isPending || scheduledInterviewQuery.isLoading
               }
             >
-              {isEditMode ? "Enregistrer les modifications" : "Confirmer l'entretien"}
+              {scheduleInterviewMutation.isPending ? (
+                <>
+                  <Loader2
+                    className="h-4 w-4 shrink-0 animate-spin motion-reduce:animate-none"
+                    strokeWidth={2}
+                    aria-hidden
+                  />
+                  <span>
+                    {isEditMode
+                      ? "Enregistrement en cours…"
+                      : "Planification en cours…"}
+                  </span>
+                </>
+              ) : isEditMode ? (
+                "Enregistrer les modifications"
+              ) : (
+                "Confirmer l'entretien"
+              )}
             </button>
           </div>
         </form>

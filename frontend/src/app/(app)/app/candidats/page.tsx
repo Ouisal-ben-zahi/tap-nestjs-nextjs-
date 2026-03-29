@@ -8,6 +8,7 @@ import { useAuth } from "@/hooks/use-auth";
 import {
   useMatchedCandidatesByOffer,
   useRecruteurOverview,
+  useRecruiterPlannedInterviews,
   useRecruteurJobs,
   useSaveInterviewPdf,
   useUpdateCandidateApplicationStatus,
@@ -109,6 +110,10 @@ const CANDIDATURE_FILTRE_STATUT_OPTIONS = [
   { value: "REFUSEE" as const, label: "Refusée" },
 ];
 
+/** Même libellés que les cartes « Candidats acceptés — Prêts pour entretien » (`/app/entretiens-planifies`). */
+const ENTRETIEN_BTN_LABEL_PLANIFIER = "Planifier un entretien";
+const ENTRETIEN_BTN_LABEL_MODIFIER = "Modifier l'entretien";
+
 export default function CandidatsPage() {
   const searchParams = useSearchParams();
   const jobIdParam = searchParams.get("jobId");
@@ -118,6 +123,7 @@ export default function CandidatsPage() {
   const { user } = useAuth();
   const isRecruteur = user?.role === "recruteur";
   const overviewQuery = useRecruteurOverview();
+  const plannedInterviewsQuery = useRecruiterPlannedInterviews(isRecruteur);
   const jobsQuery = useRecruteurJobs();
   const matchedCandidatesQuery = useMatchedCandidatesByOffer(selectedJobId, isRecruteur);
   const queryClient = useQueryClient();
@@ -192,6 +198,24 @@ export default function CandidatsPage() {
     const start = (candidaturePage - 1) * CANDIDATURES_PAR_PAGE;
     return filteredCandidatures.slice(start, start + CANDIDATURES_PAR_PAGE);
   }, [filteredCandidatures, candidaturePage]);
+
+  /** Couples job/candidat ayant un entretien PLANIFIE (même source que la liste des entretiens). */
+  const plannedInterviewJobCandidateKeys = useMemo(() => {
+    const s = new Set<string>();
+    for (const row of plannedInterviewsQuery.data?.plannedInterviews ?? []) {
+      if (
+        typeof row.jobId === "number" &&
+        Number.isFinite(row.jobId) &&
+        row.jobId > 0 &&
+        typeof row.candidateId === "number" &&
+        Number.isFinite(row.candidateId) &&
+        row.candidateId > 0
+      ) {
+        s.add(`${row.jobId}:${row.candidateId}`);
+      }
+    }
+    return s;
+  }, [plannedInterviewsQuery.data?.plannedInterviews]);
 
   useEffect(() => {
     setCandidaturePage(1);
@@ -466,9 +490,11 @@ export default function CandidatsPage() {
                             </button>
                             <RecruiterCandidateDownloadsMenu
                               candidateId={candidateId}
+                              candidateName={candidateName}
                               enabled={canOpenTalent}
                               isLight={isLight}
                               menuZIndexClass="z-[60]"
+                              variant="talentPreview"
                             />
                           </div>
 
@@ -834,6 +860,13 @@ export default function CandidatsPage() {
                     app.jobId > 0;
                   const durationLabel = app.validatedAt ? formatRelative(app.validatedAt) : "—";
                   const statusMenuOpen = statusSelectAppId === app.id;
+                  const hasScheduledInterview =
+                    Boolean(app.hasScheduledInterview) ||
+                    (typeof app.jobId === "number" &&
+                      app.jobId > 0 &&
+                      typeof app.candidateId === "number" &&
+                      app.candidateId > 0 &&
+                      plannedInterviewJobCandidateKeys.has(`${app.jobId}:${app.candidateId}`));
                   return (
                   <div
                     key={app.id}
@@ -859,77 +892,90 @@ export default function CandidatsPage() {
                     </div>
 
                     <div className="relative z-[2] flex flex-col gap-3 flex-1 min-h-0 min-w-0">
-                      <div className="flex items-start justify-between gap-2 min-w-0">
-                    <button
-                      type="button"
-                      disabled={!canOpenTalent}
-                      onClick={() => {
-                        if (!canOpenTalent) return;
-                        openTalentPanel({
-                          candidateId: cid,
-                          candidateName: app.candidateName?.trim() || "Candidat",
-                        });
-                      }}
-                          className="min-w-0 flex-1 flex items-center gap-3 text-left rounded-lg cursor-pointer disabled:cursor-not-allowed disabled:opacity-50 focus:outline-none focus-visible:ring-2 focus-visible:ring-tap-red/50"
-                      aria-label={
-                        app.candidateName
-                          ? `Voir la Talent Card de ${app.candidateName}`
-                          : "Voir la Talent Card du candidat"
-                      }
-                      title={
-                        app.candidateName
-                          ? `Voir la Talent Card de ${app.candidateName}`
-                          : "Voir la Talent Card du candidat"
-                      }
-                    >
+                      <div className="flex min-w-0 items-stretch gap-2">
+                        <button
+                          type="button"
+                          disabled={!canOpenTalent}
+                          onClick={() => {
+                            if (!canOpenTalent) return;
+                            openTalentPanel({
+                              candidateId: cid,
+                              candidateName: app.candidateName?.trim() || "Candidat",
+                            });
+                          }}
+                          className="min-w-0 flex-1 flex items-start gap-3 text-left rounded-lg cursor-pointer disabled:cursor-not-allowed disabled:opacity-50 focus:outline-none focus-visible:ring-2 focus-visible:ring-tap-red/50"
+                          aria-label={
+                            app.candidateName
+                              ? `Voir la Talent Card de ${app.candidateName}`
+                              : "Voir la Talent Card du candidat"
+                          }
+                          title={
+                            app.candidateName
+                              ? `Voir la Talent Card de ${app.candidateName}`
+                              : "Voir la Talent Card du candidat"
+                          }
+                        >
                           <div className="w-12 h-12 rounded-full overflow-hidden border border-white/[0.10] bg-white/[0.04] flex items-center justify-center shrink-0">
-                        {app.candidateAvatarUrl ? (
-                          <img
-                            src={app.candidateAvatarUrl}
-                            alt={app.candidateName ?? "Avatar candidat"}
-                            className="w-full h-full object-cover"
-                          />
-                        ) : (
-                              <span className={`text-[13px] font-semibold ${isLight ? "text-black/60" : "text-white/70"}`}>
+                            {app.candidateAvatarUrl ? (
+                              <img
+                                src={app.candidateAvatarUrl}
+                                alt={app.candidateName ?? "Avatar candidat"}
+                                className="w-full h-full object-cover"
+                              />
+                            ) : (
+                              <span
+                                className={`text-[13px] font-semibold ${isLight ? "text-black/60" : "text-white/70"}`}
+                              >
                                 {getInitials(app.candidateName)}
                               </span>
-                        )}
-                      </div>
+                            )}
+                          </div>
+                          <div className="min-w-0 flex-1 flex flex-col gap-1 pr-1">
+                            <p
+                              className={`text-[14px] font-semibold leading-snug line-clamp-2 ${
+                                isLight ? "text-black" : "text-white"
+                              }`}
+                            >
+                              {app.candidateName}
+                            </p>
+                            <p
+                              className={`text-[12px] leading-snug line-clamp-2 ${
+                                isLight ? "text-black/65" : "text-white/55"
+                              }`}
+                              title={app.jobTitle ?? undefined}
+                            >
+                              {app.jobTitle ?? "—"}
+                            </p>
+                          </div>
+                        </button>
+                        <div className="flex min-w-0 shrink-0 flex-col items-end self-stretch pl-0.5">
                           <p
-                            className={`text-[14px] font-semibold leading-snug line-clamp-2 ${
-                              isLight ? "text-black" : "text-white"
+                            className={`max-w-[7rem] text-right text-[11px] leading-tight tabular-nums ${
+                              isLight ? "text-black/45" : "text-white/40"
                             }`}
+                            title={durationLabel}
                           >
-                            {app.candidateName}
+                            {durationLabel}
                           </p>
-                    </button>
-                        <div className="flex items-start gap-0.5 shrink-0 max-w-[45%]">
-                        <p
-                          className={`text-[11px] text-right leading-tight pt-0.5 min-w-0 ${
-                            isLight ? "text-black/45" : "text-white/40"
-                          }`}
-                          title={durationLabel}
-                        >
-                          {durationLabel}
-                        </p>
-                          <RecruiterCandidateDownloadsMenu
-                            candidateId={typeof cid === "number" && cid > 0 ? cid : 0}
-                            enabled={canOpenTalent}
-                            isLight={isLight}
-                            menuZIndexClass="z-[110]"
-                          />
+                          <div className="flex min-h-0 flex-1 flex-col items-end justify-center">
+                            <RecruiterCandidateDownloadsMenu
+                              candidateId={typeof cid === "number" && cid > 0 ? cid : 0}
+                              candidateName={app.candidateName}
+                              enabled={canOpenTalent}
+                              isLight={isLight}
+                              menuZIndexClass="z-[110]"
+                              variant="talentPreview"
+                            />
+                          </div>
                         </div>
                       </div>
 
-                      <p
-                        className={`text-[12px] leading-snug line-clamp-2 border-t pt-3 ${
-                          isLight ? "text-black/65 border-black/10" : "text-white/55 border-white/[0.08]"
+                      <div
+                        className={`relative z-[5] mt-auto flex min-w-0 flex-row items-start justify-between gap-2 border-t pt-3 ${
+                          isLight ? "border-black/10" : "border-white/[0.08]"
                         }`}
                       >
-                        {app.jobTitle ?? "—"}
-                      </p>
-
-                      <div className="relative z-[5] mt-auto pt-1 min-w-0">
+                        <div className="relative min-w-0 flex-1">
                         <button
                           type="button"
                           disabled={!canChangeStatus}
@@ -991,6 +1037,28 @@ export default function CandidatsPage() {
                             </div>
                           </div>
                         )}
+                        </div>
+
+                        {canChangeStatus ? (
+                          <Link
+                            href={`/app/entretiens-planifies/planifier?jobId=${app.jobId ?? ""}&candidateId=${app.candidateId ?? ""}&candidateName=${encodeURIComponent(app.candidateName ?? "")}&jobTitle=${encodeURIComponent(app.jobTitle ?? "")}`}
+                            className="btn-primary btn-sm inline-flex shrink-0 justify-center self-center whitespace-nowrap"
+                            aria-label={
+                              hasScheduledInterview
+                                ? ENTRETIEN_BTN_LABEL_MODIFIER
+                                : ENTRETIEN_BTN_LABEL_PLANIFIER
+                            }
+                            title={
+                              hasScheduledInterview
+                                ? ENTRETIEN_BTN_LABEL_MODIFIER
+                                : ENTRETIEN_BTN_LABEL_PLANIFIER
+                            }
+                          >
+                            {hasScheduledInterview
+                              ? ENTRETIEN_BTN_LABEL_MODIFIER
+                              : ENTRETIEN_BTN_LABEL_PLANIFIER}
+                          </Link>
+                        ) : null}
                       </div>
                     </div>
                   </div>

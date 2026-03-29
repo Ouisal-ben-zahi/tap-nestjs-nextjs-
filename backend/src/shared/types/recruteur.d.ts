@@ -46,12 +46,14 @@ export interface RecruiterOverviewStats {
     recentApplications: {
         id: number;
         jobId: number;
+        candidateId: number | null;
         candidateName: string | null;
-    candidateCategory: string | null;
-    candidateAvatarUrl: string | null;
+        candidateCategory: string | null;
+        candidateAvatarUrl: string | null;
         jobTitle: string | null;
         status: string | null;
         validatedAt: string | null;
+        hasScheduledInterview: boolean;
     }[];
     acceptedApplications: {
         id: number;

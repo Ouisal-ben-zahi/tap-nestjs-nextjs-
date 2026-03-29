@@ -646,17 +646,17 @@ export default function EntretiensPlanifiesPage() {
                               className="btn-primary btn-sm inline-flex shrink-0 justify-center whitespace-nowrap"
                               aria-label={
                                 app.hasScheduledInterview
-                                  ? "Modifier la planification"
+                                  ? "Modifier l'entretien"
                                   : "Planifier un entretien"
                               }
                               title={
                                 app.hasScheduledInterview
-                                  ? "Modifier la planification"
+                                  ? "Modifier l'entretien"
                                   : "Planifier un entretien"
                               }
                             >
                               {app.hasScheduledInterview
-                                ? "Modifier la planification"
+                                ? "Modifier l'entretien"
                                 : "Planifier un entretien"}
                             </Link>
                           </div>

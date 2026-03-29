@@ -850,29 +850,35 @@ export default function MatchingPage() {
                 ) : null}
                 {selectedJob ? (
                   <>
-                    {/* Badge score matching — position absolue coin supérieur droit de la carte */}
-                    <div
-                      className="pointer-events-none absolute -top-2 -right-2 z-20 size-[3.75rem] rounded-full p-[2px] shadow-[0_8px_28px_rgba(0,0,0,0.45)] ring-2 ring-white/10 sm:-top-2.5 sm:-right-2.5 sm:size-16 lg:size-[4.25rem]"
-                      style={{
-                        background: `conic-gradient(${selectedJobScoreColor} ${selectedJobScorePct}%, rgba(255,255,255,0.14) ${selectedJobScorePct}% 100%)`,
-                      }}
-                    >
+                    {/* Badge score matching (uniquement mode Match IA, pas « Toutes les offres ») */}
+                    {effectiveViewMode === "match" ? (
                       <div
-                        className={`pointer-events-auto flex size-full items-center justify-center rounded-full ${
-                          isLight ? "bg-white shadow-inner" : "bg-zinc-900/90"
-                        }`}
-                        role="img"
-                        aria-label={`Score de correspondance ${selectedJobScorePct} pour cent`}
+                        className="pointer-events-none absolute -top-2 -right-2 z-20 size-[3.75rem] rounded-full p-[2px] shadow-[0_8px_28px_rgba(0,0,0,0.45)] ring-2 ring-white/10 sm:-top-2.5 sm:-right-2.5 sm:size-16 lg:size-[4.25rem]"
+                        style={{
+                          background: `conic-gradient(${selectedJobScoreColor} ${selectedJobScorePct}%, rgba(255,255,255,0.14) ${selectedJobScorePct}% 100%)`,
+                        }}
                       >
-                        <span
-                          className={`text-[12px] font-bold tabular-nums sm:text-[13px] lg:text-[14px] ${isLight ? "text-zinc-900" : "text-white"}`}
+                        <div
+                          className={`pointer-events-auto flex size-full items-center justify-center rounded-full ${
+                            isLight ? "bg-white shadow-inner" : "bg-zinc-900/90"
+                          }`}
+                          role="img"
+                          aria-label={`Score de correspondance ${selectedJobScorePct} pour cent`}
                         >
-                          {selectedJobScorePct}%
-                        </span>
+                          <span
+                            className={`text-[12px] font-bold tabular-nums sm:text-[13px] lg:text-[14px] ${isLight ? "text-zinc-900" : "text-white"}`}
+                          >
+                            {selectedJobScorePct}%
+                          </span>
+                        </div>
                       </div>
-                    </div>
+                    ) : null}
 
-                    <div className="flex flex-col gap-3 pr-14 sm:pr-16 lg:pr-[4.75rem]">
+                    <div
+                      className={`flex flex-col gap-3 ${
+                        effectiveViewMode === "match" ? "pr-14 sm:pr-16 lg:pr-[4.75rem]" : ""
+                      }`}
+                    >
                       {selectedJob.urgent ? (
                         <span className="w-fit text-[11px] px-2.5 py-1 rounded-full bg-red-500/10 border border-red-500/20 text-red-400">
                           Urgent

@@ -373,7 +373,7 @@ export default function PlannedInterviewsAgendaSection({
                           href={planifierHref}
                           className={`text-[12px] font-medium w-fit mt-0.5 ${isLight ? "text-tap-red hover:text-tap-red/80" : "text-tap-red hover:text-red-300"}`}
                         >
-                          Modifier la planification
+                          Modifier l&apos;entretien
                         </Link>
                       </div>
 

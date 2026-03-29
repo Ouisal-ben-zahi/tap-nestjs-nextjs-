@@ -80,6 +80,8 @@ export type ScheduleRecruiterInterviewPayload = {
   interview_type: 'EN_LIGNE' | 'PRESENTIEL' | 'TELEPHONIQUE' | string;
   interview_date: string; // YYYY-MM-DD
   interview_time: string; // HH:MM
+  /** Obligatoire pour PRESENTIEL — lieu (synchronisé vers le profil entreprise). */
+  interview_address?: string | null;
 };
 
 export type ScheduleRecruiterInterviewResponse = {
@@ -96,6 +98,7 @@ export type RecruiterScheduledInterviewDto = {
   interview_type: string;
   interview_date: string;
   interview_time: string;
+  interview_address?: string | null;
 };
 
 export type RecruiterPlannedInterviewItem = {

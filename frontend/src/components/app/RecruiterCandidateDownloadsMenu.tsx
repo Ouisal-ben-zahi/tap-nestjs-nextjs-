@@ -1,9 +1,10 @@
 "use client";
 
 import { useCallback, useEffect, useRef, useState } from "react";
-import { MoreVertical, Loader2 } from "lucide-react";
+import { MoreVertical, Loader2, Eye } from "lucide-react";
 import { recruteurService } from "@/services/recruteur.service";
 import { useUiStore } from "@/stores/ui";
+import { useRecruiterTalentPanelStore } from "@/stores/recruiter-talent-panel";
 import { getApiErrorMessage } from "@/lib/api-error";
 import { downloadRemoteFile } from "@/lib/download-remote-file";
 import {
@@ -19,8 +20,15 @@ type Props = {
   candidateId: number;
   enabled?: boolean;
   isLight?: boolean;
-  /** Classe z-index du panneau (ex. z-[110] sur carte avec menu statut). */
+  /** Classe z-index du menu déroulant (ex. z-[110] sur carte avec menu statut). */
   menuZIndexClass?: string;
+  /**
+   * `downloads` : menu trois points (CV, Talent Card, portfolio).
+   * `talentPreview` : icône œil — ouvre le panneau Talent Card (comme le clic sur le nom).
+   */
+  variant?: "downloads" | "talentPreview";
+  /** Requis pour `talentPreview` (libellés accessibilité + panneau). */
+  candidateName?: string | null;
 };
 
 export function RecruiterCandidateDownloadsMenu({
@@ -28,11 +36,16 @@ export function RecruiterCandidateDownloadsMenu({
   enabled = true,
   isLight = false,
   menuZIndexClass = "z-[70]",
+  variant = "downloads",
+  candidateName = null,
 }: Props) {
   const [open, setOpen] = useState(false);
   const [loading, setLoading] = useState<DownloadKind | null>(null);
   const rootRef = useRef<HTMLDivElement>(null);
   const addToast = useUiStore((s) => s.addToast);
+  const openTalentPanel = useRecruiterTalentPanelStore((s) => s.openTalentPanel);
+
+  const displayName = String(candidateName ?? "").trim() || "Candidat";
 
   useEffect(() => {
     if (!open) return;
@@ -103,8 +116,39 @@ export function RecruiterCandidateDownloadsMenu({
     ? "border-black/12 bg-black/[0.03] text-black/70 hover:bg-black/[0.08]"
     : "border-white/[0.14] bg-white/[0.04] text-zinc-200 hover:bg-white/[0.08]";
 
+  if (variant === "talentPreview") {
+    return (
+      <div className="relative shrink-0">
+        <button
+          type="button"
+          disabled={!enabled}
+          onClick={() => {
+            if (!enabled || !Number.isFinite(candidateId) || candidateId <= 0) return;
+            openTalentPanel({
+              candidateId,
+              candidateName: displayName,
+            });
+          }}
+          className={`inline-flex size-9 items-center justify-center rounded-full border transition focus:outline-none focus-visible:ring-2 focus-visible:ring-tap-red/50 disabled:cursor-not-allowed disabled:opacity-45 ${baseBtn}`}
+          aria-label={
+            candidateName
+              ? `Voir la Talent Card de ${displayName}`
+              : "Voir la Talent Card du candidat"
+          }
+          title={
+            candidateName
+              ? `Voir la Talent Card de ${displayName}`
+              : "Voir la Talent Card du candidat"
+          }
+        >
+          <Eye size={16} strokeWidth={1.75} />
+        </button>
+      </div>
+    );
+  }
+
   return (
-    <div ref={rootRef} className="relative shrink-0 self-start">
+    <div ref={rootRef} className="relative shrink-0">
       <button
         type="button"
         disabled={!enabled || busy}
