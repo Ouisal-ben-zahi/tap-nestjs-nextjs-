@@ -3168,6 +3168,25 @@ export class DashboardService {
 
     const jobTitle = String((job as { title?: string | null }).title ?? '').trim();
 
+    const flaskBase = this.tryGetFlaskBaseUrl();
+    if (!flaskBase) {
+      return {
+        job_id: jobId,
+        job_title: jobTitle || `Offre #${jobId}`,
+        candidates: [],
+        message:
+          'Matching IA non configuré : définissez FLASK_AI_URL dans le fichier .env à la racine du backend Nest (ex. http://IP_OU_HOTE:5002), enregistrez le fichier et redémarrez le serveur pour charger la variable.',
+      };
+    }
+
+    let flaskOriginForUi = flaskBase;
+    try {
+      const u = new URL(flaskBase);
+      flaskOriginForUi = `${u.protocol}//${u.host}`;
+    } catch {
+      // garder la chaîne brute
+    }
+
     try {
       return await this.callFlaskJson<any>('POST', '/api/recruteur/match-by-offre', {
         job_id: jobId,
@@ -3175,15 +3194,15 @@ export class DashboardService {
         only_postule: Boolean(payload?.only_postule),
       });
     } catch (e: any) {
-      // En dev / si FLASK_AI_URL est absent ou le service IA est arrêté : ne pas casser la page Candidats.
       const msg = String(e?.message ?? e ?? 'Erreur appel Flask');
-      this.logger.warn(`match-by-offre Flask indisponible (job ${jobId}): ${msg}`);
+      this.logger.warn(`match-by-offre Flask indisponible (job ${jobId}, base ${flaskBase}): ${msg}`);
       return {
         job_id: jobId,
         job_title: jobTitle || `Offre #${jobId}`,
         candidates: [],
         message:
-          'Le matching IA est temporairement indisponible (service IA ou FLASK_AI_URL). Aucun candidat affiché pour le moment — réessayez plus tard ou vérifiez la configuration serveur.',
+          `Le matching IA est temporairement indisponible. URL lue depuis le .env du backend (FLASK_AI_URL) : ${flaskOriginForUi}. ` +
+          `Vérifiez que le service Flask écoute bien sur cette adresse, que le pare-feu l’autorise depuis le serveur Nest, puis réessayez. Détail technique : ${msg}`,
       };
     }
   }
