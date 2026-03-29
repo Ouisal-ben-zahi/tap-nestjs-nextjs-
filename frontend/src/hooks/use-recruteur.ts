@@ -265,16 +265,22 @@ export function useUpdateCandidateApplicationStatus() {
 
   return useMutation({
     mutationFn: (params: {
+      applicationId: number;
       jobId: number;
       candidateId: number;
       status: 'EN_COURS' | 'ACCEPTEE' | 'REFUSEE';
     }) => recruteurService.updateCandidateApplicationStatus(params),
-    onSuccess: () => {
-      queryClient.invalidateQueries({ queryKey: ['recruteur', 'overview'] });
+    onSuccess: async () => {
+      await queryClient.invalidateQueries({ queryKey: ['recruteur', 'overview'] });
+      await queryClient.invalidateQueries({ queryKey: ['recruteur', 'planned-interviews'] });
+      addToast({ message: 'Statut de la candidature mis à jour.', type: 'success' });
     },
-    onError: () => {
+    onError: (err) => {
       addToast({
-        message: "Impossible de mettre à jour le statut de la candidature",
+        message: getApiErrorMessage(
+          err,
+          'Impossible de mettre à jour le statut de la candidature',
+        ),
         type: 'error',
       });
     },

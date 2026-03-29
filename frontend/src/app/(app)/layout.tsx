@@ -20,11 +20,16 @@ export default function AppLayout({ children }: { children: React.ReactNode }) {
   const closeRecruiterTalentPanel = useRecruiterTalentPanelStore((s) => s.closeTalentPanel);
   const mainScrollRef = useRef<HTMLElement | null>(null);
 
+  /** Même panneau Talent Card que sur Candidats : aussi sur Entretiens planifiés (et sous-routes). */
+  const recruiterTalentPanelAllowed =
+    pathname.startsWith("/app/candidats") ||
+    pathname.startsWith("/app/entretiens-planifies");
+
   useEffect(() => {
-    if (pathname !== "/app/candidats" && recruiterTalentOpen) {
+    if (!recruiterTalentPanelAllowed && recruiterTalentOpen) {
       closeRecruiterTalentPanel();
     }
-  }, [pathname, recruiterTalentOpen, closeRecruiterTalentPanel]);
+  }, [pathname, recruiterTalentOpen, closeRecruiterTalentPanel, recruiterTalentPanelAllowed]);
 
   useEffect(() => {
     if (!recruiterTalentOpen) return;

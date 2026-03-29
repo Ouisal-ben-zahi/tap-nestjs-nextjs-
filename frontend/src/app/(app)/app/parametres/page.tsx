@@ -5,9 +5,20 @@ import { LogOut, Settings, Eye, EyeOff } from "lucide-react";
 import { useAuth } from "@/hooks/use-auth";
 import { useDashboardTheme } from "@/hooks/use-dashboard-theme";
 import { useCandidatProfile, useUpdateCandidatProfile } from "@/hooks/use-candidat";
+import {
+  useRecruiterCompanyProfile,
+  useUpsertRecruiterCompanyProfile,
+} from "@/hooks/use-recruteur";
 import type { CandidatProfile } from "@/types/candidat";
 import DropdownSelect from "@/components/app/DropdownSelect";
 import { DOMAINE_GROUPS } from "@/constants/domaines";
+import { Skeleton } from "@/components/ui/Skeleton";
+import ErrorState from "@/components/ui/ErrorState";
+import {
+  isValidMoroccoIce,
+  isValidMoroccoMobilePhone,
+  normalizeIceInput,
+} from "@/lib/ma-company-fields";
 
 type SettingsTab = "mon-compte" | "securite";
 
@@ -89,6 +100,8 @@ export default function ParametresPage() {
   const isLight = theme === "light";
   const profileQuery = useCandidatProfile(user?.role === "candidat");
   const updateProfile = useUpdateCandidatProfile();
+  const recruiterProfileQuery = useRecruiterCompanyProfile(user?.role === "recruteur");
+  const upsertRecruiterProfile = useUpsertRecruiterCompanyProfile();
   const [activeTab, setActiveTab] = useState<SettingsTab>("mon-compte");
   const [profileForm, setProfileForm] = useState<Partial<CandidatProfile>>({});
   const [profileError, setProfileError] = useState<string | null>(null);
@@ -101,6 +114,45 @@ export default function ParametresPage() {
   const [saving, setSaving] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [success, setSuccess] = useState<string | null>(null);
+
+  /** Profil entreprise recruteur (même champs que /app/onboarding-recruteur) */
+  const [nomSociete, setNomSociete] = useState("");
+  const [nomContact, setNomContact] = useState("");
+  const [telephoneEntreprise, setTelephoneEntreprise] = useState("");
+  const [emailPersonnelRec, setEmailPersonnelRec] = useState("");
+  const [emailPro, setEmailPro] = useState("");
+  const [ice, setIce] = useState("");
+  const [adresse, setAdresse] = useState("");
+  const [recruiterFieldErrors, setRecruiterFieldErrors] = useState<{
+    telephone?: string;
+    ice?: string;
+  }>({});
+
+  useEffect(() => {
+    if (user?.role !== "recruteur" || !user?.email) return;
+    setEmailPersonnelRec(user.email);
+  }, [user?.role, user?.email]);
+
+  useEffect(() => {
+    if (user?.role !== "recruteur" || !recruiterProfileQuery.isSuccess) return;
+    const p = recruiterProfileQuery.data;
+    if (!p) {
+      setNomSociete("");
+      setNomContact("");
+      setTelephoneEntreprise("");
+      setEmailPro("");
+      setIce("");
+      setAdresse("");
+      return;
+    }
+    setNomSociete(p.nomSociete ?? "");
+    setNomContact(p.nomContact ?? "");
+    setTelephoneEntreprise(p.telephone ?? "");
+    setEmailPersonnelRec(p.emailPersonnel ?? user?.email ?? "");
+    setEmailPro(p.emailPro ?? "");
+    setIce(p.ice ? normalizeIceInput(p.ice) : "");
+    setAdresse(p.adresse ?? "");
+  }, [user?.role, user?.email, recruiterProfileQuery.isSuccess, recruiterProfileQuery.data]);
 
   useEffect(() => {
     if (!profileQuery.data) return;
@@ -226,7 +278,37 @@ export default function ParametresPage() {
     await updateProfile.mutateAsync(payload);
   };
 
+  const handleSaveRecruiterProfile = async (e: React.FormEvent) => {
+    e.preventDefault();
+    if (user?.role !== "recruteur") return;
+    const telOk = isValidMoroccoMobilePhone(telephoneEntreprise);
+    const iceOk = isValidMoroccoIce(ice);
+    if (!telOk || !iceOk) {
+      setRecruiterFieldErrors({
+        telephone: telOk
+          ? undefined
+          : "Numéro invalide : téléphone marocain (+212 5…–8… ou 05…–08…, 9 chiffres après l’indicatif).",
+        ice: iceOk ? undefined : "ICE invalide : exactement 15 chiffres.",
+      });
+      return;
+    }
+    setRecruiterFieldErrors({});
+    const emailPersonnelFinal =
+      user?.email?.trim().toLowerCase() ?? emailPersonnelRec.trim().toLowerCase();
+    await upsertRecruiterProfile.mutateAsync({
+      nom_societe: nomSociete,
+      nom_contact: nomContact,
+      telephone: telephoneEntreprise,
+      email_personnel: emailPersonnelFinal,
+      email_pro: emailPro,
+      ice: ice.replace(/\D/g, ""),
+      adresse,
+    });
+  };
+
   const inputClass = "input-premium";
+  const labelClsRecruiter = `block text-[11px] mb-1.5 ${isLight ? "text-black/70" : "text-white/50"}`;
+  const inputClassRecruiter = `${inputClass} w-full`;
 
   return (
     <div className="max-w-[800px] mx-auto space-y-8">
@@ -236,7 +318,9 @@ export default function ParametresPage() {
           Paramètres
         </h1>
         <p className={`text-[14px] mt-2 font-light max-w-xl ${isLight ? "text-black/60" : "text-white/45"}`}>
-          Gérez la sécurité de votre compte TAP et votre mot de passe.
+          {user?.role === "recruteur"
+            ? "Gérez les informations de votre entreprise et la sécurité de votre compte."
+            : "Gérez la sécurité de votre compte TAP et votre mot de passe."}
         </p>
       </div>
 
@@ -407,6 +491,151 @@ export default function ParametresPage() {
               </div>
             </form>
           )}
+            </div>
+          )}
+
+          {activeTab === "mon-compte" && user?.role === "recruteur" && (
+            <div
+              className={`rounded-2xl p-5 sm:p-6 ${isLight ? "card-luxury-light" : "bg-zinc-900/50 border border-white/[0.06]"}`}
+            >
+              <div className="mb-4">
+                <h2 className={`text-[15px] font-semibold ${isLight ? "text-black" : "text-white"}`}>
+                  Informations personnelles
+                </h2>
+                <p className={`text-[12px] mt-1 ${isLight ? "text-black/60" : "text-white/40"}`}>
+                  Modifiez les informations de votre entreprise (comme à l’inscription), puis enregistrez.
+                </p>
+              </div>
+
+              {recruiterProfileQuery.isLoading ? (
+                <div className="space-y-3 mt-3">
+                  <Skeleton className="h-10 w-full rounded-lg" />
+                  <Skeleton className="h-10 w-full rounded-lg" />
+                  <Skeleton className="h-24 w-full rounded-lg" />
+                </div>
+              ) : recruiterProfileQuery.isError ? (
+                <ErrorState
+                  message="Impossible de charger votre profil entreprise. Réessayez dans un instant."
+                  onRetry={() => recruiterProfileQuery.refetch()}
+                />
+              ) : (
+                <form onSubmit={handleSaveRecruiterProfile} className="space-y-3 mt-3">
+                  <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
+                    <div className="min-w-0">
+                      <label className={labelClsRecruiter}>Nom de la société *</label>
+                      <input
+                        required
+                        value={nomSociete}
+                        onChange={(e) => setNomSociete(e.target.value)}
+                        className={inputClassRecruiter}
+                        placeholder="Ex. TAP SARL"
+                      />
+                    </div>
+
+                    <div className="min-w-0">
+                      <label className={labelClsRecruiter}>Nom du contact *</label>
+                      <input
+                        required
+                        value={nomContact}
+                        onChange={(e) => setNomContact(e.target.value)}
+                        className={inputClassRecruiter}
+                        placeholder="Prénom et nom"
+                      />
+                    </div>
+
+                    <div className="min-w-0">
+                      <label className={labelClsRecruiter}>Téléphone *</label>
+                      <input
+                        required
+                        type="tel"
+                        value={telephoneEntreprise}
+                        onChange={(e) => {
+                          setTelephoneEntreprise(e.target.value);
+                          if (recruiterFieldErrors.telephone)
+                            setRecruiterFieldErrors((f) => ({ ...f, telephone: undefined }));
+                        }}
+                        aria-invalid={Boolean(recruiterFieldErrors.telephone)}
+                        className={`${inputClassRecruiter} ${recruiterFieldErrors.telephone ? "border-red-500/50" : ""}`}
+                        placeholder="+212 6XX XXX XXX ou 06XXXXXXXX"
+                      />
+                      {recruiterFieldErrors.telephone && (
+                        <div className="mt-2 text-[12px] text-red-400 bg-red-500/10 border border-red-500/30 rounded-lg px-3 py-2">
+                          {recruiterFieldErrors.telephone}
+                        </div>
+                      )}
+                    </div>
+
+                    <div className="min-w-0">
+                      <label className={labelClsRecruiter}>ICE *</label>
+                      <input
+                        required
+                        inputMode="numeric"
+                        autoComplete="off"
+                        value={ice}
+                        onChange={(e) => {
+                          setIce(normalizeIceInput(e.target.value));
+                          if (recruiterFieldErrors.ice)
+                            setRecruiterFieldErrors((f) => ({ ...f, ice: undefined }));
+                        }}
+                        aria-invalid={Boolean(recruiterFieldErrors.ice)}
+                        className={`${inputClassRecruiter} ${recruiterFieldErrors.ice ? "border-red-500/50" : ""}`}
+                        placeholder="15 chiffres"
+                      />
+                      {recruiterFieldErrors.ice && (
+                        <div className="mt-2 text-[12px] text-red-400 bg-red-500/10 border border-red-500/30 rounded-lg px-3 py-2">
+                          {recruiterFieldErrors.ice}
+                        </div>
+                      )}
+                    </div>
+
+                    <div className="min-w-0">
+                      <label className={labelClsRecruiter}>Email personnel (compte)</label>
+                      <input
+                        type="email"
+                        value={emailPersonnelRec}
+                        disabled
+                        readOnly
+                        className={`${inputClassRecruiter} cursor-not-allowed opacity-70`}
+                        title="Email lié à votre compte — non modifiable"
+                      />
+                    </div>
+
+                    <div className="min-w-0">
+                      <label className={labelClsRecruiter}>Email professionnel *</label>
+                      <input
+                        required
+                        type="email"
+                        value={emailPro}
+                        onChange={(e) => setEmailPro(e.target.value)}
+                        className={inputClassRecruiter}
+                        placeholder="contact@entreprise.com"
+                      />
+                    </div>
+
+                    <div className="min-w-0 sm:col-span-2">
+                      <label className={labelClsRecruiter}>Adresse *</label>
+                      <textarea
+                        required
+                        rows={3}
+                        value={adresse}
+                        onChange={(e) => setAdresse(e.target.value)}
+                        className={`${inputClassRecruiter} min-h-[88px] resize-none`}
+                        placeholder="Adresse complète du siège ou du bureau"
+                      />
+                    </div>
+                  </div>
+
+                  <div className="flex justify-end pt-2">
+                    <button
+                      type="submit"
+                      disabled={upsertRecruiterProfile.isPending}
+                      className="px-4 py-2 rounded-lg text-[12px] font-semibold bg-tap-red text-white hover:bg-tap-red-hover disabled:opacity-60 transition-colors"
+                    >
+                      {upsertRecruiterProfile.isPending ? "Sauvegarde…" : "Enregistrer"}
+                    </button>
+                  </div>
+                </form>
+              )}
             </div>
           )}
 

@@ -851,7 +851,11 @@ export default function CandidatsPage() {
                     typeof cid === "number" && Number.isFinite(cid) && cid > 0;
                   const isTalentSelected = talentPanel?.candidateId === cid;
                   const normalizedStatus = normalizeRecruiterCandidateStatus(app.status ?? null);
+                  const applicationRowId =
+                    typeof app.id === "number" && Number.isFinite(app.id) ? app.id : Number(app.id);
                   const canChangeStatus =
+                    Number.isFinite(applicationRowId) &&
+                    applicationRowId > 0 &&
                     typeof app.candidateId === "number" &&
                     Number.isFinite(app.candidateId) &&
                     app.candidateId > 0 &&
@@ -860,6 +864,10 @@ export default function CandidatsPage() {
                     app.jobId > 0;
                   const durationLabel = app.validatedAt ? formatRelative(app.validatedAt) : "—";
                   const statusMenuOpen = statusSelectAppId === app.id;
+                  const isStatusUpdatingThisRow =
+                    updateCandidateStatusMutation.isPending &&
+                    updateCandidateStatusMutation.variables?.applicationId === applicationRowId;
+                  const planifierEntretienDisabled = normalizedStatus === "REFUSEE";
                   const hasScheduledInterview =
                     Boolean(app.hasScheduledInterview) ||
                     (typeof app.jobId === "number" &&
@@ -978,18 +986,29 @@ export default function CandidatsPage() {
                         <div className="relative min-w-0 flex-1">
                         <button
                           type="button"
-                          disabled={!canChangeStatus}
+                          disabled={!canChangeStatus || isStatusUpdatingThisRow}
                           onClick={() => {
-                            if (!canChangeStatus) return;
+                            if (!canChangeStatus || isStatusUpdatingThisRow) return;
                             setStatusSelectAppId((current) => (current === app.id ? null : app.id));
                           }}
-                          className={`relative z-[1] w-full max-w-[200px] text-[11px] px-2.5 py-1.5 rounded-full border font-medium inline-flex justify-center ${statusBg(
+                          className={`relative z-[1] w-full max-w-[200px] text-[11px] px-2.5 py-1.5 rounded-full border font-medium inline-flex items-center justify-center gap-1.5 ${statusBg(
                             normalizedStatus,
                           )} disabled:cursor-not-allowed disabled:opacity-60 hover:opacity-95 transition`}
                           aria-label="Modifier le statut de la candidature"
-                          title="Cliquer pour modifier"
+                          title={
+                            isStatusUpdatingThisRow
+                              ? "Mise à jour du statut en cours…"
+                              : "Cliquer pour modifier"
+                          }
                         >
-                          {recruiterCandidateStatusLabel(normalizedStatus)}
+                          {isStatusUpdatingThisRow ? (
+                            <>
+                              <Loader2 className="size-3.5 shrink-0 animate-spin" aria-hidden />
+                              <span>Mise à jour…</span>
+                            </>
+                          ) : (
+                            recruiterCandidateStatusLabel(normalizedStatus)
+                          )}
                         </button>
 
                         {statusMenuOpen && (
@@ -1007,11 +1026,14 @@ export default function CandidatsPage() {
                                   <button
                                     key={opt.status}
                                     type="button"
+                                    onMouseDown={(e) => e.preventDefault()}
                                     onClick={() => {
                                       if (!canChangeStatus) return;
                                       if (!app.jobId || app.candidateId == null) return;
+                                      setStatusSelectAppId(null);
                                       updateCandidateStatusMutation.mutate(
                                         {
+                                          applicationId: applicationRowId,
                                           jobId: app.jobId,
                                           candidateId: app.candidateId,
                                           status: opt.status,
@@ -1023,7 +1045,7 @@ export default function CandidatsPage() {
                                         },
                                       );
                                     }}
-                                    disabled={!canChangeStatus || updateCandidateStatusMutation.isPending}
+                                    disabled={!canChangeStatus || isStatusUpdatingThisRow}
                                     className={`w-full flex items-center justify-center px-4 py-3 text-[13px] transition-colors focus:outline-none focus-visible:outline-none border border-white/[0.08] rounded-none ${
                                       active
                                         ? statusBg(opt.status)
@@ -1040,24 +1062,36 @@ export default function CandidatsPage() {
                         </div>
 
                         {canChangeStatus ? (
-                          <Link
-                            href={`/app/entretiens-planifies/planifier?jobId=${app.jobId ?? ""}&candidateId=${app.candidateId ?? ""}&candidateName=${encodeURIComponent(app.candidateName ?? "")}&jobTitle=${encodeURIComponent(app.jobTitle ?? "")}`}
-                            className="btn-primary btn-sm inline-flex shrink-0 justify-center self-center whitespace-nowrap"
-                            aria-label={
-                              hasScheduledInterview
+                          planifierEntretienDisabled ? (
+                            <span
+                              className="btn-primary btn-sm inline-flex shrink-0 justify-center self-center whitespace-nowrap opacity-45 cursor-not-allowed pointer-events-none select-none"
+                              aria-disabled="true"
+                              title="Impossible de planifier un entretien pour une candidature refusée."
+                            >
+                              {hasScheduledInterview
                                 ? ENTRETIEN_BTN_LABEL_MODIFIER
-                                : ENTRETIEN_BTN_LABEL_PLANIFIER
-                            }
-                            title={
-                              hasScheduledInterview
+                                : ENTRETIEN_BTN_LABEL_PLANIFIER}
+                            </span>
+                          ) : (
+                            <Link
+                              href={`/app/entretiens-planifies/planifier?jobId=${app.jobId ?? ""}&candidateId=${app.candidateId ?? ""}&candidateName=${encodeURIComponent(app.candidateName ?? "")}&jobTitle=${encodeURIComponent(app.jobTitle ?? "")}`}
+                              className="btn-primary btn-sm inline-flex shrink-0 justify-center self-center whitespace-nowrap"
+                              aria-label={
+                                hasScheduledInterview
+                                  ? ENTRETIEN_BTN_LABEL_MODIFIER
+                                  : ENTRETIEN_BTN_LABEL_PLANIFIER
+                              }
+                              title={
+                                hasScheduledInterview
+                                  ? ENTRETIEN_BTN_LABEL_MODIFIER
+                                  : ENTRETIEN_BTN_LABEL_PLANIFIER
+                              }
+                            >
+                              {hasScheduledInterview
                                 ? ENTRETIEN_BTN_LABEL_MODIFIER
-                                : ENTRETIEN_BTN_LABEL_PLANIFIER
-                            }
-                          >
-                            {hasScheduledInterview
-                              ? ENTRETIEN_BTN_LABEL_MODIFIER
-                              : ENTRETIEN_BTN_LABEL_PLANIFIER}
-                          </Link>
+                                : ENTRETIEN_BTN_LABEL_PLANIFIER}
+                            </Link>
+                          )
                         ) : null}
                       </div>
                     </div>

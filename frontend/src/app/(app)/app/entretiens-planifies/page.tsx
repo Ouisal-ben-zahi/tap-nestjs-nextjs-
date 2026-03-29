@@ -2,7 +2,11 @@
 
 import { useState, useMemo, useEffect } from "react";
 import { useAuth } from "@/hooks/use-auth";
-import { useRecruteurOverview, useRecruiterPlannedInterviews } from "@/hooks/use-recruteur";
+import {
+  useRecruteurOverview,
+  useRecruiterPlannedInterviews,
+  useUpdateCandidateApplicationStatus,
+} from "@/hooks/use-recruteur";
 import { useDashboardTheme } from "@/hooks/use-dashboard-theme";
 import EmptyState from "@/components/ui/EmptyState";
 import ErrorState from "@/components/ui/ErrorState";
@@ -24,9 +28,12 @@ import {
   ChevronLeft,
   ChevronRight,
   Filter,
+  Eye,
+  Loader2,
 } from "lucide-react";
-import { formatRelative } from "@/lib/utils";
+import { formatRelative, statusBg } from "@/lib/utils";
 import Link from "next/link";
+import { useRecruiterTalentPanelStore } from "@/stores/recruiter-talent-panel";
 
 const INTERVIEW_TYPES = [
   { label: "Visio", icon: Video, color: "text-blue-400", bg: "bg-blue-500/10 border-blue-500/20" },
@@ -55,6 +62,10 @@ const PLANIFICATION_FILTRE_OPTIONS = [
 
 type PlanificationFiltre = (typeof PLANIFICATION_FILTRE_OPTIONS)[number]["value"];
 
+/** Même libellés que `/app/candidats` (section Candidatures). */
+const ENTRETIEN_BTN_LABEL_PLANIFIER = "Planifier un entretien";
+const ENTRETIEN_BTN_LABEL_MODIFIER = "Modifier l'entretien";
+
 function getInitials(name: string | null | undefined) {
   const parts = String(name ?? "")
     .trim()
@@ -65,14 +76,39 @@ function getInitials(name: string | null | undefined) {
   return `${first}${second}`.toUpperCase() || "C";
 }
 
+function normalizeRecruiterCandidateStatus(
+  status: string | null | undefined,
+): "EN_COURS" | "ACCEPTEE" | "REFUSEE" {
+  const s = status?.toLowerCase?.() ?? "";
+  if (s === "acceptee" || s === "accepté" || s === "accepted" || s === "active") return "ACCEPTEE";
+  if (s === "refusee" || s === "refusé" || s === "refused" || s === "rejected") return "REFUSEE";
+  return "EN_COURS";
+}
+
+function recruiterCandidateStatusLabel(status: "EN_COURS" | "ACCEPTEE" | "REFUSEE"): string {
+  switch (status) {
+    case "ACCEPTEE":
+      return "Acceptée";
+    case "REFUSEE":
+      return "Refusée";
+    case "EN_COURS":
+    default:
+      return "En cours";
+  }
+}
+
 export default function EntretiensPlanifiesPage() {
   const { user } = useAuth();
   const isRecruteur = user?.role === "recruteur";
   const overviewQuery = useRecruteurOverview();
   const plannedInterviewsQuery = useRecruiterPlannedInterviews(isRecruteur);
+  const updateCandidateStatusMutation = useUpdateCandidateApplicationStatus();
   const theme = useDashboardTheme();
   const isLight = theme === "light";
+  const talentPanel = useRecruiterTalentPanelStore((s) => s.talentPanel);
+  const openTalentPanel = useRecruiterTalentPanelStore((s) => s.openTalentPanel);
 
+  const [entretienStatusSelectAppId, setEntretienStatusSelectAppId] = useState<number | null>(null);
   const [nameQuery, setNameQuery] = useState("");
   const [jobTitleQuery, setJobTitleQuery] = useState<string>("all");
   const [planificationFilter, setPlanificationFilter] = useState<PlanificationFiltre>("all");
@@ -84,16 +120,48 @@ export default function EntretiensPlanifiesPage() {
   const recentApps = overview?.recentApplications || [];
   const interviewCandidates = overview?.acceptedApplications || [];
 
+  /** Candidats avec statut Acceptée ET entretien déjà planifié (aligné section Candidatures). */
+  const acceptedScheduledOnly = useMemo(
+    () =>
+      interviewCandidates.filter((c) => {
+        if (!Boolean(c.hasScheduledInterview)) return false;
+        return normalizeRecruiterCandidateStatus(c.status ?? null) === "ACCEPTEE";
+      }),
+    [interviewCandidates],
+  );
+
+  const plannedInterviewJobCandidateKeys = useMemo(() => {
+    const s = new Set<string>();
+    for (const row of plannedInterviewsQuery.data?.plannedInterviews ?? []) {
+      if (
+        typeof row.jobId === "number" &&
+        Number.isFinite(row.jobId) &&
+        row.jobId > 0 &&
+        typeof row.candidateId === "number" &&
+        Number.isFinite(row.candidateId) &&
+        row.candidateId > 0
+      ) {
+        s.add(`${row.jobId}:${row.candidateId}`);
+      }
+    }
+    return s;
+  }, [plannedInterviewsQuery.data?.plannedInterviews]);
+
+  const anyScheduledInterview = useMemo(
+    () => interviewCandidates.some((c) => Boolean(c.hasScheduledInterview)),
+    [interviewCandidates],
+  );
+
   const jobTitles = useMemo(
     () =>
       Array.from(
         new Set(
-          interviewCandidates
+          acceptedScheduledOnly
             .map((c) => c.jobTitle)
             .filter((v): v is string => typeof v === "string" && v.trim().length > 0),
         ),
       ).sort((a, b) => a.localeCompare(b, "fr", { sensitivity: "base" })),
-    [interviewCandidates],
+    [acceptedScheduledOnly],
   );
 
   useEffect(() => {
@@ -111,6 +179,20 @@ export default function EntretiensPlanifiesPage() {
     return () => document.removeEventListener("mousedown", onDocMouseDown);
   }, [entretienJobFilterOpen, planifFilterOpen]);
 
+  useEffect(() => {
+    if (entretienStatusSelectAppId == null) return;
+    const onDocMouseDown = (e: MouseEvent) => {
+      const el = e.target;
+      if (!(el instanceof Node)) return;
+      const root = document.querySelector("[data-entretien-accepted-status-menus]");
+      if (root && !root.contains(el)) {
+        setEntretienStatusSelectAppId(null);
+      }
+    };
+    document.addEventListener("mousedown", onDocMouseDown);
+    return () => document.removeEventListener("mousedown", onDocMouseDown);
+  }, [entretienStatusSelectAppId]);
+
   const hasActiveEntretienFilters =
     Boolean(nameQuery.trim()) || jobTitleQuery !== "all" || planificationFilter !== "all";
 
@@ -118,7 +200,7 @@ export default function EntretiensPlanifiesPage() {
     PLANIFICATION_FILTRE_OPTIONS.find((o) => o.value === planificationFilter)?.label ??
     "Tous les candidats";
 
-  const filteredInterviewCandidates = interviewCandidates.filter((c) => {
+  const filteredInterviewCandidates = acceptedScheduledOnly.filter((c) => {
     const q = nameQuery.trim().toLowerCase();
     if (q) {
       const cn = String(c.candidateName ?? "").toLowerCase();
@@ -565,6 +647,18 @@ export default function EntretiensPlanifiesPage() {
                 title="Aucun candidat accepté"
                 description="Acceptez des candidatures pour planifier des entretiens avec les meilleurs profils."
               />
+            ) : !anyScheduledInterview ? (
+              <EmptyState
+                icon={<Clock className="w-10 h-10" />}
+                title="Aucun entretien planifié"
+                description="Dès qu’un entretien est planifié pour un candidat accepté, il apparaîtra ici."
+              />
+            ) : acceptedScheduledOnly.length === 0 ? (
+              <EmptyState
+                icon={<Filter className="w-10 h-10" />}
+                title="Aucun candidat avec statut Acceptée"
+                description="Cette liste affiche uniquement les candidats au statut « Acceptée » avec un entretien déjà planifié. Passez le statut à « Acceptée » depuis la page Candidats si besoin."
+              />
             ) : filteredInterviewCandidates.length === 0 ? (
               <EmptyState
                 icon={<Filter className="w-10 h-10" />}
@@ -573,9 +667,40 @@ export default function EntretiensPlanifiesPage() {
               />
             ) : (
               <>
-                <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4">
+                <div
+                  className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4"
+                  data-entretien-accepted-status-menus
+                >
                   {paginatedEntretiens.map((app) => {
                     const durationLabel = app.validatedAt ? formatRelative(app.validatedAt) : "—";
+                    const cid = app.candidateId;
+                    const canOpenTalent =
+                      typeof cid === "number" && Number.isFinite(cid) && cid > 0;
+                    const isTalentSelected = talentPanel?.candidateId === cid;
+                    const normalizedStatus = normalizeRecruiterCandidateStatus(app.status ?? null);
+                    const applicationRowId =
+                      typeof app.id === "number" && Number.isFinite(app.id) ? app.id : Number(app.id);
+                    const canChangeStatus =
+                      Number.isFinite(applicationRowId) &&
+                      applicationRowId > 0 &&
+                      typeof app.candidateId === "number" &&
+                      Number.isFinite(app.candidateId) &&
+                      app.candidateId > 0 &&
+                      typeof app.jobId === "number" &&
+                      Number.isFinite(app.jobId) &&
+                      app.jobId > 0;
+                    const statusMenuOpen = entretienStatusSelectAppId === app.id;
+                    const isStatusUpdatingThisRow =
+                      updateCandidateStatusMutation.isPending &&
+                      updateCandidateStatusMutation.variables?.applicationId === applicationRowId;
+                    const planifierEntretienDisabled = normalizedStatus === "REFUSEE";
+                    const hasScheduledInterview =
+                      Boolean(app.hasScheduledInterview) ||
+                      (typeof app.jobId === "number" &&
+                        app.jobId > 0 &&
+                        typeof app.candidateId === "number" &&
+                        app.candidateId > 0 &&
+                        plannedInterviewJobCandidateKeys.has(`${app.jobId}:${app.candidateId}`));
                     return (
                       <div
                         key={app.id}
@@ -583,6 +708,16 @@ export default function EntretiensPlanifiesPage() {
                           isLight
                             ? "card-luxury-light hover:shadow-[0_12px_30px_rgba(0,0,0,0.18)]"
                             : "hover:brightness-105 shadow-[0_18px_40px_rgba(0,0,0,0.25)]"
+                        } ${
+                          isTalentSelected
+                            ? "border-2 border-[#CA1B28] shadow-[0_0_24px_rgba(202,27,40,0.25)]"
+                            : ""
+                        } ${
+                          statusMenuOpen
+                            ? "z-[100]"
+                            : isTalentSelected
+                              ? "z-10"
+                              : ""
                         }`}
                       >
                         <div className="pointer-events-none absolute inset-0 opacity-100 group-hover:opacity-0 transition-opacity duration-500 rounded-2xl overflow-hidden">
@@ -590,75 +725,222 @@ export default function EntretiensPlanifiesPage() {
                           <div className="absolute -bottom-24 -left-20 w-56 h-56 rounded-full bg-tap-red/10 blur-2xl opacity-40" />
                         </div>
 
-                        <div className="relative z-[1] flex flex-col gap-3 flex-1 min-h-0 min-w-0">
-                          <div className="flex items-start gap-3 min-w-0">
-                            <div className="w-12 h-12 rounded-full overflow-hidden border border-white/[0.10] bg-white/[0.04] flex items-center justify-center shrink-0">
-                              {app.candidateAvatarUrl ? (
-                                <img
-                                  src={app.candidateAvatarUrl}
-                                  alt={app.candidateName ?? "Avatar candidat"}
-                                  className="w-full h-full object-cover"
-                                />
-                              ) : (
-                                <span
-                                  className={`text-[13px] font-semibold ${
-                                    isLight ? "text-black/60" : "text-white/70"
+                        <div className="relative z-[2] flex flex-col gap-3 flex-1 min-h-0 min-w-0">
+                          <div className="flex min-w-0 items-stretch gap-2">
+                            <button
+                              type="button"
+                              disabled={!canOpenTalent}
+                              onClick={() => {
+                                if (!canOpenTalent) return;
+                                openTalentPanel({
+                                  candidateId: cid as number,
+                                  candidateName: app.candidateName?.trim() || "Candidat",
+                                });
+                              }}
+                              className="min-w-0 flex-1 flex items-start gap-3 text-left rounded-lg cursor-pointer disabled:cursor-not-allowed disabled:opacity-50 focus:outline-none focus-visible:ring-2 focus-visible:ring-tap-red/50"
+                              aria-label={
+                                app.candidateName
+                                  ? `Voir la Talent Card de ${app.candidateName}`
+                                  : "Voir la Talent Card du candidat"
+                              }
+                              title={
+                                app.candidateName
+                                  ? `Voir la Talent Card de ${app.candidateName}`
+                                  : "Voir la Talent Card du candidat"
+                              }
+                            >
+                              <div className="w-12 h-12 rounded-full overflow-hidden border border-white/[0.10] bg-white/[0.04] flex items-center justify-center shrink-0">
+                                {app.candidateAvatarUrl ? (
+                                  <img
+                                    src={app.candidateAvatarUrl}
+                                    alt={app.candidateName ?? "Avatar candidat"}
+                                    className="w-full h-full object-cover"
+                                  />
+                                ) : (
+                                  <span
+                                    className={`text-[13px] font-semibold ${
+                                      isLight ? "text-black/60" : "text-white/70"
+                                    }`}
+                                  >
+                                    {getInitials(app.candidateName)}
+                                  </span>
+                                )}
+                              </div>
+                              <div className="min-w-0 flex-1 flex flex-col gap-1 pr-1">
+                                <p
+                                  className={`text-[14px] font-semibold leading-snug line-clamp-2 ${
+                                    isLight ? "text-black" : "text-white"
                                   }`}
                                 >
-                                  {getInitials(app.candidateName)}
-                                </span>
-                              )}
+                                  {app.candidateName ?? "—"}
+                                </p>
+                                <p
+                                  className={`text-[12px] leading-snug line-clamp-2 ${
+                                    isLight ? "text-black/65" : "text-white/55"
+                                  }`}
+                                  title={app.jobTitle ?? undefined}
+                                >
+                                  {app.jobTitle ?? "—"}
+                                </p>
+                              </div>
+                            </button>
+                            <div className="flex min-w-0 shrink-0 flex-col items-end self-stretch pl-0.5">
+                              <p
+                                className={`max-w-[7rem] text-right text-[11px] leading-tight tabular-nums ${
+                                  isLight ? "text-black/45" : "text-white/40"
+                                }`}
+                                title={durationLabel}
+                              >
+                                {durationLabel}
+                              </p>
+                              <div className="flex min-h-0 flex-1 flex-col items-end justify-center">
+                                <button
+                                  type="button"
+                                  disabled={!canOpenTalent}
+                                  onClick={(e) => {
+                                    e.stopPropagation();
+                                    if (!canOpenTalent) return;
+                                    openTalentPanel({
+                                      candidateId: cid as number,
+                                      candidateName: app.candidateName?.trim() || "Candidat",
+                                    });
+                                  }}
+                                  className={`inline-flex size-10 shrink-0 items-center justify-center rounded-full border transition disabled:cursor-not-allowed disabled:opacity-45 ${
+                                    isLight
+                                      ? "border-black/10 bg-black/[0.03] text-black/70 hover:bg-black/[0.08]"
+                                      : "border-white/[0.14] bg-white/[0.04] text-zinc-200 hover:bg-white/[0.08]"
+                                  }`}
+                                  aria-label={
+                                    app.candidateName
+                                      ? `Voir la Talent Card de ${app.candidateName}`
+                                      : "Voir la Talent Card du candidat"
+                                  }
+                                  title="Voir la Talent Card"
+                                >
+                                  <Eye size={16} strokeWidth={1.75} />
+                                </button>
+                              </div>
                             </div>
-                            <p
-                              className={`text-[14px] font-semibold leading-snug line-clamp-2 min-w-0 flex-1 ${
-                                isLight ? "text-black" : "text-white"
-                              }`}
-                            >
-                              {app.candidateName}
-                            </p>
                           </div>
 
                           <div
-                            className={`flex items-start justify-between gap-3 border-t pt-3 ${
+                            className={`relative z-[5] mt-auto flex min-w-0 flex-row items-start justify-between gap-2 border-t pt-3 ${
                               isLight ? "border-black/10" : "border-white/[0.08]"
                             }`}
                           >
-                            <p
-                              className={`text-[12px] leading-snug line-clamp-2 min-w-0 flex-1 ${
-                                isLight ? "text-black/65" : "text-white/55"
-                              }`}
-                            >
-                              {app.jobTitle ?? "—"}
-                            </p>
-                            <p
-                              className={`text-[11px] shrink-0 text-right leading-tight max-w-[42%] pt-0.5 ${
-                                isLight ? "text-black/45" : "text-white/40"
-                              }`}
-                              title={durationLabel}
-                            >
-                              {durationLabel}
-                            </p>
-                          </div>
+                            <div className="relative min-w-0 flex-1">
+                              <button
+                                type="button"
+                                disabled={!canChangeStatus || isStatusUpdatingThisRow}
+                                onClick={() => {
+                                  if (!canChangeStatus || isStatusUpdatingThisRow) return;
+                                  setEntretienStatusSelectAppId((current) =>
+                                    current === app.id ? null : app.id,
+                                  );
+                                }}
+                                className={`relative z-[1] w-full max-w-[200px] text-[11px] px-2.5 py-1.5 rounded-full border font-medium inline-flex items-center justify-center gap-1.5 ${statusBg(
+                                  normalizedStatus,
+                                )} disabled:cursor-not-allowed disabled:opacity-60 hover:opacity-95 transition`}
+                                aria-label="Modifier le statut de la candidature"
+                                title={
+                                  isStatusUpdatingThisRow
+                                    ? "Mise à jour du statut en cours…"
+                                    : "Cliquer pour modifier"
+                                }
+                              >
+                                {isStatusUpdatingThisRow ? (
+                                  <>
+                                    <Loader2 className="size-3.5 shrink-0 animate-spin" aria-hidden />
+                                    <span>Mise à jour…</span>
+                                  </>
+                                ) : (
+                                  recruiterCandidateStatusLabel(normalizedStatus)
+                                )}
+                              </button>
 
-                          <div className="mt-auto flex justify-end pt-1">
-                            <Link
-                              href={`/app/entretiens-planifies/planifier?jobId=${app.jobId ?? ""}&candidateId=${app.candidateId ?? ""}&candidateName=${encodeURIComponent(app.candidateName ?? "")}&jobTitle=${encodeURIComponent(app.jobTitle ?? "")}`}
-                              className="btn-primary btn-sm inline-flex shrink-0 justify-center whitespace-nowrap"
-                              aria-label={
-                                app.hasScheduledInterview
-                                  ? "Modifier l'entretien"
-                                  : "Planifier un entretien"
-                              }
-                              title={
-                                app.hasScheduledInterview
-                                  ? "Modifier l'entretien"
-                                  : "Planifier un entretien"
-                              }
-                            >
-                              {app.hasScheduledInterview
-                                ? "Modifier l'entretien"
-                                : "Planifier un entretien"}
-                            </Link>
+                              {statusMenuOpen && (
+                                <div className="absolute left-0 top-full mt-2 w-full min-w-[180px] max-w-[240px] bg-[#050505]/95 border border-white/[0.08] rounded-2xl shadow-xl shadow-black/40 backdrop-blur-xl overflow-hidden z-[20]">
+                                  <div>
+                                    {(
+                                      [
+                                        { status: "EN_COURS" as const, label: "En cours" },
+                                        { status: "ACCEPTEE" as const, label: "Acceptée" },
+                                        { status: "REFUSEE" as const, label: "Refusée" },
+                                      ] as const
+                                    ).map((opt) => {
+                                      const active = opt.status === normalizedStatus;
+                                      return (
+                                        <button
+                                          key={opt.status}
+                                          type="button"
+                                          onMouseDown={(e) => e.preventDefault()}
+                                          onClick={() => {
+                                            if (!canChangeStatus) return;
+                                            if (!app.jobId || app.candidateId == null) return;
+                                            setEntretienStatusSelectAppId(null);
+                                            updateCandidateStatusMutation.mutate(
+                                              {
+                                                applicationId: applicationRowId,
+                                                jobId: app.jobId,
+                                                candidateId: app.candidateId,
+                                                status: opt.status,
+                                              },
+                                              {
+                                                onSuccess: () => {
+                                                  setEntretienStatusSelectAppId(null);
+                                                  void plannedInterviewsQuery.refetch();
+                                                },
+                                              },
+                                            );
+                                          }}
+                                          disabled={!canChangeStatus || isStatusUpdatingThisRow}
+                                          className={`w-full flex items-center justify-center px-4 py-3 text-[13px] transition-colors focus:outline-none focus-visible:outline-none border border-white/[0.08] rounded-none ${
+                                            active
+                                              ? statusBg(opt.status)
+                                              : "text-white/80 hover:text-white hover:bg-white/[0.06] bg-white/[0.02]"
+                                          } ${!canChangeStatus ? "opacity-50 cursor-not-allowed" : ""}`}
+                                        >
+                                          {opt.label}
+                                        </button>
+                                      );
+                                    })}
+                                  </div>
+                                </div>
+                              )}
+                            </div>
+
+                            {canChangeStatus ? (
+                              planifierEntretienDisabled ? (
+                                <span
+                                  className="btn-primary btn-sm inline-flex shrink-0 justify-center self-center whitespace-nowrap opacity-45 cursor-not-allowed pointer-events-none select-none"
+                                  aria-disabled="true"
+                                  title="Impossible de planifier un entretien pour une candidature refusée."
+                                >
+                                  {hasScheduledInterview
+                                    ? ENTRETIEN_BTN_LABEL_MODIFIER
+                                    : ENTRETIEN_BTN_LABEL_PLANIFIER}
+                                </span>
+                              ) : (
+                                <Link
+                                  href={`/app/entretiens-planifies/planifier?jobId=${app.jobId ?? ""}&candidateId=${app.candidateId ?? ""}&candidateName=${encodeURIComponent(app.candidateName ?? "")}&jobTitle=${encodeURIComponent(app.jobTitle ?? "")}`}
+                                  className="btn-primary btn-sm inline-flex shrink-0 justify-center self-center whitespace-nowrap"
+                                  aria-label={
+                                    hasScheduledInterview
+                                      ? ENTRETIEN_BTN_LABEL_MODIFIER
+                                      : ENTRETIEN_BTN_LABEL_PLANIFIER
+                                  }
+                                  title={
+                                    hasScheduledInterview
+                                      ? ENTRETIEN_BTN_LABEL_MODIFIER
+                                      : ENTRETIEN_BTN_LABEL_PLANIFIER
+                                  }
+                                >
+                                  {hasScheduledInterview
+                                    ? ENTRETIEN_BTN_LABEL_MODIFIER
+                                    : ENTRETIEN_BTN_LABEL_PLANIFIER}
+                                </Link>
+                              )
+                            ) : null}
                           </div>
                         </div>
                       </div>

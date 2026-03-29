@@ -295,8 +295,10 @@ export interface RecruiterValidateCandidatePayload {
 }
 
 export interface RecruiterUpdateCandidateStatusPayload {
-  job_id: number;
-  candidate_id: number;
+  /** Id `candidate_postule` — préféré pour éviter tout décalage job_id / candidate_id. */
+  application_id?: number;
+  job_id?: number;
+  candidate_id?: number;
   status: 'EN_COURS' | 'ACCEPTEE' | 'REFUSEE';
 }
 
@@ -530,6 +532,22 @@ export class DashboardService {
       .from('candidates')
       .update({ image_minio_url: null })
       .eq('id', candidateId);
+  }
+
+  /** Normalise id numériques (Supabase / PostgREST peut renvoyer des bigint en string). */
+  private parsePositiveInt(value: unknown): number | null {
+    if (typeof value === 'number' && Number.isFinite(value) && value > 0) {
+      const t = Math.trunc(value);
+      return t > 0 ? t : null;
+    }
+    if (typeof value === 'string') {
+      const s = value.trim();
+      if (/^\d+$/.test(s)) {
+        const n = Number(s);
+        if (Number.isSafeInteger(n) && n > 0) return n;
+      }
+    }
+    return null;
   }
 
   private async resolveUserId(
@@ -3374,18 +3392,95 @@ export class DashboardService {
       throw new BadRequestException('userId invalide');
     }
 
-    const jobId = Number(payload?.job_id);
-    const candidateId = Number(payload?.candidate_id);
     const status = payload?.status;
-
-    if (!jobId || Number.isNaN(jobId)) {
-      throw new BadRequestException("Le champ 'job_id' est requis");
-    }
-    if (!candidateId || Number.isNaN(candidateId)) {
-      throw new BadRequestException("Le champ 'candidate_id' est requis");
-    }
     if (!status || !['EN_COURS', 'ACCEPTEE', 'REFUSEE'].includes(status)) {
       throw new BadRequestException("Le champ 'status' est invalide");
+    }
+
+    const nowIso = new Date().toISOString();
+    const nextValidate = status === 'ACCEPTEE';
+    /** `validated_at` est NOT NULL en base : ne jamais envoyer null dans l'UPDATE. */
+    const statusPatch = (): { status: typeof status; validate: boolean; validated_at?: string } => ({
+      status,
+      validate: nextValidate,
+      ...(status === 'ACCEPTEE' ? { validated_at: nowIso } : {}),
+    });
+
+    const applicationId = this.parsePositiveInt(
+      (payload as { application_id?: unknown })?.application_id,
+    );
+
+    if (applicationId) {
+      const { data: postule, error: readErr } = await this.supabase
+        .from('candidate_postule')
+        .select('id, job_id')
+        .eq('id', applicationId)
+        .maybeSingle();
+
+      if (readErr) {
+        throw new BadRequestException(
+          readErr.message || "Erreur lors de la lecture de la candidature",
+        );
+      }
+      if (!postule?.id) {
+        throw new BadRequestException('Candidature introuvable');
+      }
+
+      const jobIdFromRow = this.parsePositiveInt(postule.job_id);
+      if (!jobIdFromRow) {
+        throw new BadRequestException('Candidature invalide (offre)');
+      }
+
+      const { data: job, error: jobError } = await this.supabase
+        .from('jobs')
+        .select('id')
+        .eq('id', jobIdFromRow)
+        .eq('user_id', userId)
+        .limit(1)
+        .maybeSingle();
+
+      if (jobError) {
+        throw new BadRequestException(
+          jobError.message || "Erreur lors de la mise à jour de la candidature",
+        );
+      }
+      if (!job) {
+        throw new BadRequestException('Offre introuvable pour ce recruteur');
+      }
+
+      const { data: updated, error: updateError } = await this.supabase
+        .from('candidate_postule')
+        .update(statusPatch())
+        .eq('id', applicationId)
+        .select('id, status, validate, validated_at')
+        .maybeSingle();
+
+      if (updateError) {
+        throw new BadRequestException(
+          updateError.message || 'Erreur lors de la mise à jour de la candidature',
+        );
+      }
+      if (!updated?.id) {
+        throw new BadRequestException('Candidature introuvable');
+      }
+
+      return {
+        success: true,
+        applicationId: Number(updated.id),
+        status: updated.status as RecruiterUpdateCandidateStatusPayload['status'],
+        validate: Boolean(updated.validate),
+        validatedAt: (updated.validated_at as string) ?? null,
+      };
+    }
+
+    const jobId = this.parsePositiveInt(payload?.job_id);
+    const candidateId = this.parsePositiveInt(payload?.candidate_id);
+
+    if (!jobId) {
+      throw new BadRequestException("Le champ 'job_id' ou 'application_id' est requis");
+    }
+    if (!candidateId) {
+      throw new BadRequestException("Le champ 'candidate_id' est requis");
     }
 
     // Security: ensure recruiter can only update on their own jobs.
@@ -3406,17 +3501,9 @@ export class DashboardService {
       throw new BadRequestException('Offre introuvable pour ce recruteur');
     }
 
-    const nowIso = new Date().toISOString();
-    const nextValidate = status === 'ACCEPTEE';
-    const nextValidatedAt = status === 'ACCEPTEE' ? nowIso : null;
-
     const { data: updated, error: updateError } = await this.supabase
       .from('candidate_postule')
-      .update({
-        status,
-        validate: nextValidate,
-        validated_at: nextValidatedAt,
-      })
+      .update(statusPatch())
       .eq('job_id', jobId)
       .eq('candidate_id', candidateId)
       .select('id, status, validate, validated_at')
@@ -4238,8 +4325,13 @@ export class DashboardService {
     }
 
     const nowIso = new Date().toISOString();
+    /**
+     * Ne pas écraser un statut choisi explicitement par le recruteur sur /app/candidats.
+     * Sinon chaque refetch overview après mutation réimpose ACCEPTEE dès qu’un entretien est planifié.
+     */
     const needSync = (postuleRows ?? []).filter((r: any) => {
       const st = String(r?.status ?? '').toUpperCase();
+      if (st === 'REFUSEE' || st === 'EN_COURS') return false;
       return st !== 'ACCEPTEE' || r?.validate !== true;
     });
 
@@ -4319,13 +4411,16 @@ export class DashboardService {
       const count = apps.length;
       totalApplications += count;
 
+      const jobIdNum = this.parsePositiveInt(job.id);
+
       for (const app of apps) {
-        const cId =
-          typeof app.candidate_id === 'number' ? (app.candidate_id as number) : null;
+        const cId = this.parsePositiveInt(app.candidate_id);
+        const appId = this.parsePositiveInt(app.id);
+        if (!appId || !jobIdNum) continue;
         if (cId !== null) candidateIds.add(cId);
         allApplications.push({
-          id: app.id as number,
-          jobId: job.id as number,
+          id: appId,
+          jobId: jobIdNum,
           validatedAt: (app.validated_at as string) ?? null,
           status: (app.status as string) ?? null,
           candidateId: cId,

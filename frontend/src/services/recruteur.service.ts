@@ -225,6 +225,7 @@ export const recruteurService = {
       .then((r) => r.data),
 
   updateCandidateApplicationStatus: (params: {
+    applicationId: number;
     jobId: number;
     candidateId: number;
     status: 'EN_COURS' | 'ACCEPTEE' | 'REFUSEE';
@@ -237,6 +238,7 @@ export const recruteurService = {
         validate: boolean;
         validatedAt: string | null;
       }>('/dashboard/recruteur/candidatures/status', {
+        application_id: params.applicationId,
         job_id: params.jobId,
         candidate_id: params.candidateId,
         status: params.status,
