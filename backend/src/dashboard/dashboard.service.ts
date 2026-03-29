@@ -264,6 +264,8 @@ export interface PublicJobItem {
   skills: any[] | null;
   languages: any[] | null;
   score?: number | null;
+  /** Pour filtrage côté client (matching candidat) ; absent sur anciennes réponses. */
+  status?: string | null;
 }
 
 export interface ApplyJobPayload {
@@ -404,6 +406,33 @@ export class DashboardService {
     }
 
     return candidate as { id: number; created_at: string };
+  }
+
+  /**
+   * true si l’offre ne doit pas apparaître côté candidat (liste matching / catalogue).
+   * Tolère la casse et les accents ; null / chaîne vide → considéré actif (lignes legacy).
+   */
+  private isJobInactiveForCandidatListe(status: unknown): boolean {
+    if (status == null) return false;
+    const t = String(status).trim();
+    if (t === '') return false;
+    const u = t
+      .toUpperCase()
+      .normalize('NFD')
+      .replace(/[\u0300-\u036f]/g, '');
+    const exact = new Set([
+      'INACTIVE',
+      'INACTIF',
+      'CLOSED',
+      'ARCHIVED',
+      'FERME',
+      'FERMEE',
+      'DESACTIVE',
+      'DISABLED',
+    ]);
+    if (exact.has(u)) return true;
+    if (u.includes('INACTIVE') || u.includes('INACTIF')) return true;
+    return false;
   }
 
   /**
@@ -4446,11 +4475,47 @@ export class DashboardService {
       skills: Array.isArray(row?.skills) ? row.skills : null,
       languages: Array.isArray(row?.languages) ? row.languages : null,
       score: typeof row?.score === 'number' ? row.score : null,
+      status: (row?.status as string | null) ?? null,
       }))
       .filter((job) => typeof job.score === 'number' && job.score > 0.7);
 
     if (jobsFromAi.length > 0) {
-      return { jobs: jobsFromAi };
+      const ids = [
+        ...new Set(
+          jobsFromAi
+            .map((j) => j.id)
+            .filter((id) => typeof id === 'number' && Number.isFinite(id) && id > 0),
+        ),
+      ];
+      let activeAiJobs = jobsFromAi;
+      if (ids.length > 0) {
+        const { data: statusRows, error: statusErr } = await this.supabase
+          .from('jobs')
+          .select('id, status')
+          .in('id', ids);
+        if (!statusErr && Array.isArray(statusRows)) {
+          const statusById = new Map<number, string | null>();
+          for (const r of statusRows as { id: number; status?: string | null }[]) {
+            statusById.set(Number(r.id), (r.status as string | null) ?? null);
+          }
+          const allowedIds = new Set(
+            (statusRows as { id: number; status?: string | null }[])
+              .filter((r) => !this.isJobInactiveForCandidatListe(r?.status))
+              .map((r) => Number(r.id)),
+          );
+          activeAiJobs = jobsFromAi
+            .filter((j) => allowedIds.has(Number(j.id)))
+            .map((j) => ({
+              ...j,
+              status: statusById.get(Number(j.id)) ?? null,
+            }));
+        } else {
+          activeAiJobs = [];
+        }
+      }
+      if (activeAiJobs.length > 0) {
+        return { jobs: activeAiJobs };
+      }
     }
 
     // Fallback métier: si l'IA ne retourne rien, proposer les offres actives
@@ -4478,7 +4543,7 @@ export class DashboardService {
       .select(
         'id, title, categorie_profil, created_at, urgent, location_type, niveau_attendu, experience_min, presence_sur_site, localisation, reason, main_mission, tasks_other, disponibilite, salary_min, salary_max, contrat, niveau_seniorite, entreprise, phone, tasks, skills, languages, status',
       )
-      .eq('status', 'ACTIVE')
+      .or('status.eq.ACTIVE,status.is.null')
       .order('created_at', { ascending: false });
 
     if (jobsErr) {
@@ -4494,6 +4559,7 @@ export class DashboardService {
 
     const candidateNorm = norm(candidateCategory);
     const fallbackJobs: PublicJobItem[] = (jobsRaw ?? [])
+      .filter((row: any) => !this.isJobInactiveForCandidatListe(row?.status))
       .filter((row: any) => norm(row?.categorie_profil) === candidateNorm)
       .slice(0, 20)
       .map((row: any) => ({
@@ -4524,6 +4590,7 @@ export class DashboardService {
         languages: Array.isArray(row?.languages) ? row.languages : null,
         // Fallback "matching domaine" conservé, avec un score conforme au seuil UI.
         score: 0.72,
+        status: (row?.status as string | null) ?? null,
       }));
 
     return { jobs: fallbackJobs };
@@ -4604,6 +4671,7 @@ export class DashboardService {
       .select(
         'id, title, categorie_profil, created_at, urgent, location_type, niveau_attendu, experience_min, presence_sur_site, reason, main_mission, tasks_other, disponibilite, salary_min, salary_max, contrat, niveau_seniorite, entreprise, phone, tasks, skills, languages, status',
       )
+      .or('status.eq.ACTIVE,status.is.null')
       .order('created_at', { ascending: false });
 
     if (error) {
@@ -4612,7 +4680,9 @@ export class DashboardService {
       );
     }
 
-    const jobs: PublicJobItem[] = (data ?? []).map((row: any) => ({
+    const jobs: PublicJobItem[] = (data ?? [])
+      .filter((row: any) => !this.isJobInactiveForCandidatListe(row?.status))
+      .map((row: any) => ({
       id: row.id as number,
       title: (row.title as string) ?? null,
       categorie_profil: (row.categorie_profil as string) ?? null,
@@ -4651,6 +4721,7 @@ export class DashboardService {
       tasks: Array.isArray(row.tasks) ? (row.tasks as any[]) : null,
       skills: Array.isArray(row.skills) ? (row.skills as any[]) : null,
       languages: Array.isArray(row.languages) ? (row.languages as any[]) : null,
+      status: (row.status as string | null) ?? null,
     }));
 
     return { jobs };
@@ -4665,6 +4736,19 @@ export class DashboardService {
     }
 
     const jobId = Number(payload.jobId);
+
+    const { data: jobForApply, error: jobForApplyErr } = await this.supabase
+      .from('jobs')
+      .select('id, status')
+      .eq('id', jobId)
+      .maybeSingle();
+
+    if (jobForApplyErr || !jobForApply) {
+      throw new BadRequestException("Offre introuvable");
+    }
+    if (this.isJobInactiveForCandidatListe((jobForApply as { status?: string | null }).status)) {
+      throw new BadRequestException("Cette offre n'est plus disponible");
+    }
 
     // Ensure we have a candidate row for this user
     const candidate = await this.getOrCreateCandidate(userId);

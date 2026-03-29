@@ -37,6 +37,8 @@ export type CandidatDashboardJob = {
   tasks: unknown[] | null;
   skills: unknown[] | null;
   languages: unknown[] | null;
+  /** Présent si le backend l’expose ; sert à masquer les offres inactives côté client. */
+  status?: string | null;
 };
 
 type DashboardJobsResponse = { jobs: CandidatDashboardJob[] };

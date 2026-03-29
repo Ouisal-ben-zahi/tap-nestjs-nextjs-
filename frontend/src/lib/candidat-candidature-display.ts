@@ -9,10 +9,8 @@ export function candidatureStatusLabel(status: string | null | undefined): strin
   return t || "En cours";
 }
 
-export function applicationLocationLine(app: Pick<Application, "company" | "jobLocationType" | "jobCategory">): string {
-  const parts = [app.jobLocationType, app.company, app.jobCategory]
-    .map((x) => (typeof x === "string" ? x.trim() : ""))
-    .filter(Boolean);
-  if (!parts.length) return "Localisation non précisée";
-  return [...new Set(parts)].join(" · ");
+/** Localisation courte pour les cartes candidat : type de lieu uniquement (pas d’entreprise ni catégorie). */
+export function applicationLocationLine(app: Pick<Application, "jobLocationType">): string {
+  const t = typeof app.jobLocationType === "string" ? app.jobLocationType.trim() : "";
+  return t || "Localisation non précisée";
 }

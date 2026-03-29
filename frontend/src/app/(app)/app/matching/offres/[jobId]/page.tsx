@@ -11,6 +11,7 @@ import { Skeleton } from "@/components/ui/Skeleton";
 import { useDashboardTheme } from "@/hooks/use-dashboard-theme";
 import { ArrowLeft, Briefcase, Clock, MapPin } from "lucide-react";
 import { formatRelative } from "@/lib/utils";
+import { filterActiveJobsForCandidatMatching } from "@/lib/candidat-job-matching-filter";
 
 export default function OffreDetailCandidatPage() {
   const router = useRouter();
@@ -38,6 +39,11 @@ export default function OffreDetailCandidatPage() {
   const shortPortfolioFiles = useMemo(
     () => portfolioFiles.filter((f: any) => f.type !== "long"),
     [portfolioFiles],
+  );
+
+  const visibleJobs = useMemo(
+    () => filterActiveJobsForCandidatMatching(jobsQuery.data?.jobs ?? []),
+    [jobsQuery.data?.jobs],
   );
 
   useEffect(() => {
@@ -82,7 +88,7 @@ export default function OffreDetailCandidatPage() {
     return <ErrorState onRetry={() => jobsQuery.refetch()} />;
   }
 
-  const job = jobsQuery.data?.jobs?.find((item) => item.id === jobId);
+  const job = visibleJobs.find((item) => item.id === jobId);
 
   if (!job) {
     return (

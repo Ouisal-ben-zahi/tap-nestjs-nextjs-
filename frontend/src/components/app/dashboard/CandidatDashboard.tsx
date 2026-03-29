@@ -1,11 +1,9 @@
 "use client";
 
-import Link from "next/link";
 import { useEffect, useId, useMemo, useState } from "react";
 import { useCandidatStats, useCandidatApplications } from "@/hooks/use-candidat";
 import ErrorState from "@/components/ui/ErrorState";
-import { StatCardSkeleton, Skeleton } from "@/components/ui/Skeleton";
-import { formatRelative, statusBg } from "@/lib/utils";
+import { StatCardSkeleton } from "@/components/ui/Skeleton";
 import {
   FileText,
   Calendar,

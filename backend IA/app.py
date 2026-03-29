@@ -515,18 +515,47 @@ def match_offers_for_candidate(db_candidate_id: int):
         if candidate_embedding is None:
             return jsonify({"jobs": [], "error": "Embedding candidat indisponible"}), 500
 
-        # 3) Récupérer toutes les offres avec leurs embeddings depuis Supabase
+        # 3) Récupérer les offres actives avec embedding (exclut INACTIVE côté Supabase + filet Python)
         try:
-            jobs_resp = supabase_db.table("jobs").select("*").execute()
+            jobs_resp = (
+                supabase_db.table("jobs")
+                .select("*")
+                .eq("status", "ACTIVE")
+                .execute()
+            )
             jobs_rows = jobs_resp.data or []
         except Exception as e:
             print(f"⚠️ Erreur lecture jobs Supabase: {e}")
             return jsonify({"jobs": [], "error": "Impossible de récupérer les offres"}), 500
 
+        def _job_row_is_active_for_candidate(row: dict) -> bool:
+            s = row.get("status")
+            if s is None:
+                return True
+            u = str(s).strip().upper()
+            if u == "" or u == "ACTIVE":
+                return True
+            inactive_markers = (
+                "INACTIVE",
+                "INACTIF",
+                "CLOSED",
+                "ARCHIVED",
+                "FERME",
+                "DESACTIVE",
+                "DISABLED",
+            )
+            if u in inactive_markers:
+                return False
+            if "INACTIVE" in u or "INACTIF" in u:
+                return False
+            return True
+
         # 4) Calculer les similarités
         scored_jobs = []
         for r in jobs_rows:
             job = dict(r)
+            if not _job_row_is_active_for_candidate(job):
+                continue
             job_embedding = parse_embedding(job.get("embedding"))
             if not job_embedding:
                 continue

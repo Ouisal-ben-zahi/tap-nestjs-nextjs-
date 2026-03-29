@@ -19,12 +19,25 @@ import { Users, MapPin, Sparkles, FileText, CheckCircle2, Calendar, Bookmark, Ar
 import { formatRelative } from "@/lib/utils";
 import { useDashboardTheme } from "@/hooks/use-dashboard-theme";
 import DropdownSelect from "@/components/app/DropdownSelect";
+import { filterActiveJobsForCandidatMatching } from "@/lib/candidat-job-matching-filter";
 
 export default function MatchingPage() {
   const router = useRouter();
   const { isCandidat, isHydrated } = useAuth();
   const enabled = Boolean(isCandidat && isHydrated);
-  const [viewMode, setViewMode] = useState<"all" | "match">("match");
+  /** Par défaut : catalogue complet (« Toutes »). `?view=match` force le matching IA au chargement. */
+  const [viewMode, setViewMode] = useState<"all" | "match">("all");
+
+  const setViewModeWithUrl = (mode: "all" | "match") => {
+    setViewMode(mode);
+    router.replace(`/app/matching?view=${mode}`, { scroll: false });
+  };
+
+  useEffect(() => {
+    const v = new URLSearchParams(window.location.search).get("view");
+    if (v === "match") setViewMode("match");
+    else if (v === "all") setViewMode("all");
+  }, []);
   const filtersOpen = true;
   const [nameQuery, setNameQuery] = useState("");
   const [countryQuery, setCountryQuery] = useState("all");
@@ -64,24 +77,27 @@ export default function MatchingPage() {
   const hasProfile = stats?.candidateId !== null && stats?.candidateId !== undefined;
   const matchingJobs = jobsQuery.data?.jobs ?? [];
   const allJobs = publicJobsQuery.data?.jobs ?? [];
+  const matchingJobsActive = useMemo(
+    () => filterActiveJobsForCandidatMatching(matchingJobs),
+    [matchingJobs],
+  );
+  const allJobsActive = useMemo(() => filterActiveJobsForCandidatMatching(allJobs), [allJobs]);
   const effectiveViewMode = !hasCvs && viewMode === "match" ? "all" : viewMode;
   /** Match IA : offres du matching ; si l’IA ne renvoie rien mais des offres publiques existent → fallback (toutes les offres). */
   const usingFallbackAllJobs =
-    effectiveViewMode === "match" && matchingJobs.length === 0 && allJobs.length > 0;
+    effectiveViewMode === "match" && matchingJobsActive.length === 0 && allJobsActive.length > 0;
   const jobsSectionLoading =
     effectiveViewMode !== "match"
       ? publicJobsQuery.isLoading
-      : jobsQuery.isLoading || (matchingJobs.length === 0 && publicJobsQuery.isLoading);
+      : jobsQuery.isLoading || (matchingJobsActive.length === 0 && publicJobsQuery.isLoading);
   const jobsSectionError =
     effectiveViewMode !== "match"
       ? publicJobsQuery.isError
       : jobsQuery.isError && publicJobsQuery.isError;
-  const displayedJobs =
-    effectiveViewMode === "all"
-      ? allJobs
-      : matchingJobs.length > 0
-        ? matchingJobs
-        : allJobs;
+  const displayedJobs = useMemo(() => {
+    if (effectiveViewMode === "all") return allJobsActive;
+    return matchingJobsActive.length > 0 ? matchingJobsActive : allJobsActive;
+  }, [effectiveViewMode, allJobsActive, matchingJobsActive]);
   const appliedJobIds = new Set(
     (applicationsQuery.data?.applications ?? [])
       .map((a) => a.jobId)
@@ -603,7 +619,7 @@ export default function MatchingPage() {
               >
                 <button
                   type="button"
-                  onClick={() => setViewMode("all")}
+                  onClick={() => setViewModeWithUrl("all")}
                   className={`min-w-0 flex-1 rounded-full px-3 py-2.5 text-[11px] font-semibold uppercase tracking-[0.12em] transition ${
                     viewMode === "all"
                       ? isLight
@@ -619,7 +635,7 @@ export default function MatchingPage() {
                 </button>
                 <button
                   type="button"
-                  onClick={() => setViewMode("match")}
+                  onClick={() => setViewModeWithUrl("match")}
                   className={`min-w-0 flex-1 rounded-full px-3 py-2.5 text-[11px] font-semibold uppercase tracking-[0.12em] transition ${
                     viewMode === "match"
                       ? isLight
@@ -639,7 +655,7 @@ export default function MatchingPage() {
 
           {(effectiveViewMode !== "match"
             ? publicJobsQuery.isLoading
-            : jobsQuery.isLoading || (matchingJobs.length === 0 && publicJobsQuery.isLoading)) ? (
+            : jobsQuery.isLoading || (matchingJobsActive.length === 0 && publicJobsQuery.isLoading)) ? (
             <div className="space-y-3">
               {Array.from({ length: 4 }).map((_, i) => (
                 <Skeleton key={i} className="h-20 w-full" />

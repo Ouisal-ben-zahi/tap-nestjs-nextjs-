@@ -31,8 +31,10 @@ export default function MesCandidaturesPage() {
     });
   }, [applications]);
 
-  const themedCardClass =
-    "group card-animated-border relative overflow-hidden rounded-2xl border border-white/[0.08] bg-[#020001] shadow-[0_10px_28px_rgba(0,0,0,0.45)] hover:bg-[linear-gradient(180deg,rgba(202,27,40,0.08)_0%,rgba(10,10,10,0.96)_30%,rgba(10,10,10,0.96)_100%)] hover:border-tap-red/15 transition-all duration-500";
+  /** Même base que les cartes de la liste gauche `/app/matching` (offres). */
+  const listOfferCardClass = isLight
+    ? "bg-[#020001] border-white/[0.08] hover:border-tap-red/20 hover:shadow-[0_12px_40px_rgba(0,0,0,0.45),0_0_18px_rgba(202,27,40,0.10)]"
+    : "bg-[#020001] border-white/[0.08] shadow-[0_10px_28px_rgba(0,0,0,0.45)] hover:bg-[linear-gradient(180deg,rgba(202,27,40,0.08)_0%,rgba(10,10,10,0.96)_30%,rgba(10,10,10,0.96)_100%)] hover:border-tap-red/15 hover:shadow-[0_12px_40px_rgba(0,0,0,0.45),0_0_18px_rgba(202,27,40,0.10)]";
 
   return (
     <div className="max-w-[min(100%,1440px)] mx-auto px-1 sm:px-0">
@@ -53,9 +55,9 @@ export default function MesCandidaturesPage() {
       </div>
 
       {appsQuery.isLoading ? (
-        <div className="grid grid-cols-1 gap-4 sm:grid-cols-2 lg:grid-cols-3">
+        <div className="grid grid-cols-1 gap-3 sm:gap-4 sm:grid-cols-2 lg:grid-cols-3">
           {Array.from({ length: 6 }).map((_, i) => (
-            <Skeleton key={i} className="h-44 w-full rounded-2xl" />
+            <Skeleton key={i} className="h-40 w-full rounded-2xl" />
           ))}
         </div>
       ) : appsQuery.isError ? (
@@ -75,87 +77,81 @@ export default function MesCandidaturesPage() {
           }
         />
       ) : (
-        <div className="grid grid-cols-1 gap-4 sm:grid-cols-2 lg:grid-cols-3">
+        <div className="grid grid-cols-1 gap-3 sm:gap-4 sm:grid-cols-2 lg:grid-cols-3">
           {sortedApplications.map((app) => {
             const durationLabel = app.validatedAt ? formatRelative(app.validatedAt) : "—";
             const locationLabel = applicationLocationLine(app);
+            const categoryLine = app.jobCategory?.trim() || "Catégorie non précisée";
+
             return (
               <div
                 key={app.id}
-                className={`${themedCardClass} relative flex min-h-[188px] flex-col p-4 transition-all duration-300 hover:-translate-y-0.5 sm:p-5 ${
-                  isLight
-                    ? "card-luxury-light hover:shadow-[0_12px_30px_rgba(0,0,0,0.18)]"
-                    : "hover:shadow-[0_18px_45px_rgba(0,0,0,0.35)]"
-                }`}
+                className={`group relative card-animated-border rounded-2xl overflow-hidden border p-4 sm:p-5 lg:p-6 transform-gpu will-change-transform transition-all duration-300 hover:-translate-y-0.5 w-full ${listOfferCardClass}`}
               >
-                <div className="pointer-events-none absolute inset-0 opacity-100 transition-opacity duration-500 group-hover:opacity-0">
-                  <div className="absolute -right-10 -top-16 h-40 w-40 rounded-full bg-white/5 blur-2xl" />
-                  <div className="absolute -bottom-16 -left-12 h-44 w-44 rounded-full bg-tap-red/10 blur-2xl opacity-40" />
-                </div>
+                {!isLight && (
+                  <div className="pointer-events-none absolute inset-0 opacity-100 group-hover:opacity-0 transition-opacity duration-500">
+                    <div className="absolute -top-16 -right-8 w-48 h-48 rounded-full bg-white/5 blur-2xl" />
+                    <div className="absolute -bottom-12 -left-8 w-56 h-56 rounded-full bg-tap-red/10 blur-2xl opacity-40" />
+                  </div>
+                )}
 
-                <div className="relative z-[1] flex w-full min-w-0 items-start justify-between gap-3">
-                  <h2 className="min-w-0 flex-1 text-left text-[14px] font-semibold leading-snug line-clamp-2">
-                    <Link
-                      href={`/app/mes-candidatures/${app.id}`}
-                      className={`transition hover:underline ${
-                        isLight ? "text-black hover:text-tap-red" : "text-white/95 hover:text-tap-red"
-                      }`}
-                      title="Voir le détail de la candidature"
-                    >
-                      {app.jobTitle ?? "Offre sans titre"}
-                    </Link>
-                  </h2>
-                  <span
-                    className={`shrink-0 text-right text-[11px] tabular-nums leading-snug pt-0.5 ${
-                      isLight ? "text-black/45" : "text-white/40"
+                <div className="relative flex flex-col gap-0 min-w-0">
+                  <div className="flex flex-row items-stretch justify-between gap-3 sm:gap-4 min-w-0">
+                    <div className="min-w-0 flex-1">
+                      <h3 className={`text-[15px] sm:text-[17px] font-semibold uppercase truncate ${isLight ? "text-black" : "text-white"}`}>
+                        <Link
+                          href={`/app/mes-candidatures/${app.id}`}
+                          className={`transition hover:underline ${isLight ? "text-black hover:text-tap-red" : "text-white hover:text-tap-red"}`}
+                          title="Voir le détail de la candidature"
+                        >
+                          {app.jobTitle ?? "Offre sans titre"}
+                        </Link>
+                      </h3>
+                      <p className={`text-[11px] sm:text-[12px] mt-0.5 truncate ${isLight ? "text-black/65" : "text-white/50"}`}>
+                        {categoryLine}
+                      </p>
+                      <p
+                        className={`text-[11px] sm:text-[12px] mt-0.5 inline-flex items-center gap-1 min-w-0 ${isLight ? "text-black/70" : "text-white/55"}`}
+                      >
+                        <MapPin size={12} className="shrink-0" aria-hidden />
+                        <span className="truncate">{locationLabel}</span>
+                      </p>
+                    </div>
+                    <div className="flex flex-col items-end shrink-0 gap-0.5 pt-0.5">
+                      <span
+                        className={`text-[10px] sm:text-[11px] whitespace-nowrap ${isLight ? "text-black/50" : "text-white/35"}`}
+                        title={app.validatedAt ?? undefined}
+                      >
+                        {durationLabel}
+                      </span>
+                    </div>
+                  </div>
+
+                  <div
+                    className={`relative mt-3 flex min-w-0 items-center justify-between gap-3 border-t pt-3 ${
+                      isLight ? "border-white/[0.08]" : "border-white/[0.08]"
                     }`}
-                    title={app.validatedAt ?? undefined}
                   >
-                    {durationLabel}
-                  </span>
-                </div>
-
-                <p
-                  className={`relative z-[1] mt-2 flex min-w-0 items-start gap-1.5 text-left text-[12px] leading-snug ${
-                    isLight ? "text-black/65" : "text-white/55"
-                  }`}
-                >
-                  <MapPin size={14} className="mt-0.5 shrink-0 opacity-75" aria-hidden />
-                  <span className="min-w-0 line-clamp-2" title={locationLabel}>
-                    {locationLabel}
-                  </span>
-                </p>
-
-                <div
-                  className={`relative z-[1] mt-auto flex w-full min-w-0 items-center justify-between gap-3 border-t pt-3 ${
-                    isLight ? "border-black/10" : "border-white/[0.08]"
-                  }`}
-                >
-                  <span
-                    className={`inline-flex max-w-[min(100%,58%)] shrink-0 truncate rounded-full border px-2.5 py-1 text-[10px] font-medium ${statusBg(
-                      app.status ?? "Inconnu",
-                    )}`}
-                    title={candidatureStatusLabel(app.status)}
-                  >
-                    {candidatureStatusLabel(app.status)}
-                  </span>
-                  {app.jobId ? (
-                    <Link
-                      href={`/app/matching/offres/${app.jobId}`}
-                      className={`inline-flex shrink-0 items-center gap-1 text-right text-[11px] font-semibold transition ${
-                        isLight ? "text-tap-red hover:text-tap-red/90" : "text-tap-red hover:text-red-400"
-                      }`}
-                    >
-                      Voir l&apos;offre
-                      <ArrowRight size={12} strokeWidth={2} aria-hidden />
-                    </Link>
-                  ) : (
                     <span
-                      className={`shrink-0 text-right text-[11px] ${isLight ? "text-black/35" : "text-white/30"}`}
+                      className={`inline-flex max-w-[58%] shrink truncate rounded-full border px-2.5 py-1 text-[10px] font-medium ${statusBg(
+                        app.status ?? "Inconnu",
+                      )}`}
+                      title={candidatureStatusLabel(app.status)}
                     >
-                      —
+                      {candidatureStatusLabel(app.status)}
                     </span>
-                  )}
+                    {app.jobId ? (
+                      <Link
+                        href={`/app/matching/offres/${app.jobId}`}
+                        className="inline-flex shrink-0 items-center gap-1 text-[11px] font-medium text-[#CA1B28] whitespace-nowrap transition hover:text-red-400"
+                      >
+                        Voir l&apos;offre
+                        <ArrowRight size={12} aria-hidden />
+                      </Link>
+                    ) : (
+                      <span className={`shrink-0 text-[11px] ${isLight ? "text-black/35" : "text-white/30"}`}>—</span>
+                    )}
+                  </div>
                 </div>
               </div>
             );
