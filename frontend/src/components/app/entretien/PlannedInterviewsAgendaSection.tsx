@@ -318,8 +318,8 @@ export default function PlannedInterviewsAgendaSection({
       ) : null}
 
       <div className="grid grid-cols-1 lg:grid-cols-12 gap-6 lg:gap-8 lg:items-start">
-        {/* Gauche : liste ; sur mobile : au-dessus du calendrier (même ordre que candidat) */}
-        <div className="lg:col-span-7 flex flex-col gap-3 min-w-0">
+        {/* Desktop : liste à gauche (7), agenda à droite (5). Mobile : agenda d’abord, puis liste (`order`). */}
+        <div className="order-2 flex min-w-0 flex-col gap-3 lg:order-none lg:col-span-7">
           <div className={showAll ? "max-h-[min(520px,70vh)] overflow-y-auto pr-1 space-y-3" : "space-y-3"}>
             {visibleList.map((item) => {
               const meta = getModeMeta(item.interviewType);
@@ -528,7 +528,12 @@ export default function PlannedInterviewsAgendaSection({
           </div>
         </div>
 
-        <InterviewAgendaCalendarPanel items={items} isLight={isLight} variant={variant} />
+        <InterviewAgendaCalendarPanel
+          items={items}
+          isLight={isLight}
+          variant={variant}
+          gridClassName="order-1 lg:order-none lg:col-span-5 lg:sticky lg:top-24 self-start"
+        />
       </div>
     </div>
   );

@@ -381,13 +381,13 @@ export default function EntretiensPlanifiesPage() {
             </div>
 
             {plannedInterviewsQuery.isLoading ? (
-              <div className="grid grid-cols-1 lg:grid-cols-12 gap-6 lg:gap-8 lg:items-start">
-                <div className="lg:col-span-7 space-y-3">
+              <div className="grid grid-cols-1 gap-6 lg:grid-cols-12 lg:gap-8 lg:items-start">
+                <Skeleton className="order-1 h-[380px] w-full rounded-2xl lg:order-none lg:col-span-5" />
+                <div className="order-2 space-y-3 lg:order-none lg:col-span-7">
                   {Array.from({ length: 4 }).map((_, i) => (
                     <Skeleton key={i} className="h-[104px] w-full rounded-2xl" />
                   ))}
                 </div>
-                <Skeleton className="lg:col-span-5 h-[380px] w-full rounded-2xl" />
               </div>
             ) : plannedInterviewsQuery.isError ? (
               <p className={`text-[13px] ${isLight ? "text-red-700" : "text-red-400"}`}>

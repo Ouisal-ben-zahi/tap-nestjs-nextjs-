@@ -1,6 +1,6 @@
 "use client";
 
-import { useEffect, useMemo, useState } from "react";
+import { useEffect, useMemo, useState, type ReactNode } from "react";
 import { useRouter } from "next/navigation";
 import {
   useRecruteurJob,
@@ -20,6 +20,7 @@ import {
   CircleSlash2,
   Share2,
   Trash2,
+  SlidersHorizontal,
 } from "lucide-react";
 import { formatRelative } from "@/lib/utils";
 import DropdownSelect from "@/components/app/DropdownSelect";
@@ -99,9 +100,12 @@ function shareJobOfferLink(jobId: number, title: string) {
 
 export default function RecruiterMesOffresSection({
   onEditJob,
+  filterActions,
 }: {
   /** Ouvre le formulaire « Modifier l’offre » sur la page parente (/app/offres) */
   onEditJob?: (jobId: number) => void;
+  /** Ex. bouton « Nouvelle offre » à droite de la barre de filtrage */
+  filterActions?: ReactNode;
 } = {}) {
   const router = useRouter();
   const theme = useDashboardTheme();
@@ -114,6 +118,23 @@ export default function RecruiterMesOffresSection({
   const [cityQuery, setCityQuery] = useState("all");
   const [selectedJobId, setSelectedJobId] = useState<number | null>(null);
   const [deleteConfirmJobId, setDeleteConfirmJobId] = useState<number | null>(null);
+  /** Mobile : panneau filtres replié par défaut */
+  const [mobileFiltersOpen, setMobileFiltersOpen] = useState(false);
+  /** lg+ : liste + panneau détail inline ; sous lg : détail sur /app/offres/[id] */
+  const [isLg, setIsLg] = useState(false);
+
+  useEffect(() => {
+    if (typeof window === "undefined") return;
+    const mq = window.matchMedia("(min-width: 1024px)");
+    const apply = () => setIsLg(mq.matches);
+    apply();
+    mq.addEventListener("change", apply);
+    return () => mq.removeEventListener("change", apply);
+  }, []);
+
+  useEffect(() => {
+    if (!isLg) setSelectedJobId(null);
+  }, [isLg]);
 
   const allJobs = jobsQuery.data?.jobs ?? [];
 
@@ -217,7 +238,32 @@ export default function RecruiterMesOffresSection({
   return (
     <div className="mb-10">
       <div className="mb-5 p-4">
-        <div className="grid grid-cols-1 gap-3 md:grid-cols-3">
+        {/* Mobile : icône filtres (gauche) + nouvelle offre (droite), sans fond ni bordure — le formulaire s’ouvre en dessous */}
+        <div className="mb-3 flex md:hidden items-center justify-between gap-3">
+          <button
+            type="button"
+            onClick={() => setMobileFiltersOpen((v) => !v)}
+            aria-expanded={mobileFiltersOpen}
+            aria-controls="recruiter-offres-filters"
+            aria-label={mobileFiltersOpen ? "Masquer les filtres" : "Afficher les filtres"}
+            className={`-m-2 flex h-10 w-10 shrink-0 items-center justify-center rounded-lg transition-colors ${
+              isLight
+                ? "text-black/55 hover:bg-black/[0.06] hover:text-black"
+                : "text-white/55 hover:bg-white/[0.06] hover:text-white"
+            }`}
+          >
+            <SlidersHorizontal size={22} strokeWidth={1.75} aria-hidden />
+          </button>
+          {filterActions ? (
+            <div className="flex min-w-0 flex-1 justify-end">{filterActions}</div>
+          ) : null}
+        </div>
+
+        <div
+          id="recruiter-offres-filters"
+          className={`flex flex-col gap-4 ${mobileFiltersOpen ? "" : "hidden"} md:flex`}
+        >
+            <div className="grid grid-cols-1 gap-3 md:grid-cols-3">
           <div className="flex flex-col gap-1 md:col-span-1">
             <label
               className={`mb-1 block text-[10px] font-semibold uppercase tracking-[2px] ${isLight ? "text-black/45" : "text-white/40"}`}
@@ -235,7 +281,8 @@ export default function RecruiterMesOffresSection({
               placeholder="Ex: Développeur"
             />
           </div>
-          <div className="flex flex-col gap-1 md:col-span-1">
+          <div className="flex flex-row gap-2 md:contents">
+            <div className="flex min-w-0 flex-1 flex-col gap-1 md:col-span-1">
             <label
               className={`mb-1 block text-[10px] font-semibold uppercase tracking-[2px] ${isLight ? "text-black/45" : "text-white/40"}`}
             >
@@ -256,9 +303,29 @@ export default function RecruiterMesOffresSection({
               isLight={isLight}
             />
           </div>
+            <div className="flex min-w-0 flex-1 flex-col gap-1 md:hidden">
+              <label
+                className={`mb-1 block text-[10px] font-semibold uppercase tracking-[2px] ${isLight ? "text-black/45" : "text-white/40"}`}
+              >
+                Ville
+              </label>
+              <DropdownSelect
+                value={cityQuery}
+                onChange={(value) => setCityQuery(value)}
+                placeholder="Toutes"
+                groups={[
+                  {
+                    options: [{ value: "all", label: "Toutes" }, ...cities.map((c) => ({ value: c, label: c }))],
+                  },
+                ]}
+                disabled={countryQuery === "all"}
+                isLight={isLight}
+              />
+            </div>
+          </div>
           <div className="md:col-span-1">
-            <div className="flex items-end gap-2">
-              <div className="flex flex-1 flex-col gap-1">
+            <div className="flex flex-col gap-2 md:flex-row md:items-end md:gap-2">
+              <div className="hidden min-w-0 flex-1 flex-col gap-1 md:flex">
                 <label
                   className={`mb-1 block text-[10px] font-semibold uppercase tracking-[2px] ${isLight ? "text-black/45" : "text-white/40"}`}
                 >
@@ -284,7 +351,7 @@ export default function RecruiterMesOffresSection({
                   setCountryQuery("all");
                   setCityQuery("all");
                 }}
-                className={`inline-flex h-[50px] items-center justify-center whitespace-nowrap rounded-full px-4 text-[12px] font-medium transition ${
+                className={`inline-flex h-[50px] w-full shrink-0 items-center justify-center whitespace-nowrap rounded-full px-4 text-[12px] font-medium transition md:w-auto ${
                   isLight
                     ? "border border-tap-red/20 bg-[#E6E6E6] text-tap-red hover:bg-[#E6E6E6]/85"
                     : "border border-tap-red/40 bg-tap-red text-white hover:bg-[#b71724]"
@@ -294,7 +361,18 @@ export default function RecruiterMesOffresSection({
               </button>
             </div>
           </div>
+            </div>
         </div>
+
+        {filterActions ? (
+          <div
+            className={`mt-4 hidden flex-wrap items-center justify-end gap-3 border-t pt-4 md:flex ${
+              isLight ? "border-black/10" : "border-white/[0.08]"
+            }`}
+          >
+            {filterActions}
+          </div>
+        ) : null}
       </div>
 
       {jobsQuery.isLoading ? (
@@ -312,7 +390,7 @@ export default function RecruiterMesOffresSection({
           description={
             allJobs.length > 0
               ? "Aucune offre ne correspond aux filtres."
-              : "Créez une offre avec le bouton « Nouvelle offre » en haut de cette page."
+              : "Créez une offre avec le bouton « Nouvelle offre » sous le formulaire de filtrage."
           }
         />
       ) : (
@@ -335,25 +413,35 @@ export default function RecruiterMesOffresSection({
                     : null;
               const locationLabel = loc ?? "—";
               const isSelected = selectedJob != null && jobIdEquals(selectedJob.id, job.id);
+              const showSelected = isLg && isSelected;
+
+              const goToJob = () => {
+                const id = Number(job.id);
+                if (isLg) {
+                  setSelectedJobId(id);
+                } else {
+                  router.push(`/app/offres/${id}`);
+                }
+              };
 
               return (
                 <div
                   key={job.id}
                   role="button"
                   tabIndex={0}
-                  onClick={() => setSelectedJobId(Number(job.id))}
+                  onClick={goToJob}
                   onKeyDown={(e) => {
                     if (e.key === "Enter" || e.key === " ") {
                       e.preventDefault();
-                      setSelectedJobId(Number(job.id));
+                      goToJob();
                     }
                   }}
                   className={
                     isLight
-                      ? isSelected
+                      ? showSelected
                         ? listCardLightSelected
                         : listCardLightDefault
-                      : isSelected
+                      : showSelected
                         ? listCardDarkSelected
                         : listCardDarkDefault
                   }
@@ -423,8 +511,8 @@ export default function RecruiterMesOffresSection({
             })}
           </div>
 
-          {/* Colonne droite — détail */}
-          <div className="min-w-0 flex-1">
+          {/* Colonne droite — détail (uniquement lg+ ; sur mobile → page /app/offres/[id]) */}
+          <div className="hidden min-w-0 flex-1 lg:block">
             <div
               className={
                 selectedJob

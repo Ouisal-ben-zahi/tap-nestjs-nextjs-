@@ -8,7 +8,8 @@ import AppSidebar from "@/components/app/AppSidebar";
 import RecruiterTalentCardSidebar from "@/components/app/RecruiterTalentCardSidebar";
 import { useRecruiterTalentPanelStore } from "@/stores/recruiter-talent-panel";
 import RecruiterIncompleteProfileGuard from "@/components/app/RecruiterIncompleteProfileGuard";
-import { Menu, X } from "lucide-react";
+import AppNavbar from "@/components/app/AppNavbar";
+import { X } from "lucide-react";
 
 export default function AppLayout({ children }: { children: React.ReactNode }) {
   const [sidebarOpen, setSidebarOpen] = useState(false);
@@ -75,22 +76,21 @@ export default function AppLayout({ children }: { children: React.ReactNode }) {
             collapsed={collapsed}
             onToggleCollapsed={() => setCollapsed((v) => !v)}
           />
-          <main
-            ref={mainScrollRef}
-            className={`flex-1 min-h-0 ${sidebarLeftPaddingClass} p-5 sm:p-8 lg:p-10 pb-20 overflow-y-auto overflow-x-hidden relative ${layoutCardLikeBgClass}`}
-          >
-            {/* Burger mobile (seul en haut à gauche) */}
-            <button
-              type="button"
-              onClick={() => setSidebarOpen((v) => !v)}
-              className="lg:hidden mb-4 inline-flex items-center justify-center w-9 h-9 rounded-lg text-white/50 hover:text-white hover:bg-white/[0.06] transition-colors"
-              aria-label="Ouvrir ou fermer la navigation"
+          <div className="flex min-h-0 min-w-0 flex-1 flex-col">
+            {/* Mobile : barre hamburger + profil au-dessus du scroll (reste visible au défilement) */}
+            <div className="shrink-0 lg:hidden">
+              <AppNavbar
+                onToggleSidebar={() => setSidebarOpen((v) => !v)}
+                sidebarOpen={sidebarOpen}
+              />
+            </div>
+            <main
+              ref={mainScrollRef}
+              className={`flex-1 min-h-0 ${sidebarLeftPaddingClass} p-5 sm:p-8 lg:p-10 pb-20 overflow-y-auto overflow-x-hidden relative ${layoutCardLikeBgClass}`}
             >
-              <Menu size={18} />
-            </button>
-
-            {children}
-          </main>
+              {children}
+            </main>
+          </div>
         </div>
 
         {recruiterTalentOpen ? (

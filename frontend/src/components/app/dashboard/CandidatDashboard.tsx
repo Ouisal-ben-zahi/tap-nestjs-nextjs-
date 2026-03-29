@@ -275,13 +275,13 @@ export default function CandidatDashboard() {
       <div>
         <div className="mt-4">
           {statsQuery.isLoading ? (
-            <div className="grid grid-cols-2 lg:grid-cols-4 gap-3">
+            <div className="grid grid-cols-2 xl:grid-cols-4 gap-3">
               {Array.from({ length: 4 }).map((_, i) => <StatCardSkeleton key={i} />)}
             </div>
           ) : statsQuery.isError ? (
             <ErrorState onRetry={() => statsQuery.refetch()} />
           ) : (
-            <div className="grid grid-cols-1 sm:grid-cols-2 xl:grid-cols-4 gap-3">
+            <div className="grid grid-cols-2 xl:grid-cols-4 gap-3">
               {kpiCards.map((card) => {
                 const Icon = card.icon;
                 return (

@@ -101,7 +101,12 @@ export default function AppSidebar({
         />
       )}
 
-      <div className="fixed top-0 bottom-0 left-0 z-50 flex flex-row items-stretch h-full min-h-0">
+      {/* Mobile : quand fermée, ne pas intercepter les clics (sinon le bandeau fixe masque le bouton hamburger du main). */}
+      <div
+        className={`fixed top-0 bottom-0 left-0 z-50 flex flex-row items-stretch h-full min-h-0 ${
+          open ? "pointer-events-auto" : "pointer-events-none lg:pointer-events-auto"
+        }`}
+      >
         <aside
           className={`relative shrink-0 self-stretch min-h-0 top-0 bottom-0 left-0 ${
             collapsed ? "w-[80px]" : "w-[250px]"

@@ -348,13 +348,13 @@ export default function RecruteurDashboard() {
       <div>
         <div className="mt-4">
           {overviewQuery.isLoading ? (
-            <div className="grid grid-cols-2 lg:grid-cols-4 gap-3">
+            <div className="grid grid-cols-2 xl:grid-cols-4 gap-3">
               {Array.from({ length: 4 }).map((_, i) => (
                 <StatCardSkeleton key={i} />
               ))}
             </div>
           ) : (
-            <div className="grid grid-cols-1 sm:grid-cols-2 xl:grid-cols-4 gap-3">
+            <div className="grid grid-cols-2 xl:grid-cols-4 gap-3">
               {kpiCards.map((card) => {
                 const Icon = card.icon;
                 return (

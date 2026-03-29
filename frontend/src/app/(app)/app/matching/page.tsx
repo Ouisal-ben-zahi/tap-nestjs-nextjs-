@@ -15,7 +15,20 @@ import {
 import EmptyState from "@/components/ui/EmptyState";
 import ErrorState from "@/components/ui/ErrorState";
 import { Skeleton } from "@/components/ui/Skeleton";
-import { Users, MapPin, Sparkles, FileText, CheckCircle2, Calendar, Bookmark, ArrowRight, Share2, ChevronLeft, ChevronRight } from "lucide-react";
+import {
+  Users,
+  MapPin,
+  Sparkles,
+  FileText,
+  CheckCircle2,
+  Calendar,
+  Bookmark,
+  ArrowRight,
+  Share2,
+  ChevronLeft,
+  ChevronRight,
+  SlidersHorizontal,
+} from "lucide-react";
 import { formatRelative } from "@/lib/utils";
 import { useDashboardTheme } from "@/hooks/use-dashboard-theme";
 import DropdownSelect from "@/components/app/DropdownSelect";
@@ -38,7 +51,8 @@ export default function MatchingPage() {
     if (v === "match") setViewMode("match");
     else if (v === "all") setViewMode("all");
   }, []);
-  const filtersOpen = true;
+  /** Mobile : formulaire de filtrage replié par défaut, ouvert via l’icône */
+  const [mobileFiltersOpen, setMobileFiltersOpen] = useState(false);
   const [nameQuery, setNameQuery] = useState("");
   const [countryQuery, setCountryQuery] = useState("all");
   const [cityQuery, setCityQuery] = useState("all");
@@ -191,6 +205,7 @@ export default function MatchingPage() {
   }, [totalListPages, filteredJobs.length]);
 
   useEffect(() => {
+    if (!matchLg) return;
     if (!filteredJobs.length) {
       setSelectedJobId(null);
       return;
@@ -199,10 +214,11 @@ export default function MatchingPage() {
     if (!selectedStillExists) {
       setSelectedJobId(filteredJobs[0]?.id ?? null);
     }
-  }, [filteredJobs, selectedJobId]);
+  }, [filteredJobs, selectedJobId, matchLg]);
 
-  /** Changement de page (ou taille de page) : détail = 1ʳᵉ offre de la page si la sélection n’y figure plus. */
+  /** Changement de page (ou taille de page) : détail = 1ʳᵉ offre de la page si la sélection n’y figure plus. (lg+ uniquement) */
   useEffect(() => {
+    if (!matchLg) return;
     const start = (listPage - 1) * effectivePageSize;
     const pageSlice = filteredJobs.slice(start, start + effectivePageSize);
     if (!pageSlice.length) return;
@@ -211,10 +227,22 @@ export default function MatchingPage() {
     );
     // filteredJobs : volontairement lu depuis la dernière render (évite de relancer à chaque rendu).
     // eslint-disable-next-line react-hooks/exhaustive-deps -- listPage / effectivePageSize uniquement
-  }, [listPage, effectivePageSize]);
+  }, [listPage, effectivePageSize, matchLg]);
 
-  const selectedJob =
-    filteredJobs.find((job) => job.id === selectedJobId) ?? (filteredJobs.length ? filteredJobs[0]! : null);
+  /** Sous lg : pas de panneau détail inline — la liste seule ; le détail est sur /app/matching/offres/[id] */
+  useEffect(() => {
+    if (!matchLg) setSelectedJobId(null);
+  }, [matchLg]);
+
+  const selectedJob = useMemo(() => {
+    if (!filteredJobs.length) return null;
+    if (selectedJobId != null) {
+      const found = filteredJobs.find((job) => job.id === selectedJobId);
+      if (found) return found;
+    }
+    if (matchLg) return filteredJobs[0] ?? null;
+    return null;
+  }, [filteredJobs, selectedJobId, matchLg]);
   const selectedJobIsSaved = selectedJob ? (savedJobsQuery.data?.jobIds ?? []).includes(selectedJob.id) : false;
   const selectedJobSkillNames = selectedJob
     ? Array.isArray((selectedJob as { skills?: unknown }).skills)
@@ -377,7 +405,7 @@ export default function MatchingPage() {
 
       <>
         {stats && (
-          <div className="grid grid-cols-1 sm:grid-cols-3 gap-3 mb-8">
+          <div className="mb-8 grid grid-cols-3 gap-2 sm:gap-3">
             {[
               {
                 key: "applications",
@@ -411,7 +439,7 @@ export default function MatchingPage() {
               return (
                 <div
                   key={card.key}
-                  className={`${matchingThemedCardClass} p-5 ${
+                  className={`${matchingThemedCardClass} p-2.5 sm:p-5 ${
                     isLight ? "card-luxury-light" : ""
                   } cursor-default transform-gpu will-change-transform transition-all duration-300 hover:-translate-y-0.5 ${
                     isLight
@@ -436,31 +464,39 @@ export default function MatchingPage() {
                       <div className="absolute bottom-[-40px] left-[-50px] w-28 h-28 rounded-full bg-tap-red/10 blur-2xl pointer-events-none" />
                     </>
                   )}
-                  <div className="flex items-start justify-between gap-3 relative">
-                    <div>
+                  <div className="relative flex flex-col items-center gap-2 text-center sm:items-start sm:gap-3 sm:text-left">
+                    <div
+                      className={`flex h-7 w-7 shrink-0 items-center justify-center rounded-lg border sm:h-11 sm:w-11 sm:rounded-xl ${
+                        isLight ? card.badgeClass : "bg-tap-red/[0.08] border-tap-red/20"
+                      }`}
+                    >
+                      <Icon
+                        className={`h-3.5 w-3.5 shrink-0 sm:h-[18px] sm:w-[18px] ${isLight ? card.iconClass : "text-tap-red"}`}
+                        strokeWidth={1.75}
+                      />
+                    </div>
+                    <div className="min-w-0 w-full">
                       <p
-                        className={`text-[13px] uppercase tracking-[1.5px] ${
+                        className={`text-[8px] uppercase leading-tight tracking-[0.08em] sm:text-[13px] sm:tracking-[1.5px] ${
                           isLight ? "text-black/55" : "text-white/85"
                         }`}
                       >
                         {card.label}
                       </p>
                       <p
-                        className={`mt-2 text-[30px] font-bold tracking-[-0.03em] ${
+                        className={`mt-0.5 text-[17px] font-bold tabular-nums tracking-[-0.03em] sm:mt-2 sm:text-[30px] ${
                           isLight ? "text-black" : "text-white"
                         }`}
                       >
                         {card.value}
                       </p>
-                      <p className={`mt-1 text-[12px] ${isLight ? "text-black/60" : "text-white/70"}`}>{card.meta}</p>
-                    </div>
-
-                    <div
-                      className={`w-11 h-11 rounded-xl border flex items-center justify-center ${
-                        isLight ? card.badgeClass : "bg-tap-red/[0.08] border-tap-red/20"
-                      }`}
-                    >
-                      <Icon size={18} className={isLight ? card.iconClass : "text-tap-red"} />
+                      <p
+                        className={`mt-0.5 line-clamp-2 text-[8px] leading-snug sm:mt-1 sm:text-[12px] sm:leading-normal ${
+                          isLight ? "text-black/60" : "text-white/70"
+                        }`}
+                      >
+                        {card.meta}
+                      </p>
                     </div>
                   </div>
                 </div>
@@ -513,11 +549,17 @@ export default function MatchingPage() {
             ) : null}
           </div>
 
-          {filtersOpen && (
-            <div className="mb-5 p-4">
-              <div className="grid grid-cols-1 md:grid-cols-3 gap-3">
+          <div
+            id="matching-offres-filters"
+            className={`mb-5 p-4 ${mobileFiltersOpen ? "" : "hidden"} md:block`}
+          >
+              <div className="grid grid-cols-1 gap-3 md:grid-cols-3">
                 <div className="flex flex-col gap-1 md:col-span-1">
-                  <label className="block text-[10px] font-semibold uppercase tracking-[2px] text-white/40 mb-1">
+                  <label
+                    className={`mb-1 block text-[10px] font-semibold uppercase tracking-[2px] ${
+                      isLight ? "text-black/45" : "text-white/40"
+                    }`}
+                  >
                     Recherche par nom
                   </label>
                   <input
@@ -532,33 +574,67 @@ export default function MatchingPage() {
                   />
                 </div>
 
-                <div className="flex flex-col gap-1 md:col-span-1">
-                  <label className="block text-[10px] font-semibold uppercase tracking-[2px] text-white/40 mb-1">
-                    Pays
-                  </label>
-                  <DropdownSelect
-                    value={countryQuery}
-                    onChange={(value) => {
-                      setCountryQuery(value);
-                      setCityQuery("all");
-                    }}
-                    placeholder="Tous"
-                    groups={[
-                      {
-                        options: [
-                          { value: "all", label: "Tous" },
-                          ...countries.map((c) => ({ value: c, label: c })),
-                        ],
-                      },
-                    ]}
-                    isLight={isLight}
-                  />
+                <div className="flex flex-row gap-2 md:contents">
+                  <div className="flex min-w-0 flex-1 flex-col gap-1 md:col-span-1">
+                    <label
+                      className={`mb-1 block text-[10px] font-semibold uppercase tracking-[2px] ${
+                        isLight ? "text-black/45" : "text-white/40"
+                      }`}
+                    >
+                      Pays
+                    </label>
+                    <DropdownSelect
+                      value={countryQuery}
+                      onChange={(value) => {
+                        setCountryQuery(value);
+                        setCityQuery("all");
+                      }}
+                      placeholder="Tous"
+                      groups={[
+                        {
+                          options: [
+                            { value: "all", label: "Tous" },
+                            ...countries.map((c) => ({ value: c, label: c })),
+                          ],
+                        },
+                      ]}
+                      isLight={isLight}
+                    />
+                  </div>
+                  <div className="flex min-w-0 flex-1 flex-col gap-1 md:hidden">
+                    <label
+                      className={`mb-1 block text-[10px] font-semibold uppercase tracking-[2px] ${
+                        isLight ? "text-black/45" : "text-white/40"
+                      }`}
+                    >
+                      Ville
+                    </label>
+                    <DropdownSelect
+                      value={cityQuery}
+                      onChange={(value) => setCityQuery(value)}
+                      placeholder="Toutes"
+                      groups={[
+                        {
+                          options: [
+                            { value: "all", label: "Toutes" },
+                            ...cities.map((c) => ({ value: c, label: c })),
+                          ],
+                        },
+                      ]}
+                      disabled={countryQuery === "all"}
+                      isLight={isLight}
+                    />
+                  </div>
                 </div>
 
                 <div className="md:col-span-1">
-                  <div className="flex items-end gap-2">
-                    <div className="flex-1 flex flex-col gap-1">
-                      <label className="block text-[10px] font-semibold uppercase tracking-[2px] text-white/40 mb-1">
+                  <div className="flex flex-col gap-2 md:flex-row md:items-end md:gap-2">
+                    <div className="hidden min-w-0 flex-1 flex-col gap-1 md:flex">
+                      <label
+                        className={`mb-1 block text-[10px] font-semibold uppercase tracking-[2px] ${
+                          isLight ? "text-black/45" : "text-white/40"
+                        }`}
+                      >
                         Ville
                       </label>
                       <DropdownSelect
@@ -584,10 +660,10 @@ export default function MatchingPage() {
                         setCountryQuery("all");
                         setCityQuery("all");
                       }}
-                      className={`h-[50px] px-4 rounded-full inline-flex items-center justify-center text-[12px] font-medium transition whitespace-nowrap ${
+                      className={`inline-flex h-[50px] w-full shrink-0 items-center justify-center whitespace-nowrap rounded-full px-4 text-[12px] font-medium transition md:w-auto ${
                         isLight
-                          ? "bg-[#E6E6E6] text-tap-red border border-tap-red/20 hover:bg-[#E6E6E6]/85"
-                          : "bg-tap-red text-white border border-tap-red/40 hover:bg-[#b71724]"
+                          ? "border border-tap-red/20 bg-[#E6E6E6] text-tap-red hover:bg-[#E6E6E6]/85"
+                          : "border border-tap-red/40 bg-tap-red text-white hover:bg-[#b71724]"
                       }`}
                     >
                       Réinitialiser
@@ -595,21 +671,34 @@ export default function MatchingPage() {
                   </div>
                 </div>
               </div>
-            </div>
-          )}
+          </div>
 
-          {/* Mode d’affichage : aligné sur la colonne gauche des cartes (lg), style segmented arrondi */}
-          <div className="mb-4 lg:grid lg:grid-cols-12 lg:gap-8">
-            <div className="w-full min-w-0 lg:col-span-4">
+          {/* Mobile : icône filtres à gauche + mode d’affichage à côté ; md+ : libellé + mode ; lg : grille cartes */}
+          <div className="mb-4 flex flex-row items-center gap-2 sm:gap-3 lg:grid lg:grid-cols-12 lg:gap-8">
+            <button
+              type="button"
+              className={`flex shrink-0 md:hidden items-center justify-center -m-1.5 p-2 rounded-lg transition-colors ${
+                isLight
+                  ? "text-black/55 hover:bg-black/[0.06] hover:text-black"
+                  : "text-white/55 hover:bg-white/[0.06] hover:text-white"
+              }`}
+              onClick={() => setMobileFiltersOpen((v) => !v)}
+              aria-expanded={mobileFiltersOpen}
+              aria-controls="matching-offres-filters"
+              aria-label={mobileFiltersOpen ? "Masquer les filtres" : "Afficher les filtres"}
+            >
+              <SlidersHorizontal size={22} strokeWidth={1.75} aria-hidden />
+            </button>
+            <div className="min-w-0 flex-1 lg:col-span-4">
               <p
-                className={`mb-2 text-[10px] uppercase tracking-[1.5px] font-semibold ${
+                className={`mb-2 hidden text-[10px] uppercase tracking-[1.5px] font-semibold md:block ${
                   isLight ? "text-black/45" : "text-white/40"
                 }`}
               >
                 Mode d&apos;affichage
               </p>
               <div
-                className={`flex w-full items-center gap-1 rounded-full border p-1 ${
+                className={`flex w-full min-w-0 items-center gap-1 rounded-full border p-1 ${
                   isLight
                     ? "border-black/12 bg-black/[0.03]"
                     : "border-white/[0.12] bg-[#0C0C0C]/90 backdrop-blur-sm"
@@ -714,13 +803,19 @@ export default function MatchingPage() {
                   locationType && localisation
                     ? `${locationType} - ${localisation}`
                     : locationType ?? localisation;
-                const isSelected = selectedJob?.id === job.id;
+                const isSelected = Boolean(matchLg && selectedJob?.id === job.id);
 
                 return (
                   <div
                     key={job.id}
                     ref={index === 0 ? firstLeftCardRef : undefined}
-                    onClick={() => setSelectedJobId(job.id)}
+                    onClick={() => {
+                      if (matchLg) {
+                        setSelectedJobId(job.id);
+                      } else {
+                        router.push(`/app/matching/offres/${job.id}`);
+                      }
+                    }}
                     className={`group relative card-animated-border rounded-2xl overflow-hidden border p-4 sm:p-5 lg:p-6 cursor-pointer transform-gpu will-change-transform transition-all duration-300 hover:-translate-y-0.5 w-full ${
                       isSelected
                         ? isLight
@@ -828,8 +923,8 @@ export default function MatchingPage() {
                 ) : null}
               </div>
 
-              {/* Droite : carte détail naturelle (sans scroll interne) — sert de référence de hauteur pour la liste (lg) */}
-              <div className="min-w-0 flex flex-col lg:col-span-8 lg:min-h-0">
+              {/* Droite : carte détail (lg+). Sous lg : liste seule, détail sur /app/matching/offres/[id] */}
+              <div className="hidden min-w-0 flex-col lg:col-span-8 lg:flex lg:min-h-0">
                 <div
                   ref={detailCardRef}
                   className={`relative h-fit overflow-visible rounded-2xl p-5 sm:p-6 lg:p-6 ${

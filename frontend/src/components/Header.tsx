@@ -1,11 +1,12 @@
 "use client";
 
-import { useState, useEffect } from "react";
+import { useState, useEffect, useRef, useLayoutEffect } from "react";
 import Link from "next/link";
 import { usePathname } from "next/navigation";
 import Image from "next/image";
 import { ChevronDown } from "lucide-react";
 import { useAuth } from "@/hooks/use-auth";
+import { useCandidatStats } from "@/hooks/use-candidat";
 
 const navLinks = [
   { href: "/", label: "Accueil" },
@@ -25,8 +26,13 @@ export default function Header() {
   const [menuOpen, setMenuOpen] = useState(false);
   const [scrolled, setScrolled] = useState(false);
   const [produitOpen, setProduitOpen] = useState(false);
+  const [menuPanelTop, setMenuPanelTop] = useState(0);
+  const headerBarRef = useRef<HTMLDivElement>(null);
   const pathname = usePathname();
   const { user } = useAuth();
+  const isCandidat = user?.role === "candidat";
+  const statsQuery = useCandidatStats(Boolean(user && isCandidat));
+  const avatarUrl = isCandidat ? statsQuery.data?.avatarUrl ?? null : null;
   const initial = (user?.email?.[0] || "").toUpperCase();
 
   useEffect(() => {
@@ -48,6 +54,21 @@ export default function Header() {
     setProduitOpen(false);
   }, [pathname]);
 
+  useLayoutEffect(() => {
+    if (!menuOpen) return;
+    const update = () => {
+      const el = headerBarRef.current;
+      if (!el) return;
+      setMenuPanelTop(el.getBoundingClientRect().bottom);
+    };
+    update();
+    window.addEventListener("resize", update);
+    window.addEventListener("scroll", update, { passive: true });
+    return () => {
+      window.removeEventListener("resize", update);
+      window.removeEventListener("scroll", update);
+    };
+  }, [menuOpen, scrolled]);
 
 
   return (
@@ -76,6 +97,7 @@ export default function Header() {
           }`}
         >
           <div
+            ref={headerBarRef}
             className={`flex items-center justify-between ${
               scrolled ? "max-w-[1300px] w-[88%] mx-auto" : "px-4 sm:px-6"
             }`}
@@ -219,52 +241,82 @@ export default function Header() {
               )}
             </div>
 
-            {/* ── Mobile hamburger / close ── */}
-            <button
-              className="lg:hidden relative z-[70] w-9 h-9 flex items-center justify-center rounded-lg bg-white/[0.06] hover:bg-white/[0.10] transition-colors duration-200 border border-white/[0.08]"
-              onClick={() => setMenuOpen(!menuOpen)}
-              aria-label={menuOpen ? "Fermer le menu" : "Ouvrir le menu"}
-              aria-expanded={menuOpen}
-            >
-              {/* Hamburger bars — visible when closed */}
-              <span className={`absolute flex flex-col gap-[5px] items-center transition-all duration-300 ${menuOpen ? "opacity-0 scale-75" : "opacity-100 scale-100"}`}>
-                <span className="block w-[18px] h-[1.5px] bg-white rounded-full" />
-                <span className="block w-[13px] h-[1.5px] bg-white/50 rounded-full self-start" />
-                <span className="block w-[18px] h-[1.5px] bg-white rounded-full" />
-              </span>
+            {/* ── Mobile : avatar + hamburger / close ── */}
+            <div className="lg:hidden relative z-[70] flex shrink-0 items-center gap-2">
+              {user ? (
+                <Link
+                  href="/app"
+                  className="relative flex h-9 w-9 shrink-0 items-center justify-center overflow-hidden rounded-full border border-white/[0.12] bg-red-600/90 ring-1 ring-white/[0.06] transition-opacity hover:opacity-95"
+                  aria-label="Mon espace"
+                  onClick={() => setMenuOpen(false)}
+                >
+                  {avatarUrl ? (
+                    <Image
+                      key={`${avatarUrl}-${statsQuery.dataUpdatedAt}`}
+                      src={avatarUrl}
+                      alt={user.email || "Profil"}
+                      fill
+                      sizes="36px"
+                      className="object-cover object-center"
+                    />
+                  ) : (
+                    <span className="text-[12px] font-bold uppercase text-white">{initial || "?"}</span>
+                  )}
+                </Link>
+              ) : null}
+              <button
+                type="button"
+                className="relative flex h-9 w-9 shrink-0 items-center justify-center rounded-lg bg-white/[0.06] hover:bg-white/[0.10] transition-colors duration-200 border border-white/[0.08]"
+                onClick={() => setMenuOpen(!menuOpen)}
+                aria-label={menuOpen ? "Fermer le menu" : "Ouvrir le menu"}
+                aria-expanded={menuOpen}
+              >
+                {/* Hamburger bars — visible when closed */}
+                <span className={`absolute flex flex-col gap-[5px] items-center transition-all duration-300 ${menuOpen ? "opacity-0 scale-75" : "opacity-100 scale-100"}`}>
+                  <span className="block w-[18px] h-[1.5px] bg-white rounded-full" />
+                  <span className="block w-[13px] h-[1.5px] bg-white/50 rounded-full self-start" />
+                  <span className="block w-[18px] h-[1.5px] bg-white rounded-full" />
+                </span>
 
-              {/* X — visible when open */}
-              <span className={`absolute transition-all duration-300 ${menuOpen ? "opacity-100 scale-100 rotate-0" : "opacity-0 scale-50 rotate-90"}`}>
-                <svg width="13" height="13" viewBox="0 0 13 13" fill="none">
-                  <path d="M1 1l11 11M12 1L1 12" stroke="white" strokeWidth="1.8" strokeLinecap="round"/>
-                </svg>
-              </span>
-            </button>
+                {/* X — visible when open */}
+                <span className={`absolute transition-all duration-300 ${menuOpen ? "opacity-100 scale-100 rotate-0" : "opacity-0 scale-50 rotate-90"}`}>
+                  <svg width="13" height="13" viewBox="0 0 13 13" fill="none">
+                    <path d="M1 1l11 11M12 1L1 12" stroke="white" strokeWidth="1.8" strokeLinecap="round"/>
+                  </svg>
+                </span>
+              </button>
+            </div>
           </div>
         </div>
 
         {/* Overlay (mobile): click outside closes menu */}
         {menuOpen && (
           <div
-            className="lg:hidden fixed inset-0 z-40"
+            className="lg:hidden fixed inset-0 z-40 bg-black/50 backdrop-blur-sm"
             onClick={() => setMenuOpen(false)}
             aria-hidden="true"
           />
         )}
 
-        {/* ── Mobile dropdown panel ── */}
-        <div
-          className={`lg:hidden overflow-hidden transition-all duration-500 ease-[cubic-bezier(.22,1,.36,1)] relative z-50 ${
-            menuOpen ? "max-h-[600px] opacity-100" : "max-h-0 opacity-0"
-          }`}
-          style={{ background: "rgba(6,6,6,0.97)", backdropFilter: "blur(24px)" }}
-          role="navigation"
-          aria-label="Menu mobile"
-        >
-          {/* Top border line */}
-          <div className="h-[1px] bg-gradient-to-r from-transparent via-white/[0.08] to-transparent" />
+        {/* ── Mobile : panneau pleine hauteur (viewport) sous la barre ── */}
+        {menuOpen && (
+          <div
+            className="lg:hidden fixed left-0 right-0 z-50 flex min-h-0 flex-col border-t border-white/[0.06] shadow-2xl shadow-black/40"
+            style={{
+              top: menuPanelTop > 0 ? menuPanelTop : 56,
+              height:
+                menuPanelTop > 0
+                  ? `calc(100dvh - ${menuPanelTop}px)`
+                  : "calc(100dvh - 56px)",
+              background: "rgba(6,6,6,0.98)",
+              backdropFilter: "blur(24px)",
+            }}
+            role="navigation"
+            aria-label="Menu mobile"
+          >
+            <div className="h-[1px] shrink-0 bg-gradient-to-r from-transparent via-white/[0.08] to-transparent" />
 
-          <div className="px-5 py-4 flex flex-col gap-1">
+            <div className="min-h-0 flex-1 overflow-y-auto overscroll-contain px-5 py-4 flex flex-col gap-1">
 
             {/* Accueil + À propos */}
             {navLinks.slice(0, 2).map((link) => {
@@ -363,9 +415,22 @@ export default function Header() {
                   onClick={() => setMenuOpen(false)}
                   className="flex items-center gap-3 px-3 py-2.5 rounded-xl hover:bg-white/[0.04] transition-colors"
                 >
-                  <div className="w-8 h-8 rounded-full bg-red-600 flex items-center justify-center text-[12px] font-bold text-white uppercase shrink-0">
-                    {initial || "?"}
-                  </div>
+                  {avatarUrl ? (
+                    <div className="relative h-8 w-8 shrink-0 overflow-hidden rounded-full border border-[#CA1B28]/80 bg-black/20">
+                      <Image
+                        key={`${avatarUrl}-${statsQuery.dataUpdatedAt}`}
+                        src={avatarUrl}
+                        alt={user.email || "Profil"}
+                        fill
+                        sizes="32px"
+                        className="object-cover object-center"
+                      />
+                    </div>
+                  ) : (
+                    <div className="flex h-8 w-8 shrink-0 items-center justify-center rounded-full bg-red-600 text-[12px] font-bold uppercase text-white">
+                      {initial || "?"}
+                    </div>
+                  )}
                   <span className="text-[12px] text-white/60 truncate">{user.email}</span>
                 </Link>
               ) : (
@@ -390,8 +455,9 @@ export default function Header() {
 
             {/* Bottom spacing */}
             <div className="h-1" />
+            </div>
           </div>
-        </div>
+        )}
       </header>
     </>
   );

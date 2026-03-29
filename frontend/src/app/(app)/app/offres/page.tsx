@@ -473,7 +473,7 @@ export default function OffresPage() {
       {/* Header */}
       <div className={`relative mb-8 pb-8 ${isLight ? "border-b border-black/10" : "border-b border-white/[0.04]"}`}>
         <div className="absolute top-[-80px] left-[-100px] w-[350px] h-[350px] rounded-full bg-[radial-gradient(circle,rgba(202,27,40,0.08),transparent_60%)] blur-3xl pointer-events-none" />
-        <div className="relative flex items-start justify-between">
+        <div className="relative">
           <div>
             <h1
               className={`text-[28px] sm:text-[36px] font-bold tracking-[-0.04em] font-heading ${
@@ -486,24 +486,6 @@ export default function OffresPage() {
               Créez et gérez vos offres. Les candidats sont matchés par l&apos;IA.
             </p>
           </div>
-          <button
-            type="button"
-            onClick={() => {
-              setShowForm((open) => {
-                if (open) {
-                  resetFormState();
-                  return false;
-                }
-                resetFormState();
-                setEditingJobId(null);
-                return true;
-              });
-            }}
-            className="btn-primary gap-2"
-          >
-            {showForm ? <X size={14} /> : <Plus size={14} />}
-            {showForm ? "Fermer" : "Nouvelle offre"}
-          </button>
         </div>
       </div>
 
@@ -1374,6 +1356,26 @@ export default function OffresPage() {
           setEditingJobId(jobId);
           setShowForm(true);
         }}
+        filterActions={
+          <button
+            type="button"
+            onClick={() => {
+              setShowForm((open) => {
+                if (open) {
+                  resetFormState();
+                  return false;
+                }
+                resetFormState();
+                setEditingJobId(null);
+                return true;
+              });
+            }}
+            className="btn-primary gap-2 whitespace-nowrap"
+          >
+            {showForm ? <X size={14} /> : <Plus size={14} />}
+            {showForm ? "Fermer" : "Nouvelle offre"}
+          </button>
+        }
       />
     </div>
   );
