@@ -1,9 +1,11 @@
 "use client";
 
+import Link from "next/link";
 import { useEffect, useId, useMemo, useState } from "react";
 import { useCandidatStats, useCandidatApplications } from "@/hooks/use-candidat";
 import ErrorState from "@/components/ui/ErrorState";
-import { StatCardSkeleton } from "@/components/ui/Skeleton";
+import { StatCardSkeleton, Skeleton } from "@/components/ui/Skeleton";
+import { formatRelative, statusBg } from "@/lib/utils";
 import {
   FileText,
   Calendar,
@@ -16,6 +18,7 @@ import {
   ChevronDown,
   Briefcase,
 } from "lucide-react";
+
 function buildSmoothLinePath(pts: { x: number; y: number }[]): string {
   if (pts.length === 0) return "";
   if (pts.length === 1) return `M ${pts[0].x} ${pts[0].y}`;

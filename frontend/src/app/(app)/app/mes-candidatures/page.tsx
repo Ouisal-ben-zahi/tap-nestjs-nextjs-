@@ -1,6 +1,7 @@
 "use client";
 
 import Link from "next/link";
+import { useMemo } from "react";
 import { ArrowRight, FileText, MapPin } from "lucide-react";
 import { useCandidatApplications } from "@/hooks/use-candidat";
 import { useAuth } from "@/hooks/use-auth";
@@ -9,6 +10,10 @@ import ErrorState from "@/components/ui/ErrorState";
 import { Skeleton } from "@/components/ui/Skeleton";
 import { formatRelative, statusBg } from "@/lib/utils";
 import { useDashboardTheme } from "@/hooks/use-dashboard-theme";
+import {
+  applicationLocationLine,
+  candidatureStatusLabel,
+} from "@/lib/candidat-candidature-display";
 
 export default function MesCandidaturesPage() {
   const { isCandidat, isHydrated } = useAuth();
@@ -18,14 +23,19 @@ export default function MesCandidaturesPage() {
   const theme = useDashboardTheme();
   const isLight = theme === "light";
 
-  const cardBase =
-    "group relative card-animated-border rounded-2xl overflow-hidden border p-4 sm:p-5 lg:p-6 transition-all duration-300 transform-gpu will-change-transform hover:-translate-y-0.5 w-full";
-  const cardSurface = isLight
-    ? "bg-[#0A0A0A] border-white/[0.08] hover:border-tap-red/20 hover:shadow-[0_12px_40px_rgba(0,0,0,0.45),0_0_18px_rgba(202,27,40,0.10)]"
-    : "bg-[#0A0A0A] border-white/[0.06] hover:border-tap-red/15 hover:shadow-[0_12px_40px_rgba(0,0,0,0.45),0_0_18px_rgba(202,27,40,0.10)]";
+  const sortedApplications = useMemo(() => {
+    return [...applications].sort((a, b) => {
+      const ta = a.validatedAt ? new Date(a.validatedAt).getTime() : 0;
+      const tb = b.validatedAt ? new Date(b.validatedAt).getTime() : 0;
+      return tb - ta;
+    });
+  }, [applications]);
+
+  const themedCardClass =
+    "group card-animated-border relative overflow-hidden rounded-2xl border border-white/[0.08] bg-[#020001] shadow-[0_10px_28px_rgba(0,0,0,0.45)] hover:bg-[linear-gradient(180deg,rgba(202,27,40,0.08)_0%,rgba(10,10,10,0.96)_30%,rgba(10,10,10,0.96)_100%)] hover:border-tap-red/15 transition-all duration-500";
 
   return (
-    <div className="max-w-[1320px] mx-auto">
+    <div className="max-w-[min(100%,1440px)] mx-auto px-1 sm:px-0">
       <div className={`relative mb-8 pb-8 ${isLight ? "border-b border-black/10" : "border-b border-white/[0.04]"}`}>
         <div className="absolute top-[-80px] left-[-100px] w-[350px] h-[350px] rounded-full bg-[radial-gradient(circle,rgba(202,27,40,0.06),transparent_60%)] blur-3xl pointer-events-none" />
         <div className="relative">
@@ -37,20 +47,20 @@ export default function MesCandidaturesPage() {
             Mes candidatures
           </h1>
           <p className={`text-[14px] mt-2 font-light ${isLight ? "text-black/60" : "text-white/45"}`}>
-            Suivez vos postulations : statut, dates et accès rapide au détail de chaque candidature.
+            Suivez vos postulations : statut, dates et accès à l&apos;offre.
           </p>
         </div>
       </div>
 
       {appsQuery.isLoading ? (
-        <div className="grid grid-cols-1 gap-4">
-          {Array.from({ length: 4 }).map((_, i) => (
-            <Skeleton key={i} className="h-36 w-full rounded-2xl" />
+        <div className="grid grid-cols-1 gap-4 sm:grid-cols-2 lg:grid-cols-3">
+          {Array.from({ length: 6 }).map((_, i) => (
+            <Skeleton key={i} className="h-44 w-full rounded-2xl" />
           ))}
         </div>
       ) : appsQuery.isError ? (
         <ErrorState onRetry={() => appsQuery.refetch()} />
-      ) : applications.length === 0 ? (
+      ) : sortedApplications.length === 0 ? (
         <EmptyState
           icon={<FileText className="w-10 h-10" />}
           title="Aucune candidature"
@@ -65,77 +75,91 @@ export default function MesCandidaturesPage() {
           }
         />
       ) : (
-        <div className="grid grid-cols-1 gap-4 lg:gap-5">
-          {applications.map((app) => (
-            <div key={app.id} className={`${cardBase} ${cardSurface}`}>
-              <div className="absolute top-0 left-0 right-0 h-[100px] bg-gradient-to-b from-tap-red/14 via-tap-red/4 to-transparent pointer-events-none" />
-              <div className="absolute inset-0 opacity-0 group-hover:opacity-100 transition-opacity duration-500 pointer-events-none">
-                <div className="absolute inset-0 bg-[radial-gradient(circle_at_20%_0%,rgba(202,27,40,0.20),transparent_55%)]" />
-              </div>
+        <div className="grid grid-cols-1 gap-4 sm:grid-cols-2 lg:grid-cols-3">
+          {sortedApplications.map((app) => {
+            const durationLabel = app.validatedAt ? formatRelative(app.validatedAt) : "—";
+            const locationLabel = applicationLocationLine(app);
+            return (
+              <div
+                key={app.id}
+                className={`${themedCardClass} relative flex min-h-[188px] flex-col p-4 transition-all duration-300 hover:-translate-y-0.5 sm:p-5 ${
+                  isLight
+                    ? "card-luxury-light hover:shadow-[0_12px_30px_rgba(0,0,0,0.18)]"
+                    : "hover:shadow-[0_18px_45px_rgba(0,0,0,0.35)]"
+                }`}
+              >
+                <div className="pointer-events-none absolute inset-0 opacity-100 transition-opacity duration-500 group-hover:opacity-0">
+                  <div className="absolute -right-10 -top-16 h-40 w-40 rounded-full bg-white/5 blur-2xl" />
+                  <div className="absolute -bottom-16 -left-12 h-44 w-44 rounded-full bg-tap-red/10 blur-2xl opacity-40" />
+                </div>
 
-              <div className="relative flex flex-col gap-4 sm:flex-row sm:items-stretch sm:justify-between sm:gap-6 min-w-0">
-                <div className="min-w-0 flex-1 space-y-2">
-                  <div className="flex flex-wrap items-center gap-2">
-                    <span
-                      className={`inline-flex text-[10px] sm:text-[11px] px-2.5 py-1 rounded-full border font-medium uppercase tracking-wide ${statusBg(
-                        app.status ?? "Inconnu",
-                      )}`}
-                    >
-                      {app.status ?? "Inconnu"}
-                    </span>
-                    <span className={`text-[10px] sm:text-[11px] ${isLight ? "text-black/45" : "text-white/35"}`}>
-                      {app.validatedAt ? formatRelative(app.validatedAt) : "Date non renseignée"}
-                    </span>
-                  </div>
-
-                  {app.jobId ? (
+                <div className="relative z-[1] flex w-full min-w-0 items-start justify-between gap-3">
+                  <h2 className="min-w-0 flex-1 text-left text-[14px] font-semibold leading-snug line-clamp-2">
                     <Link
-                      href={`/app/matching/offres/${app.jobId}`}
-                      className={`block text-[16px] sm:text-[17px] font-semibold uppercase leading-snug transition ${
-                        isLight ? "text-black hover:text-tap-red" : "text-white hover:text-tap-red"
+                      href={`/app/mes-candidatures/${app.id}`}
+                      className={`transition hover:underline ${
+                        isLight ? "text-black hover:text-tap-red" : "text-white/95 hover:text-tap-red"
                       }`}
+                      title="Voir le détail de la candidature"
                     >
                       {app.jobTitle ?? "Offre sans titre"}
                     </Link>
-                  ) : (
-                    <p className={`text-[16px] sm:text-[17px] font-semibold uppercase ${isLight ? "text-black" : "text-white"}`}>
-                      {app.jobTitle ?? "Offre sans titre"}
-                    </p>
-                  )}
-
-                  <p
-                    className={`inline-flex items-center gap-1.5 text-[11px] sm:text-[12px] min-w-0 ${
-                      isLight ? "text-black/70" : "text-white/55"
+                  </h2>
+                  <span
+                    className={`shrink-0 text-right text-[11px] tabular-nums leading-snug pt-0.5 ${
+                      isLight ? "text-black/45" : "text-white/40"
                     }`}
+                    title={app.validatedAt ?? undefined}
                   >
-                    <MapPin size={12} className="shrink-0 opacity-80" />
-                    <span className="truncate">{app.jobLocationType ?? "Localisation non précisée"}</span>
-                  </p>
+                    {durationLabel}
+                  </span>
                 </div>
 
-                <div className="flex shrink-0 flex-col justify-end gap-2 sm:items-end sm:min-h-[88px]">
-                  <Link
-                    href={`/app/mes-candidatures/${app.id}`}
-                    className="inline-flex items-center justify-center gap-1.5 rounded-full border border-tap-red/35 bg-tap-red/10 px-4 py-2.5 text-[11px] font-semibold uppercase tracking-[0.08em] text-[#CA1B28] transition hover:bg-tap-red/18 hover:border-tap-red/50 sm:min-w-[11rem]"
+                <p
+                  className={`relative z-[1] mt-2 flex min-w-0 items-start gap-1.5 text-left text-[12px] leading-snug ${
+                    isLight ? "text-black/65" : "text-white/55"
+                  }`}
+                >
+                  <MapPin size={14} className="mt-0.5 shrink-0 opacity-75" aria-hidden />
+                  <span className="min-w-0 line-clamp-2" title={locationLabel}>
+                    {locationLabel}
+                  </span>
+                </p>
+
+                <div
+                  className={`relative z-[1] mt-auto flex w-full min-w-0 items-center justify-between gap-3 border-t pt-3 ${
+                    isLight ? "border-black/10" : "border-white/[0.08]"
+                  }`}
+                >
+                  <span
+                    className={`inline-flex max-w-[min(100%,58%)] shrink-0 truncate rounded-full border px-2.5 py-1 text-[10px] font-medium ${statusBg(
+                      app.status ?? "Inconnu",
+                    )}`}
+                    title={candidatureStatusLabel(app.status)}
                   >
-                    Détails candidature
-                    <ArrowRight size={14} />
-                  </Link>
+                    {candidatureStatusLabel(app.status)}
+                  </span>
                   {app.jobId ? (
                     <Link
                       href={`/app/matching/offres/${app.jobId}`}
-                      className={`inline-flex items-center justify-center gap-1 text-[11px] font-medium underline underline-offset-2 transition ${
-                        isLight ? "text-black/55 hover:text-tap-red" : "text-white/50 hover:text-tap-red"
+                      className={`inline-flex shrink-0 items-center gap-1 text-right text-[11px] font-semibold transition ${
+                        isLight ? "text-tap-red hover:text-tap-red/90" : "text-tap-red hover:text-red-400"
                       }`}
                     >
                       Voir l&apos;offre
-                      <ArrowRight size={12} />
+                      <ArrowRight size={12} strokeWidth={2} aria-hidden />
                     </Link>
-                  ) : null}
+                  ) : (
+                    <span
+                      className={`shrink-0 text-right text-[11px] ${isLight ? "text-black/35" : "text-white/30"}`}
+                    >
+                      —
+                    </span>
+                  )}
                 </div>
               </div>
-            </div>
-          ))}
+            );
+          })}
         </div>
       )}
     </div>
