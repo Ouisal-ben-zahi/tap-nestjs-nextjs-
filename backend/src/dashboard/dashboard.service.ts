@@ -3151,7 +3151,7 @@ export class DashboardService {
     // Security: ensure recruiter can only query their own jobs.
     const { data: job, error: jobError } = await this.supabase
       .from('jobs')
-      .select('id')
+      .select('id, title')
       .eq('id', jobId)
       .eq('user_id', userId)
       .limit(1)
@@ -3166,11 +3166,26 @@ export class DashboardService {
       throw new BadRequestException('Offre introuvable pour ce recruteur');
     }
 
-    return this.callFlaskJson<any>('POST', '/api/recruteur/match-by-offre', {
-      job_id: jobId,
-      top_n: payload?.top_n ?? 20,
-      only_postule: Boolean(payload?.only_postule),
-    });
+    const jobTitle = String((job as { title?: string | null }).title ?? '').trim();
+
+    try {
+      return await this.callFlaskJson<any>('POST', '/api/recruteur/match-by-offre', {
+        job_id: jobId,
+        top_n: payload?.top_n ?? 20,
+        only_postule: Boolean(payload?.only_postule),
+      });
+    } catch (e: any) {
+      // En dev / si FLASK_AI_URL est absent ou le service IA est arrêté : ne pas casser la page Candidats.
+      const msg = String(e?.message ?? e ?? 'Erreur appel Flask');
+      this.logger.warn(`match-by-offre Flask indisponible (job ${jobId}): ${msg}`);
+      return {
+        job_id: jobId,
+        job_title: jobTitle || `Offre #${jobId}`,
+        candidates: [],
+        message:
+          'Le matching IA est temporairement indisponible (service IA ou FLASK_AI_URL). Aucun candidat affiché pour le moment — réessayez plus tard ou vérifiez la configuration serveur.',
+      };
+    }
   }
 
   async validateCandidateApplication(
